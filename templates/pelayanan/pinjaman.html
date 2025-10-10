@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{{ .Judul }} - Koperasi Wirya</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+{{ template "navbar.html" . }}
+<div style="padding: 20px;">
+<h1>{{ .Judul }}</h1>
+    <form action="/pelayanan/pinjamanTentu" method="POST">
+        <!-- Bagian 1: Data Pribadi Peminjam -->
+        <fieldset class="border p-3 mb-4">
+            <legend class="w-auto">Bagian 1: Data Pribadi Peminjam (Anggota)</legend>
+            <div class="mb-3">
+                <label for="nama_lengkap" class="form-label">Nama Lengkap (Sesuai KTP)</label>
+                <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" required>
+            </div>
+            <div class="mb-3">
+                <label for="nomor_anggota" class="form-label">Nomor Anggota Koperasi</label>
+                <input type="text" class="form-control" id="nomor_anggota" name="nomor_anggota" required>
+            </div>
+            <div class="mb-3">
+                <label for="nip_nidn" class="form-label">Nomor Induk Pegawai (NIP) / NIDN</label>
+                <input type="text" class="form-control" id="nip_nidn" name="nip_nidn" required>
+            </div>
+            <div class="mb-3">
+                <label for="unit_kerja" class="form-label">Unit Kerja / Fakultas / Jurusan</label>
+                <input type="text" class="form-control" id="unit_kerja" name="unit_kerja" required>
+            </div>
+            <div class="mb-3">
+                <label for="jabatan" class="form-label">Jabatan</label>
+                <input type="text" class="form-control" id="jabatan" name="jabatan" required>
+            </div>
+            <div class="mb-3">
+                <label for="alamat" class="form-label">Alamat Lengkap (Sesuai KTP dan Domisili)</label>
+                <textarea class="form-control" id="alamat" name="alamat" rows="3" required></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="nomor_telepon" class="form-label">Nomor Telepon / HP</label>
+                <input type="text" class="form-control" id="nomor_telepon" name="nomor_telepon" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Status Kepegawaian</label><br>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="status_kepegawaian" id="pegawai_tetap" value="Pegawai Tetap" required>
+                    <label class="form-check-label" for="pegawai_tetap">Pegawai Tetap</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="status_kepegawaian" id="pegawai_kontrak" value="Pegawai Kontrak" required>
+                    <label class="form-check-label" for="pegawai_kontrak">Pegawai Kontrak</label>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Bagian 2: Rincian Permohonan Pinjaman -->
+        <fieldset class="border p-3 mb-4">
+            <legend class="w-auto">Bagian 2: Rincian Permohonan Pinjaman</legend>
+            <div class="mb-3">
+                <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
+                <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required>
+            </div>
+            <div class="mb-3">
+                <label for="jumlah_pinjaman_terbilang" class="form-label">Jumlah Pinjaman Terbilang</label>
+                <input type="text" class="form-control" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Tujuan Penggunaan Pinjaman</label><br>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Biaya Pendidikan Anak" id="tujuan1">
+                    <label class="form-check-label" for="tujuan1">Biaya Pendidikan Anak</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Renovasi Rumah" id="tujuan2">
+                    <label class="form-check-label" for="tujuan2">Renovasi Rumah</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Pembelian Kendaraan" id="tujuan3">
+                    <label class="form-check-label" for="tujuan3">Pembelian Kendaraan</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Keperluan Konsumtif" id="tujuan4">
+                    <label class="form-check-label" for="tujuan4">Keperluan Konsumtif</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Modal Usaha" id="tujuan5">
+                    <label class="form-check-label" for="tujuan5">Modal Usaha</label>
+                </div>
+                <div class="mb-3 mt-2">
+                    <label for="tujuan_lain" class="form-label">Lain-lain</label>
+                    <input type="text" class="form-control" id="tujuan_lain" name="tujuan_lain">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="jangka_waktu" class="form-label">Jangka Waktu Pinjaman (Tenor, bulan)</label>
+                <select class="form-select" id="jangka_waktu" name="jangka_waktu" required>
+                    <option value="">Pilih tenor</option>
+                    <option value="12">12 bulan</option>
+                    <option value="24">24 bulan</option>
+                    <option value="36">36 bulan</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="perkiraan_angsuran" class="form-label">Perkiraan Angsuran per Bulan (Rp)</label>
+                <input type="number" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran">
+            </div>
+        </fieldset>
+
+        <!-- Bagian 3: Rincian Penghasilan dan Kemampuan Bayar -->
+        <fieldset class="border p-3 mb-4">
+            <legend class="w-auto">Bagian 3: Rincian Penghasilan dan Kemampuan Bayar</legend>
+            <div class="mb-3">
+                <label for="gaji_pokok" class="form-label">Gaji Pokok per Bulan (Rp)</label>
+                <input type="number" class="form-control" id="gaji_pokok" name="gaji_pokok" required>
+            </div>
+            <div class="mb-3">
+                <label for="tunjangan_tetap" class="form-label">Tunjangan Tetap Lainnya (Rp)</label>
+                <input type="number" class="form-control" id="tunjangan_tetap" name="tunjangan_tetap">
+            </div>
+            <div class="mb-3">
+                <label for="total_penghasilan" class="form-label">Total Penghasilan Kotor per Bulan (Rp)</label>
+                <input type="number" class="form-control" id="total_penghasilan" name="total_penghasilan" readonly>
+            </div>
+            <div class="mb-3">
+                <label for="potongan_rutin" class="form-label">Potongan Rutin per Bulan (Rp)</label>
+                <input type="number" class="form-control" id="potongan_rutin" name="potongan_rutin">
+            </div>
+            <div class="mb-3">
+                <label for="penghasilan_bersih" class="form-label">Penghasilan Bersih (Take Home Pay) (Rp)</label>
+                <input type="number" class="form-control" id="penghasilan_bersih" name="penghasilan_bersih" readonly>
+            </div>
+        </fieldset>
+
+        <!-- Bagian 4: Pernyataan dan Kuasa -->
+        <fieldset class="border p-3 mb-4">
+            <legend class="w-auto">Bagian 4: Pernyataan dan Kuasa</legend>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="pernyataan_benar" name="pernyataan_benar" required>
+                <label class="form-check-label" for="pernyataan_benar">
+                    Menyatakan bahwa data yang diberikan adalah benar.
+                </label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="sanggup_bayar" name="sanggup_bayar" required>
+                <label class="form-check-label" for="sanggup_bayar">
+                    Sanggup untuk membayar angsuran pinjaman setiap bulan sesuai jadwal.
+                </label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="setuju_potong_gaji" name="setuju_potong_gaji" required>
+                <label class="form-check-label" for="setuju_potong_gaji">
+                    Bersedia jika gaji dipotong langsung oleh bendahara gaji universitas untuk pembayaran angsuran.
+                </label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="kuasa_potong_gaji" name="kuasa_potong_gaji" required>
+                <label class="form-check-label" for="kuasa_potong_gaji">
+                    Memberikan kuasa kepada pengurus koperasi untuk melakukan pemotongan gaji melalui bendahara.
+                </label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="kuasa_pakai_simpanan" name="kuasa_pakai_simpanan" required>
+                <label class="form-check-label" for="kuasa_pakai_simpanan">
+                    Memberikan kuasa kepada koperasi untuk menggunakan simpanan (pokok dan wajib) untuk melunasi sisa pinjaman jika terjadi gagal bayar atau pemohon berhenti bekerja.
+                </label>
+            </div>
+        </fieldset>
+
+        <!-- Bagian 5: Kolom Persetujuan -->
+        <fieldset class="border p-3 mb-4">
+            <legend class="w-auto">Bagian 5: Kolom Persetujuan</legend>
+            <div class="mb-3">
+                <label for="ttd_pemohon" class="form-label">Tanda Tangan Pemohon (di atas meterai)</label>
+                <input type="text" class="form-control" id="ttd_pemohon" name="ttd_pemohon" required>
+            </div>
+            <div class="mb-3">
+                <label for="ttd_saksi" class="form-label">Tanda Tangan Saksi / Penjamin (Jika Diperlukan)</label>
+                <input type="text" class="form-control" id="ttd_saksi" name="ttd_saksi">
+            </div>
+            <div class="mb-3">
+                <label for="nama_atasan" class="form-label">Mengetahui Atasan Langsung (Nama Jelas)</label>
+                <input type="text" class="form-control" id="nama_atasan" name="nama_atasan" required>
+            </div>
+            <div class="mb-3">
+                <label for="ttd_atasan" class="form-label">Tanda Tangan Atasan Langsung</label>
+                <input type="text" class="form-control" id="ttd_atasan" name="ttd_atasan" required>
+            </div>
+            <div class="mb-3">
+                <label for="verifikasi_pengurus" class="form-label">Kolom Verifikasi Pengurus Koperasi</label>
+                <textarea class="form-control" id="verifikasi_pengurus" name="verifikasi_pengurus" rows="3" readonly></textarea>
+            </div>
+        </fieldset>
+
+        <button type="submit" class="btn btn-primary">Ajukan Pinjaman</button>
+    </form>
+</div>
+
+<script>
+    // Calculate total penghasilan and penghasilan bersih dynamically
+    const gajiPokokInput = document.getElementById('gaji_pokok');
+    const tunjanganTetapInput = document.getElementById('tunjangan_tetap');
+    const potonganRutinInput = document.getElementById('potongan_rutin');
+    const totalPenghasilanInput = document.getElementById('total_penghasilan');
+    const penghasilanBersihInput = document.getElementById('penghasilan_bersih');
+
+    function calculateIncome() {
+        const gajiPokok = parseFloat(gajiPokokInput.value) || 0;
+        const tunjanganTetap = parseFloat(tunjanganTetapInput.value) || 0;
+        const potonganRutin = parseFloat(potonganRutinInput.value) || 0;
+
+        const totalPenghasilan = gajiPokok + tunjanganTetap;
+        const penghasilanBersih = totalPenghasilan - potonganRutin;
+
+        totalPenghasilanInput.value = totalPenghasilan.toFixed(2);
+        penghasilanBersihInput.value = penghasilanBersih.toFixed(2);
+    }
+
+    gajiPokokInput.addEventListener('input', calculateIncome);
+    tunjanganTetapInput.addEventListener('input', calculateIncome);
+    potonganRutinInput.addEventListener('input', calculateIncome);
+</script>
+</div>
+{{ template "footer.html" . }}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

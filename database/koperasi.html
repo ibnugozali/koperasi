@@ -1,0 +1,125 @@
+-- Jalankan ini di Query Tool untuk database 'postgres' (bukan 'koperasi')
+DROP DATABASE koperasi;
+CREATE DATABASE koperasi;
+
+-- Hapus tabel sesuai relasi
+DROP TABLE IF EXISTS angsuran CASCADE;
+DROP TABLE IF EXISTS pinjaman CASCADE;
+DROP TABLE IF EXISTS detail CASCADE;
+DROP TABLE IF EXISTS simpanan CASCADE;
+DROP TABLE IF EXISTS pengelola CASCADE;
+DROP TABLE IF EXISTS anggota CASCADE;
+
+-- =========================
+-- Tabel anggota
+-- =========================
+CREATE TABLE anggota (
+    id_anggota SERIAL PRIMARY KEY,
+    nama_anggota VARCHAR(50) NOT NULL,
+    username VARCHAR(25) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    tgl_lahir DATE,
+    nik_ktp VARCHAR(25),
+    no_telepon VARCHAR(20),
+    tgl_gabung DATE DEFAULT CURRENT_DATE,
+    provinsi VARCHAR(50),
+    jenis_kelamin VARCHAR(12),
+    status VARCHAR(25) CHECK (status IN ('aktif', 'nonaktif', 'pending')) DEFAULT 'aktif'
+);
+
+-- =========================
+-- Tabel pengelola
+-- =========================
+CREATE TABLE pengelola (
+    id_pengelola SERIAL PRIMARY KEY,
+    nama_pengelola VARCHAR(50) NOT NULL,
+    username VARCHAR(25) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    jabatan_koperasi VARCHAR(25),
+    no_telepon VARCHAR(20),
+    email VARCHAR(50),
+    tgl_gabung DATE DEFAULT CURRENT_DATE,
+    level VARCHAR(25) CHECK (level IN ('admin', 'bendahara', 'ketua', 'pembina')),
+    status VARCHAR(25) CHECK (status IN ('aktif', 'nonaktif')) DEFAULT 'aktif'
+);
+
+-- =========================
+-- Tabel simpanan
+-- =========================
+CREATE TABLE simpanan (
+    id_simpanan SERIAL PRIMARY KEY,
+    jenis_simpanan VARCHAR(25) NOT NULL
+);
+
+-- =========================
+-- Tabel detail simpanan
+-- =========================
+CREATE TABLE detail (
+    id_detail SERIAL PRIMARY KEY,
+    id_anggota INT REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    id_simpanan INT REFERENCES simpanan(id_simpanan) ON DELETE CASCADE,
+    id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE CASCADE,
+    tgl_transaksi DATE DEFAULT CURRENT_DATE,
+    jumlah_simpanan NUMERIC(15,2),
+    total_simpanan NUMERIC(15,2)
+);
+
+-- =========================
+-- Tabel pinjaman
+-- =========================
+CREATE TABLE pinjaman (
+    id_pinjaman SERIAL PRIMARY KEY,
+    id_anggota INT REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE CASCADE,
+    tgl_pinjaman DATE DEFAULT CURRENT_DATE,
+    jumlah_simpanan NUMERIC(15,2),
+    jangka_waktu INT,
+    bunga NUMERIC(5,2) DEFAULT 2.0, -- 2% bunga per bulan
+    status VARCHAR(25) CHECK (status IN ('proses', 'aktif', 'lunas', 'gagal'))
+);
+
+-- =========================
+-- Tabel angsuran
+-- =========================
+CREATE TABLE angsuran (
+    id_angsuran SERIAL PRIMARY KEY,
+    id_pinjaman INT REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
+    id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE CASCADE,
+    tgl_bayar DATE DEFAULT CURRENT_DATE,
+    sisa_pinjaman NUMERIC(15,2),
+    status_angsuran VARCHAR(25) CHECK (status_angsuran IN ('belum_lunas', 'lunas', 'terlambat')),
+    bukti_angsuran BYTEA,
+    status VARCHAR(25) CHECK (status IN ('valid', 'invalid')) DEFAULT 'valid'
+);
+-- =========================
+-- Modifikasi tabel anggota dan pengelola
+-- =========================
+-- Tambahkan kolom kode_anggota ke tabel anggota
+ALTER TABLE anggota
+ADD COLUMN kode_anggota VARCHAR(50) UNIQUE;
+
+-- Saat mendaftar, status defaultnya adalah 'pending'
+-- Ubah default status pada tabel anggota
+ALTER TABLE anggota
+ALTER COLUMN status SET DEFAULT 'pending';
+
+-- =========================
+-- Insert data awal
+-- =========================
+INSERT INTO pengelola (nama_pengelola, username, password, jabatan_koperasi, level, status)
+VALUES (
+    'Administrator Utama',
+    'admin',
+    'PASTE_HASH_DARI_WEBSITE_DI_SINI',
+    'Admin',
+    'admin',
+    'aktif'
+);
+
+-- Index
+CREATE INDEX idx_anggota_username ON anggota(username);
+CREATE INDEX idx_pengelola_username ON pengelola(username);
+CREATE INDEX idx_pinjaman_anggota ON pinjaman(id_anggota);
+CREATE INDEX idx_angsuran_pinjaman ON angsuran(id_pinjaman);
+CREATE INDEX idx_detail_anggota ON detail(id_anggota);
+CREATE INDEX idx_detail_simpanan ON detail(id_simpanan);

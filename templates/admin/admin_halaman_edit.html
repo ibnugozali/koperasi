@@ -1,0 +1,141 @@
+{{ template "base.html" . }}
+
+{{ define "content" }}
+<div class="card">
+    <div class="card-header">
+        <h3>Edit Halaman: {{ .Halaman.Judul }}</h3>
+    </div>
+    <div class="card-body">
+        <form id="editForm" action="/admin/halaman/update/{{ .Halaman.Slug }}" method="POST">
+            <input type="hidden" id="konten" name="konten">
+
+            <div class="mb-3">
+                <label for="judul" class="form-label">Judul Halaman</label>
+                <input type="text" class="form-control" id="judul" name="judul" value="{{ .Halaman.Judul }}">
+            </div>
+
+            {{ if eq .Halaman.Slug "sejarah" }}
+            <div class="mb-3">
+                <label for="teks" class="form-label">Teks Konten</label>
+                <textarea class="form-control" id="teks" rows="10">{{ .Halaman.Konten.teks }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Gambar Utama</label>
+                <input type="file" class="form-control file-upload" data-target="gambar">
+                <img id="preview_gambar" src="{{ .Halaman.Konten.gambar }}" class="img-thumbnail mt-2" width="200">
+            </div>
+            {{ end }}
+
+            {{ if eq .Halaman.Slug "visi-misi" }}
+            <div class="mb-3">
+                <label for="visi" class="form-label">Visi</label>
+                <textarea class="form-control" id="visi" rows="5">{{ .Halaman.Konten.visi }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label for="misi" class="form-label">Misi</label>
+                <textarea class="form-control" id="misi" rows="5">{{ .Halaman.Konten.misi }}</textarea>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Gambar Visi</label>
+                    <input type="file" class="form-control file-upload" data-target="gambar1">
+                    <img id="preview_gambar1" src="{{ .Halaman.Konten.gambar1 }}" class="img-thumbnail mt-2" width="200">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Gambar Misi</label>
+                    <input type="file" class="form-control file-upload" data-target="gambar2">
+                    <img id="preview_gambar2" src="{{ .Halaman.Konten.gambar2 }}" class="img-thumbnail mt-2" width="200">
+                </div>
+            </div>
+            {{ end }}
+            
+            {{ if eq .Halaman.Slug "struktur" }}
+            <div class="mb-3">
+                <label for="deskripsi" class="form-label">Deskripsi Singkat</label>
+                <textarea class="form-control" id="deskripsi" rows="3">{{ .Halaman.Konten.deskripsi }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Gambar Struktur Organisasi</label>
+                <input type="file" class="form-control file-upload" data-target="gambar_struktur">
+                <img id="preview_gambar_struktur" src="{{ .Halaman.Konten.gambar_struktur }}" class="img-fluid img-thumbnail mt-2">
+            </div>
+            {{ end }}
+
+            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+            <a href="/admin/halaman" class="btn btn-secondary">Batal</a>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Fungsi untuk handle upload file
+    document.querySelectorAll('.file-upload').forEach(input => {
+        input.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const targetId = event.target.dataset.target;
+            const previewId = 'preview_' + targetId;
+            const previewElement = document.getElementById(previewId);
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Kirim file ke server
+            fetch('/admin/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.filePath) {
+                    // Tampilkan preview gambar baru
+                    previewElement.src = data.filePath;
+                    alert('Upload berhasil!');
+                } else {
+                    alert('Upload gagal: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat upload.');
+            });
+        });
+    });
+
+    // Menyiapkan data JSON sebelum form disubmit
+    const form = document.getElementById('editForm');
+    form.addEventListener('submit', function(event) {
+        event.preventDefault(); // Mencegah submit standar
+
+        const slug = '{{ .Halaman.Slug }}';
+        let data = {};
+
+        if (slug === 'sejarah') {
+            data = {
+                teks: document.getElementById('teks').value,
+                gambar: document.getElementById('preview_gambar').src
+            };
+        } else if (slug === 'visi-misi') {
+            data = {
+                visi: document.getElementById('visi').value,
+                misi: document.getElementById('misi').value,
+                gambar1: document.getElementById('preview_gambar1').src,
+                gambar2: document.getElementById('preview_gambar2').src
+            };
+        } else if (slug === 'struktur') {
+            data = {
+                deskripsi: document.getElementById('deskripsi').value,
+                gambar_struktur: document.getElementById('preview_gambar_struktur').src
+                // Note: CRUD untuk anggota struktur akan lebih kompleks, ini versi sederhananya
+            };
+        }
+        
+        // Masukkan JSON ke input tersembunyi dan submit form
+        document.getElementById('konten').value = JSON.stringify(data);
+        form.submit();
+    });
+});
+</script>
+{{ end }}

@@ -1,0 +1,64 @@
+{{ template "base.html" . }}
+
+{{ define "content" }}
+<div class="card">
+    <div class="card-body p-4 p-md-5 bg-white">
+        <h1 class="card-title mb-4">{{ .Judul }}</h1>
+        <hr>
+
+        {{ if eq .Slug "sejarah" }}
+        <div class="row g-4">
+            <div class="col-md-4">
+                <img src="{{ .Konten.gambar }}" class="img-fluid rounded" alt="Gambar Sejarah">
+            </div>
+            <div class="col-md-8">
+                <p style="text-align: justify;">{{ .Konten.teks }}</p>
+            </div>
+        </div>
+        {{ end }}
+
+        {{ if eq .Slug "visi-misi" }}
+        <div class="mb-5">
+            <h3 class="text-success">Visi</h3>
+            <p>{{ .Konten.visi }}</p>
+            <img src="{{ .Konten.gambar1 }}" class="img-fluid rounded mb-3" alt="Gambar Visi">
+        </div>
+        <div>
+            <h3 class="text-success">Misi</h3>
+            <p>{{ .Konten.misi }}</p>
+            <img src="{{ .Konten.gambar2 }}" class="img-fluid rounded" alt="Gambar Misi">
+        </div>
+        {{ end }}
+
+        {{ if eq .Slug "struktur" }}
+        <p>{{ .Konten.deskripsi }}</p>
+        <div class="text-center">
+            <img src="{{ .Konten.gambar_struktur }}" class="img-fluid img-thumbnail" alt="Bagan Struktur Organisasi">
+        </div>
+        {{ end }}
+
+        {{ if eq .Slug "wajib" }}
+        <div class="row g-4">
+            <div class="col-md-4">
+                <img src="{{ .Konten.gambar }}" class="img-fluid rounded" alt="Gambar Simpanan Wajib">
+            </div>
+            <div class="col-md-8">
+                <p style="text-align: justify;">{{ .Konten.teks }}</p>
+            </div>
+        </div>
+        {{ end }}
+
+        {{ if eq .Slug "pokok" }}
+        <div class="row g-4">
+            <div class="col-md-4">
+                <img src="{{ .Konten.gambar }}" class="img-fluid rounded" alt="Gambar Simpanan Pokok">
+            </div>
+            <div class="col-md-8">
+                <p style="text-align: justify;">{{ .Konten.teks }}</p>
+            </div>
+        </div>
+        {{ end }}
+
+    </div>
+</div>
+{{ end }}

@@ -1,0 +1,63 @@
+{{ define "login.html" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Koperasi Simpan Pinjam</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f8f9fa;
+        }
+        .login-card {
+            max-width: 400px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="card login-card shadow-sm">
+        <div class="card-body p-5">
+            <h3 class="card-title text-center mb-4">Login Koperasi</h3>
+
+            {{ if .error }}
+                <div class="alert alert-danger">{{ .error }}</div>
+            {{ end }}
+            {{ if .success }}
+                <div class="alert alert-success">{{ .success }}</div>
+            {{ end }}
+
+            <form action="/login" method="POST">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </div>
+            </form>
+
+            <div class="text-center mt-4">
+                <p class="mb-0">Belum punya akun? <a href="/register">Daftar Anggota</a></p>
+                <small><a href="/hubungi-admin">Hubungi Admin</a></small>
+            </div>
+        </div>
+        <div class="card-footer text-center">
+          <small>&copy; 2025 | Gozali</small>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+{{ end }}
