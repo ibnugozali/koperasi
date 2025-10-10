@@ -54,9 +54,34 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="mb-3">
+
+                           <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="status_anggota" class="form-label">Status Anggota</label>
+                                    <select class="form-select" id="status_anggota" name="StatusAnggota" required>
+                                        <option value="">Pilih Status</option>
+                                        <option value="dosen">Dosen</option>
+                                        <option value="karyawan">Karyawan</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="fakultas" class="form-label">Fakultas</label>
+                                    <select class="form-select" id="fakultas" name="Fakultas" required>
+                                        <option value="">Pilih Fakultas</option>
+                                        <option value="Fakultas Agama Islam (FAI)">Fakultas Agama Islam (FAI)</option>
+                                        <option value="Fakultas Ekonomi (FE)">Fakultas Ekonomi (FE)</option>
+                                        <option value="Fakultas Hukum (FH)">Fakultas Hukum (FH)</option>
+                                        <option value="Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)">Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)</option>
+                                        <option value="Fakultas Keguruan dan Ilmu Pendidikan (FKIP)">Fakultas Keguruan dan Ilmu Pendidikan (FKIP)</option>
+                                        <option value="Fakultas Kesehatan Masyarakat (FKM)">Fakultas Kesehatan Masyarakat (FKM)</option>
+                                        <option value="Fakultas Pertanian (FAPERTA)">Fakultas Pertanian (FAPERTA)</option>
+                                        <option value="Fakultas Teknik (FT)">Fakultas Teknik (FT)</option>
+                                    </select>
+                                </div>
+                                 <div class="mb-3">
                                 <label for="provinsi" class="form-label">Provinsi</label>
                                 <input type="text" class="form-control" id="provinsi" name="Provinsi">
+                            </div>
                             </div>
                             <div class="d-grid mt-4">
                                 <button type="submit" class="btn btn-primary">Daftar</button>

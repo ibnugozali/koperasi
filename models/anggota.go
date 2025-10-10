@@ -17,6 +17,8 @@ type Anggota struct {
 	TglGabung    time.Time      `json:"tgl_gabung"`
 	Provinsi     string         `json:"provinsi" form:"Provinsi"`
 	JenisKelamin string         `json:"jenis_kelamin" form:"JenisKelamin"`
+	StatusAnggota string        `json:"status_anggota" form:"StatusAnggota"`
+	Fakultas     string         `json:"fakultas" form:"Fakultas"`
 	Status       string         `json:"status"`
 	KodeAnggota  sql.NullString `json:"kode_anggota"` // Menggunakan sql.NullString karena bisa jadi NULL
 }

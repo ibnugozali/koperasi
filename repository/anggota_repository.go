@@ -3,6 +3,7 @@ package repository
 import (
 	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
+
 )
 
 // Mengambil semua anggota dengan status pending
@@ -35,13 +36,12 @@ func UpdateAnggotaStatus(id int, newStatus string, memberCode string) error {
 }
 
 // ... (fungsi lainnya)
-
 // Membuat anggota baru (registrasi)
 func CreateAnggota(anggota models.Anggota) error {
 	db := config.GetDB()
 	query := `
-		INSERT INTO anggota (nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, provinsi, jenis_kelamin, tgl_gabung)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO anggota (nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, provinsi, jenis_kelamin, status_anggota, fakultas, tgl_gabung)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`
 	_, err := db.Exec(query,
 		anggota.NamaAnggota,
@@ -52,6 +52,8 @@ func CreateAnggota(anggota models.Anggota) error {
 		anggota.NoTelepon,
 		anggota.Provinsi,
 		anggota.JenisKelamin,
+		anggota.StatusAnggota,
+		anggota.Fakultas,
 		anggota.TglGabung,
 	)
 	return err

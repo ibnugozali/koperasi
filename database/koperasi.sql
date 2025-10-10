@@ -160,3 +160,7 @@ CREATE INDEX idx_angsuran_pinjaman ON angsuran(id_pinjaman);
 CREATE INDEX idx_detail_anggota ON detail(id_anggota);
 CREATE INDEX idx_detail_simpanan ON detail(id_simpanan);
 CREATE INDEX idx_halaman_slug ON halaman(slug);
+
+-- Add new columns for status_anggota and fakultas
+ALTER TABLE anggota ADD COLUMN status_anggota VARCHAR(50);
+ALTER TABLE anggota ADD COLUMN fakultas VARCHAR(100);
