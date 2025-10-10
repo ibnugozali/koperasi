@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 
+	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
 )
 
@@ -27,9 +29,30 @@ func AnggotaDashboard(c *gin.Context) {
 		return
 	}
 
-	// Render halaman dashboard dan kirim data anggota ke sana
+	// Ambil konten dashboard dari halaman
+	halaman, err := repository.GetHalamanBySlug("dashboard_anggota")
+	if err != nil {
+		// Handle error, perhaps use default content
+		halaman = models.Halaman{
+			Judul:  "Dashboard Anggota",
+			Konten: `{"teks": "Selamat datang di dashboard anggota.", "gambar": "/static/images/placeholder.png"}`,
+		}
+	}
+
+	// Parse JSON konten
+	var kontenParsed map[string]interface{}
+	if err := json.Unmarshal([]byte(halaman.Konten), &kontenParsed); err != nil {
+		// If parsing fails, use default
+		kontenParsed = map[string]interface{}{
+			"teks":   "Selamat datang di dashboard anggota.",
+			"gambar": "/static/images/placeholder.png",
+		}
+	}
+
+	// Render halaman dashboard dan kirim data anggota dan konten ke sana
 	c.HTML(http.StatusOK, "anggota_dashboard.html", gin.H{
-		"Anggota": anggota,
+		"Anggota":      anggota,
+		"KontenParsed": kontenParsed,
 	})
 }
 

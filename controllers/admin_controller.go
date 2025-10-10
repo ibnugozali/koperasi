@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -10,7 +11,8 @@ import (
 	"github.com/google/uuid"
 
 	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository" // Ganti dengan path repository Anda
+	"koperasi-simpan-pinjam/repository"
+
 )
 
 // Menampilkan dashboard admin dengan daftar calon anggota
@@ -22,8 +24,22 @@ func AdminDashboard(c *gin.Context) {
 		return
 	}
 
+	// Ambil konten dashboard anggota untuk form edit
+	dashboardHalaman, err := repository.GetHalamanBySlug("dashboard_anggota")
+	var dashboardKonten map[string]interface{}
+	if err == nil {
+		// Parse JSON
+		json.Unmarshal([]byte(dashboardHalaman.Konten), &dashboardKonten)
+	} else {
+		dashboardKonten = map[string]interface{}{
+			"teks":   "Selamat datang di dashboard anggota.",
+			"gambar": "/static/images/placeholder.png",
+		}
+	}
+
 	c.HTML(http.StatusOK, "admin_dashboard.html", gin.H{
 		"PendingMembers": pendingMembers,
+		"DashboardKonten": dashboardKonten,
 	})
 }
 
@@ -54,10 +70,6 @@ func ConfirmMembership(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/admin/dashboard")
 }
 
-// Di file: controllers/admin_controller.go
-
-// ... (fungsi-fungsi admin lainnya)
-
 // ListHalaman menampilkan daftar semua halaman statis untuk di-edit.
 func ListHalaman(c *gin.Context) {
 	allHalaman, err := repository.GetAllHalaman()
@@ -86,12 +98,36 @@ func ShowEditHalamanForm(c *gin.Context) {
 
 // UpdateHalaman memproses update konten halaman.
 func UpdateHalaman(c *gin.Context) {
+	slug := c.Param("slug")
+
+	if slug == "dashboard_anggota" {
+		// Handle special case for dashboard_anggota with separate fields
+		teks := c.PostForm("teks")
+		gambar := c.PostForm("gambar")
+		if teks == "" || gambar == "" {
+			c.String(http.StatusBadRequest, "Data tidak valid")
+			return
+		}
+		konten := fmt.Sprintf(`{"teks": "%s", "gambar": "%s"}`, teks, gambar)
+		halaman := models.Halaman{
+			Slug:   slug,
+			Konten: konten,
+		}
+		err := repository.UpdateHalaman(halaman)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal memperbarui halaman")
+			return
+		}
+		c.Redirect(http.StatusFound, "/admin/dashboard")
+		return
+	}
+
 	var halaman models.Halaman
 	if err := c.ShouldBind(&halaman); err != nil {
 		c.String(http.StatusBadRequest, "Data tidak valid")
 		return
 	}
-	halaman.Slug = c.Param("slug") // Ambil slug dari URL
+	halaman.Slug = slug
 
 	err := repository.UpdateHalaman(halaman)
 	if err != nil {
@@ -101,6 +137,7 @@ func UpdateHalaman(c *gin.Context) {
 	}
 	c.Redirect(http.StatusFound, "/admin/halaman")
 }
+
 func UploadFile(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {

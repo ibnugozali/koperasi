@@ -18,6 +18,25 @@
             <h4 class="alert-heading">Selamat Datang di Dashboard Admin</h4>
             <p>"Dari Anggota, Oleh Anggota, dan Untuk Anggota"</p>
         </div>
+
+        <h3>Edit Dashboard Anggota</h3>
+        <p>Edit konten yang ditampilkan di dashboard anggota.</p>
+        <div class="card mb-4">
+            <div class="card-body">
+                <form action="/admin/halaman/update/dashboard_anggota" method="POST">
+                    <div class="mb-3">
+                        <label for="teks" class="form-label">Teks Dashboard</label>
+                        <textarea class="form-control" id="teks" name="teks" rows="4" required>{{ .DashboardKonten.teks }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="gambar" class="form-label">URL Gambar</label>
+                        <input type="text" class="form-control" id="gambar" name="gambar" value="{{ .DashboardKonten.gambar }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                </form>
+            </div>
+        </div>
+
         <h3>Konfirmasi Anggota Baru</h3>
         <p>Berikut adalah daftar calon anggota yang menunggu persetujuan Anda.</p>
         

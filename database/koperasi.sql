@@ -147,6 +147,12 @@ INSERT INTO halaman (slug, judul, kategori, konten) VALUES
     "teks": "Halaman ini berisi informasi mengenai tata cara pembayaran angsuran pinjaman. Pastikan untuk melakukan pembayaran tepat waktu untuk menghindari denda dan menjaga riwayat kredit Anda tetap baik di koperasi.",
     "gambar": "/static/images/placeholder.png"
   }'
+),
+('dashboard_anggota', 'Dashboard Anggota', 'dashboard',
+  '{
+    "teks": "Selamat datang di dashboard anggota Koperasi Wirya. Di sini Anda dapat mengakses berbagai layanan simpanan dan pinjaman yang disediakan oleh koperasi.",
+    "gambar": "/static/images/placeholder.png"
+  }'
 );
 
 -- =================================================================
