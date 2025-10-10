@@ -32,8 +32,10 @@ func AdminDashboard(c *gin.Context) {
 		json.Unmarshal([]byte(dashboardHalaman.Konten), &dashboardKonten)
 	} else {
 		dashboardKonten = map[string]interface{}{
-			"teks":   "Selamat datang di dashboard anggota.",
-			"gambar": "/static/images/placeholder.png",
+			"teks":    "Selamat datang di dashboard anggota.",
+			"gambar":  "/static/images/placeholder.png",
+			"welcome": "Selamat Datang di Koperasi Wirya",
+			"slogan":  "Dari Anggota, Oleh Anggota, dan Untuk Anggota",
 		}
 	}
 
@@ -108,12 +110,27 @@ func UpdateHalaman(c *gin.Context) {
 			c.String(http.StatusBadRequest, "Data tidak valid")
 			return
 		}
-		konten := fmt.Sprintf(`{"teks": "%s", "gambar": "%s"}`, teks, gambar)
+		kontenMap := map[string]string{
+			"teks":   teks,
+			"gambar": gambar,
+		}
+		kontenBytes, err := json.Marshal(kontenMap)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal membuat konten")
+			return
+		}
+		// Get existing halaman to keep judul
+		existing, err := repository.GetHalamanBySlug(slug)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal mengambil data halaman")
+			return
+		}
 		halaman := models.Halaman{
 			Slug:   slug,
-			Konten: konten,
+			Judul:  existing.Judul,
+			Konten: string(kontenBytes),
 		}
-		err := repository.UpdateHalaman(halaman)
+		err = repository.UpdateHalaman(halaman)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Gagal memperbarui halaman")
 			return

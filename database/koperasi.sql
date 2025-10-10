@@ -151,7 +151,9 @@ INSERT INTO halaman (slug, judul, kategori, konten) VALUES
 ('dashboard_anggota', 'Dashboard Anggota', 'dashboard',
   '{
     "teks": "Selamat datang di dashboard anggota Koperasi Wirya. Di sini Anda dapat mengakses berbagai layanan simpanan dan pinjaman yang disediakan oleh koperasi.",
-    "gambar": "/static/images/placeholder.png"
+    "gambar": "/static/images/placeholder.png",
+    "welcome": "Selamat Datang di Koperasi Wirya",
+    "slogan": "Dari Anggota, Oleh Anggota, dan Untuk Anggota"
   }'
 );
 

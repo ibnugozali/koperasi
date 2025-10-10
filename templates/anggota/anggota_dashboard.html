@@ -93,8 +93,8 @@
 <main class="container-fluid py-4 d-flex flex-column" style="min-height: 80vh; position: relative;">
     <div class="row justify-content-center align-items-center flex-grow-1">
         <div class="col-12 text-center">
-            <h2 class="mb-4">Selamat Datang di Koperasi Wirya</h2>
-            <p class="fw-bold fs-4">"Dari Anggota, Oleh Anggota, dan Untuk Anggota"</p>
+            <h2 class="mb-4">{{ .KontenParsed.welcome }}</h2>
+            <p class="fw-bold fs-4">{{ .KontenParsed.slogan }}</p>
         </div>
     </div>
     <div class="position-absolute bottom-0 start-0 p-3">
