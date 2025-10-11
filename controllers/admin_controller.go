@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
 
@@ -176,4 +177,107 @@ func UploadFile(c *gin.Context) {
 	// Kembalikan path file yang bisa diakses publik
 	filePath := "/static/uploads/" + newFileName
 	c.JSON(http.StatusOK, gin.H{"filePath": filePath})
+}
+
+// ListAllAnggota menampilkan daftar semua anggota aktif
+func ListAllAnggota(c *gin.Context) {
+	anggotas, err := repository.GetAllAnggota()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
+		return
+	}
+	c.HTML(http.StatusOK, "admin_anggota_list.html", gin.H{
+		"Anggotas": anggotas,
+	})
+}
+
+// ViewAnggota menampilkan detail anggota berdasarkan ID
+func ViewAnggota(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID tidak valid"})
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(id)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		return
+	}
+
+	c.HTML(http.StatusOK, "admin_anggota_view.html", gin.H{
+		"Anggota": anggota,
+	})
+}
+
+// EditAnggota menampilkan form edit anggota
+func EditAnggota(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID tidak valid"})
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(id)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		return
+	}
+
+	c.HTML(http.StatusOK, "admin_anggota_edit.html", gin.H{
+		"Anggota": anggota,
+	})
+}
+
+// UpdateAnggota memproses update data anggota
+func UpdateAnggota(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	var anggota models.Anggota
+	if err := c.ShouldBind(&anggota); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	// Update query (assuming we update all fields except password for simplicity)
+	db := config.GetDB()
+	query := `
+		UPDATE anggota SET
+			nama_anggota = $1, username = $2, tgl_lahir = $3, nik_ktp = $4,
+			no_telepon = $5, provinsi = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9
+		WHERE id_anggota = $10`
+	_, err = db.Exec(query,
+		anggota.NamaAnggota, anggota.Username, anggota.TglLahir, anggota.NikKTP,
+		anggota.NoTelepon, anggota.Provinsi, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui anggota"})
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin/anggota/"+idStr)
+}
+
+// DeleteAnggota menghapus anggota
+func DeleteAnggota(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	err = repository.DeleteAnggota(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus anggota"})
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin/anggota")
 }

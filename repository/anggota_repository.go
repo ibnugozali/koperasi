@@ -68,11 +68,11 @@ func GetAnggotaByID(id int) (models.Anggota, error) {
 	db := config.GetDB()
 	var a models.Anggota
 	query := `
-		SELECT 
-			id_anggota, nama_anggota, username, 
-			tgl_lahir, nik_ktp, no_telepon, tgl_gabung, 
-			provinsi, jenis_kelamin, status, kode_anggota 
-		FROM anggota 
+		SELECT
+			id_anggota, nama_anggota, username,
+			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
+			provinsi, jenis_kelamin, status, kode_anggota
+		FROM anggota
 		WHERE id_anggota = $1`
 
 	// Perhatikan penggunaan &a.KodeAnggota karena tipenya sql.NullString
@@ -82,4 +82,47 @@ func GetAnggotaByID(id int) (models.Anggota, error) {
 		&a.Provinsi, &a.JenisKelamin, &a.Status, &a.KodeAnggota,
 	)
 	return a, err
+}
+
+// GetAllAnggota mengambil semua anggota aktif
+func GetAllAnggota() ([]models.Anggota, error) {
+	db := config.GetDB()
+	var anggotas []models.Anggota
+
+	query := `
+		SELECT
+			id_anggota, nama_anggota, username,
+			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
+			provinsi, jenis_kelamin, status, kode_anggota
+		FROM anggota
+		WHERE status = 'aktif'
+		ORDER BY tgl_gabung DESC`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var a models.Anggota
+		err := rows.Scan(
+			&a.IDAnggota, &a.NamaAnggota, &a.Username,
+			&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
+			&a.Provinsi, &a.JenisKelamin, &a.Status, &a.KodeAnggota,
+		)
+		if err != nil {
+			return nil, err
+		}
+		anggotas = append(anggotas, a)
+	}
+
+	return anggotas, nil
+}
+
+// DeleteAnggota menghapus anggota berdasarkan ID (soft delete atau hard delete tergantung kebutuhan)
+func DeleteAnggota(id int) error {
+	db := config.GetDB()
+	_, err := db.Exec("DELETE FROM anggota WHERE id_anggota = $1", id)
+	return err
 }

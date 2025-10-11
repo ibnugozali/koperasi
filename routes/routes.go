@@ -59,6 +59,11 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.POST("/halaman/update/:slug", controllers.UpdateHalaman)
 		//adminRoutes.GET("/pelayanan/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/upload", controllers.UploadFile)
+		adminRoutes.GET("/anggota", controllers.ListAllAnggota)
+		adminRoutes.GET("/anggota/:id", controllers.ViewAnggota)
+		adminRoutes.GET("/anggota/edit/:id", controllers.EditAnggota)
+		adminRoutes.POST("/anggota/update/:id", controllers.UpdateAnggota)
+		adminRoutes.POST("/anggota/delete/:id", controllers.DeleteAnggota)
 	}
 
 	return router

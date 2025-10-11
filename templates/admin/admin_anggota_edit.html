@@ -1,0 +1,54 @@
+{{ template "base.html" . }}
+
+{{ define "content" }}
+<div class="container mt-4">
+    <h2>Edit Anggota</h2>
+    <div class="card">
+        <div class="card-body">
+            <form action="/admin/anggota/update/{{.Anggota.IDAnggota}}" method="POST">
+                <div class="mb-3">
+                    <label for="NamaAnggota" class="form-label">Nama Anggota</label>
+                    <input type="text" class="form-control" id="NamaAnggota" name="NamaAnggota" value="{{.Anggota.NamaAnggota}}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="Username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="Username" name="Username" value="{{.Anggota.Username}}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="TglLahir" class="form-label">Tanggal Lahir</label>
+                    <input type="date" class="form-control" id="TglLahir" name="TglLahir" value="{{.Anggota.TglLahir}}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="NikKTP" class="form-label">NIK KTP</label>
+                    <input type="text" class="form-control" id="NikKTP" name="NikKTP" value="{{.Anggota.NikKTP}}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="NoTelepon" class="form-label">No Telepon</label>
+                    <input type="text" class="form-control" id="NoTelepon" name="NoTelepon" value="{{.Anggota.NoTelepon}}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="Provinsi" class="form-label">Provinsi</label>
+                    <input type="text" class="form-control" id="Provinsi" name="Provinsi" value="{{.Anggota.Provinsi}}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="JenisKelamin" class="form-label">Jenis Kelamin</label>
+                    <select class="form-control" id="JenisKelamin" name="JenisKelamin" required>
+                        <option value="Laki-laki" {{if eq .Anggota.JenisKelamin "Laki-laki"}}selected{{end}}>Laki-laki</option>
+                        <option value="Perempuan" {{if eq .Anggota.JenisKelamin "Perempuan"}}selected{{end}}>Perempuan</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="StatusAnggota" class="form-label">Status Anggota</label>
+                    <input type="text" class="form-control" id="StatusAnggota" name="StatusAnggota" value="{{.Anggota.StatusAnggota}}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="Fakultas" class="form-label">Fakultas</label>
+                    <input type="text" class="form-control" id="Fakultas" name="Fakultas" value="{{.Anggota.Fakultas}}" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                <a href="/admin/anggota/{{.Anggota.IDAnggota}}" class="btn btn-secondary">Batal</a>
+            </form>
+        </div>
+    </div>
+</div>
+{{ end }}

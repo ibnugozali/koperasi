@@ -1,0 +1,26 @@
+{{ template "base.html" . }}
+
+{{ define "content" }}
+<div class="container mt-4">
+    <h2>Detail Anggota</h2>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">{{.Anggota.NamaAnggota}}</h5>
+            <p class="card-text"><strong>ID Anggota:</strong> {{.Anggota.IDAnggota}}</p>
+            <p class="card-text"><strong>Username:</strong> {{.Anggota.Username}}</p>
+            <p class="card-text"><strong>Tanggal Lahir:</strong> {{.Anggota.TglLahir}}</p>
+            <p class="card-text"><strong>NIK KTP:</strong> {{.Anggota.NikKTP}}</p>
+            <p class="card-text"><strong>No Telepon:</strong> {{.Anggota.NoTelepon}}</p>
+            <p class="card-text"><strong>Tanggal Gabung:</strong> {{.Anggota.TglGabung.Format "02 Jan 2006"}}</p>
+            <p class="card-text"><strong>Provinsi:</strong> {{.Anggota.Provinsi}}</p>
+            <p class="card-text"><strong>Jenis Kelamin:</strong> {{.Anggota.JenisKelamin}}</p>
+            <p class="card-text"><strong>Status Anggota:</strong> {{.Anggota.StatusAnggota}}</p>
+            <p class="card-text"><strong>Fakultas:</strong> {{.Anggota.Fakultas}}</p>
+            <p class="card-text"><strong>Status:</strong> {{.Anggota.Status}}</p>
+            <p class="card-text"><strong>Kode Anggota:</strong> {{.Anggota.KodeAnggota}}</p>
+        </div>
+    </div>
+    <a href="/admin/anggota/edit/{{.Anggota.IDAnggota}}" class="btn btn-warning mt-3">Edit Anggota</a>
+    <a href="/admin/anggota" class="btn btn-secondary mt-3">Kembali ke Daftar Anggota</a>
+</div>
+{{ end }}
