@@ -145,23 +145,8 @@
             <i class="fas fa-user-check"></i> <span>Konfirmasi Anggota</span>
         </div>
 
-        <!-- Data Anggota dropdown -->
-        <div class="sidebar-item" onclick="toggleSubmenu('submenu-anggota', this)">
-            <div>
-                <i class="fas fa-users"></i> <span>Data Anggota</span>
-            </div>
-            <i class="fas fa-chevron-down"></i>
-        </div>
-        <div id="submenu-anggota" class="submenu">
-            <div class="submenu-item" onclick="window.location.href='/admin/anggota/dosen'">
-                <i class="fas fa-user-tie"></i> Dosen
-            </div>
-            <div class="submenu-item" onclick="window.location.href='/admin/anggota/karyawan'">
-                <i class="fas fa-briefcase"></i> Karyawan
-            </div>
-            <div class="submenu-item" onclick="window.location.href='/admin/anggota/umum'">
-                <i class="fas fa-user-friends"></i> Anggota
-            </div>
+        <div class="sidebar-item" onclick="window.location.href='/admin/anggota'">
+            <i class="fas fa-users"></i> <span>Data Anggota</span>
         </div>
 
         <div class="sidebar-item" onclick="showSection('transaksi')">
@@ -210,14 +195,6 @@
 </div>
 
 <script>
-    function toggleSubmenu(id, element) {
-        const submenu = document.getElementById(id);
-        const chevron = element.querySelector('.fa-chevron-down');
-
-        submenu.classList.toggle('show');
-        chevron.classList.toggle('rotate');
-    }
-
     function showSection(section) {
         alert('Tampilkan bagian: ' + section);
     }
