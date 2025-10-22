@@ -15,9 +15,7 @@
                 <p style="text-align: justify;">{{ .Konten.teks }}</p>
             </div>
         </div>
-        {{ end }}
-
-        {{ if eq .Slug "visi-misi" }}
+        {{ else if eq .Slug "visi-misi" }}
         <div class="mb-5">
             <h3 class="text-success">Visi</h3>
             <p>{{ .Konten.visi }}</p>
@@ -28,16 +26,12 @@
             <p>{{ .Konten.misi }}</p>
             <img src="{{ .Konten.gambar2 }}" class="img-fluid rounded" alt="Gambar Misi">
         </div>
-        {{ end }}
-
-        {{ if eq .Slug "struktur" }}
+        {{ else if eq .Slug "struktur" }}
         <p>{{ .Konten.deskripsi }}</p>
         <div class="text-center">
             <img src="{{ .Konten.gambar_struktur }}" class="img-fluid img-thumbnail" alt="Bagan Struktur Organisasi">
         </div>
-        {{ end }}
-
-        {{ if eq .Slug "wajib" }}
+        {{ else if eq .Slug "wajib" }}
         <div class="row g-4">
             <div class="col-md-4">
                 <img src="{{ .Konten.gambar }}" class="img-fluid rounded" alt="Gambar Simpanan Wajib">
@@ -46,9 +40,7 @@
                 <p style="text-align: justify;">{{ .Konten.teks }}</p>
             </div>
         </div>
-        {{ end }}
-
-        {{ if eq .Slug "pokok" }}
+        {{ else if eq .Slug "pokok" }}
         <div class="row g-4">
             <div class="col-md-4">
                 <img src="{{ .Konten.gambar }}" class="img-fluid rounded" alt="Gambar Simpanan Pokok">
@@ -56,6 +48,10 @@
             <div class="col-md-8">
                 <p style="text-align: justify;">{{ .Konten.teks }}</p>
             </div>
+        </div>
+        {{ else }}
+        <div>
+            <p>Halaman tidak ditemukan.</p>
         </div>
         {{ end }}
 

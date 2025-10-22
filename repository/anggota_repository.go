@@ -29,7 +29,7 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 }
 
 // Update status anggota dan tambahkan kode anggota
-func UpdateAnggotaStatus(id int, newStatus string, memberCode string) error {
+func UpdateAnggotaStatusWithCode(id int, newStatus string, memberCode string) error {
 	db := config.GetDB()
 	_, err := db.Exec("UPDATE anggota SET status = $1, kode_anggota = $2 WHERE id_anggota = $3", newStatus, memberCode, id)
 	return err
@@ -124,5 +124,61 @@ func GetAllAnggota() ([]models.Anggota, error) {
 func DeleteAnggota(id int) error {
 	db := config.GetDB()
 	_, err := db.Exec("DELETE FROM anggota WHERE id_anggota = $1", id)
+	return err
+}
+
+// UpdateAnggotaPassword memperbarui password anggota berdasarkan ID
+func UpdateAnggotaPassword(id int, newPassword string) error {
+	db := config.GetDB()
+	query := "UPDATE anggota SET password = $1 WHERE id_anggota = $2"
+	_, err := db.Exec(query, newPassword, id)
+	return err
+}
+
+// UpdateAnggotaUsernamePassword memperbarui username dan password anggota berdasarkan ID
+func UpdateAnggotaUsernamePassword(id int, username, password string) error {
+	db := config.GetDB()
+	query := "UPDATE anggota SET username = $1, password = $2 WHERE id_anggota = $3"
+	_, err := db.Exec(query, username, password, id)
+	return err
+}
+
+// GetSaldoAnggota mengambil total simpanan, total pinjaman, dan saldo bersih anggota
+func GetSaldoAnggota(id int) (totalSimpanan, totalPinjaman, saldoBersih float64, err error) {
+	db := config.GetDB()
+
+	// Hitung total simpanan dari detail
+	querySimpanan := `
+		SELECT COALESCE(SUM(d.jumlah_simpanan), 0)
+		FROM detail d
+		WHERE d.id_anggota = $1
+	`
+	err = db.QueryRow(querySimpanan, id).Scan(&totalSimpanan)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	// Hitung total pinjaman yang belum lunas (status != 'lunas')
+	queryPinjaman := `
+		SELECT COALESCE(SUM(p.jumlah_pinjaman), 0)
+		FROM pinjaman p
+		WHERE p.id_anggota = $1 AND p.status != 'lunas'
+	`
+	err = db.QueryRow(queryPinjaman, id).Scan(&totalPinjaman)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	// Saldo bersih = total simpanan - total pinjaman belum lunas
+	saldoBersih = totalSimpanan - totalPinjaman
+
+	return totalSimpanan, totalPinjaman, saldoBersih, nil
+}
+
+// UpdateAnggotaStatus memperbarui status anggota berdasarkan ID
+func UpdateAnggotaStatus(id int, status string) error {
+	db := config.GetDB()
+	query := "UPDATE anggota SET status = $1 WHERE id_anggota = $2"
+	_, err := db.Exec(query, status, id)
 	return err
 }

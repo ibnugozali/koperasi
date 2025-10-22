@@ -1,0 +1,56 @@
+{{define "transaksi_content"}}
+    <div class="top-header">
+        <h4>Manajemen Transaksi</h4>
+        <small class="text-muted">Kelola semua transaksi simpanan dan pinjaman</small>
+    </div>
+
+    <div class="stat-card">
+        <h5>Daftar Transaksi</h5>
+        <p>Berikut adalah daftar semua transaksi yang tercatat dalam sistem.</p>
+
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID Transaksi</th>
+                    <th>Nama Anggota</th>
+                    <th>Jenis Transaksi</th>
+                    <th>Jumlah</th>
+                    <th>Tanggal</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Placeholder data - akan diganti dengan data dari database -->
+                <tr>
+                    <td>TRX-001</td>
+                    <td>John Doe</td>
+                    <td>Simpanan</td>
+                    <td>Rp 500.000</td>
+                    <td>2024-01-15</td>
+                    <td><span class="badge bg-success">Sukses</span></td>
+                    <td>
+                        <a href="#" class="btn btn-info btn-sm">Detail</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>TRX-002</td>
+                    <td>Jane Smith</td>
+                    <td>Pinjaman</td>
+                    <td>Rp 2.000.000</td>
+                    <td>2024-01-20</td>
+                    <td><span class="badge bg-warning">Pending</span></td>
+                    <td>
+                        <a href="#" class="btn btn-info btn-sm">Detail</a>
+                        <a href="#" class="btn btn-success btn-sm">Approve</a>
+                    </td>
+                </tr>
+                <!-- Tambahkan lebih banyak baris sesuai kebutuhan -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="copyright">
+        &copy; 2024 Koperasi Simpan Pinjam. All rights reserved. | Developed by Gozali
+    </div>
+{{ end }}

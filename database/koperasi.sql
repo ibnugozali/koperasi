@@ -89,6 +89,16 @@ CREATE TABLE halaman (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tabel pesan untuk komunikasi dengan anggota
+CREATE TABLE pesan (
+    id_pesan SERIAL PRIMARY KEY,
+    id_anggota INT REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    judul VARCHAR(100) NOT NULL,
+    isi TEXT NOT NULL,
+    tgl_kirim TIMESTAMPTZ DEFAULT NOW(),
+    status VARCHAR(25) DEFAULT 'unread' CHECK (status IN ('read', 'unread'))
+);
+
 -- =================================================================
 -- BAGIAN 2: PENGISIAN DATA AWAL (SEEDING)
 -- =================================================================

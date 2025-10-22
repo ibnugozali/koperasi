@@ -31,10 +31,10 @@ func SetupRouter() *gin.Engine {
 	router.POST("/login", controllers.Login)
 	router.GET("/register", controllers.ShowRegisterPage)
 	router.POST("/register", controllers.Register)
-	router.POST("/logout", controllers.Logout)
+	router.GET("/logout", controllers.Logout)
 	router.GET("/tentang/:slug", controllers.ShowHalaman)
 	router.GET("/pelayanan/:slug", controllers.ShowHalaman)
-	router.GET("/riwayat/:slug", controllers.ShowRiwayatPage)
+	router.GET("/riwayat/riwayat", controllers.ShowRiwayatPage)
 	router.GET("/hubungi-kami", controllers.ShowHubungiKami)
 	
 
@@ -46,6 +46,8 @@ func SetupRouter() *gin.Engine {
 		anggotaRoutes.GET("/profil", controllers.AnggotaProfil)
 		anggotaRoutes.GET("/pesan", controllers.AnggotaPesan)
 		anggotaRoutes.GET("/ganti-password", controllers.GantiPassword)
+		anggotaRoutes.POST("/ganti-password", controllers.GantiPasswordPost)
+		anggotaRoutes.POST("/keluar", controllers.KeluarKoperasi)
 	}
 
 	// --- Rute Admin (Dilindungi Middleware) ---
@@ -53,17 +55,23 @@ func SetupRouter() *gin.Engine {
 	adminRoutes.Use(middleware.AuthRequired(), middleware.AdminOnly())
 	{
 		adminRoutes.GET("/dashboard", controllers.AdminDashboard)
+		adminRoutes.GET("/konfirmasi", controllers.AdminKonfirmasi)
 		adminRoutes.POST("/confirm/:id", controllers.ConfirmMembership)
 		adminRoutes.GET("/halaman", controllers.ListHalaman)
 		adminRoutes.GET("/halaman/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/halaman/update/:slug", controllers.UpdateHalaman)
 		//adminRoutes.GET("/pelayanan/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/upload", controllers.UploadFile)
+		adminRoutes.GET("/transaksi", controllers.AdminTransaksi)
+		adminRoutes.GET("/laporan", controllers.AdminLaporan)
+		adminRoutes.GET("/tentang", controllers.AdminTentang)
+		adminRoutes.GET("/pengaturan", controllers.AdminPengaturan)
 		adminRoutes.GET("/anggota", controllers.ListAllAnggota)
 		adminRoutes.GET("/anggota/:id", controllers.ViewAnggota)
 		adminRoutes.GET("/anggota/edit/:id", controllers.EditAnggota)
 		adminRoutes.POST("/anggota/update/:id", controllers.UpdateAnggota)
 		adminRoutes.POST("/anggota/delete/:id", controllers.DeleteAnggota)
+		adminRoutes.POST("/update-profile", controllers.UpdateAdminProfile)
 	}
 
 	return router

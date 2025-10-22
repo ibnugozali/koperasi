@@ -3,7 +3,6 @@ package controllers
 import (
 	"encoding/json" // Tambahkan ini
 	"net/http"
-	"strings"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -37,13 +36,16 @@ func ShowHalaman(c *gin.Context) {
 	json.Unmarshal([]byte(halaman.Konten), &kontenData)
 
 	// Tentukan template yang akan digunakan berdasarkan slug
-	templateName := "halaman_statis.html"
-	if slug == "pinjaman" {
+	var templateName string
+	switch slug {
+	case "pinjaman":
 		templateName = "pinjaman.html"
-	} else if slug == "simpanan" {
+	case "simpanan":
 		templateName = "simpanan.html"
-	} else if slug == "angsuran" {
+	case "angsuran":
 		templateName = "angsuran.html"
+	default:
+		templateName = "halaman_statis.html"
 	}
 
 	c.HTML(http.StatusOK, templateName, gin.H{
@@ -76,7 +78,6 @@ func ShowHubungiKami(c *gin.Context) {
 
 // Controller untuk Riwayat (SUDAH DIPERBAIKI DAN DISESUAIKAN)
 func ShowRiwayatPage(c *gin.Context) {
-    slug := strings.TrimPrefix(c.Param("slug"), "/")
     session := sessions.Default(c)
 
     // ==========================================================
@@ -104,28 +105,34 @@ func ShowRiwayatPage(c *gin.Context) {
         return
     }
 
-    // Tentukan judul halaman berdasarkan slug
-    judulHalaman := ""
-    switch slug {
-    case "simpanan":
-        judulHalaman = "Riwayat Simpanan"
-    case "pinjaman":
-        judulHalaman = "Riwayat Pinjaman"
-    case "angsuran":
-        judulHalaman = "Riwayat Angsuran"
-    default:
-        // Jika slug tidak valid, tampilkan halaman 404
-        c.HTML(http.StatusNotFound, "404.html", nil)
+    // Fetch all riwayat
+    riwayatSimpanan, err := repository.GetRiwayatSimpananByAnggotaID(userID.(int))
+    if err != nil {
+        c.String(http.StatusInternalServerError, "Error fetching riwayat simpanan")
         return
     }
+    riwayatPinjaman, err := repository.GetRiwayatPinjamanByAnggotaID(userID.(int))
+    if err != nil {
+        c.String(http.StatusInternalServerError, "Error fetching riwayat pinjaman")
+        return
+    }
+    riwayatAngsuran, err := repository.GetRiwayatAngsuranByAnggotaID(userID.(int))
+    if err != nil {
+        c.String(http.StatusInternalServerError, "Error fetching riwayat angsuran")
+        return
+    }
+
+    judulHalaman := "Riwayat Transaksi"
 
     // =========================================================================
     // KIRIM OBJEK ANGGOTA KE TEMPLATE (sama seperti di ShowHalaman)
     // =========================================================================
     c.HTML(http.StatusOK, "riwayat.html", gin.H{
-        "title":   judulHalaman,
-        "Judul":   judulHalaman,
-        "Slug":    slug,
-        "Anggota": anggota, // <-- INI KUNCI UTAMANYA
+        "title":            judulHalaman,
+        "Judul":            judulHalaman,
+        "RiwayatSimpanan": riwayatSimpanan,
+        "RiwayatPinjaman": riwayatPinjaman,
+        "RiwayatAngsuran": riwayatAngsuran,
+        "Anggota":          anggota, // <-- INI KUNCI UTAMANYA
     })
 }

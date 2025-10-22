@@ -49,14 +49,7 @@
             <li><a class="dropdown-item" href="/pelayanan/angsuran">Angsuran</a></li>
           </ul>
         </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Riwayat</a>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="/riwayat/pinjaman">Pinjaman</a></li>
-            <li><a class="dropdown-item" href="/riwayat/simpanan">Simpanan</a></li>
-            <li><a class="dropdown-item" href="/riwayat/angsuran">Angsuran</a></li>
-          </ul>
-        </li>
+        <li class="nav-item"><a class="nav-link" href="/riwayat/riwayat">Riwayat</a></li>
       </ul>
       <ul class="navbar-nav">
         <li class="nav-item dropdown">
@@ -88,8 +81,23 @@
     <div class="card">
         <div class="card-body">
             <h1>{{ .Title }}</h1>
-            <p>Halaman pesan anggota masih dalam pengembangan.</p>
-            <a href="/anggota/dashboard" class="btn btn-primary">Kembali ke Dashboard</a>
+            {{ if .Pesans }}
+            <div class="list-group">
+                {{ range .Pesans }}
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">{{ .Judul }}</h5>
+                        <small>{{ .TglKirim.Format "02 Jan 2006 15:04" }}</small>
+                    </div>
+                    <p class="mb-1">{{ .Isi }}</p>
+                    <small class="text-muted">{{ if eq .Status "unread" }}Belum dibaca{{ else }}Sudah dibaca{{ end }}</small>
+                </div>
+                {{ end }}
+            </div>
+            {{ else }}
+            <p class="text-muted">Belum ada pesan untuk Anda.</p>
+            {{ end }}
+            <a href="/anggota/dashboard" class="btn btn-primary mt-3">Kembali ke Dashboard</a>
         </div>
     </div>
 </main>

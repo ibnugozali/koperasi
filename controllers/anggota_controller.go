@@ -6,9 +6,11 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
+
 )
 
 // AnggotaDashboard menampilkan halaman utama untuk anggota.
@@ -34,7 +36,6 @@ func AnggotaDashboard(c *gin.Context) {
 	if err != nil {
 		// Handle error, perhaps use default content
 		halaman = models.Halaman{
-			Judul:  "Dashboard Anggota",
 			Konten: `{"teks": "Selamat datang di dashboard anggota.", "gambar": "/static/images/placeholder.png"}`,
 		}
 	}
@@ -74,9 +75,19 @@ func AnggotaProfil(c *gin.Context) {
 		return
 	}
 
-	// Render halaman profil dan kirim data anggota ke sana
+	// Ambil data saldo
+	totalSimpanan, totalPinjaman, saldoBersih, err := repository.GetSaldoAnggota(userID)
+	if err != nil {
+		// Jika gagal ambil saldo, tetap tampilkan halaman dengan saldo 0
+		totalSimpanan, totalPinjaman, saldoBersih = 0, 0, 0
+	}
+
+	// Render halaman profil dan kirim data anggota dan saldo ke sana
 	c.HTML(http.StatusOK, "anggota_profil.html", gin.H{
-		"Anggota": anggota,
+		"Anggota":        anggota,
+		"TotalSimpanan":  totalSimpanan,
+		"TotalPinjaman":  totalPinjaman,
+		"SaldoBersih":    saldoBersih,
 	})
 }
 
@@ -98,10 +109,18 @@ func AnggotaPesan(c *gin.Context) {
 		return
 	}
 
-	// Render a placeholder page or implement the actual pesan page
+	// Ambil daftar pesan untuk anggota
+	pesans, err := repository.GetPesanByAnggotaID(userID)
+	if err != nil {
+		// Jika gagal ambil pesan, tetap tampilkan halaman dengan pesan kosong
+		pesans = []models.Pesan{}
+	}
+
+	// Render halaman pesan dengan daftar pesan
 	c.HTML(http.StatusOK, "anggota_pesan.html", gin.H{
 		"Title":   "Pesan Saya",
 		"Anggota": anggota,
+		"Pesans":  pesans,
 	})
 }
 
@@ -123,9 +142,133 @@ func GantiPassword(c *gin.Context) {
 		return
 	}
 
-	// Render a placeholder page or implement the actual ganti password page
+	// Render halaman ganti password dengan form
 	c.HTML(http.StatusOK, "anggota_ganti_password.html", gin.H{
 		"Title":   "Ganti Password",
 		"Anggota": anggota,
 	})
+}
+
+// GantiPasswordPost handles the POST request for changing password and username.
+func GantiPasswordPost(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(int)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Ambil data anggota
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_ganti_password.html", gin.H{
+			"Title":   "Ganti Password",
+			"Anggota": anggota,
+			"Error":   "Gagal mengambil data pengguna.",
+		})
+		return
+	}
+
+	// Ambil input dari form
+	oldPassword := c.PostForm("old_password")
+	newUsername := c.PostForm("new_username")
+	newPassword := c.PostForm("new_password")
+	confirmPassword := c.PostForm("confirm_password")
+
+	// Validasi: pastikan semua field diisi
+	if oldPassword == "" || newPassword == "" || confirmPassword == "" {
+		c.HTML(http.StatusBadRequest, "anggota_ganti_password.html", gin.H{
+			"Title":   "Ganti Password",
+			"Anggota": anggota,
+			"Error":   "Semua field harus diisi.",
+		})
+		return
+	}
+
+	// Validasi: password baru harus sama dengan konfirmasi
+	if newPassword != confirmPassword {
+		c.HTML(http.StatusBadRequest, "anggota_ganti_password.html", gin.H{
+			"Title":   "Ganti Password",
+			"Anggota": anggota,
+			"Error":   "Password baru dan konfirmasi password tidak cocok.",
+		})
+		return
+	}
+
+	// Validasi: password lama harus cocok
+	err = bcrypt.CompareHashAndPassword([]byte(anggota.Password), []byte(oldPassword))
+	if err != nil {
+		c.HTML(http.StatusUnauthorized, "anggota_ganti_password.html", gin.H{
+			"Title":   "Ganti Password",
+			"Anggota": anggota,
+			"Error":   "Password lama salah.",
+		})
+		return
+	}
+
+	// Jika username baru kosong, gunakan username lama
+	if newUsername == "" {
+		newUsername = anggota.Username
+	}
+
+	// Hash password baru
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_ganti_password.html", gin.H{
+			"Title":   "Ganti Password",
+			"Anggota": anggota,
+			"Error":   "Gagal mengenkripsi password baru.",
+		})
+		return
+	}
+
+	// Update username dan password di database
+	err = repository.UpdateAnggotaUsernamePassword(userID, newUsername, string(hashedPassword))
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_ganti_password.html", gin.H{
+			"Title":   "Ganti Password",
+			"Anggota": anggota,
+			"Error":   "Gagal memperbarui username dan password.",
+		})
+		return
+	}
+
+	// Berhasil, redirect ke dashboard dengan pesan sukses
+	c.HTML(http.StatusOK, "anggota_ganti_password.html", gin.H{
+		"Title":    "Ganti Password",
+		"Anggota":  anggota,
+		"Success":  "Username dan password berhasil diubah.",
+	})
+}
+
+// KeluarKoperasi handles the POST request for exiting the cooperative.
+func KeluarKoperasi(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(int)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Ambil data anggota untuk error handling
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Update status anggota ke 'keluar'
+	err = repository.UpdateAnggotaStatus(userID, "keluar")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_profil.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Gagal keluar dari koperasi.",
+		})
+		return
+	}
+
+	// Clear session dan redirect ke login
+	session.Clear()
+	session.Save()
+	c.Redirect(http.StatusFound, "/login?message=Anda telah keluar dari koperasi.")
 }

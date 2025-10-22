@@ -110,14 +110,14 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <h4><i class="fa-solid fa-hand-holding-dollar"></i> KSP Admin</h4>
-        <a href="#" class="active"><i class="fa-solid fa-gauge me-2"></i> Dashboard</a>
-        <a href="#"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
-        <a href="#"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
-        <a href="#"><i class="fa-solid fa-right-left me-2"></i> Transaksi</a>
-        <a href="#"><i class="fa-solid fa-file-invoice-dollar me-2"></i> Laporan Keuangan</a>
-        <a href="#"><i class="fa-solid fa-circle-info me-2"></i> Tentang Kami</a>
-        <a href="#"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
-        <a href="#"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
+        <a href="/admin/dashboard" class="{{if eq .ActivePage "dashboard"}}active{{end}}"><i class="fa-solid fa-gauge me-2"></i> Dashboard</a>
+        <a href="/admin/konfirmasi" class="{{if eq .ActivePage "konfirmasi"}}active{{end}}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
+        <a href="/admin/anggota" class="{{if eq .ActivePage "anggota"}}active{{end}}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
+        <a href="/admin/transaksi" class="{{if eq .ActivePage "transaksi"}}active{{end}}"><i class="fa-solid fa-right-left me-2"></i> Transaksi</a>
+        <a href="/admin/laporan" class="{{if eq .ActivePage "laporan"}}active{{end}}"><i class="fa-solid fa-file-invoice-dollar me-2"></i> Laporan Keuangan</a>
+        <a href="/admin/tentang" class="{{if eq .ActivePage "tentang"}}active{{end}}"><i class="fa-solid fa-circle-info me-2"></i> Tentang Kami</a>
+        <a href="/admin/pengaturan" class="{{if eq .ActivePage "pengaturan"}}active{{end}}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
+        <a href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
     </div>
 
     <!-- Navbar -->
@@ -130,55 +130,23 @@
     <!-- Main Content -->
     <div class="main-content">
         <br><br><br>
-        
-            <!-- Statistik -->
-            <div class="row g-4">
-                <div class="col-md-3 col-sm-6">
 
-                    <div class="stat-card">
-                        <div class="stat-icon text-primary"><i class="fa-solid fa-users"></i></div>
-                        <div class="stat-number text-primary">150</div>
-                        <div class="stat-label">Total Anggota</div>
-                    </div>
-                </div>
+        {{if eq .ActivePage "dashboard"}}
+            {{template "dashboard_content" .}}
+        {{else if eq .ActivePage "konfirmasi"}}
+            {{template "konfirmasi_content" .}}
+        {{else if eq .ActivePage "anggota"}}
+            {{template "anggota_list_content" .}}
+        {{else if eq .ActivePage "transaksi"}}
+            {{template "transaksi_content" .}}
+        {{else if eq .ActivePage "laporan"}}
+            {{template "laporan_content" .}}
+        {{else if eq .ActivePage "tentang"}}
+            {{template "tentang_content" .}}
+        {{else if eq .ActivePage "pengaturan"}}
+            {{template "pengaturan_content" .}}
+        {{end}}
 
-                <div class="col-md-3 col-sm-6">
-                    <div class="stat-card">
-                        <div class="stat-icon text-warning"><i class="fa-solid fa-user-clock"></i></div>
-                        <div class="stat-number text-warning">8</div>
-                        <div class="stat-label">Menunggu Konfirmasi</div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 col-sm-6">
-                    <div class="stat-card">
-                        <div class="stat-icon text-success"><i class="fa-solid fa-wallet"></i></div>
-                        <div class="stat-number text-success">Rp 45.000.000</div>
-                        <div class="stat-label">Total Simpanan</div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 col-sm-6">
-                    <div class="stat-card">
-                        <div class="stat-icon text-danger"><i class="fa-solid fa-money-bill-wave"></i></div>
-                        <div class="stat-number text-danger">Rp 120.000.000</div>
-                        <div class="stat-label">Total Pinjaman</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Aktivitas Terbaru - Grafik -->
-            <div class="mt-5">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <i class="fa-solid fa-chart-line"></i> Aktivitas Terbaru
-                    </div>
-                    <div class="card-body">
-                        <canvas id="activityChart" width="400" height="200"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <footer>
@@ -239,3 +207,4 @@
         });
     </script>
 </body>
+</html>

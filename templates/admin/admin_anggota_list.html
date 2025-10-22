@@ -1,48 +1,52 @@
-{{ template "base.html" . }}
-
-{{ define "content" }}
-<div class="container mt-4">
-    <h2>Daftar Anggota</h2>
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nama Anggota</th>
-                        <th>Username</th>
-                        <th>NIK KTP</th>
-                        <th>Kode Anggota</th>
-                        <th>Tanggal Gabung</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{range .Anggotas}}
-                    <tr>
-                        <td>{{.IDAnggota}}</td>
-                        <td>{{.NamaAnggota}}</td>
-                        <td>{{.Username}}</td>
-                        <td>{{.NikKTP}}</td>
-                        <td>{{.KodeAnggota}}</td>
-                        <td>{{.TglGabung.Format "02 Jan 2006"}}</td>
-                        <td>
-                            <a href="/admin/anggota/{{.IDAnggota}}" class="btn btn-info btn-sm">Lihat</a>
-                            <a href="/admin/anggota/edit/{{.IDAnggota}}" class="btn btn-warning btn-sm">Edit</a>
-                            <form action="/admin/anggota/delete/{{.IDAnggota}}" method="POST" style="display:inline;">
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Apakah Anda yakin ingin menghapus anggota ini?')">Hapus</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {{else}}
-                    <tr>
-                        <td colspan="7" class="text-center">Tidak ada anggota aktif.</td>
-                    </tr>
-                    {{end}}
-                </tbody>
-            </table>
-        </div>
+{{define "anggota_list_content"}}
+    <div class="top-header">
+        <h4>Data Anggota</h4>
+        <small class="text-muted">Kelola data anggota koperasi</small>
     </div>
-    <a href="/admin/dashboard" class="btn btn-secondary mt-3">Kembali ke Dashboard</a>
-</div>
+
+    <div class="stat-card">
+        <h5>Daftar Anggota Aktif</h5>
+        <p>Berikut adalah daftar semua anggota yang telah aktif di koperasi.</p>
+
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nama Anggota</th>
+                    <th>Username</th>
+                    <th>NIK KTP</th>
+                    <th>Kode Anggota</th>
+                    <th>Tanggal Gabung</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Anggotas}}
+                <tr>
+                    <td>{{.IDAnggota}}</td>
+                    <td>{{.NamaAnggota}}</td>
+                    <td>{{.Username}}</td>
+                    <td>{{.NikKTP}}</td>
+                    <td>{{.KodeAnggota}}</td>
+                    <td>{{.TglGabung.Format "02 Jan 2006"}}</td>
+                    <td>
+                        <a href="/admin/anggota/{{.IDAnggota}}" class="btn btn-info btn-sm">Lihat</a>
+                        <a href="/admin/anggota/edit/{{.IDAnggota}}" class="btn btn-warning btn-sm">Edit</a>
+                        <form action="/admin/anggota/delete/{{.IDAnggota}}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Apakah Anda yakin ingin menghapus anggota ini?')">Hapus</button>
+                        </form>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="7" class="text-center">Tidak ada anggota aktif.</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="copyright">
+        &copy; 2024 Koperasi Simpan Pinjam. All rights reserved. | Developed by Gozali
+    </div>
 {{ end }}

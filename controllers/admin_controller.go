@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
@@ -40,9 +42,25 @@ func AdminDashboard(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "admin_dashboard.html", gin.H{
+	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
 		"PendingMembers": pendingMembers,
 		"DashboardKonten": dashboardKonten,
+		"ActivePage": "dashboard",
+	})
+}
+
+// Menampilkan halaman konfirmasi anggota
+func AdminKonfirmasi(c *gin.Context) {
+	// Panggil repository untuk mendapatkan anggota dengan status 'pending'
+	pendingMembers, err := repository.GetPendingAnggota()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
+		return
+	}
+
+	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
+		"PendingMembers": pendingMembers,
+		"ActivePage": "konfirmasi",
 	})
 }
 
@@ -62,7 +80,7 @@ func ConfirmMembership(c *gin.Context) {
 	newMemberCode := fmt.Sprintf("KSPWIR-%d", id)
 
 	// Panggil repository untuk update status dan kode anggota
-	err = repository.UpdateAnggotaStatus(id, "aktif", newMemberCode)
+	err = repository.UpdateAnggotaStatusWithCode(id, "aktif", newMemberCode)
 	if err != nil {
 		// Handle error, mungkin tampilkan pesan kesalahan
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengkonfirmasi anggota"})
@@ -83,6 +101,7 @@ func ListHalaman(c *gin.Context) {
 	}
 	c.HTML(http.StatusOK, "admin_halaman_list.html", gin.H{
 		"AllHalaman": allHalaman,
+		"ActivePage": "halaman",
 	})
 }
 
@@ -94,8 +113,16 @@ func ShowEditHalamanForm(c *gin.Context) {
 		c.String(http.StatusNotFound, "Halaman tidak ditemukan")
 		return
 	}
+
+	// Parse konten JSON untuk template
+	var konten map[string]interface{}
+	if err := json.Unmarshal([]byte(halaman.Konten), &konten); err != nil {
+		konten = map[string]interface{}{}
+	}
+
 	c.HTML(http.StatusOK, "admin_halaman_edit.html", gin.H{
 		"Halaman": halaman,
+		"Konten":  konten,
 	})
 }
 
@@ -186,8 +213,9 @@ func ListAllAnggota(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
 		return
 	}
-	c.HTML(http.StatusOK, "admin_anggota_list.html", gin.H{
+	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
 		"Anggotas": anggotas,
+		"ActivePage": "anggota",
 	})
 }
 
@@ -280,4 +308,114 @@ func DeleteAnggota(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, "/admin/anggota")
+}
+
+// AdminTransaksi menampilkan halaman transaksi admin
+func AdminTransaksi(c *gin.Context) {
+	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
+		"ActivePage": "transaksi",
+	})
+}
+
+// AdminLaporan menampilkan halaman laporan keuangan admin
+func AdminLaporan(c *gin.Context) {
+	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
+		"ActivePage": "laporan",
+	})
+}
+
+// AdminTentang menampilkan halaman tentang kami admin
+func AdminTentang(c *gin.Context) {
+	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
+		"ActivePage": "tentang",
+	})
+}
+
+// AdminPengaturan menampilkan halaman pengaturan admin
+func AdminPengaturan(c *gin.Context) {
+	// Ambil ID admin dari session
+	session := sessions.Default(c)
+	adminID := session.Get("user_id")
+	if adminID == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Ambil data admin
+	admin, err := repository.GetPengelolaByID(adminID.(int))
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "layout_admin.html", gin.H{
+			"ActivePage": "pengaturan",
+			"Error":      "Gagal mengambil data admin: " + err.Error(),
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
+		"ActivePage": "pengaturan",
+		"Admin":      admin,
+	})
+}
+
+// UpdateAdminProfile memproses update username dan password admin
+func UpdateAdminProfile(c *gin.Context) {
+	// Ambil ID admin dari session
+	session := sessions.Default(c)
+	adminID := session.Get("user_id")
+	if adminID == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	var request struct {
+		Username        string `form:"username" binding:"required"`
+		Password        string `form:"password"`
+		ConfirmPassword string `form:"confirm_password"`
+	}
+
+	if err := c.ShouldBind(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	// Validasi password jika diisi
+	if request.Password != "" {
+		if request.Password != request.ConfirmPassword {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Password tidak cocok"})
+			return
+		}
+		if len(request.Password) < 6 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Password minimal 6 karakter"})
+			return
+		}
+	}
+
+	// Hash password jika ada
+	passwordToUpdate := request.Password
+	if passwordToUpdate != "" {
+		// Import bcrypt
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordToUpdate), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengenkripsi password"})
+			return
+		}
+		passwordToUpdate = string(hashedPassword)
+	} else {
+		// Jika password kosong, ambil password lama
+		admin, err := repository.GetPengelolaByID(adminID.(int))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data admin"})
+			return
+		}
+		passwordToUpdate = admin.Password
+	}
+
+	// Update username dan password
+	err := repository.UpdatePengelolaUsernamePassword(adminID.(int), request.Username, passwordToUpdate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui profil"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Profil berhasil diperbarui"})
 }

@@ -1,0 +1,238 @@
+{{define "pengaturan_content"}}
+    <div class="top-header">
+        <h4>Pengaturan Sistem</h4>
+        <small class="text-muted">Kelola pengaturan aplikasi koperasi</small>
+    </div>
+
+    {{if .Error}}
+    <div class="alert alert-danger" role="alert">
+        {{.Error}}
+    </div>
+    {{end}}
+
+    <div class="row">
+        <!-- Pengaturan Profil Admin -->
+        <div class="col-md-6 mb-4">
+            <div class="stat-card">
+                <h5><i class="fas fa-user-cog"></i> Profil Admin</h5>
+                <form id="adminProfileForm">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{.Admin.Username}}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password Baru (kosongkan jika tidak ingin mengubah)</label>
+                        <input type="password" class="form-control" id="password" name="password">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Konfirmasi Password Baru</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Profil</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pengaturan Umum -->
+        <div class="col-md-6 mb-4">
+            <div class="stat-card">
+                <h5>Pengaturan Umum</h5>
+                <form>
+                    <div class="mb-3">
+                        <label for="namaKoperasi" class="form-label">Nama Koperasi</label>
+                        <input type="text" class="form-control" id="namaKoperasi" value="Koperasi Simpan Pinjam Wirya">
+                    </div>
+                    <div class="mb-3">
+                        <label for="alamat" class="form-label">Alamat</label>
+                        <textarea class="form-control" id="alamat" rows="3">Jl. Raya Wirya No. 123, Jakarta</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="telepon" class="form-label">Nomor Telepon</label>
+                        <input type="text" class="form-control" id="telepon" value="(021) 12345678">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" value="info@koperasiwirya.com">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pengaturan Keamanan -->
+        <div class="col-md-6 mb-4">
+            <div class="stat-card">
+                <h5>Pengaturan Keamanan</h5>
+                <form>
+                    <div class="mb-3">
+                        <label for="sessionTimeout" class="form-label">Timeout Sesi (menit)</label>
+                        <input type="number" class="form-control" id="sessionTimeout" value="30">
+                    </div>
+                    <div class="mb-3">
+                        <label for="maxLoginAttempts" class="form-label">Maksimal Percobaan Login</label>
+                        <input type="number" class="form-control" id="maxLoginAttempts" value="5">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="twoFactorAuth" checked>
+                            <label class="form-check-label" for="twoFactorAuth">
+                                Aktifkan 2-Factor Authentication
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="passwordPolicy" checked>
+                            <label class="form-check-label" for="passwordPolicy">
+                                Kebijakan Password Ketat
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Pengaturan Database -->
+        <div class="col-md-6 mb-4">
+            <div class="stat-card">
+                <h5>Pengaturan Database</h5>
+                <form>
+                    <div class="mb-3">
+                        <label for="dbHost" class="form-label">Host Database</label>
+                        <input type="text" class="form-control" id="dbHost" value="localhost">
+                    </div>
+                    <div class="mb-3">
+                        <label for="dbPort" class="form-label">Port Database</label>
+                        <input type="text" class="form-control" id="dbPort" value="5432">
+                    </div>
+                    <div class="mb-3">
+                        <label for="dbName" class="form-label">Nama Database</label>
+                        <input type="text" class="form-control" id="dbName" value="koperasi_db">
+                    </div>
+                    <div class="mb-3">
+                        <label for="backupFrequency" class="form-label">Frekuensi Backup</label>
+                        <select class="form-control" id="backupFrequency">
+                            <option value="daily">Harian</option>
+                            <option value="weekly" selected>Mingguan</option>
+                            <option value="monthly">Bulanan</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                    <button type="button" class="btn btn-warning ms-2">Backup Sekarang</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pengaturan Email -->
+        <div class="col-md-6 mb-4">
+            <div class="stat-card">
+                <h5>Pengaturan Email</h5>
+                <form>
+                    <div class="mb-3">
+                        <label for="smtpHost" class="form-label">SMTP Host</label>
+                        <input type="text" class="form-control" id="smtpHost" value="smtp.gmail.com">
+                    </div>
+                    <div class="mb-3">
+                        <label for="smtpPort" class="form-label">SMTP Port</label>
+                        <input type="text" class="form-control" id="smtpPort" value="587">
+                    </div>
+                    <div class="mb-3">
+                        <label for="smtpUsername" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="smtpUsername" value="noreply@koperasiwirya.com">
+                    </div>
+                    <div class="mb-3">
+                        <label for="smtpPassword" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="smtpPassword" value="••••••••">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                            <label class="form-check-label" for="emailNotifications">
+                                Aktifkan Notifikasi Email
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                    <button type="button" class="btn btn-info ms-2">Test Email</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <h5>Log Sistem</h5>
+        <p>Log aktivitas sistem terbaru:</p>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Level</th>
+                        <th>Pesan</th>
+                        <th>User</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>2024-10-17 09:45:00</td>
+                        <td><span class="badge bg-info">INFO</span></td>
+                        <td>Login berhasil - admin</td>
+                        <td>admin</td>
+                    </tr>
+                    <tr>
+                        <td>2024-10-17 09:40:00</td>
+                        <td><span class="badge bg-success">SUCCESS</span></td>
+                        <td>Konfirmasi anggota ID: 123</td>
+                        <td>admin</td>
+                    </tr>
+                    <tr>
+                        <td>2024-10-17 09:35:00</td>
+                        <td><span class="badge bg-warning">WARNING</span></td>
+                        <td>Percobaan login gagal</td>
+                        <td>unknown</td>
+                    </tr>
+                    <tr>
+                        <td>2024-10-17 09:30:00</td>
+                        <td><span class="badge bg-info">INFO</span></td>
+                        <td>Update halaman dashboard</td>
+                        <td>admin</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <button type="button" class="btn btn-secondary">Lihat Semua Log</button>
+    </div>
+
+    <div class="copyright">
+        &copy; 2024 Koperasi Simpan Pinjam. All rights reserved. | Developed by Gozali
+    </div>
+
+    <script>
+        document.getElementById('adminProfileForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            fetch('/admin/update-profile', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert('Berhasil: ' + data.message);
+                    location.reload();
+                } else if (data.error) {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat memperbarui profil');
+            });
+        });
+    </script>
+{{ end }}
