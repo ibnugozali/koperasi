@@ -75,6 +75,8 @@ func Login(c *gin.Context) {
 				c.Redirect(http.StatusFound, "/admin/dashboard")
 			case "bendahara":
 				c.Redirect(http.StatusFound, "/bendahara/dashboard")
+			case "ketua":
+				c.Redirect(http.StatusFound, "/ketua/dashboard")
 			default:
 				c.Redirect(http.StatusFound, "/")
 			}

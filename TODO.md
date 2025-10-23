@@ -1,8 +1,12 @@
-- [ ] Update routes/routes.go: Change route from /riwayat/:slug to /riwayat
-- [ ] Update controllers/halaman_controller.go: Modify ShowRiwayatPage to fetch and pass riwayat simpanan data
-- [ ] Update templates/layouts/navbar.html: Replace Riwayat dropdown with single link
-- [ ] Update templates/anggota/anggota_dashboard.html: Replace Riwayat dropdown with single link
-- [ ] Update templates/anggota/anggota_profil.html: Replace Riwayat dropdown with single link
-- [ ] Update templates/anggota/anggota_pesan.html: Replace Riwayat dropdown with single link
-- [ ] Update templates/anggota/anggota_ganti_password.html: Replace Riwayat dropdown with single link
-- [ ] Update templates/utama/hubungi_kami.html: Replace Riwayat dropdown with single link
+- [x] Update routes/routes.go: Change route from /riwayat/:slug to /riwayat
+- [x] Update controllers/halaman_controller.go: Modify ShowRiwayatPage to fetch and pass riwayat simpanan data
+- [x] Update templates/layouts/navbar.html: Replace Riwayat dropdown with single link
+- [x] Update templates/anggota/anggota_dashboard.html: Replace Riwayat dropdown with single link
+- [x] Update templates/anggota/anggota_profil.html: Replace Riwayat dropdown with single link
+- [x] Update templates/anggota/anggota_pesan.html: Replace Riwayat dropdown with single link
+- [x] Update templates/anggota/anggota_ganti_password.html: Replace Riwayat dropdown with single link
+- [x] Update templates/utama/hubungi_kami.html: Replace Riwayat dropdown with single link
+- [x] Create controllers/ketua_controller.go with Ketua-prefixed functions
+- [x] Add KetuaOnly middleware in middleware/auth_middleware.go
+- [x] Add /ketua routes group in routes/routes.go
+- [x] Copy bendahara templates to templates/ketua/ and rename to ketua

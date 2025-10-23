@@ -38,3 +38,33 @@ func AdminOnly() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// BendaharaOnly adalah middleware untuk memeriksa apakah pengguna adalah bendahara.
+func BendaharaOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		role := session.Get("role")
+
+		if role != "bendahara" {
+			// Jika bukan bendahara, tolak akses
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Akses ditolak"})
+			return
+		}
+		c.Next()
+	}
+}
+
+// KetuaOnly adalah middleware untuk memeriksa apakah pengguna adalah ketua.
+func KetuaOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		role := session.Get("role")
+
+		if role != "ketua" {
+			// Jika bukan ketua, tolak akses
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Akses ditolak"})
+			return
+		}
+		c.Next()
+	}
+}

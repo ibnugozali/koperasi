@@ -90,6 +90,7 @@ CREATE TABLE halaman (
 );
 
 -- Tabel pesan untuk komunikasi dengan anggota
+DROP TABLE IF EXISTS pesan CASCADE;
 CREATE TABLE pesan (
     id_pesan SERIAL PRIMARY KEY,
     id_anggota INT REFERENCES anggota(id_anggota) ON DELETE CASCADE,
@@ -111,6 +112,28 @@ VALUES (
     '$2a$12$u7jMyMxTcDvt7hfzRTbK9eO9VRfxJHL1ztd0AWSr/p5HLuuB89hMG',
     'Admin',
     'admin',
+    'aktif'
+);
+
+-- Menambahkan data bendahara awal (password: bendahara12)
+INSERT INTO pengelola (nama_pengelola, username, password, jabatan_koperasi, level, status)
+VALUES (
+    'Bendahara Utama',
+    'bendahara',
+    '$2a$10$jemm9k/ZA0AEUt48CuwFU.7uePc6e.Gk3PYeDxTlgpKijh40Z.71m',
+    'Bendahara',
+    'bendahara',
+    'aktif'
+);
+
+-- Menambahkan data ketua awal (password: ketua12)
+INSERT INTO pengelola (nama_pengelola, username, password, jabatan_koperasi, level, status)
+VALUES (
+    'Ketua Utama',
+    'ketua',
+    '$2a$10$S50Wpfxf1Rq4gha9tqCxk.C6yMaASJERd9HgMdwvYKLAAZH0tBgbS',
+    'Ketua',
+    'ketua',
     'aktif'
 );
 

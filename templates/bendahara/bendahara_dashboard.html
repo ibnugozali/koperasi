@@ -1,0 +1,48 @@
+{{define "bendahara_dashboard_content"}}
+<!-- Statistik -->
+<div class="row g-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon text-primary"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-number text-primary">{{len .PendingMembers}}</div>
+            <div class="stat-label"><a href="/bendahara/anggota" class="text-decoration-none text-primary">Data Anggota</a></div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon text-warning"><i class="fa-solid fa-user-clock"></i></div>
+            <div class="stat-number text-warning">{{len .PendingMembers}}</div>
+            <div class="stat-label">Menunggu Konfirmasi</div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon text-success"><i class="fa-solid fa-wallet"></i></div>
+            <div class="stat-number text-success">Rp 45.000.000</div>
+            <div class="stat-label">Total Simpanan</div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon text-danger"><i class="fa-solid fa-money-bill-wave"></i></div>
+            <div class="stat-number text-danger">Rp 120.000.000</div>
+            <div class="stat-label">Total Pinjaman</div>
+        </div>
+    </div>
+</div>
+
+<!-- Aktivitas Terbaru - Grafik -->
+<div class="mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <i class="fa-solid fa-chart-line"></i> Aktivitas Terbaru
+        </div>
+        <div class="card-body">
+            <canvas id="activityChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+</div>
+{{end}}

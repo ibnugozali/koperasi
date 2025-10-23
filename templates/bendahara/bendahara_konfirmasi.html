@@ -1,0 +1,53 @@
+{{define "bendahara_konfirmasi_content"}}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fa-solid fa-user-check me-2"></i>Konfirmasi Anggota Baru</h5>
+                </div>
+                <div class="card-body">
+                    {{if .PendingMembers}}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nama</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Tanggal Daftar</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .PendingMembers}}
+                                <tr>
+                                    <td>{{.IDAnggota}}</td>
+                                    <td>{{.NamaAnggota}}</td>
+                                    <td>{{.Username}}</td>
+                                    <td>{{.Email}}</td>
+                                    <td>{{.TglGabung.Format "2006-01-02"}}</td>
+                                    <td>
+                                        <form action="/bendahara/confirm/{{.IDAnggota}}" method="post" style="display: inline;">
+                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Konfirmasi anggota ini?')">
+                                                <i class="fa-solid fa-check"></i> Konfirmasi
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                    {{else}}
+                    <div class="alert alert-info">
+                        <i class="fa-solid fa-info-circle me-2"></i>Tidak ada anggota yang menunggu konfirmasi.
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
