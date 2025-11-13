@@ -75,6 +75,8 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/pengaturan", controllers.AdminPengaturan)
 		adminRoutes.GET("/keamanan/login", controllers.AdminKeamananLogin)
 		adminRoutes.GET("/login-history", controllers.AdminLoginHistory)
+		adminRoutes.GET("/edit-logo", controllers.AdminLogo)
+		adminRoutes.POST("/upload-logo", controllers.UploadLogo)
 		adminRoutes.GET("/keamanan/simpanan", controllers.AdminKeamananSimpanan)
 		adminRoutes.GET("/keamanan/pinjaman", controllers.AdminKeamananPinjaman)
 		adminRoutes.GET("/keamanan/pembayaran", controllers.AdminKeamananPembayaran)

@@ -21,7 +21,7 @@
         <h5 class="mt-2">Koperasi Simpan Pinjam</h5>
     </div>
     <a href="/admin/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
-
+     <a href="/admin/edit-logo" class="{{ if eq .ActivePage "edit_logo" }}active{{ end }}"><i class="fa-solid fa-image me-2"></i> Edit Logo</a>
     <!-- Manajemen Anggota -->
     <a href="#" onclick="toggleSubmenu(this, 'manajemenAnggota'); return false;" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
     <div class="collapse {{ if or (eq .ActivePage "konfirmasi") (eq .ActivePage "anggota") (eq .ActivePage "login_history") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi") (eq .ActivePage "anggota") (eq .ActivePage "login_history") }}style="display: block;"{{ end }}>

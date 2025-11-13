@@ -611,3 +611,73 @@ func AdminPesan(c *gin.Context) {
 		"Anggotas":   anggotas,
 	})
 }
+
+// AdminLogo menampilkan halaman edit logo admin
+func AdminLogo(c *gin.Context) {
+	c.HTML(http.StatusOK, "admin_logo.html", gin.H{
+		"ActivePage": "edit_logo",
+	})
+}
+
+// UploadLogo memproses upload logo baru
+func UploadLogo(c *gin.Context) {
+	file, err := c.FormFile("logoFile")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Tidak ada file yang dipilih",
+		})
+		return
+	}
+
+	// Validasi tipe file
+	allowedTypes := []string{"image/jpeg", "image/jpg", "image/png", "image/gif"}
+	fileType := file.Header.Get("Content-Type")
+	isAllowed := false
+	for _, allowedType := range allowedTypes {
+		if fileType == allowedType {
+			isAllowed = true
+			break
+		}
+	}
+
+	if !isAllowed {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Format file tidak didukung. Gunakan JPG, PNG, atau GIF.",
+		})
+		return
+	}
+
+	// Validasi ukuran file (2MB)
+	if file.Size > 2*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Ukuran file terlalu besar. Maksimal 2MB.",
+		})
+		return
+	}
+
+	// Buat nama file unik
+	extension := filepath.Ext(file.Filename)
+	newFileName := "logo_" + uuid.New().String() + extension
+
+	// Simpan file ke folder static/images
+	err = c.SaveUploadedFile(file, "static/images/"+newFileName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal menyimpan file",
+		})
+		return
+	}
+
+	// Path file yang bisa diakses publik
+	logoPath := "/static/images/" + newFileName
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":  true,
+		"message":  "Logo berhasil diupload",
+		"logoPath": logoPath,
+	})
+}
