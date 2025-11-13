@@ -2,11 +2,6 @@ body {
     background-color: #f5f7fa;
     font-family: "Poppins", sans-serif;
     overflow-x: hidden;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-}
-body.loaded {
-    opacity: 1;
 }
 
 /* Sidebar */
@@ -23,45 +18,22 @@ body.loaded {
     padding: 20px 0;
     overflow-y: auto;
     z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-}
-.sidebar.loaded {
-    opacity: 1;
 }
 
 /* Hamburger Menu */
 .hamburger {
-    display: block;
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 1001;
-    background: none;
-    color: black;
+    display: inline-block;
+    background: #004aad;
+    color: white;
     border: none;
     padding: 10px;
     border-radius: 5px;
     cursor: pointer;
-    box-shadow: none;
-}
-
-/* Mobile Styles */
-@media (max-width: 768px) {
-    .navbar .navbar-brand {
-        margin-left: 50px; /* Adjust to make space for hamburger */
-    }
-}
-
-/* Desktop Styles */
-@media (min-width: 769px) {
-    .hamburger {
-        left: 255px; /* Position next to sidebar */
-    }
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .hamburger:hover {
-    background: none;
+    background: #0a58ca;
 }
 
 .hamburger i {
@@ -118,27 +90,6 @@ body.loaded {
     background: #0a58ca;
 }
 
-.sidebar .dropdown-toggle {
-    cursor: pointer;
-}
-
-.sidebar .collapse a {
-    padding-left: 40px;
-}
-
-/* Animasi submenu */
-.sidebar .collapse {
-    overflow: hidden;
-    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
-    max-height: 0;
-    opacity: 0;
-}
-
-.sidebar .collapse.show {
-    max-height: 500px; /* Sesuaikan dengan tinggi maksimal submenu */
-    opacity: 1;
-}
-
 /* Navbar */
 .navbar {
     margin-left: 240px;
@@ -150,44 +101,7 @@ body.loaded {
 .main-content {
     margin-left: 240px;
     padding: 30px;
-    transition: margin-left 0.3s ease, opacity 0.3s ease;
-    opacity: 1;
-}
-
-/* Animasi halaman */
-.main-content.fade-in {
-    animation: fadeInPage 0.4s ease-in-out;
-}
-
-@keyframes fadeInPage {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Animasi loading untuk transisi halaman */
-.main-content.loading {
-    opacity: 0.7;
-    pointer-events: none;
-}
-
-/* Animasi smooth untuk semua elemen */
-* {
-    transition: all 0.2s ease-in-out;
-}
-
-/* Hover effects untuk interaktivitas */
-.sidebar a:hover {
-    transform: translateX(5px);
-}
-
-.stat-card:hover {
-    transform: translateY(-4px) scale(1.02);
+    transition: margin-left 0.3s ease;
 }
 
 /* Statistik Cards */

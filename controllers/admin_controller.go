@@ -523,6 +523,20 @@ func AdminKeamananLogin(c *gin.Context) {
 	})
 }
 
+// AdminLoginHistory menampilkan halaman riwayat login admin
+func AdminLoginHistory(c *gin.Context) {
+	// Ambil data riwayat login dari database
+	loginHistory, err := repository.GetLoginHistory()
+	if err != nil {
+		loginHistory = []models.LoginHistory{} // Default kosong jika error
+	}
+
+	c.HTML(http.StatusOK, "admin_login_history.html", gin.H{
+		"ActivePage":   "login_history",
+		"LoginHistory": loginHistory,
+	})
+}
+
 // AdminKeamananSimpanan menampilkan halaman keamanan data simpanan
 func AdminKeamananSimpanan(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin_keamanan_simpanan.html", gin.H{
