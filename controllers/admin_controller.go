@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+
 )
 
 // Menampilkan dashboard admin dengan daftar calon anggota
@@ -518,7 +519,7 @@ func AdminKeamananLogin(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin_keamanan_login.html", gin.H{
-		"ActivePage":   "login_history",
+		"ActivePage":   "keamanan_login",
 		"LoginHistory": loginHistory,
 	})
 }
