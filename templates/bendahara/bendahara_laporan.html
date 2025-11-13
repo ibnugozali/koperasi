@@ -5,15 +5,174 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Laporan Keuangan</h5>
+                    <small class="text-white-50">Ringkasan laporan keuangan koperasi</small>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fa-solid fa-info-circle me-2"></i>Halaman laporan keuangan sedang dalam pengembangan.
+                    <!-- Form untuk memilih bulan dan tahun -->
+                    <div class="stat-card mb-4">
+                        <h5>Pilih Periode Laporan</h5>
+                        <form method="GET" action="/bendahara/laporan" class="row g-3">
+                            <div class="col-md-3">
+                                <label for="bulan" class="form-label">Bulan</label>
+                                <select class="form-control" id="bulan" name="bulan">
+                                    <option value="1" {{if eq .Bulan 1}}selected{{end}}>Januari</option>
+                                    <option value="2" {{if eq .Bulan 2}}selected{{end}}>Februari</option>
+                                    <option value="3" {{if eq .Bulan 3}}selected{{end}}>Maret</option>
+                                    <option value="4" {{if eq .Bulan 4}}selected{{end}}>April</option>
+                                    <option value="5" {{if eq .Bulan 5}}selected{{end}}>Mei</option>
+                                    <option value="6" {{if eq .Bulan 6}}selected{{end}}>Juni</option>
+                                    <option value="7" {{if eq .Bulan 7}}selected{{end}}>Juli</option>
+                                    <option value="8" {{if eq .Bulan 8}}selected{{end}}>Agustus</option>
+                                    <option value="9" {{if eq .Bulan 9}}selected{{end}}>September</option>
+                                    <option value="10" {{if eq .Bulan 10}}selected{{end}}>Oktober</option>
+                                    <option value="11" {{if eq .Bulan 11}}selected{{end}}>November</option>
+                                    <option value="12" {{if eq .Bulan 12}}selected{{end}}>Desember</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="tahun" class="form-label">Tahun</label>
+                                <input type="number" class="form-control" id="tahun" name="tahun" value="{{.Tahun}}" min="2020" max="2030">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <button type="submit" class="btn btn-primary w-100">Tampilkan Laporan</button>
+                            </div>
+                        </form>
                     </div>
-                    <p>Di sini bendahara dapat melihat laporan keuangan koperasi.</p>
+
+                    <!-- Statistik Utama -->
+                    <div class="row">
+                        <div class="col-md-3 mb-4">
+                            <div class="stat-card">
+                                <div class="stat-icon text-success">
+                                    <i class="fas fa-piggy-bank"></i>
+                                </div>
+                                <div class="stat-number">Rp {{printf "%.0f" .Report.total_simpanan}}</div>
+                                <div class="stat-label">Total Simpanan</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="stat-card">
+                                <div class="stat-icon text-danger">
+                                    <i class="fas fa-hand-holding-usd"></i>
+                                </div>
+                                <div class="stat-number">Rp {{printf "%.0f" .Report.total_pinjaman}}</div>
+                                <div class="stat-label">Total Pinjaman</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="stat-card">
+                                <div class="stat-icon text-info">
+                                    <i class="fas fa-coins"></i>
+                                </div>
+                                <div class="stat-number">Rp {{printf "%.0f" .Report.total_angsuran}}</div>
+                                <div class="stat-label">Total Angsuran</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="stat-card">
+                                <div class="stat-icon text-warning">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="stat-number">Rp {{printf "%.0f" .Report.arus_kas}}</div>
+                                <div class="stat-label">Arus Kas</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <h5>Ringkasan Laporan Keuangan Bulan {{.Bulan}} Tahun {{.Tahun}}</h5>
+                        <p>Berikut adalah ringkasan laporan keuangan koperasi untuk periode yang dipilih.</p>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Pemasukan</h6>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Total Simpanan
+                                        <span class="badge bg-primary rounded-pill">Rp {{printf "%.0f" .Report.total_simpanan}}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                                        Total Pemasukan
+                                        <span class="badge bg-success rounded-pill">Rp {{printf "%.0f" .Report.total_simpanan}}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Pengeluaran</h6>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Total Pinjaman
+                                        <span class="badge bg-danger rounded-pill">Rp {{printf "%.0f" .Report.total_pinjaman}}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Total Angsuran
+                                        <span class="badge bg-info rounded-pill">Rp {{printf "%.0f" .Report.total_angsuran}}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                                        Total Pengeluaran
+                                        <span class="badge bg-danger rounded-pill">Rp {{printf "%.0f" .Report.total_pinjaman}}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h6>Grafik Arus Kas</h6>
+                                <canvas id="laporanChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    /* eslint-disable */
+    // Grafik Arus Kas
+    var totalSimpanan = {{if .Report.total_simpanan}}{{.Report.total_simpanan}}{{else}}0{{end}};
+    var totalPinjaman = {{if .Report.total_pinjaman}}{{.Report.total_pinjaman}}{{else}}0{{end}};
+    var totalAngsuran = {{if .Report.total_angsuran}}{{.Report.total_angsuran}}{{else}}0{{end}};
+
+    const ctx = document.getElementById('laporanChart').getContext('2d');
+    const laporanChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Simpanan', 'Pinjaman', 'Angsuran'],
+            datasets: [{
+                label: 'Jumlah (Rp)',
+                data: [totalSimpanan, totalPinjaman, totalAngsuran],
+                backgroundColor: [
+                    'rgba(25, 135, 84, 0.8)',
+                    'rgba(220, 53, 69, 0.8)',
+                    'rgba(23, 162, 184, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(25, 135, 84, 1)',
+                    'rgba(220, 53, 69, 1)',
+                    'rgba(23, 162, 184, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value, index, values) {
+                            return 'Rp ' + (value / 1000000).toFixed(0) + 'M';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
 {{end}}

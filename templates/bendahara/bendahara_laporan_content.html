@@ -1,0 +1,289 @@
+{{define "bendahara_laporan_content"}}
+<div class="top-header">
+    <h4 class="mb-1">Laporan Keuangan</h4>
+    <small class="text-muted">Laporan lengkap keuangan koperasi</small>
+</div>
+
+<!-- Filter Periode -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <label for="periodeLaporan" class="form-label">Periode</label>
+                <select class="form-select" id="periodeLaporan">
+                    <option value="bulanan">Bulanan</option>
+                    <option value="triwulan">Triwulan</option>
+                    <option value="tahunan">Tahunan</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="bulanLaporan" class="form-label">Bulan</label>
+                <select class="form-select" id="bulanLaporan">
+                    <option value="11">November 2024</option>
+                    <option value="10">Oktober 2024</option>
+                    <option value="9">September 2024</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="tahunLaporan" class="form-label">Tahun</label>
+                <select class="form-select" id="tahunLaporan">
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="generateReport()">
+                    <i class="fa-solid fa-file-alt"></i> Generate Laporan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ringkasan Keuangan -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-success">
+            <div class="card-body text-center">
+                <div class="text-success mb-2">
+                    <i class="fa-solid fa-arrow-up fa-2x"></i>
+                </div>
+                <h5 class="card-title text-success">Total Pemasukan</h5>
+                <h3 class="text-success">Rp 125.000.000</h3>
+                <small class="text-muted">Bulan November</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-danger">
+            <div class="card-body text-center">
+                <div class="text-danger mb-2">
+                    <i class="fa-solid fa-arrow-down fa-2x"></i>
+                </div>
+                <h5 class="card-title text-danger">Total Pengeluaran</h5>
+                <h3 class="text-danger">Rp 85.000.000</h3>
+                <small class="text-muted">Bulan November</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-primary">
+            <div class="card-body text-center">
+                <div class="text-primary mb-2">
+                    <i class="fa-solid fa-balance-scale fa-2x"></i>
+                </div>
+                <h5 class="card-title text-primary">Saldo Bersih</h5>
+                <h3 class="text-primary">Rp 40.000.000</h3>
+                <small class="text-muted">Bulan November</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-warning">
+            <div class="card-body text-center">
+                <div class="text-warning mb-2">
+                    <i class="fa-solid fa-chart-line fa-2x"></i>
+                </div>
+                <h5 class="card-title text-warning">Keuntungan</h5>
+                <h3 class="text-warning">Rp 15.000.000</h3>
+                <small class="text-muted">Bulan November</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Laporan -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <i class="fa-solid fa-plus-circle"></i> Rincian Pemasukan
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Jenis</th>
+                                <th>Jumlah</th>
+                                <th>%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Simpanan Pokok</td>
+                                <td>Rp 15.000.000</td>
+                                <td>12%</td>
+                            </tr>
+                            <tr>
+                                <td>Simpanan Wajib</td>
+                                <td>Rp 45.000.000</td>
+                                <td>36%</td>
+                            </tr>
+                            <tr>
+                                <td>Simpanan Sukarela</td>
+                                <td>Rp 25.000.000</td>
+                                <td>20%</td>
+                            </tr>
+                            <tr>
+                                <td>Angsuran Pinjaman</td>
+                                <td>Rp 35.000.000</td>
+                                <td>28%</td>
+                            </tr>
+                            <tr>
+                                <td>SHU & Bunga</td>
+                                <td>Rp 5.000.000</td>
+                                <td>4%</td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="table-success">
+                            <tr>
+                                <th>Total Pemasukan</th>
+                                <th>Rp 125.000.000</th>
+                                <th>100%</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <i class="fa-solid fa-minus-circle"></i> Rincian Pengeluaran
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Jenis</th>
+                                <th>Jumlah</th>
+                                <th>%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Pinjaman Diberikan</td>
+                                <td>Rp 70.000.000</td>
+                                <td>82%</td>
+                            </tr>
+                            <tr>
+                                <td>Biaya Operasional</td>
+                                <td>Rp 10.000.000</td>
+                                <td>12%</td>
+                            </tr>
+                            <tr>
+                                <td>Biaya Administrasi</td>
+                                <td>Rp 3.000.000</td>
+                                <td>4%</td>
+                            </tr>
+                            <tr>
+                                <td>Biaya Lainnya</td>
+                                <td>Rp 2.000.000</td>
+                                <td>2%</td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="table-danger">
+                            <tr>
+                                <th>Total Pengeluaran</th>
+                                <th>Rp 85.000.000</th>
+                                <th>100%</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grafik Laporan -->
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-primary text-white">
+        <i class="fa-solid fa-chart-bar"></i> Tren Keuangan 6 Bulan Terakhir
+    </div>
+    <div class="card-body">
+        <canvas id="financialChart" width="400" height="200"></canvas>
+    </div>
+</div>
+
+<!-- Tombol Export -->
+<div class="text-center mt-4">
+    <button class="btn btn-success me-2" onclick="exportPDF()">
+        <i class="fa-solid fa-file-pdf"></i> Export PDF
+    </button>
+    <button class="btn btn-primary me-2" onclick="exportExcel()">
+        <i class="fa-solid fa-file-excel"></i> Export Excel
+    </button>
+    <button class="btn btn-secondary" onclick="printReport()">
+        <i class="fa-solid fa-print"></i> Print
+    </button>
+</div>
+
+<script>
+    // Chart.js untuk grafik keuangan
+    const ctx = document.getElementById('financialChart').getContext('2d');
+    const financialChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
+            datasets: [{
+                label: 'Pemasukan',
+                data: [110000000, 115000000, 120000000, 118000000, 122000000, 125000000],
+                backgroundColor: 'rgba(25, 135, 84, 0.8)',
+                borderColor: 'rgb(25, 135, 84)',
+                borderWidth: 1
+            }, {
+                label: 'Pengeluaran',
+                data: [80000000, 82000000, 85000000, 83000000, 87000000, 85000000],
+                backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                borderColor: 'rgb(220, 53, 69)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Pemasukan vs Pengeluaran'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value, index, values) {
+                            return 'Rp ' + (value / 1000000).toFixed(0) + 'M';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    function generateReport() {
+        // Logic to generate report based on selected filters
+        alert('Laporan sedang di-generate...');
+    }
+
+    function exportPDF() {
+        alert('Export PDF functionality would be implemented here');
+    }
+
+    function exportExcel() {
+        alert('Export Excel functionality would be implemented here');
+    }
+
+    function printReport() {
+        window.print();
+    }
+</script>
+{{end}}

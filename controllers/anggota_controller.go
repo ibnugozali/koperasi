@@ -10,7 +10,6 @@ import (
 
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
-
 )
 
 // AnggotaDashboard menampilkan halaman utama untuk anggota.
@@ -29,6 +28,19 @@ func AnggotaDashboard(c *gin.Context) {
 		// Handle jika data anggota tidak ditemukan
 		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
 		return
+	}
+
+	// Cek angsuran terlambat dan kirim pesan jika ada
+	terlambats, err := repository.GetAngsuranTerlambat()
+	if err == nil && len(terlambats) > 0 {
+		for _, t := range terlambats {
+			if t["nama_anggota"] == anggota.NamaAnggota {
+				// Kirim pesan notifikasi (misal, tambahkan ke pesan)
+				// Untuk sementara, tambahkan ke session atau tampilkan di dashboard
+				c.Set("Notifikasi", "Anda memiliki angsuran yang terlambat. Silakan bayar segera.")
+				break
+			}
+		}
 	}
 
 	// Ambil konten dashboard dari halaman
@@ -84,10 +96,10 @@ func AnggotaProfil(c *gin.Context) {
 
 	// Render halaman profil dan kirim data anggota dan saldo ke sana
 	c.HTML(http.StatusOK, "anggota_profil.html", gin.H{
-		"Anggota":        anggota,
-		"TotalSimpanan":  totalSimpanan,
-		"TotalPinjaman":  totalPinjaman,
-		"SaldoBersih":    saldoBersih,
+		"Anggota":       anggota,
+		"TotalSimpanan": totalSimpanan,
+		"TotalPinjaman": totalPinjaman,
+		"SaldoBersih":   saldoBersih,
 	})
 }
 
@@ -235,9 +247,9 @@ func GantiPasswordPost(c *gin.Context) {
 
 	// Berhasil, redirect ke dashboard dengan pesan sukses
 	c.HTML(http.StatusOK, "anggota_ganti_password.html", gin.H{
-		"Title":    "Ganti Password",
-		"Anggota":  anggota,
-		"Success":  "Username dan password berhasil diubah.",
+		"Title":   "Ganti Password",
+		"Anggota": anggota,
+		"Success": "Username dan password berhasil diubah.",
 	})
 }
 
@@ -271,4 +283,51 @@ func KeluarKoperasi(c *gin.Context) {
 	session.Clear()
 	session.Save()
 	c.Redirect(http.StatusFound, "/login?message=Anda telah keluar dari koperasi.")
+}
+
+// AjukanPinjaman menampilkan form pengajuan pinjaman
+func AjukanPinjaman(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(int)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
+	c.HTML(http.StatusOK, "anggota_ajukan_pinjaman.html", gin.H{
+		"Anggota": anggota,
+	})
+}
+
+// AjukanPinjamanPost memproses pengajuan pinjaman
+func AjukanPinjamanPost(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(int)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	var pinjaman models.Pinjaman
+	if err := c.ShouldBind(&pinjaman); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	pinjaman.IDAnggota = userID
+	pinjaman.Status = "proses" // Status awal pengajuan
+
+	err := repository.CreatePinjaman(pinjaman)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengajukan pinjaman"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pengajuan pinjaman berhasil dikirim"})
 }

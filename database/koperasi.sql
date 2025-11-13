@@ -20,6 +20,7 @@ CREATE TABLE anggota (
     nik_ktp VARCHAR(25),
     no_telepon VARCHAR(20),
     tgl_gabung DATE DEFAULT CURRENT_DATE,
+    alamat VARCHAR(50),
     provinsi VARCHAR(50),
     jenis_kelamin VARCHAR(12),
     status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('aktif', 'nonaktif', 'pending')),
@@ -143,26 +144,6 @@ INSERT INTO simpanan (jenis_simpanan) VALUES
 
 -- Mengisi data awal untuk halaman statis dengan format JSON
 INSERT INTO halaman (slug, judul, kategori, konten) VALUES
-('sejarah', 'Sejarah Koperasi', 'tentang',
-  '{
-    "teks": "Tulis konten lengkap sejarah di sini...",
-    "gambar": "/static/images/placeholder.png"
-  }'
-),
-('visi-misi', 'Visi & Misi', 'tentang',
-  '{
-    "visi": "Menjadi koperasi yang mandiri, andal, dan terpercaya.",
-    "misi": "Meningkatkan kesejahteraan anggota melalui usaha yang inovatif.",
-    "gambar1": "/static/images/placeholder.png",
-    "gambar2": "/static/images/placeholder.png"
-  }'
-),
-('struktur', 'Struktur Organisasi', 'tentang',
-  '{
-    "deskripsi": "Berikut adalah struktur organisasi Koperasi Wirya periode 2024-2026.",
-    "gambar_struktur": "/static/images/placeholder.png"
-  }'
-),
 ('pinjaman', 'Pinjaman Anggota', 'pelayanan',
   '{
     "teks": "Kami menyediakan layanan pinjaman untuk anggota dengan bunga yang kompetitif dan proses yang mudah. Layanan ini bertujuan untuk membantu anggota dalam memenuhi kebutuhan finansial mendesak maupun untuk modal usaha.",
@@ -202,9 +183,10 @@ CREATE INDEX idx_detail_anggota ON detail(id_anggota);
 CREATE INDEX idx_detail_simpanan ON detail(id_simpanan);
 CREATE INDEX idx_halaman_slug ON halaman(slug);
 
--- Add new columns for status_anggota and fakultas
+-- Add new columns for status_anggota, fakultas, and provinsi
 ALTER TABLE anggota ADD COLUMN status_anggota VARCHAR(50);
 ALTER TABLE anggota ADD COLUMN fakultas VARCHAR(100);
+ALTER TABLE anggota ADD COLUMN provinsi VARCHAR(50);
 
 -- Update sejarah content
 UPDATE halaman SET konten = '{

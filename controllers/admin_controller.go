@@ -3,19 +3,18 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"koperasi-simpan-pinjam/config"
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
-
-	"koperasi-simpan-pinjam/config"
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
-
 )
 
 // Menampilkan dashboard admin dengan daftar calon anggota
@@ -42,10 +41,9 @@ func AdminDashboard(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
-		"PendingMembers": pendingMembers,
+	c.HTML(http.StatusOK, "admin_dashboard.html", gin.H{
+		"PendingMembers":  pendingMembers,
 		"DashboardKonten": dashboardKonten,
-		"ActivePage": "dashboard",
 	})
 }
 
@@ -58,9 +56,10 @@ func AdminKonfirmasi(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
+	c.HTML(http.StatusOK, "konfirmasi.html", gin.H{
 		"PendingMembers": pendingMembers,
-		"ActivePage": "konfirmasi",
+		"ActivePage":     "konfirmasi",
+		"Title":          "Konfirmasi Anggota",
 	})
 }
 
@@ -89,20 +88,6 @@ func ConfirmMembership(c *gin.Context) {
 
 	// Arahkan kembali ke dashboard admin
 	c.Redirect(http.StatusFound, "/admin/dashboard")
-}
-
-// ListHalaman menampilkan daftar semua halaman statis untuk di-edit.
-func ListHalaman(c *gin.Context) {
-	allHalaman, err := repository.GetAllHalaman()
-	if err != nil {
-		// Handle error
-		c.String(http.StatusInternalServerError, "Gagal mengambil data halaman")
-		return
-	}
-	c.HTML(http.StatusOK, "admin_halaman_list.html", gin.H{
-		"AllHalaman": allHalaman,
-		"ActivePage": "halaman",
-	})
 }
 
 // ShowEditHalamanForm menampilkan form untuk mengedit halaman.
@@ -213,9 +198,10 @@ func ListAllAnggota(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
 		return
 	}
-	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
-		"Anggotas": anggotas,
+	c.HTML(http.StatusOK, "admin_anggota_list.html", gin.H{
+		"Anggotas":   anggotas,
 		"ActivePage": "anggota",
+		"Title":      "Data Anggota",
 	})
 }
 
@@ -279,11 +265,11 @@ func UpdateAnggota(c *gin.Context) {
 	query := `
 		UPDATE anggota SET
 			nama_anggota = $1, username = $2, tgl_lahir = $3, nik_ktp = $4,
-			no_telepon = $5, provinsi = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9
+			no_telepon = $5, alamat = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9
 		WHERE id_anggota = $10`
 	_, err = db.Exec(query,
 		anggota.NamaAnggota, anggota.Username, anggota.TglLahir, anggota.NikKTP,
-		anggota.NoTelepon, anggota.Provinsi, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, id)
+		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui anggota"})
 		return
@@ -307,33 +293,32 @@ func DeleteAnggota(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/admin/anggota")
+	session := sessions.Default(c)
+	adminID := session.Get("user_id")
+	_ = adminID // Suppress unused variable warning
 }
 
-// AdminTransaksi menampilkan halaman transaksi admin
+// AdminTransaksi menampilkan halaman transaksi admin dengan form input
 func AdminTransaksi(c *gin.Context) {
-	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
+	details, err := repository.GetAllDetails()
+	if err != nil {
+		details = []models.Detail{} // Default kosong jika error
+	}
+
+	pinjamans, err := repository.GetPendingPinjaman()
+	if err != nil {
+		pinjamans = []models.Pinjaman{} // Default kosong jika error
+	}
+
+	c.HTML(http.StatusOK, "admin_transaksi.html", gin.H{
 		"ActivePage": "transaksi",
+		"Details":    details,
+		"Pinjamans":  pinjamans,
 	})
 }
 
-// AdminLaporan menampilkan halaman laporan keuangan admin
-func AdminLaporan(c *gin.Context) {
-	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
-		"ActivePage": "laporan",
-	})
-}
-
-// AdminTentang menampilkan halaman tentang kami admin
-func AdminTentang(c *gin.Context) {
-	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
-		"ActivePage": "tentang",
-	})
-}
-
-// AdminPengaturan menampilkan halaman pengaturan admin
-func AdminPengaturan(c *gin.Context) {
-	// Ambil ID admin dari session
+// CatatSimpanan memproses pencatatan simpanan
+func CatatSimpanan(c *gin.Context) {
 	session := sessions.Default(c)
 	adminID := session.Get("user_id")
 	if adminID == nil {
@@ -341,19 +326,123 @@ func AdminPengaturan(c *gin.Context) {
 		return
 	}
 
-	// Ambil data admin
-	admin, err := repository.GetPengelolaByID(adminID.(int))
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "layout_admin.html", gin.H{
-			"ActivePage": "pengaturan",
-			"Error":      "Gagal mengambil data admin: " + err.Error(),
-		})
+	var detail models.Detail
+	if err := c.ShouldBind(&detail); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
 		return
 	}
 
-	c.HTML(http.StatusOK, "layout_admin.html", gin.H{
+	detail.IDPengelola = adminID.(int)
+	detail.TglTransaksi = time.Now()
+
+	// Hitung total simpanan (kumulatif)
+	totalSimpanan, _, _, err := repository.GetSaldoAnggota(detail.IDAnggota)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghitung total simpanan"})
+		return
+	}
+	detail.TotalSimpanan = totalSimpanan + detail.JumlahSimpanan
+
+	err = repository.CreateSimpanan(detail)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat simpanan"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Simpanan berhasil dicatat"})
+}
+
+// CatatPinjaman memproses pencatatan pinjaman
+func CatatPinjaman(c *gin.Context) {
+	session := sessions.Default(c)
+	adminID := session.Get("user_id")
+	if adminID == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	var pinjaman models.Pinjaman
+	if err := c.ShouldBind(&pinjaman); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	pinjaman.IDPengelola.Int64 = int64(adminID.(int))
+	pinjaman.TglPinjaman = time.Now()
+	pinjaman.Status = "aktif"
+
+	err := repository.CreatePinjaman(pinjaman)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat pinjaman"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pinjaman berhasil dicatat"})
+}
+
+// AdminRiwayat menampilkan halaman riwayat transaksi admin
+func AdminRiwayat(c *gin.Context) {
+	riwayats, err := repository.GetAllRiwayat()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data riwayat"})
+		return
+	}
+
+	c.HTML(http.StatusOK, "admin_riwayat.html", gin.H{
+		"ActivePage": "riwayat",
+		"Riwayats":   riwayats,
+	})
+}
+
+// AdminLaporan menampilkan halaman laporan keuangan admin
+func AdminLaporan(c *gin.Context) {
+	riwayats, err := repository.GetAllRiwayat()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data laporan"})
+		return
+	}
+
+	c.HTML(http.StatusOK, "admin_laporan.html", gin.H{
+		"ActivePage": "laporan",
+		"Riwayats":   riwayats,
+	})
+}
+
+// AdminTentang menampilkan halaman tentang kami admin
+func AdminTentang(c *gin.Context) {
+	c.HTML(http.StatusOK, "admin_layout.html", gin.H{
+		"ActivePage": "tentang",
+	})
+}
+
+// AdminPengaturan menampilkan halaman pengaturan admin (sekarang menampilkan daftar halaman statis)
+func AdminPengaturan(c *gin.Context) {
+	allHalaman, err := repository.GetAllHalaman()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data halaman"})
+		return
+	}
+
+	// Map judul ke nama keamanan
+	securityTitles := map[string]string{
+		"visi-misi":         "Pengaturan Keamanan Login",
+		"pinjaman":          "Pengaturan Keamanan Data Pinjaman",
+		"simpanan":          "Pengaturan Keamanan Data Simpanan",
+		"angsuran":          "Pengaturan Keamanan Pembayaran",
+		"dashboard_anggota": "Pengaturan Keamanan Dashboard",
+		"sejarah":           "Pengaturan Keamanan Riwayat",
+		"struktur":          "Pengaturan Keamanan Organisasi",
+	}
+
+	for i, halaman := range allHalaman {
+		if title, ok := securityTitles[halaman.Slug]; ok {
+			allHalaman[i].Judul = title
+		}
+	}
+
+	c.HTML(http.StatusOK, "admin_pengaturan.html", gin.H{
+		"AllHalaman": allHalaman,
 		"ActivePage": "pengaturan",
-		"Admin":      admin,
 	})
 }
 
@@ -418,4 +507,93 @@ func UpdateAdminProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Profil berhasil diperbarui"})
+}
+
+// AdminKeamananLogin menampilkan halaman keamanan login
+func AdminKeamananLogin(c *gin.Context) {
+	// Ambil data riwayat login dari database
+	loginHistory, err := repository.GetLoginHistory()
+	if err != nil {
+		loginHistory = []models.LoginHistory{} // Default kosong jika error
+	}
+
+	c.HTML(http.StatusOK, "admin_keamanan_login.html", gin.H{
+		"ActivePage":   "login_history",
+		"LoginHistory": loginHistory,
+	})
+}
+
+// AdminKeamananSimpanan menampilkan halaman keamanan data simpanan
+func AdminKeamananSimpanan(c *gin.Context) {
+	c.HTML(http.StatusOK, "admin_keamanan_simpanan.html", gin.H{
+		"ActivePage": "pengaturan",
+	})
+}
+
+// AdminKeamananPinjaman menampilkan halaman keamanan data pinjaman
+func AdminKeamananPinjaman(c *gin.Context) {
+	c.HTML(http.StatusOK, "admin_keamanan_pinjaman.html", gin.H{
+		"ActivePage": "pengaturan",
+	})
+}
+
+// AdminKeamananPembayaran menampilkan halaman keamanan pembayaran
+func AdminKeamananPembayaran(c *gin.Context) {
+	c.HTML(http.StatusOK, "admin_keamanan_pembayaran.html", gin.H{
+		"ActivePage": "pengaturan",
+	})
+}
+
+// AdminKeamananDashboard menampilkan halaman keamanan dashboard
+func AdminKeamananDashboard(c *gin.Context) {
+	c.HTML(http.StatusOK, "admin_keamanan_dashboard.html", gin.H{
+		"ActivePage": "pengaturan",
+	})
+}
+
+// AdminKeamananRiwayat menampilkan halaman keamanan riwayat
+func AdminKeamananRiwayat(c *gin.Context) {
+	c.HTML(http.StatusOK, "admin_keamanan_riwayat.html", gin.H{
+		"ActivePage": "pengaturan",
+	})
+}
+
+// AdminKeamananOrganisasi menampilkan halaman keamanan organisasi
+func AdminKeamananOrganisasi(c *gin.Context) {
+	c.HTML(http.StatusOK, "admin_keamanan_organisasi.html", gin.H{
+		"ActivePage": "pengaturan",
+	})
+}
+
+// AdminPesan menampilkan halaman pesan admin
+func AdminPesan(c *gin.Context) {
+	// Ambil session admin
+	session := sessions.Default(c)
+	adminID := session.Get("user_id")
+	if adminID == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Ambil data admin
+	admin, err := repository.GetPengelolaByID(adminID.(int))
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "admin_pesan.html", gin.H{
+			"ActivePage": "pesan",
+			"Error":      "Gagal mengambil data admin: " + err.Error(),
+		})
+		return
+	}
+
+	// Ambil daftar anggota untuk dropdown
+	anggotas, err := repository.GetAllAnggota()
+	if err != nil {
+		anggotas = []models.Anggota{}
+	}
+
+	c.HTML(http.StatusOK, "admin_pesan.html", gin.H{
+		"ActivePage": "pesan",
+		"Admin":      admin,
+		"Anggotas":   anggotas,
+	})
 }

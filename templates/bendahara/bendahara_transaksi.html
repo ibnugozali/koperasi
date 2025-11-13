@@ -4,13 +4,121 @@
         <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fa-solid fa-right-left me-2"></i>Transaksi</h5>
+                    <h5 class="mb-0"><i class="fa-solid fa-right-left me-2"></i>Manajemen Transaksi</h5>
+                    <small class="text-white-50">Kelola semua transaksi simpanan dan pinjaman</small>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fa-solid fa-info-circle me-2"></i>Halaman transaksi sedang dalam pengembangan.
+                    <!-- Form untuk mencatat simpanan -->
+                    <div class="stat-card mb-4">
+                        <h5>Catat Simpanan</h5>
+                        <form action="/bendahara/transaksi/simpanan" method="POST">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label for="id_anggota_simpanan" class="form-label">ID Anggota</label>
+                                    <input type="number" class="form-control" id="id_anggota_simpanan" name="id_anggota" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_simpanan" class="form-label">Jenis Simpanan</label>
+                                    <select class="form-control" id="id_simpanan" name="id_simpanan" required>
+                                        {{range .Simpanans}}
+                                        <option value="{{.IDSimpanan}}">{{.JenisSimpanan}}</option>
+                                        {{end}}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="jumlah_simpanan" class="form-label">Jumlah (Rp)</label>
+                                    <input type="number" class="form-control" id="jumlah_simpanan" name="jumlah_simpanan" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="submit" class="btn btn-primary w-100">Catat Simpanan</button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
-                    <p>Di sini bendahara dapat mengelola transaksi simpanan dan pinjaman anggota.</p>
+
+                    <!-- Form untuk mencatat pinjaman -->
+                    <div class="stat-card mb-4">
+                        <h5>Catat Pinjaman</h5>
+                        <form action="/bendahara/transaksi/pinjaman" method="POST">
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <label for="id_anggota_pinjaman" class="form-label">ID Anggota</label>
+                                    <input type="number" class="form-control" id="id_anggota_pinjaman" name="id_anggota" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman (Rp)</label>
+                                    <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="jangka_waktu" class="form-label">Jangka Waktu (Bulan)</label>
+                                    <input type="number" class="form-control" id="jangka_waktu" name="jangka_waktu" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="bunga" class="form-label">Bunga (%)</label>
+                                    <input type="number" step="0.01" class="form-control" id="bunga" name="bunga" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="status_pinjaman" class="form-label">Status</label>
+                                    <select class="form-control" id="status_pinjaman" name="status">
+                                        <option value="proses">Proses</option>
+                                        <option value="aktif">Aktif</option>
+                                        <option value="lunas">Lunas</option>
+                                        <option value="gagal">Gagal</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="submit" class="btn btn-success w-100">Catat Pinjaman</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="stat-card">
+                        <h5>Daftar Transaksi</h5>
+                        <p>Berikut adalah daftar semua transaksi yang tercatat dalam sistem.</p>
+
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nama Anggota</th>
+                                    <th>Jenis Transaksi</th>
+                                    <th>Jumlah</th>
+                                    <th>Tanggal</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .Details}}
+                                <tr>
+                                    <td>{{.IDDetail}}</td>
+                                    <td>{{.NamaAnggota}}</td>
+                                    <td>Simpanan {{.Simpanan.JenisSimpanan}}</td>
+                                    <td>Rp {{printf "%.0f" .JumlahSimpanan}}</td>
+                                    <td>{{.TglTransaksi.Format "2006-01-02"}}</td>
+                                    <td><span class="badge bg-success">Sukses</span></td>
+                                </tr>
+                                {{end}}
+                                {{range .Pinjamans}}
+                                <tr>
+                                    <td>{{.IDPinjaman}}</td>
+                                    <td>{{.NamaAnggota}}</td>
+                                    <td>Pinjaman</td>
+                                    <td>Rp {{printf "%.0f" .JumlahPinjaman}}</td>
+                                    <td>{{.TglPinjaman.Format "2006-01-02"}}</td>
+                                    <td>
+                                        {{if eq .Status "proses"}}<span class="badge bg-warning">Proses</span>{{end}}
+                                        {{if eq .Status "aktif"}}<span class="badge bg-success">Aktif</span>{{end}}
+                                        {{if eq .Status "lunas"}}<span class="badge bg-info">Lunas</span>{{end}}
+                                        {{if eq .Status "gagal"}}<span class="badge bg-danger">Gagal</span>{{end}}
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

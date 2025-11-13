@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{{ .Judul }} - Koperasi Wirya</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+{{ template "navbar.html" . }}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-body p-4 p-md-5 bg-white">
+      <h1 class="card-title mb-4">{{ .Judul }}</h1>
+  
+
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="card shadow">
+                  
+                     
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <div class="vision-card">
+                                    <div class="card h-100 border-success">
+                                        <div class="card-header bg-success text-white">
+                                            <h4 class="mb-0"><i class="fas fa-eye me-2"></i>Visi</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text lead">Menjadi koperasi yang mandiri, andal, dan terpercaya dalam memberikan layanan simpan pinjam yang berkualitas untuk meningkatkan kesejahteraan anggota dan masyarakat.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <div class="mission-card">
+                                    <div class="card h-100 border-primary">
+                                        <div class="card-header bg-primary text-white">
+                                            <h4 class="mb-0"><i class="fas fa-target me-2"></i>Misi</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul class="list-unstyled">
+                                                <li class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Meningkatkan kesejahteraan anggota melalui usaha yang inovatif dan berkelanjutan</li>
+                                                <li class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Menyediakan layanan simpan pinjam yang mudah, cepat, dan transparan</li>
+                                                <li class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Mengembangkan program pendidikan dan pelatihan koperasi</li>
+                                                <li class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Membangun kemitraan dengan stakeholder untuk kemajuan bersama</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+ 
+
+{{ template "footer.html" . }}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+

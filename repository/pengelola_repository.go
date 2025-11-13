@@ -3,6 +3,7 @@ package repository
 import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
+
 )
 
 func GetPengelolaByUsername(username string) (models.Pengelola, error) {
@@ -16,7 +17,7 @@ func GetPengelolaByUsername(username string) (models.Pengelola, error) {
 func GetPengelolaByID(id int) (models.Pengelola, error) {
 	db := config.GetDB()
 	var p models.Pengelola
-	query := "SELECT id_pengelola, nama_pengelola, username, password, jabatan_koperasi, no_telepon, email, tgl_gabung, level, status FROM pengelola WHERE id_pengelola = $1"
+	query := "SELECT id_pengelola, nama_pengelola, username, password, jabatan_koperasi, COALESCE(no_telepon, '') as no_telepon, COALESCE(email, '') as email, tgl_gabung, level, status FROM pengelola WHERE id_pengelola = $1"
 	err := db.QueryRow(query, id).Scan(&p.IDPengelola, &p.NamaPengelola, &p.Username, &p.Password, &p.JabatanKoperasi, &p.NoTelepon, &p.Email, &p.TglGabung, &p.Level, &p.Status)
 	return p, err
 }

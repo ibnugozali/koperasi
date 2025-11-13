@@ -1,56 +1,151 @@
-{{define "transaksi_content"}}
-    <div class="top-header">
-        <h4>Manajemen Transaksi</h4>
-        <small class="text-muted">Kelola semua transaksi simpanan dan pinjaman</small>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Laporan Keuangan - Koperasi Simpan Pinjam</title>
+
+    <!-- Bootstrap & Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/admin_transaksi.css" rel="stylesheet">
+</head>
+<body>
+
+    {{template "admin_navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <br><br>
+           
+            <div class="top-header">
+                <h4>Manajemen Transaksi</h4>
+                <p class="text-muted">Kelola semua transaksi simpanan dan pinjaman</p>
+            </div>
+
+            <!-- Form untuk mencatat simpanan -->
+            <div class="stat-card">
+                <h5>Catat Simpanan</h5>
+                <form action="/admin/transaksi/simpanan" method="POST">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="id_anggota_simpanan" class="form-label">ID Anggota</label>
+                            <input type="number" class="form-control" id="id_anggota_simpanan" name="id_anggota" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="id_simpanan" class="form-label">Jenis Simpanan</label>
+                            <select class="form-control" id="id_simpanan" name="id_simpanan" required>
+                                <option value="1">Pokok</option>
+                                <option value="2">Wajib</option>
+                                <option value="3">Sukarela</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="jumlah_simpanan" class="form-label">Jumlah (Rp)</label>
+                            <input type="number" class="form-control" id="jumlah_simpanan" name="jumlah_simpanan" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">Catat Simpanan</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Form untuk mencatat pinjaman -->
+            <div class="stat-card">
+                <h5>Catat Pinjaman</h5>
+                <form action="/admin/transaksi/pinjaman" method="POST">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <label for="id_anggota_pinjaman" class="form-label">ID Anggota</label>
+                            <input type="number" class="form-control" id="id_anggota_pinjaman" name="id_anggota" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman (Rp)</label>
+                            <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="jangka_waktu" class="form-label">Jangka Waktu (Bulan)</label>
+                            <input type="number" class="form-control" id="jangka_waktu" name="jangka_waktu" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="bunga" class="form-label">Bunga (%)</label>
+                            <input type="number" step="0.01" class="form-control" id="bunga" name="bunga" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="status_pinjaman" class="form-label">Status</label>
+                            <select class="form-control" id="status_pinjaman" name="status">
+                                <option value="proses">Proses</option>
+                                <option value="aktif">Aktif</option>
+                                <option value="lunas">Lunas</option>
+                                <option value="gagal">Gagal</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-success w-100">Catat Pinjaman</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="stat-card">
+                <h5>Daftar Transaksi</h5>
+                <p>Berikut adalah daftar semua transaksi yang tercatat dalam sistem.</p>
+
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nama Anggota</th>
+                            <th>Jenis Transaksi</th>
+                            <th>Jumlah</th>
+                            <th>Tanggal</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Details}}
+                        <tr>
+                            <td>{{.IDDetail}}</td>
+                            <td>{{.NamaAnggota}}</td>
+                            <td>Simpanan {{.Simpanan.JenisSimpanan}}</td>
+                            <td>Rp {{printf "%.0f" .JumlahSimpanan}}</td>
+                            <td>{{.TglTransaksi.Format "2006-01-02"}}</td>
+                            <td><span class="badge bg-success">Sukses</span></td>
+                        </tr>
+                        {{end}}
+                        {{range .Pinjamans}}
+                        <tr>
+                            <td>{{.IDPinjaman}}</td>
+                            <td>{{.NamaAnggota}}</td>
+                            <td>Pinjaman</td>
+                            <td>Rp {{printf "%.0f" .JumlahPinjaman}}</td>
+                            <td>{{.TglPinjaman.Format "2006-01-02"}}</td>
+                            <td>
+                                {{if eq .Status "proses"}}<span class="badge bg-warning">Proses</span>{{end}}
+                                {{if eq .Status "aktif"}}<span class="badge bg-success">Aktif</span>{{end}}
+                                {{if eq .Status "lunas"}}<span class="badge bg-info">Lunas</span>{{end}}
+                                {{if eq .Status "gagal"}}<span class="badge bg-danger">Gagal</span>{{end}}
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="copyright">
+                &copy; 2024 Koperasi Simpan Pinjam. All rights reserved. | Developed by Gozali
+            </div>
+        </div>
     </div>
 
-    <div class="stat-card">
-        <h5>Daftar Transaksi</h5>
-        <p>Berikut adalah daftar semua transaksi yang tercatat dalam sistem.</p>
+    {{template "admin_footer"}}
 
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>ID Transaksi</th>
-                    <th>Nama Anggota</th>
-                    <th>Jenis Transaksi</th>
-                    <th>Jumlah</th>
-                    <th>Tanggal</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Placeholder data - akan diganti dengan data dari database -->
-                <tr>
-                    <td>TRX-001</td>
-                    <td>John Doe</td>
-                    <td>Simpanan</td>
-                    <td>Rp 500.000</td>
-                    <td>2024-01-15</td>
-                    <td><span class="badge bg-success">Sukses</span></td>
-                    <td>
-                        <a href="#" class="btn btn-info btn-sm">Detail</a>
-                    </td>
-                </tr>
-                <tr>
-                    <td>TRX-002</td>
-                    <td>Jane Smith</td>
-                    <td>Pinjaman</td>
-                    <td>Rp 2.000.000</td>
-                    <td>2024-01-20</td>
-                    <td><span class="badge bg-warning">Pending</span></td>
-                    <td>
-                        <a href="#" class="btn btn-info btn-sm">Detail</a>
-                        <a href="#" class="btn btn-success btn-sm">Approve</a>
-                    </td>
-                </tr>
-                <!-- Tambahkan lebih banyak baris sesuai kebutuhan -->
-            </tbody>
-        </table>
-    </div>
-
-    <div class="copyright">
-        &copy; 2024 Koperasi Simpan Pinjam. All rights reserved. | Developed by Gozali
-    </div>
-{{ end }}
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/admin_transaksi.js"></script>
+</body>
+</html>

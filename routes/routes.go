@@ -1,12 +1,13 @@
 package routes
 
 import (
+	"koperasi-simpan-pinjam/controllers"
+	"koperasi-simpan-pinjam/middleware"
+	"net/http"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-
-	"koperasi-simpan-pinjam/controllers"
-	"koperasi-simpan-pinjam/middleware"
 )
 
 func SetupRouter() *gin.Engine {
@@ -31,11 +32,15 @@ func SetupRouter() *gin.Engine {
 	router.GET("/register", controllers.ShowRegisterPage)
 	router.POST("/register", controllers.Register)
 	router.GET("/logout", controllers.Logout)
-	router.GET("/tentang/:slug", controllers.ShowHalaman)
+	router.GET("/tentang/:slug", controllers.ShowTentang)
 	router.GET("/pelayanan/:slug", controllers.ShowHalaman)
-	router.GET("/riwayat", controllers.ShowRiwayatPage)
+	router.GET("/riwayat", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/anggota/riwayat")
+	})
+	router.GET("/riwayat/riwayat", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/anggota/riwayat")
+	})
 	router.GET("/hubungi-kami", controllers.ShowHubungiKami)
-
 	// --- Rute Anggota (Dilindungi Middleware) ---
 	anggotaRoutes := router.Group("/anggota")
 	anggotaRoutes.Use(middleware.AuthRequired())
@@ -46,6 +51,9 @@ func SetupRouter() *gin.Engine {
 		anggotaRoutes.GET("/ganti-password", controllers.GantiPassword)
 		anggotaRoutes.POST("/ganti-password", controllers.GantiPasswordPost)
 		anggotaRoutes.POST("/keluar", controllers.KeluarKoperasi)
+		anggotaRoutes.GET("/ajukan-pinjaman", controllers.AjukanPinjaman)
+		anggotaRoutes.POST("/ajukan-pinjaman", controllers.AjukanPinjamanPost)
+		anggotaRoutes.GET("/riwayat", controllers.ShowRiwayatPage)
 	}
 
 	// --- Rute Admin (Dilindungi Middleware) ---
@@ -55,20 +63,29 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/dashboard", controllers.AdminDashboard)
 		adminRoutes.GET("/konfirmasi", controllers.AdminKonfirmasi)
 		adminRoutes.POST("/confirm/:id", controllers.ConfirmMembership)
-		adminRoutes.GET("/halaman", controllers.ListHalaman)
 		adminRoutes.GET("/halaman/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/halaman/update/:slug", controllers.UpdateHalaman)
-		//adminRoutes.GET("/pelayanan/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/upload", controllers.UploadFile)
 		adminRoutes.GET("/transaksi", controllers.AdminTransaksi)
+		adminRoutes.POST("/transaksi/simpanan", controllers.CatatSimpanan)
+		adminRoutes.POST("/transaksi/pinjaman", controllers.CatatPinjaman)
+		adminRoutes.GET("/riwayat", controllers.AdminRiwayat)
 		adminRoutes.GET("/laporan", controllers.AdminLaporan)
 		adminRoutes.GET("/tentang", controllers.AdminTentang)
 		adminRoutes.GET("/pengaturan", controllers.AdminPengaturan)
+		adminRoutes.GET("/keamanan/login", controllers.AdminKeamananLogin)
+		adminRoutes.GET("/keamanan/simpanan", controllers.AdminKeamananSimpanan)
+		adminRoutes.GET("/keamanan/pinjaman", controllers.AdminKeamananPinjaman)
+		adminRoutes.GET("/keamanan/pembayaran", controllers.AdminKeamananPembayaran)
+		adminRoutes.GET("/keamanan/dashboard", controllers.AdminKeamananDashboard)
+		adminRoutes.GET("/keamanan/riwayat", controllers.AdminKeamananRiwayat)
+		adminRoutes.GET("/keamanan/organisasi", controllers.AdminKeamananOrganisasi)
 		adminRoutes.GET("/anggota", controllers.ListAllAnggota)
 		adminRoutes.GET("/anggota/:id", controllers.ViewAnggota)
 		adminRoutes.GET("/anggota/edit/:id", controllers.EditAnggota)
 		adminRoutes.POST("/anggota/update/:id", controllers.UpdateAnggota)
 		adminRoutes.POST("/anggota/delete/:id", controllers.DeleteAnggota)
+		adminRoutes.GET("/pesan", controllers.AdminPesan)
 		adminRoutes.POST("/update-profile", controllers.UpdateAdminProfile)
 	}
 
@@ -83,6 +100,9 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.POST("/halaman/update/:slug", controllers.BendaharaUpdateHalaman)
 		bendaharaRoutes.POST("/upload", controllers.BendaharaUploadFile)
 		bendaharaRoutes.GET("/transaksi", controllers.BendaharaTransaksi)
+		bendaharaRoutes.POST("/transaksi/simpanan", controllers.BendaharaCatatSimpanan)
+		bendaharaRoutes.POST("/transaksi/pinjaman", controllers.BendaharaCatatPinjaman)
+		bendaharaRoutes.GET("/riwayat", controllers.BendaharaRiwayat)
 		bendaharaRoutes.GET("/laporan", controllers.BendaharaLaporan)
 		bendaharaRoutes.GET("/tentang", controllers.BendaharaTentang)
 		bendaharaRoutes.GET("/pengaturan", controllers.BendaharaPengaturan)
@@ -100,21 +120,13 @@ func SetupRouter() *gin.Engine {
 	{
 		ketuaRoutes.GET("/dashboard", controllers.KetuaDashboard)
 		ketuaRoutes.GET("/konfirmasi", controllers.KetuaKonfirmasi)
-		ketuaRoutes.POST("/confirm/:id", controllers.KetuaConfirmMembership)
 		ketuaRoutes.GET("/halaman", controllers.KetuaListHalaman)
-		ketuaRoutes.GET("/halaman/edit/:slug", controllers.KetuaShowEditHalamanForm)
-		ketuaRoutes.POST("/halaman/update/:slug", controllers.KetuaUpdateHalaman)
-		ketuaRoutes.POST("/upload", controllers.KetuaUploadFile)
 		ketuaRoutes.GET("/transaksi", controllers.KetuaTransaksi)
 		ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
 		ketuaRoutes.GET("/tentang", controllers.KetuaTentang)
 		ketuaRoutes.GET("/pengaturan", controllers.KetuaPengaturan)
 		ketuaRoutes.GET("/anggota", controllers.KetuaListAllAnggota)
 		ketuaRoutes.GET("/anggota/:id", controllers.KetuaViewAnggota)
-		ketuaRoutes.GET("/anggota/edit/:id", controllers.KetuaEditAnggota)
-		ketuaRoutes.POST("/anggota/update/:id", controllers.KetuaUpdateAnggota)
-		ketuaRoutes.POST("/anggota/delete/:id", controllers.KetuaDeleteAnggota)
-		ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
 	}
 
 	return router

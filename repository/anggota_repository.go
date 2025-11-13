@@ -3,7 +3,6 @@ package repository
 import (
 	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
-
 )
 
 // Mengambil semua anggota dengan status pending
@@ -11,7 +10,7 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 	db := config.GetDB() // Fungsi untuk mendapatkan koneksi DB
 	var anggotas []models.Anggota
 
-	rows, err := db.Query("SELECT id_anggota, nama_anggota, nik_ktp, tgl_gabung FROM anggota WHERE status = 'pending' ORDER BY tgl_gabung ASC")
+	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, nik_ktp, no_telepon, tgl_gabung FROM anggota WHERE status = 'pending' ORDER BY tgl_gabung ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -19,7 +18,7 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 
 	for rows.Next() {
 		var a models.Anggota
-		if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota, &a.NikKTP, &a.TglGabung); err != nil {
+		if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.NikKTP, &a.NoTelepon, &a.TglGabung); err != nil {
 			return nil, err
 		}
 		anggotas = append(anggotas, a)
@@ -40,7 +39,7 @@ func UpdateAnggotaStatusWithCode(id int, newStatus string, memberCode string) er
 func CreateAnggota(anggota models.Anggota) error {
 	db := config.GetDB()
 	query := `
-		INSERT INTO anggota (nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, provinsi, jenis_kelamin, status_anggota, fakultas, tgl_gabung)
+		INSERT INTO anggota (nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, fakultas, tgl_gabung)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`
 	_, err := db.Exec(query,
@@ -50,7 +49,7 @@ func CreateAnggota(anggota models.Anggota) error {
 		anggota.TglLahir,
 		anggota.NikKTP,
 		anggota.NoTelepon,
-		anggota.Provinsi,
+		anggota.Alamat,
 		anggota.JenisKelamin,
 		anggota.StatusAnggota,
 		anggota.Fakultas,
@@ -71,7 +70,7 @@ func GetAnggotaByID(id int) (models.Anggota, error) {
 		SELECT
 			id_anggota, nama_anggota, username,
 			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
-			provinsi, jenis_kelamin, status, kode_anggota
+			alamat, jenis_kelamin, status, kode_anggota
 		FROM anggota
 		WHERE id_anggota = $1`
 
@@ -79,7 +78,7 @@ func GetAnggotaByID(id int) (models.Anggota, error) {
 	err := db.QueryRow(query, id).Scan(
 		&a.IDAnggota, &a.NamaAnggota, &a.Username,
 		&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
-		&a.Provinsi, &a.JenisKelamin, &a.Status, &a.KodeAnggota,
+		&a.Alamat, &a.JenisKelamin, &a.Status, &a.KodeAnggota,
 	)
 	return a, err
 }
@@ -93,7 +92,7 @@ func GetAllAnggota() ([]models.Anggota, error) {
 		SELECT
 			id_anggota, nama_anggota, username,
 			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
-			provinsi, jenis_kelamin, status, kode_anggota
+			alamat, jenis_kelamin, status, kode_anggota
 		FROM anggota
 		WHERE status = 'aktif'
 		ORDER BY tgl_gabung DESC`
@@ -109,7 +108,7 @@ func GetAllAnggota() ([]models.Anggota, error) {
 		err := rows.Scan(
 			&a.IDAnggota, &a.NamaAnggota, &a.Username,
 			&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
-			&a.Provinsi, &a.JenisKelamin, &a.Status, &a.KodeAnggota,
+			&a.Alamat, &a.JenisKelamin, &a.Status, &a.KodeAnggota,
 		)
 		if err != nil {
 			return nil, err

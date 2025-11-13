@@ -1,8 +1,8 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
   <div class="container-fluid px-3">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="/">
-      <svg width="26" height="26" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#198754"/><circle cx="12" cy="12" r="5" fill="white"/><circle cx="12" cy="12" r="2" fill="#198754"/></svg>
-      <span class="fw-bold">Koperasi Wirya</span>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{{ if .Anggota }}/anggota/dashboard{{ else }}/{{ end }}">
+      <img src="/static/images/logo.png" alt="Logo KOPMA" width="32" height="32" class="rounded">
+      <span class="fw-bold">KOPMA</span>
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navAnggota">
       <span class="navbar-toggler-icon"></span>
@@ -10,7 +10,7 @@
     <div class="collapse navbar-collapse" id="navAnggota">
       {{ if .Anggota }}
       <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
-        <li class="nav-item"><a class="nav-link" href="/anggota/dashboard">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="/anggota/dashboard">Beranda</a></li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Tentang Kami</a>
           <ul class="dropdown-menu">
@@ -27,7 +27,7 @@
             <li><a class="dropdown-item" href="/pelayanan/angsuran">Angsuran</a></li>
           </ul>
         </li>
-        <li class="nav-item"><a class="nav-link" href="/riwayat">Riwayat</a></li>
+        <li class="nav-item"><a class="nav-link" href="/anggota/riwayat">Riwayat</a></li>
       </ul>
       <ul class="navbar-nav">
         <li class="nav-item dropdown">

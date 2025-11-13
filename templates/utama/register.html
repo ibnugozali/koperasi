@@ -16,18 +16,18 @@
                         {{ if .error }}
                             <div class="alert alert-danger">{{ .error }}</div>
                         {{ end }}
-                        <form action="/register" method="POST">
+                        <form action="/register" method="POST" enctype="multipart/form-data">
                             <div class="mb-3">
                                 <label for="nama_anggota" class="form-label">Nama Lengkap</label>
                                 <input type="text" class="form-control" id="nama_anggota" name="NamaAnggota" required>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="username" class="form-label">Username</label>
+                                    <label for="username" class="form-label">Nama Pengguna</label>
                                     <input type="text" class="form-control" id="username" name="Username" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="password" class="form-label">Password</label>
+                                    <label for="password" class="form-label">Kata Sandi</label>
                                     <input type="password" class="form-control" id="password" name="Password" required>
                                 </div>
                             </div>
@@ -57,11 +57,12 @@
 
                            <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="status_anggota" class="form-label">Status Anggota</label>
+                                    <label for="status_anggota" class="form-label">Unit Kerja</label>
                                     <select class="form-select" id="status_anggota" name="StatusAnggota" required>
                                         <option value="">Pilih Status</option>
                                         <option value="dosen">Dosen</option>
-                                        <option value="karyawan">Karyawan</option>
+                                        <option value="karyawan">Karyawan / Staff</option>
+                                        <option value="mahasiswa">Mahasiswa</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -76,10 +77,17 @@
                                         <option value="Fakultas Kesehatan Masyarakat (FKM)">Fakultas Kesehatan Masyarakat (FKM)</option>
                                         <option value="Fakultas Pertanian (FAPERTA)">Fakultas Pertanian (FAPERTA)</option>
                                         <option value="Fakultas Teknik (FT)">Fakultas Teknik (FT)</option>
+                                        <option value="Rektorat / Yayasan">Rektorat / Yayasan / Staff</option>
                                     </select>
-                                </div>
-                                 <div class="mb-3">
-                                <label for="provinsi" class="form-label">Provinsi</label>
+                            </div>
+                            <div class="mb-3">
+                                <label for="bukti_transfer" class="form-label">Bukti Transfer Simpanan Pokok Wajib Rp. 100.000,-</label>
+                                <small class="form-text text-muted">Nomor rekening koperasi: 1234567890 (Bank ABC)</small>
+                                <input type="file" class="form-control" id="bukti_transfer" name="BuktiTransfer" accept="image/*,.pdf" required>
+                                <small class="form-text text-muted">Silakan upload bukti transfer (gambar atau PDF) setelah transfer ke rekening koperasi.</small>
+                            </div>
+                             <div class="mb-3">
+                                <label for="provinsi" class="form-label">Alamat</label>
                                 <input type="text" class="form-control" id="provinsi" name="Provinsi">
                             </div>
                             </div>
@@ -89,7 +97,7 @@
                         </form>
                         
                         <div class="text-center mt-3">
-                            <p>Sudah punya akun? <a href="/login">Login di sini</a></p>
+                            <p>Sudah punya akun? <a href="/login">Login</a></p>
                         </div>
                     </div>
                     <div class="card-footer text-center">

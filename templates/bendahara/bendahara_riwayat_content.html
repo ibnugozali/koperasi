@@ -1,0 +1,228 @@
+{{define "bendahara_riwayat_content"}}
+<div class="top-header">
+    <h4 class="mb-1">Riwayat Transaksi</h4>
+    <small class="text-muted">Lihat semua riwayat simpanan dan pinjaman</small>
+</div>
+
+<!-- Filter dan Pencarian -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <label for="filterAnggota" class="form-label">Filter Anggota</label>
+                <select class="form-select" id="filterAnggota">
+                    <option value="">Semua Anggota</option>
+                    <option value="1">Ahmad Surya - KSPWIR-001</option>
+                    <option value="2">Budi Santoso - KSPWIR-002</option>
+                    <option value="3">Citra Dewi - KSPWIR-003</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="filterJenis" class="form-label">Filter Jenis</label>
+                <select class="form-select" id="filterJenis">
+                    <option value="">Semua Jenis</option>
+                    <option value="simpanan">Simpanan</option>
+                    <option value="pinjaman">Pinjaman</option>
+                    <option value="angsuran">Angsuran</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="searchRiwayat" class="form-label">Pencarian</label>
+                <input type="text" class="form-control" id="searchRiwayat" placeholder="Cari transaksi...">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabel Riwayat Transaksi -->
+<div class="card shadow-sm">
+    <div class="card-header bg-info text-white">
+        <i class="fa-solid fa-list"></i> Riwayat Transaksi Lengkap
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Anggota</th>
+                        <th>Jenis Transaksi</th>
+                        <th>Jumlah</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="riwayatTableBody">
+                    <tr>
+                        <td>2024-11-08 10:30</td>
+                        <td>Ahmad Surya (KSPWIR-001)</td>
+                        <td>Simpanan Wajib</td>
+                        <td class="text-success">+Rp 50.000</td>
+                        <td><span class="badge bg-success">Berhasil</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetail(1)">
+                                <i class="fa-solid fa-eye"></i> Detail
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2024-11-07 14:15</td>
+                        <td>Budi Santoso (KSPWIR-002)</td>
+                        <td>Pinjaman</td>
+                        <td class="text-danger">-Rp 5.000.000</td>
+                        <td><span class="badge bg-warning">Pending</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetail(2)">
+                                <i class="fa-solid fa-eye"></i> Detail
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2024-11-06 09:45</td>
+                        <td>Citra Dewi (KSPWIR-003)</td>
+                        <td>Angsuran</td>
+                        <td class="text-danger">-Rp 450.000</td>
+                        <td><span class="badge bg-success">Lunas</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetail(3)">
+                                <i class="fa-solid fa-eye"></i> Detail
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2024-11-05 16:20</td>
+                        <td>Ahmad Surya (KSPWIR-001)</td>
+                        <td>Simpanan Sukarela</td>
+                        <td class="text-success">+Rp 100.000</td>
+                        <td><span class="badge bg-success">Berhasil</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetail(4)">
+                                <i class="fa-solid fa-eye"></i> Detail
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2024-11-04 11:10</td>
+                        <td>Budi Santoso (KSPWIR-002)</td>
+                        <td>Angsuran</td>
+                        <td class="text-danger">-Rp 450.000</td>
+                        <td><span class="badge bg-success">Lunas</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetail(5)">
+                                <i class="fa-solid fa-eye"></i> Detail
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Modal Detail Transaksi -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detail Transaksi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailContent">
+                <!-- Detail content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function viewDetail(id) {
+        // Mock detail data - in real app, this would be fetched via AJAX
+        const details = {
+            1: {
+                tanggal: '2024-11-08 10:30',
+                anggota: 'Ahmad Surya (KSPWIR-001)',
+                jenis: 'Simpanan Wajib',
+                jumlah: 'Rp 50.000',
+                status: 'Berhasil',
+                keterangan: 'Pembayaran simpanan wajib bulan November 2024'
+            },
+            2: {
+                tanggal: '2024-11-07 14:15',
+                anggota: 'Budi Santoso (KSPWIR-002)',
+                jenis: 'Pinjaman',
+                jumlah: 'Rp 5.000.000',
+                status: 'Pending',
+                keterangan: 'Pengajuan pinjaman untuk modal usaha'
+            },
+            3: {
+                tanggal: '2024-11-06 09:45',
+                anggota: 'Citra Dewi (KSPWIR-003)',
+                jenis: 'Angsuran',
+                jumlah: 'Rp 450.000',
+                status: 'Lunas',
+                keterangan: 'Angsuran ke-3 dari pinjaman Rp 5.000.000'
+            }
+        };
+
+        const detail = details[id];
+        if (detail) {
+            document.getElementById('detailContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Tanggal:</strong> ${detail.tanggal}</p>
+                        <p><strong>Anggota:</strong> ${detail.anggota}</p>
+                        <p><strong>Jenis:</strong> ${detail.jenis}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Jumlah:</strong> ${detail.jumlah}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-${detail.status === 'Berhasil' ? 'success' : detail.status === 'Lunas' ? 'success' : 'warning'}">${detail.status}</span></p>
+                        <p><strong>Keterangan:</strong> ${detail.keterangan}</p>
+                    </div>
+                </div>
+            `;
+            new bootstrap.Modal(document.getElementById('detailModal')).show();
+        }
+    }
+
+    // Filter functionality
+    document.getElementById('filterAnggota').addEventListener('change', filterTable);
+    document.getElementById('filterJenis').addEventListener('change', filterTable);
+    document.getElementById('searchRiwayat').addEventListener('input', filterTable);
+
+    function filterTable() {
+        const anggotaFilter = document.getElementById('filterAnggota').value.toLowerCase();
+        const jenisFilter = document.getElementById('filterJenis').value.toLowerCase();
+        const searchFilter = document.getElementById('searchRiwayat').value.toLowerCase();
+
+        const rows = document.querySelectorAll('#riwayatTableBody tr');
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const anggota = cells[1].textContent.toLowerCase();
+            const jenis = cells[2].textContent.toLowerCase();
+            const jumlah = cells[3].textContent.toLowerCase();
+
+            const matchesAnggota = !anggotaFilter || anggota.includes(anggotaFilter);
+            const matchesJenis = !jenisFilter || jenis.includes(jenisFilter);
+            const matchesSearch = !searchFilter || anggota.includes(searchFilter) || jenis.includes(searchFilter) || jumlah.includes(searchFilter);
+
+            row.style.display = matchesAnggota && matchesJenis && matchesSearch ? '' : 'none';
+        });
+    }
+</script>
+{{end}}

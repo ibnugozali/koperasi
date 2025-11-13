@@ -1,0 +1,232 @@
+body {
+    background-color: #f5f7fa;
+    font-family: "Poppins", sans-serif;
+    overflow-x: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+body.loaded {
+    opacity: 1;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 240px;
+    height: 100vh;
+    background: #004aad;
+    color: white;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    overflow-y: auto;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+.sidebar.loaded {
+    opacity: 1;
+}
+
+/* Hamburger Menu */
+.hamburger {
+    display: block;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1001;
+    background: none;
+    color: black;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+    .navbar .navbar-brand {
+        margin-left: 50px; /* Adjust to make space for hamburger */
+    }
+}
+
+/* Desktop Styles */
+@media (min-width: 769px) {
+    .hamburger {
+        left: 255px; /* Position next to sidebar */
+    }
+}
+
+.hamburger:hover {
+    background: none;
+}
+
+.hamburger i {
+    font-size: 20px;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    .hamburger {
+        display: block;
+    }
+
+    .main-content, .navbar, footer {
+        margin-left: 0;
+    }
+
+    /* Adjust main content padding on mobile */
+    .main-content {
+        padding: 20px 15px;
+    }
+
+    /* Make stat cards responsive */
+    .stat-card {
+        margin-bottom: 20px;
+    }
+}
+
+.sidebar h4 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+.sidebar a {
+    color: #fff;
+    text-decoration: none;
+    padding: 12px 25px;
+    display: block;
+    font-size: 15px;
+    transition: background 0.2s;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+    background: #0a58ca;
+}
+
+.sidebar .dropdown-toggle {
+    cursor: pointer;
+}
+
+.sidebar .collapse a {
+    padding-left: 40px;
+}
+
+/* Animasi submenu */
+.sidebar .collapse {
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    max-height: 0;
+    opacity: 0;
+}
+
+.sidebar .collapse.show {
+    max-height: 500px; /* Sesuaikan dengan tinggi maksimal submenu */
+    opacity: 1;
+}
+
+/* Navbar */
+.navbar {
+    margin-left: 240px;
+    background: #ffffff;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Main Content */
+.main-content {
+    margin-left: 240px;
+    padding: 30px;
+    transition: margin-left 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
+}
+
+/* Animasi halaman */
+.main-content.fade-in {
+    animation: fadeInPage 0.4s ease-in-out;
+}
+
+@keyframes fadeInPage {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Animasi loading untuk transisi halaman */
+.main-content.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Animasi smooth untuk semua elemen */
+* {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Hover effects untuk interaktivitas */
+.sidebar a:hover {
+    transform: translateX(5px);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px) scale(1.02);
+}
+
+/* Statistik Cards */
+.stat-card {
+    background: #ffffff;
+    border-radius: 15px;
+    padding: 30px 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    height: 100%;
+    text-align: center;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    font-size: 2.3rem;
+    margin-bottom: 12px;
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.95rem;
+    margin-top: 5px;
+}
+
+footer {
+    margin-left: 240px;
+    padding: 15px;
+    text-align: center;
+    color: #666;
+    background: #fff;
+    border-top: 1px solid #ddd;
+}

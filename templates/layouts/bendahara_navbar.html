@@ -1,0 +1,37 @@
+{{define "bendahara_navbar.html"}}
+<!-- Hamburger Menu -->
+<button class="hamburger" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="text-center mb-3">
+        <img src="/static/images/placeholder.png" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px;">
+        <h5 class="mt-2">Koperasi Simpan Pinjam</h5>
+    </div>
+    <a href="/bendahara/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
+
+    <!-- Transaksi & Laporan -->
+    <a href="#transaksiLaporan" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fa-solid fa-chart-bar me-2"></i> Transaksi & Laporan</a>
+    <div class="collapse" id="transaksiLaporan">
+        <a href="/bendahara/riwayat" class="ms-3 {{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Riwayat</a>
+        <a href="/bendahara/laporan" class="ms-3 {{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
+    </div>
+
+    <a href="/bendahara/pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
+    <a href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
+</div>
+
+<script>
+    // Initialize Bootstrap collapse
+    document.addEventListener('DOMContentLoaded', function() {
+        var collapseElements = document.querySelectorAll('.collapse');
+        collapseElements.forEach(function(element) {
+            new bootstrap.Collapse(element, {
+                hide: true
+            });
+        });
+    });
+</script>
+{{end}}

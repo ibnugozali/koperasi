@@ -3,18 +3,18 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"koperasi-simpan-pinjam/config"
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
-
-	"koperasi-simpan-pinjam/config"
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
 )
 
 // Menampilkan dashboard bendahara dengan daftar calon anggota
@@ -278,11 +278,11 @@ func BendaharaUpdateAnggota(c *gin.Context) {
 	query := `
 		UPDATE anggota SET
 			nama_anggota = $1, username = $2, tgl_lahir = $3, nik_ktp = $4,
-			no_telepon = $5, provinsi = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9
+			no_telepon = $5, alamat = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9
 		WHERE id_anggota = $10`
 	_, err = db.Exec(query,
 		anggota.NamaAnggota, anggota.Username, anggota.TglLahir, anggota.NikKTP,
-		anggota.NoTelepon, anggota.Provinsi, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, id)
+		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui anggota"})
 		return
@@ -311,15 +311,128 @@ func BendaharaDeleteAnggota(c *gin.Context) {
 
 // BendaharaTransaksi menampilkan halaman transaksi bendahara
 func BendaharaTransaksi(c *gin.Context) {
+	simpanans, err := repository.GetAllSimpanan()
+	if err != nil {
+		simpanans = []models.Simpanan{} // Default kosong jika error
+	}
+
+	details, err := repository.GetAllDetails()
+	if err != nil {
+		details = []models.Detail{} // Default kosong jika error
+	}
+
+	pinjamans, err := repository.GetAllPinjamans()
+	if err != nil {
+		pinjamans = []models.Pinjaman{} // Default kosong jika error
+	}
+
 	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
 		"ActivePage": "transaksi",
+		"Simpanans":  simpanans,
+		"Details":    details,
+		"Pinjamans":  pinjamans,
 	})
 }
 
-// BendaharaLaporan menampilkan halaman laporan keuangan bendahara
+// BendaharaCatatSimpanan memproses pencatatan simpanan
+func BendaharaCatatSimpanan(c *gin.Context) {
+	session := sessions.Default(c)
+	bendaharaID := session.Get("user_id")
+	if bendaharaID == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	var detail models.Detail
+	if err := c.ShouldBind(&detail); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	detail.IDPengelola = bendaharaID.(int)
+	detail.TglTransaksi = time.Now()
+
+	// Hitung total simpanan (kumulatif)
+	totalSimpanan, _, _, err := repository.GetSaldoAnggota(detail.IDAnggota)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghitung total simpanan"})
+		return
+	}
+	detail.TotalSimpanan = totalSimpanan + detail.JumlahSimpanan
+
+	err = repository.CreateSimpanan(detail)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat simpanan"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Simpanan berhasil dicatat"})
+}
+
+// BendaharaCatatPinjaman memproses pencatatan pinjaman
+func BendaharaCatatPinjaman(c *gin.Context) {
+	session := sessions.Default(c)
+	bendaharaID := session.Get("user_id")
+	if bendaharaID == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	var pinjaman models.Pinjaman
+	if err := c.ShouldBind(&pinjaman); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	pinjaman.IDPengelola.Int64 = int64(bendaharaID.(int))
+	pinjaman.TglPinjaman = time.Now()
+	pinjaman.Status = "aktif"
+
+	err := repository.CreatePinjaman(pinjaman)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat pinjaman"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pinjaman berhasil dicatat"})
+}
+
+// BendaharaRiwayat menampilkan halaman riwayat transaksi bendahara
+func BendaharaRiwayat(c *gin.Context) {
+	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
+		"ActivePage": "riwayat",
+	})
+}
+
 func BendaharaLaporan(c *gin.Context) {
+	// Ambil bulan dan tahun dari query parameter, default bulan ini
+	bulan := 1
+	tahun := 2023
+	if b := c.Query("bulan"); b != "" {
+		if parsed, err := strconv.Atoi(b); err == nil {
+			bulan = parsed
+		}
+	}
+	if t := c.Query("tahun"); t != "" {
+		if parsed, err := strconv.Atoi(t); err == nil {
+			tahun = parsed
+		}
+	}
+
+	report, err := repository.GetLaporanKeuangan(bulan, tahun)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "bendahara_layout.html", gin.H{
+			"ActivePage": "laporan",
+			"Error":      "Gagal mengambil laporan",
+		})
+		return
+	}
+
 	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
 		"ActivePage": "laporan",
+		"Report":     report,
+		"Bulan":      bulan,
+		"Tahun":      tahun,
 	})
 }
 

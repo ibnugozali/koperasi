@@ -5,7 +5,7 @@ import (
 	"koperasi-simpan-pinjam/models"
 )
 
-func GetRiwayatSimpananByAnggotaID(id int) ([]models.Detail, error) {
+func GetRiwayatSimpananByAnggotaID(id int, search string) ([]models.Detail, error) {
 	db := config.GetDB()
 	var details []models.Detail
 	query := `
@@ -14,9 +14,14 @@ func GetRiwayatSimpananByAnggotaID(id int) ([]models.Detail, error) {
 		FROM detail d
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 		WHERE d.id_anggota = $1
-		ORDER BY d.tgl_transaksi DESC
 	`
-	rows, err := db.Query(query, id)
+	args := []interface{}{id}
+	if search != "" {
+		query += ` AND (s.jenis_simpanan ILIKE $2 OR CAST(d.jumlah_simpanan AS TEXT) ILIKE $2 OR CAST(d.total_simpanan AS TEXT) ILIKE $2)`
+		args = append(args, "%"+search+"%")
+	}
+	query += ` ORDER BY d.tgl_transaksi DESC`
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -34,16 +39,21 @@ func GetRiwayatSimpananByAnggotaID(id int) ([]models.Detail, error) {
 	return details, nil
 }
 
-func GetRiwayatPinjamanByAnggotaID(id int) ([]models.Pinjaman, error) {
+func GetRiwayatPinjamanByAnggotaID(id int, search string) ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
 	query := `
 		SELECT id_pinjaman, id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status
 		FROM pinjaman
 		WHERE id_anggota = $1
-		ORDER BY tgl_pinjaman DESC
 	`
-	rows, err := db.Query(query, id)
+	args := []interface{}{id}
+	if search != "" {
+		query += ` AND (status ILIKE $2 OR CAST(jumlah_pinjaman AS TEXT) ILIKE $2 OR CAST(jangka_waktu AS TEXT) ILIKE $2 OR CAST(bunga AS TEXT) ILIKE $2)`
+		args = append(args, "%"+search+"%")
+	}
+	query += ` ORDER BY tgl_pinjaman DESC`
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +68,7 @@ func GetRiwayatPinjamanByAnggotaID(id int) ([]models.Pinjaman, error) {
 	}
 	return pinjamans, nil
 }
-
-func GetRiwayatAngsuranByAnggotaID(id int) ([]models.Angsuran, error) {
+func GetRiwayatAngsuranByAnggotaID(id int, search string) ([]models.Angsuran, error) {
 	db := config.GetDB()
 	var angsurans []models.Angsuran
 	query := `
@@ -67,9 +76,14 @@ func GetRiwayatAngsuranByAnggotaID(id int) ([]models.Angsuran, error) {
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		WHERE p.id_anggota = $1
-		ORDER BY a.tgl_bayar DESC
 	`
-	rows, err := db.Query(query, id)
+	args := []interface{}{id}
+	if search != "" {
+		query += ` AND (a.status_angsuran ILIKE $2 OR a.status ILIKE $2 OR CAST(a.sisa_pinjaman AS TEXT) ILIKE $2)`
+		args = append(args, "%"+search+"%")
+	}
+	query += ` ORDER BY a.tgl_bayar DESC`
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

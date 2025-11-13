@@ -1,0 +1,163 @@
+{{define "bendahara_pengaturan_content"}}
+<div class="top-header">
+    <h4 class="mb-1">Pengaturan Akun</h4>
+    <small class="text-muted">Kelola informasi akun dan keamanan</small>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Form Update Profil -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <i class="fa-solid fa-user-edit"></i> Update Profil
+            </div>
+            <div class="card-body">
+                <form id="profileForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="namaBendahara" class="form-label">Nama Lengkap</label>
+                                <input type="text" class="form-control" id="namaBendahara" value="Siti Aminah" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="usernameBendahara" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="usernameBendahara" value="bendahara01" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="emailBendahara" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="emailBendahara" value="bendahara@kspwirya.com" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="teleponBendahara" class="form-label">No. Telepon</label>
+                                <input type="tel" class="form-control" id="teleponBendahara" value="081234567890" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-save"></i> Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Form Ganti Password -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <i class="fa-solid fa-key"></i> Ganti Password
+            </div>
+            <div class="card-body">
+                <form id="passwordForm">
+                    <div class="mb-3">
+                        <label for="currentPassword" class="form-label">Password Lama</label>
+                        <input type="password" class="form-control" id="currentPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">Password Baru</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                        <div class="form-text">Password minimal 8 karakter</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Konfirmasi Password Baru</label>
+                        <input type="password" class="form-control" id="confirmPassword" required>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fa-solid fa-key"></i> Ganti Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Info Akun -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <i class="fa-solid fa-info-circle"></i> Info Akun
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <img src="/static/images/placeholder.png" alt="Foto Profil" class="rounded-circle" width="80" height="80">
+                    <h6 class="mt-2">Siti Aminah</h6>
+                    <small class="text-muted">Bendahara</small>
+                </div>
+                <hr>
+                <div class="small">
+                    <p><strong>Terdaftar:</strong> 15 Januari 2024</p>
+                    <p><strong>Terakhir Login:</strong> 8 November 2024, 14:30</p>
+                    <p><strong>Status:</strong> <span class="badge bg-success">Aktif</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aktivitas Terbaru -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <i class="fa-solid fa-history"></i> Aktivitas Terbaru
+            </div>
+            <div class="card-body">
+                <div class="small">
+                    <div class="mb-2">
+                        <i class="fa-solid fa-plus text-success"></i>
+                        Menambah transaksi simpanan - 2 jam yang lalu
+                    </div>
+                    <div class="mb-2">
+                        <i class="fa-solid fa-file-alt text-primary"></i>
+                        Menggenerate laporan bulan Oktober - 1 hari yang lalu
+                    </div>
+                    <div class="mb-2">
+                        <i class="fa-solid fa-user-edit text-warning"></i>
+                        Update profil - 3 hari yang lalu
+                    </div>
+                    <div class="mb-2">
+                        <i class="fa-solid fa-sign-in text-info"></i>
+                        Login ke sistem - 3 hari yang lalu
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Handle profile form submission
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        // Add AJAX call here to update profile
+        alert('Profil berhasil diperbarui!');
+    });
+
+    // Handle password form submission
+    document.getElementById('passwordForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (newPassword !== confirmPassword) {
+            alert('Password baru dan konfirmasi tidak cocok!');
+            return;
+        }
+
+        if (newPassword.length < 8) {
+            alert('Password minimal 8 karakter!');
+            return;
+        }
+
+        // Add AJAX call here to change password
+        alert('Password berhasil diubah!');
+        this.reset();
+    });
+</script>
+{{end}}

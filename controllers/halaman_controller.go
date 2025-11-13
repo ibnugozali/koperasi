@@ -1,15 +1,17 @@
 package controllers
 
 import (
-	"encoding/json" // Tambahkan ini
+	"encoding/json"
+	"fmt"
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 	"net/http"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
-
 )
 
 func ShowHalaman(c *gin.Context) {
@@ -56,6 +58,39 @@ func ShowHalaman(c *gin.Context) {
 	})
 }
 
+// ShowTentang handles the /tentang/:slug route for about pages.
+func ShowTentang(c *gin.Context) {
+	slug := c.Param("slug")
+
+	// Cek session untuk info login di navbar
+	session := sessions.Default(c)
+	var anggota models.Anggota
+	userID := session.Get("user_id")
+	if userID != nil {
+		anggota, _ = repository.GetAnggotaByID(userID.(int))
+	}
+
+	switch slug {
+	case "sejarah":
+		c.HTML(http.StatusOK, "sejarah.html", gin.H{
+			"Judul":   "Sejarah Koperasi",
+			"Anggota": anggota,
+		})
+	case "visi-misi":
+		c.HTML(http.StatusOK, "visi_misi.html", gin.H{
+			"Judul":   "Visi & Misi",
+			"Anggota": anggota,
+		})
+	case "struktur":
+		c.HTML(http.StatusOK, "struktur.html", gin.H{
+			"Judul":   "Struktur Organisasi",
+			"Anggota": anggota,
+		})
+	default:
+		c.String(http.StatusNotFound, "Halaman tidak ditemukan")
+	}
+}
+
 // ShowHubungiKami handles the /hubungi-kami route with a static page.
 func ShowHubungiKami(c *gin.Context) {
 	// Cek session untuk info login di navbar
@@ -78,61 +113,126 @@ func ShowHubungiKami(c *gin.Context) {
 
 // Controller untuk Riwayat (SUDAH DIPERBAIKI DAN DISESUAIKAN)
 func ShowRiwayatPage(c *gin.Context) {
-    session := sessions.Default(c)
+	session := sessions.Default(c)
 
-    // ==========================================================
-    // AMBIL DATA ANGGOTA DARI SESI (mengikuti pola dari ShowHalaman)
-    // ==========================================================
-    var anggota models.Anggota
-    userID := session.Get("user_id")
+	// ==========================================================
+	// AMBIL DATA ANGGOTA DARI SESI (mengikuti pola dari ShowHalaman)
+	// ==========================================================
+	var anggota models.Anggota
+	userID := session.Get("user_id")
 
-    // Cek apakah pengguna sudah login atau belum
-    if userID == nil {
-        // Jika belum login, redirect ke halaman login
-        c.Redirect(http.StatusFound, "/login")
-        return
-    }
+	// Cek apakah pengguna sudah login atau belum
+	if userID == nil {
+		// Jika belum login, redirect ke halaman login
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
 
-    // Ambil data lengkap anggota dari repository
-    // Pastikan untuk menangani error jika anggota tidak ditemukan
-    anggota, err := repository.GetAnggotaByID(userID.(int))
-    if err != nil {
-        // Jika data anggota tidak ditemukan di DB (mungkin sesi aneh)
-        // Sebaiknya redirect ke halaman login dan hapus sesi
-        session.Clear()
-        session.Save()
-        c.Redirect(http.StatusFound, "/login?error=user_not_found")
-        return
-    }
+	// Ambil data lengkap anggota dari repository
+	// Pastikan untuk menangani error jika anggota tidak ditemukan
+	anggota, err := repository.GetAnggotaByID(userID.(int))
+	if err != nil {
+		// Jika data anggota tidak ditemukan di DB (mungkin sesi aneh)
+		// Sebaiknya redirect ke halaman login dan hapus sesi
+		session.Clear()
+		session.Save()
+		c.Redirect(http.StatusFound, "/login?error=user_not_found")
+		return
+	}
 
-    // Fetch all riwayat
-    riwayatSimpanan, err := repository.GetRiwayatSimpananByAnggotaID(userID.(int))
-    if err != nil {
-        c.String(http.StatusInternalServerError, "Error fetching riwayat simpanan")
-        return
-    }
-    riwayatPinjaman, err := repository.GetRiwayatPinjamanByAnggotaID(userID.(int))
-    if err != nil {
-        c.String(http.StatusInternalServerError, "Error fetching riwayat pinjaman")
-        return
-    }
-    riwayatAngsuran, err := repository.GetRiwayatAngsuranByAnggotaID(userID.(int))
-    if err != nil {
-        c.String(http.StatusInternalServerError, "Error fetching riwayat angsuran")
-        return
-    }
+	// Get search query parameter
+	search := c.DefaultQuery("search", "")
 
-    judulHalaman := "Riwayat Transaksi"
+	// Fetch all riwayat without search filter first
+	riwayatSimpanan, err := repository.GetRiwayatSimpananByAnggotaID(userID.(int), "")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Error fetching riwayat simpanan")
+		return
+	}
+	riwayatPinjaman, err := repository.GetRiwayatPinjamanByAnggotaID(userID.(int), "")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Error fetching riwayat pinjaman")
+		return
+	}
+	riwayatAngsuran, err := repository.GetRiwayatAngsuranByAnggotaID(userID.(int), "")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Error fetching riwayat angsuran")
+		return
+	}
 
-    // =========================================================================
-    // KIRIM OBJEK ANGGOTA KE TEMPLATE (sama seperti di ShowHalaman)
-    // =========================================================================
-    c.HTML(http.StatusOK, "riwayat.html", gin.H{
-        "title":            judulHalaman,
-        "Judul":            judulHalaman,
-        "RiwayatSimpanan": riwayatSimpanan,
-        "RiwayatPinjaman": riwayatPinjaman,
-        "RiwayatAngsuran": riwayatAngsuran,
-        "Anggota":          anggota, // <-- INI KUNCI UTAMANYA
-    })
+	// Define a unified transaction struct
+	type UnifiedTransaction struct {
+		Date        time.Time
+		Type        string
+		Description string
+		Amount      string
+		Status      string
+	}
+
+	var allTransactions []UnifiedTransaction
+
+	// Add simpanan transactions
+	for _, s := range riwayatSimpanan {
+		desc := "Simpanan: " + s.Simpanan.JenisSimpanan
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", s.JumlahSimpanan)), " ", "")
+		if strings.Contains(strings.ToLower(desc+" "+amount), strings.ToLower(search)) {
+			allTransactions = append(allTransactions, UnifiedTransaction{
+				Date:        s.TglTransaksi,
+				Type:        "Simpanan",
+				Description: desc,
+				Amount:      amount,
+				Status:      "",
+			})
+		}
+	}
+
+	// Add pinjaman transactions
+	for _, p := range riwayatPinjaman {
+		desc := "Pinjaman"
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", p.JumlahPinjaman)), " ", "")
+		status := p.Status
+		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
+			allTransactions = append(allTransactions, UnifiedTransaction{
+				Date:        p.TglPinjaman,
+				Type:        "Pinjaman",
+				Description: desc,
+				Amount:      amount,
+				Status:      status,
+			})
+		}
+	}
+
+	// Add angsuran transactions
+	for _, a := range riwayatAngsuran {
+		desc := "Angsuran"
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", a.SisaPinjaman)), " ", "")
+		status := a.StatusAngsuran + " - " + a.Status
+		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
+			allTransactions = append(allTransactions, UnifiedTransaction{
+				Date:        a.TglBayar,
+				Type:        "Angsuran",
+				Description: desc,
+				Amount:      amount,
+				Status:      status,
+			})
+		}
+	}
+
+	// Sort by date descending
+	sort.Slice(allTransactions, func(i, j int) bool {
+		return allTransactions[i].Date.After(allTransactions[j].Date)
+	})
+
+	judulHalaman := "Riwayat Transaksi"
+
+	// =========================================================================
+	// KIRIM OBJEK ANGGOTA KE TEMPLATE (sama seperti di ShowHalaman)
+	// =========================================================================
+	c.HTML(http.StatusOK, "anggota_riwayat.html", gin.H{
+		"title":   judulHalaman,
+		"Judul":   judulHalaman,
+		"Riwayat": allTransactions,
+		"Anggota": anggota,
+		"Search":  search,
+	})
 }

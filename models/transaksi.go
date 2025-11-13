@@ -15,6 +15,7 @@ type Simpanan struct {
 type Detail struct {
 	IDDetail       int       `json:"id_detail"`
 	IDAnggota      int       `json:"id_anggota"`
+	NamaAnggota    string    `json:"nama_anggota"`
 	IDSimpanan     int       `json:"id_simpanan"`
 	IDPengelola    int       `json:"id_pengelola"`
 	TglTransaksi   time.Time `json:"tgl_transaksi"`
@@ -27,6 +28,7 @@ type Detail struct {
 type Pinjaman struct {
 	IDPinjaman     int           `json:"id_pinjaman"`
 	IDAnggota      int           `json:"id_anggota"`
+	NamaAnggota    string        `json:"nama_anggota"`
 	IDPengelola    sql.NullInt64 `json:"id_pengelola"` // Bisa NULL
 	TglPinjaman    time.Time     `json:"tgl_pinjaman"`
 	JumlahPinjaman float64       `json:"jumlah_pinjaman"`
@@ -45,4 +47,15 @@ type Angsuran struct {
 	StatusAngsuran string        `json:"status_angsuran"` // (belum_lunas, lunas, terlambat)
 	BuktiAngsuran  []byte        `json:"bukti_angsuran"`  // Untuk data biner
 	Status         string        `json:"status"`          // (valid, invalid)
+	NamaAnggota    string        `json:"nama_anggota"`
+}
+
+// Riwayat merepresentasikan riwayat transaksi gabungan
+type Riwayat struct {
+	ID          int       `json:"id"`
+	Tanggal     time.Time `json:"tanggal"`
+	Jenis       string    `json:"jenis"`
+	Jumlah      float64   `json:"jumlah"`
+	Status      string    `json:"status"`
+	NamaAnggota string    `json:"nama_anggota"`
 }
