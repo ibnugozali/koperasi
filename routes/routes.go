@@ -32,6 +32,7 @@ func SetupRouter() *gin.Engine {
 	router.GET("/register", controllers.ShowRegisterPage)
 	router.POST("/register", controllers.Register)
 	router.GET("/logout", controllers.Logout)
+	router.POST("/logout", controllers.Logout)
 	router.GET("/tentang/:slug", controllers.ShowTentang)
 	router.GET("/pelayanan/:slug", controllers.ShowHalaman)
 	router.GET("/riwayat", func(c *gin.Context) {
