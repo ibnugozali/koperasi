@@ -3,8 +3,6 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
 	"net/http"
 	"sort"
 	"strings"
@@ -12,6 +10,9 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 )
 
 func ShowHalaman(c *gin.Context) {
@@ -146,18 +147,18 @@ func ShowRiwayatPage(c *gin.Context) {
 	// Fetch all riwayat without search filter first
 	riwayatSimpanan, err := repository.GetRiwayatSimpananByAnggotaID(userID.(int), "")
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Error fetching riwayat simpanan")
-		return
+		// Jika gagal ambil riwayat simpanan, tetap tampilkan halaman dengan simpanan kosong
+		riwayatSimpanan = []models.Detail{}
 	}
 	riwayatPinjaman, err := repository.GetRiwayatPinjamanByAnggotaID(userID.(int), "")
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Error fetching riwayat pinjaman")
-		return
+		// Jika gagal ambil riwayat pinjaman, tetap tampilkan halaman dengan pinjaman kosong
+		riwayatPinjaman = []models.Pinjaman{}
 	}
 	riwayatAngsuran, err := repository.GetRiwayatAngsuranByAnggotaID(userID.(int), "")
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Error fetching riwayat angsuran")
-		return
+		// Jika gagal ambil riwayat angsuran, tetap tampilkan halaman dengan angsuran kosong
+		riwayatAngsuran = []models.Angsuran{}
 	}
 
 	// Define a unified transaction struct
@@ -229,7 +230,8 @@ func ShowRiwayatPage(c *gin.Context) {
 	// KIRIM OBJEK ANGGOTA KE TEMPLATE (sama seperti di ShowHalaman)
 	// =========================================================================
 	c.HTML(http.StatusOK, "anggota_riwayat.html", gin.H{
-		"title":   judulHalaman,
+		"Title": judulHalaman,
+
 		"Judul":   judulHalaman,
 		"Riwayat": allTransactions,
 		"Anggota": anggota,
