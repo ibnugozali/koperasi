@@ -45,26 +45,50 @@ document.addEventListener('DOMContentLoaded', function() {
                     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                     const data = imageData.data;
 
-                    // Deteksi background (ambil warna dari sudut kiri atas sebagai background)
-                    const bgColor = {
-                        r: data[0],
-                        g: data[1],
-                        b: data[2]
+                    // Deteksi background dengan algoritma yang lebih baik
+                    // Ambil sampel dari beberapa sudut untuk deteksi background yang lebih akurat
+                    const corners = [
+                        {x: 0, y: 0}, // kiri atas
+                        {x: canvas.width - 1, y: 0}, // kanan atas
+                        {x: 0, y: canvas.height - 1}, // kiri bawah
+                        {x: canvas.width - 1, y: canvas.height - 1} // kanan bawah
+                    ];
+
+                    let bgColors = [];
+                    corners.forEach(corner => {
+                        const index = (corner.y * canvas.width + corner.x) * 4;
+                        bgColors.push({
+                            r: data[index],
+                            g: data[index + 1],
+                            b: data[index + 2]
+                        });
+                    });
+
+                    // Hitung rata-rata warna background
+                    const avgBgColor = {
+                        r: Math.round(bgColors.reduce((sum, c) => sum + c.r, 0) / bgColors.length),
+                        g: Math.round(bgColors.reduce((sum, c) => sum + c.g, 0) / bgColors.length),
+                        b: Math.round(bgColors.reduce((sum, c) => sum + c.b, 0) / bgColors.length)
                     };
 
-                    // Tolerance untuk deteksi background
-                    const tolerance = 30;
+                    // Tolerance untuk deteksi background (lebih ketat)
+                    const tolerance = 20;
 
-                    // Remove background
+                    // Remove background dengan algoritma yang lebih baik
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
 
+                        // Hitung jarak Euclidean dari warna background
+                        const distance = Math.sqrt(
+                            Math.pow(r - avgBgColor.r, 2) +
+                            Math.pow(g - avgBgColor.g, 2) +
+                            Math.pow(b - avgBgColor.b, 2)
+                        );
+
                         // Jika warna mirip dengan background, buat transparan
-                        if (Math.abs(r - bgColor.r) < tolerance &&
-                            Math.abs(g - bgColor.g) < tolerance &&
-                            Math.abs(b - bgColor.b) < tolerance) {
+                        if (distance < tolerance) {
                             data[i + 3] = 0; // Alpha channel = 0 (transparan)
                         }
                     }
@@ -73,8 +97,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     ctx.putImageData(imageData, 0, 0);
 
                     // Set sebagai preview
-                    previewLogo.src = canvas.toDataURL();
+                    previewLogo.src = canvas.toDataURL('image/png'); // Pastikan PNG untuk transparan
                     previewLogo.style.backgroundColor = 'transparent';
+
+                    // Simpan data canvas untuk upload
+                    previewLogo.dataset.canvasData = canvas.toDataURL('image/png');
                 };
                 img.src = e.target.result;
             };
@@ -83,6 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset preview jika tidak ada file
             previewLogo.src = '/static/images/placeholder.png';
             previewLogo.style.backgroundColor = '#f8f9fa';
+            delete previewLogo.dataset.canvasData;
         }
     });
 
@@ -90,18 +118,33 @@ document.addEventListener('DOMContentLoaded', function() {
     uploadForm.addEventListener('submit', function(event) {
         event.preventDefault();
 
-        const formData = new FormData(this);
+        // Cek apakah ada data canvas (gambar yang sudah diproses transparan)
+        const canvasData = previewLogo.dataset.canvasData;
+        if (!canvasData) {
+            alert('Silakan pilih file logo terlebih dahulu.');
+            return;
+        }
 
         // Tampilkan progress bar
         uploadProgress.style.display = 'block';
         uploadProgress.querySelector('.progress-bar').style.width = '0%';
 
+        // Kirim data canvas sebagai JSON
         fetch('/admin/upload-logo', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                logoData: canvasData
+            })
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Response status:', response.status); // Debug log
+            return response.json();
+        })
         .then(data => {
+            console.log('Response data:', data); // Debug log
             if (data.success) {
                 // Update logo saat ini
                 currentLogo.src = data.logoPath;
@@ -109,6 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Reset form
                 logoFileInput.value = '';
+                delete previewLogo.dataset.canvasData;
                 uploadProgress.style.display = 'none';
 
                 // Tampilkan pesan sukses
@@ -116,6 +160,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Update logo di navbar jika ada
                 updateNavbarLogo(data.logoPath);
+
+                // Simpan logo ke localStorage untuk persistensi
+                localStorage.setItem('currentLogo', data.logoPath);
             } else {
                 throw new Error(data.message || 'Gagal upload logo');
             }

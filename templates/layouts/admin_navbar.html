@@ -17,8 +17,8 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="text-center mb-3">
-        <img src="/static/images/placeholder.png" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px;">
-        <h5 class="mt-2">Koperasi Simpan Pinjam</h5>
+        <img id="navbarLogo" src="/static/images/placeholder.png" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;">
+        <h5 class="mt-2">KOPMA</h5>
     </div>
     <a href="/admin/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
      <a href="/admin/edit-logo" class="{{ if eq .ActivePage "edit_logo" }}active{{ end }}"><i class="fa-solid fa-image me-2"></i> Edit Logo</a>
@@ -56,6 +56,15 @@
 <script>
     // Inisialisasi - pastikan submenu yang tidak aktif tertutup, yang aktif tetap terbuka
     document.addEventListener('DOMContentLoaded', function() {
+        // Load logo terbaru dari localStorage jika ada
+        const savedLogo = localStorage.getItem('currentLogo');
+        if (savedLogo) {
+            const navbarLogo = document.getElementById('navbarLogo');
+            if (navbarLogo) {
+                navbarLogo.src = savedLogo;
+            }
+        }
+
         var elemenCollapse = document.querySelectorAll('.collapse');
         elemenCollapse.forEach(function(element) {
             if (!element.classList.contains('show')) {

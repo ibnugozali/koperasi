@@ -1,14 +1,16 @@
 package controllers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"koperasi-simpan-pinjam/config"
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
+	"image"
+	"image/png"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -16,6 +18,9 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"koperasi-simpan-pinjam/config"
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 )
 
 // Menampilkan dashboard admin dengan daftar calon anggota
@@ -615,70 +620,199 @@ func AdminPesan(c *gin.Context) {
 
 // AdminLogo menampilkan halaman edit logo admin
 func AdminLogo(c *gin.Context) {
+	// Cari logo terbaru yang sudah diupload
+	files, err := os.ReadDir("static/images")
+	if err != nil {
+		c.HTML(http.StatusOK, "admin_logo.html", gin.H{
+			"ActivePage": "edit_logo",
+		})
+		return
+	}
+
+	// Cari file logo terbaru (berdasarkan timestamp dalam nama file)
+	var latestLogo string
+	var latestTime int64
+
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), "logo_") && strings.HasSuffix(file.Name(), ".png") {
+			// Ekstrak timestamp dari nama file
+			parts := strings.Split(file.Name(), "_")
+			if len(parts) >= 2 {
+				timestampStr := strings.TrimSuffix(parts[1], ".png")
+				if timestamp, err := strconv.ParseInt(timestampStr, 10, 64); err == nil {
+					if timestamp > latestTime {
+						latestTime = timestamp
+						latestLogo = "/static/images/" + file.Name()
+					}
+				}
+			}
+		}
+	}
+
+	// Jika tidak ada logo yang ditemukan, gunakan placeholder
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	c.HTML(http.StatusOK, "admin_logo.html", gin.H{
-		"ActivePage": "edit_logo",
+		"ActivePage":  "edit_logo",
+		"CurrentLogo": latestLogo,
 	})
 }
 
 // UploadLogo memproses upload logo baru
 func UploadLogo(c *gin.Context) {
-	file, err := c.FormFile("logoFile")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Tidak ada file yang dipilih",
-		})
-		return
-	}
+	// Cek apakah request menggunakan JSON atau FormData
+	contentType := c.GetHeader("Content-Type")
 
-	// Validasi tipe file
-	allowedTypes := []string{"image/jpeg", "image/jpg", "image/png", "image/gif"}
-	fileType := file.Header.Get("Content-Type")
-	isAllowed := false
-	for _, allowedType := range allowedTypes {
-		if fileType == allowedType {
-			isAllowed = true
-			break
+	if strings.Contains(contentType, "application/json") {
+		var request struct {
+			LogoData string `json:"logoData" binding:"required"`
 		}
-	}
 
-	if !isAllowed {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Format file tidak didukung. Gunakan JPG, PNG, atau GIF.",
+		if err := c.ShouldBindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Format data tidak valid",
+			})
+			return
+		}
+
+		logoData := request.LogoData
+		if logoData == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Tidak ada data logo yang diterima",
+			})
+			return
+		}
+
+		// Decode base64 data
+		// Format: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+		parts := strings.Split(logoData, ",")
+		if len(parts) != 2 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Format data logo tidak valid",
+			})
+			return
+		}
+
+		// Decode base64
+		imageData, err := base64.StdEncoding.DecodeString(parts[1])
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Gagal decode data logo",
+			})
+			return
+		}
+
+		// Decode image (coba berbagai format)
+		img, _, err := image.Decode(strings.NewReader(string(imageData)))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Gagal decode gambar",
+			})
+			return
+		}
+
+		// Buat nama file unik
+		newFileName := "logo_" + uuid.New().String() + ".png"
+
+		// Simpan sebagai PNG transparan
+		filePath := "static/images/" + newFileName
+		file, err := os.Create(filePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Gagal membuat file",
+			})
+			return
+		}
+		defer file.Close()
+
+		// Encode sebagai PNG
+		err = png.Encode(file, img)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Gagal menyimpan gambar",
+			})
+			return
+		}
+
+		// Path file yang bisa diakses publik
+		logoPath := "/static/images/" + newFileName
+
+		c.JSON(http.StatusOK, gin.H{
+			"success":  true,
+			"message":  "Logo berhasil diupload",
+			"logoPath": logoPath,
 		})
-		return
-	}
+	} else {
+		// Handle FormData request (fallback untuk file upload langsung)
+		file, err := c.FormFile("logoFile")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Tidak ada file yang dipilih",
+			})
+			return
+		}
 
-	// Validasi ukuran file (2MB)
-	if file.Size > 2*1024*1024 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Ukuran file terlalu besar. Maksimal 2MB.",
+		// Validasi tipe file
+		allowedTypes := []string{"image/jpeg", "image/jpg", "image/png", "image/gif"}
+		fileType := file.Header.Get("Content-Type")
+		isAllowed := false
+		for _, allowedType := range allowedTypes {
+			if fileType == allowedType {
+				isAllowed = true
+				break
+			}
+		}
+
+		if !isAllowed {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Format file tidak didukung. Gunakan JPG, PNG, atau GIF.",
+			})
+			return
+		}
+
+		// Validasi ukuran file (2MB)
+		if file.Size > 2*1024*1024 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Ukuran file terlalu besar. Maksimal 2MB.",
+			})
+			return
+		}
+
+		// Buat nama file unik
+		extension := filepath.Ext(file.Filename)
+		newFileName := "logo_" + uuid.New().String() + extension
+
+		// Simpan file ke folder static/images
+		err = c.SaveUploadedFile(file, "static/images/"+newFileName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Gagal menyimpan file",
+			})
+			return
+		}
+
+		// Path file yang bisa diakses publik
+		logoPath := "/static/images/" + newFileName
+
+		c.JSON(http.StatusOK, gin.H{
+			"success":  true,
+			"message":  "Logo berhasil diupload",
+			"logoPath": logoPath,
 		})
-		return
 	}
-
-	// Buat nama file unik
-	extension := filepath.Ext(file.Filename)
-	newFileName := "logo_" + uuid.New().String() + extension
-
-	// Simpan file ke folder static/images
-	err = c.SaveUploadedFile(file, "static/images/"+newFileName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Gagal menyimpan file",
-		})
-		return
-	}
-
-	// Path file yang bisa diakses publik
-	logoPath := "/static/images/" + newFileName
-
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"message":  "Logo berhasil diupload",
-		"logoPath": logoPath,
-	})
 }
+
+// Handle JSON request (data canvas dari JavaScript)
