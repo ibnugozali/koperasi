@@ -1,0 +1,93 @@
+{{template "admin_layout.html" .}}
+
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-user-plus me-2"></i>Detail Pendaftaran Anggota</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6 class="text-muted mb-3">Informasi Pribadi</h6>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Nama Lengkap</label>
+                                    <p class="form-control-plaintext">{{.Anggota.NamaAnggota}}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Username</label>
+                                    <p class="form-control-plaintext">{{.Anggota.Username}}</p>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">NIK KTP</label>
+                                    <p class="form-control-plaintext">{{.Anggota.NikKTP}}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">No. Telepon</label>
+                                    <p class="form-control-plaintext">{{.Anggota.NoTelepon}}</p>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Tanggal Lahir</label>
+                                    <p class="form-control-plaintext">{{.Anggota.TglLahir}}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Jenis Kelamin</label>
+                                    <p class="form-control-plaintext">{{.Anggota.JenisKelamin}}</p>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Unit Kerja</label>
+                                    <p class="form-control-plaintext">{{.Anggota.StatusAnggota}}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Fakultas</label>
+                                    <p class="form-control-plaintext">{{.Anggota.Fakultas}}</p>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Alamat</label>
+                                <p class="form-control-plaintext">{{.Anggota.Provinsi}}</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Tanggal Daftar</label>
+                                <p class="form-control-plaintext">{{.Anggota.TglGabung.Format "02 January 2006"}}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-muted mb-3">Bukti Transfer</h6>
+                            {{if .Anggota.BuktiTransfer}}
+                                <div class="text-center">
+                                    <img src="/static/uploads/{{.Anggota.BuktiTransfer}}" alt="Bukti Transfer" class="img-fluid rounded shadow-sm" style="max-width: 100%; height: auto;">
+                                    <p class="mt-2"><small class="text-muted">Bukti Transfer Simpanan Pokok</small></p>
+                                </div>
+                            {{else}}
+                                <div class="alert alert-warning text-center">
+                                    <i class="fa-solid fa-exclamation-triangle"></i> Bukti transfer belum diupload.
+                                </div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="/admin/konfirmasi" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-left"></i> Kembali
+                    </a>
+                    <form action="/admin/confirm/{{.Anggota.IDAnggota}}" method="post" class="d-inline ms-2">
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Apakah Anda yakin ingin mengkonfirmasi anggota ini?')">
+                            <i class="fa-solid fa-check"></i> Konfirmasi Anggota
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
