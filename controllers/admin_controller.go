@@ -111,7 +111,11 @@ func ShowEditHalamanForm(c *gin.Context) {
 		konten = map[string]interface{}{}
 	}
 
-	c.HTML(http.StatusOK, "admin_halaman_edit.html", gin.H{
+	// Pilih template berdasarkan slug (ganti - dengan _ untuk nama file)
+	templateSlug := strings.ReplaceAll(slug, "-", "_")
+	templateName := "admin_halaman_edit_" + templateSlug + ".html"
+
+	c.HTML(http.StatusOK, templateName, gin.H{
 		"Halaman": halaman,
 		"Konten":  konten,
 	})
@@ -121,6 +125,46 @@ func ShowEditHalamanForm(c *gin.Context) {
 func UpdateHalaman(c *gin.Context) {
 	slug := c.Param("slug")
 
+	// Check if request is JSON (AJAX) or form data
+	contentType := c.GetHeader("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		// Handle JSON request (AJAX)
+		var request struct {
+			Judul  string `json:"judul"`
+			Konten string `json:"konten"`
+		}
+
+		if err := c.ShouldBindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Data tidak valid",
+			})
+			return
+		}
+
+		halaman := models.Halaman{
+			Slug:   slug,
+			Judul:  request.Judul,
+			Konten: request.Konten,
+		}
+
+		err := repository.UpdateHalaman(halaman)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Gagal memperbarui halaman",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Halaman berhasil diperbarui",
+		})
+		return
+	}
+
+	// Handle form data (fallback for non-AJAX requests)
 	if slug == "dashboard_anggota" {
 		// Handle special case for dashboard_anggota with separate fields
 		teks := c.PostForm("teks")
@@ -158,6 +202,52 @@ func UpdateHalaman(c *gin.Context) {
 		return
 	}
 
+	// Handle halaman edit with JSON konten (like sejarah, visi-misi, struktur)
+	kontenStr := c.PostForm("konten")
+	if kontenStr != "" {
+		// Parse JSON konten
+		var konten map[string]interface{}
+		if err := json.Unmarshal([]byte(kontenStr), &konten); err != nil {
+			c.String(http.StatusBadRequest, "Konten tidak valid")
+			return
+		}
+
+		// Get judul from form
+		judul := c.PostForm("judul")
+		if judul == "" {
+			// Get existing judul if not provided
+			existing, err := repository.GetHalamanBySlug(slug)
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Gagal mengambil data halaman")
+				return
+			}
+			judul = existing.Judul
+		}
+
+		// Convert konten back to JSON string
+		kontenBytes, err := json.Marshal(konten)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal membuat konten")
+			return
+		}
+
+		halaman := models.Halaman{
+			Slug:   slug,
+			Judul:  judul,
+			Konten: string(kontenBytes),
+		}
+
+		err = repository.UpdateHalaman(halaman)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal memperbarui halaman")
+			return
+		}
+
+		// Redirect to admin pengaturan instead of dashboard for consistency
+		c.Redirect(http.StatusFound, "/admin/pengaturan")
+		return
+	}
+
 	var halaman models.Halaman
 	if err := c.ShouldBind(&halaman); err != nil {
 		c.String(http.StatusBadRequest, "Data tidak valid")
@@ -171,7 +261,7 @@ func UpdateHalaman(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "Gagal memperbarui halaman")
 		return
 	}
-	c.Redirect(http.StatusFound, "/admin/halaman")
+	c.Redirect(http.StatusFound, "/admin/pengaturan")
 }
 
 func UploadFile(c *gin.Context) {

@@ -73,18 +73,60 @@ func ShowTentang(c *gin.Context) {
 
 	switch slug {
 	case "sejarah":
+		// Ambil data dari database
+		halaman, err := repository.GetHalamanBySlug(slug)
+		if err != nil {
+			c.String(http.StatusNotFound, "Halaman tidak ditemukan")
+			return
+		}
+
+		// Parse konten JSON
+		var konten map[string]interface{}
+		if err := json.Unmarshal([]byte(halaman.Konten), &konten); err != nil {
+			konten = map[string]interface{}{}
+		}
+
 		c.HTML(http.StatusOK, "sejarah.html", gin.H{
-			"Judul":   "Sejarah Koperasi",
+			"Judul":   halaman.Judul,
+			"Konten":  konten,
 			"Anggota": anggota,
 		})
 	case "visi-misi":
+		// Ambil data dari database
+		halaman, err := repository.GetHalamanBySlug(slug)
+		if err != nil {
+			c.String(http.StatusNotFound, "Halaman tidak ditemukan")
+			return
+		}
+
+		// Parse konten JSON
+		var konten map[string]interface{}
+		if err := json.Unmarshal([]byte(halaman.Konten), &konten); err != nil {
+			konten = map[string]interface{}{}
+		}
+
 		c.HTML(http.StatusOK, "visi_misi.html", gin.H{
-			"Judul":   "Visi & Misi",
+			"Judul":   halaman.Judul,
+			"Konten":  konten,
 			"Anggota": anggota,
 		})
 	case "struktur":
+		// Ambil data dari database
+		halaman, err := repository.GetHalamanBySlug(slug)
+		if err != nil {
+			c.String(http.StatusNotFound, "Halaman tidak ditemukan")
+			return
+		}
+
+		// Parse konten JSON
+		var konten map[string]interface{}
+		if err := json.Unmarshal([]byte(halaman.Konten), &konten); err != nil {
+			konten = map[string]interface{}{}
+		}
+
 		c.HTML(http.StatusOK, "struktur.html", gin.H{
-			"Judul":   "Struktur Organisasi",
+			"Judul":   halaman.Judul,
+			"Konten":  konten,
 			"Anggota": anggota,
 		})
 	default:

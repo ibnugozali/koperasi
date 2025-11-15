@@ -314,20 +314,64 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
+	// Ambil data anggota untuk error handling
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
 	var pinjaman models.Pinjaman
 	if err := c.ShouldBind(&pinjaman); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Data tidak valid. Pastikan semua field diisi dengan benar.",
+		})
+		return
+	}
+
+	// Validasi minimal pinjaman
+	if pinjaman.JumlahPinjaman < 1000000 {
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Jumlah pinjaman minimal Rp 1.000.000.",
+		})
+		return
+	}
+
+	// Validasi jangka waktu
+	if pinjaman.JangkaWaktu < 6 || pinjaman.JangkaWaktu > 36 {
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Jangka waktu harus antara 6-36 bulan.",
+		})
+		return
+	}
+
+	// Validasi bunga
+	if pinjaman.Bunga < 0 || pinjaman.Bunga > 20 {
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Bunga harus antara 0-20%.",
+		})
 		return
 	}
 
 	pinjaman.IDAnggota = userID
 	pinjaman.Status = "proses" // Status awal pengajuan
 
-	err := repository.CreatePinjaman(pinjaman)
+	err = repository.CreatePinjaman(pinjaman)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengajukan pinjaman"})
+		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Gagal mengajukan pinjaman. Silakan coba lagi.",
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Pengajuan pinjaman berhasil dikirim"})
+	// Berhasil, redirect ke dashboard dengan pesan sukses
+	c.HTML(http.StatusOK, "anggota_ajukan_pinjaman.html", gin.H{
+		"Anggota": anggota,
+		"Success": "Pengajuan pinjaman berhasil dikirim. Silakan tunggu konfirmasi dari admin.",
+	})
 }

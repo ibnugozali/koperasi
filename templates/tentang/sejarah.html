@@ -17,6 +17,20 @@
 
        
                     <div class="card-body">
+                        {{ if .Konten.timeline }}
+                        <div class="timeline">
+                            {{ range .Konten.timeline }}
+                            <div class="timeline-item mb-4">
+                                <div class="timeline-marker {{ .marker }}"></div>
+                                <div class="timeline-content">
+                                    <h5 class="timeline-title">{{ .title }}</h5>
+                                    <p class="timeline-text">{{ .text }}</p>
+                                </div>
+                            </div>
+                            {{ end }}
+                        </div>
+                        {{ else }}
+                        <!-- Default timeline jika tidak ada data -->
                         <div class="timeline">
                             <div class="timeline-item mb-4">
                                 <div class="timeline-marker bg-primary"></div>
@@ -47,12 +61,13 @@
                                 </div>
                             </div>
                         </div>
+                        {{ end }}
 
                         <hr class="my-4">
 
                         <div class="mission-statement">
-                            <h4 class="mb-3">Komitmen Kami</h4>
-                            <p class="lead">Koperasi Wirya berkomitmen untuk terus berkembang dan berinovasi dalam memberikan layanan terbaik kepada anggota. Dengan prinsip kebersamaan dan demokrasi, kami berusaha menciptakan dampak positif bagi masyarakat dan ekonomi lokal.</p>
+                            <h4 class="mb-3">{{ if .Konten.komitmen_title }}{{ .Konten.komitmen_title }}{{ else }}Komitmen Kami{{ end }}</h4>
+                            <p class="lead">{{ if .Konten.komitmen_text }}{{ .Konten.komitmen_text }}{{ else }}Koperasi Wirya berkomitmen untuk terus berkembang dan berinovasi dalam memberikan layanan terbaik kepada anggota. Dengan prinsip kebersamaan dan demokrasi, kami berusaha menciptakan dampak positif bagi masyarakat dan ekonomi lokal.{{ end }}</p>
                         </div>
                     </div>
                 </div>

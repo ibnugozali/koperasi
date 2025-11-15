@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Edit Halaman Visi Misi - Koperasi Simpan Pinjam</title>
+
+    <!-- Bootstrap & Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/admin_halaman_edit_visi_misi.css" rel="stylesheet">
+</head>
+<body>
+
+    {{template "admin_navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+
+            <p class="text-muted">Kelola konten halaman <b>{{ .Halaman.Judul }}</b></p>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="fas fa-edit me-2"></i> Edit Halaman: {{ .Halaman.Judul }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="editForm">
+                                <input type="hidden" id="konten" name="konten">
+
+                                <!-- Judul Halaman -->
+                                <div class="mb-3">
+                                    <label for="judul_halaman" class="form-label">Judul Halaman</label>
+                                    <input type="text" class="form-control" id="judul_halaman" name="judul" value="{{ .Halaman.Judul }}">
+                                </div>
+
+                                <!-- VISI MISI -->
+                                <div class="mb-3">
+                                    <label for="visi_visi_misi" class="form-label">Visi</label>
+                                    <textarea class="form-control" id="visi_visi_misi" name="visi" rows="5">{{ .Konten.visi }}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="misi_visi_misi" class="form-label">Misi</label>
+                                    <textarea class="form-control" id="misi_visi_misi" name="misi" rows="5">{{ .Konten.misi }}</textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="gambar1_visi_misi" class="form-label">Gambar Visi</label>
+                                        <input type="file" class="form-control file-upload" id="gambar1_visi_misi" data-target="gambar1">
+                                        <img id="preview_gambar1" src="{{ .Konten.gambar1 }}" class="img-thumbnail mt-2" width="200">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="gambar2_visi_misi" class="form-label">Gambar Misi</label>
+                                        <input type="file" class="form-control file-upload" id="gambar2_visi_misi" data-target="gambar2">
+                                        <img id="preview_gambar2" src="{{ .Konten.gambar2 }}" class="img-thumbnail mt-2" width="200">
+                                    </div>
+                                </div>
+
+                                <div class="text-end mt-4">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Simpan Perubahan
+                                    </button>
+                                    <a href="/admin/halaman" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>Batal
+                                    </a>
+                                </div>
+                            </form>
+
+                            <!-- Progress Bar -->
+                            <div class="progress mt-3" id="uploadProgress" style="display: none;">
+                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{template "admin_footer" .}}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/admin_halaman_edit_visi_misi.js"></script>
+</body>
+</html>
