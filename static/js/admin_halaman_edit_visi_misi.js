@@ -88,12 +88,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const konten = {};
 
             konten.visi = document.getElementById('visi_visi_misi').value;
-            konten.misi = document.getElementById('misi_visi_misi').value;
-            // Handle image uploads for visi-misi
-            const gambar1Img = document.getElementById('preview_gambar1');
-            const gambar2Img = document.getElementById('preview_gambar2');
-            konten.gambar1 = gambar1Img ? gambar1Img.src : '';
-            konten.gambar2 = gambar2Img ? gambar2Img.src : '';
+
+            // Collect misi as array
+            const misiInputs = document.querySelectorAll('.misi-input');
+            konten.misi = [];
+            misiInputs.forEach(input => {
+                if (input.value.trim() !== '') {
+                    konten.misi.push(input.value.trim());
+                }
+            });
 
             // Set hidden konten field
             document.getElementById('konten').value = JSON.stringify(konten);
@@ -128,4 +131,54 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Handle add misi button
+    const addMisiBtn = document.getElementById('add-misi');
+    const misiContainer = document.getElementById('misi-container');
+
+    if (addMisiBtn && misiContainer) {
+        addMisiBtn.addEventListener('click', function() {
+            const misiItem = document.createElement('div');
+            misiItem.className = 'misi-item mb-2';
+            misiItem.innerHTML = `
+                <div class="input-group">
+                    <textarea class="form-control misi-input" name="misi[]" rows="2" placeholder="Masukkan poin misi"></textarea>
+                    <button type="button" class="btn btn-outline-danger remove-misi">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            misiContainer.appendChild(misiItem);
+            updateRemoveButtons();
+        });
+    }
+
+    // Handle remove misi buttons
+    function updateRemoveButtons() {
+        const misiItems = document.querySelectorAll('.misi-item');
+        misiItems.forEach((item, index) => {
+            const removeBtn = item.querySelector('.remove-misi');
+            if (misiItems.length > 1) {
+                removeBtn.style.display = 'block';
+            } else {
+                removeBtn.style.display = 'none';
+            }
+        });
+    }
+
+    // Event delegation for remove buttons
+    if (misiContainer) {
+        misiContainer.addEventListener('click', function(event) {
+            if (event.target.classList.contains('remove-misi') || event.target.closest('.remove-misi')) {
+                const misiItem = event.target.closest('.misi-item');
+                if (misiItem && document.querySelectorAll('.misi-item').length > 1) {
+                    misiItem.remove();
+                    updateRemoveButtons();
+                }
+            }
+        });
+    }
+
+    // Initialize remove buttons on page load
+    updateRemoveButtons();
 });

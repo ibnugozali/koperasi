@@ -42,20 +42,55 @@
                                     <textarea class="form-control" id="visi_visi_misi" name="visi" rows="5">{{ .Konten.visi }}</textarea>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="misi_visi_misi" class="form-label">Misi</label>
-                                    <textarea class="form-control" id="misi_visi_misi" name="misi" rows="5">{{ .Konten.misi }}</textarea>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="gambar1_visi_misi" class="form-label">Gambar Visi</label>
-                                        <input type="file" class="form-control file-upload" id="gambar1_visi_misi" data-target="gambar1">
-                                        <img id="preview_gambar1" src="{{ .Konten.gambar1 }}" class="img-thumbnail mt-2" width="200">
+                                    <label class="form-label">Misi</label>
+                                    <div id="misi-container">
+                                        {{ range $index, $misi := .Konten.misi }}
+                                        <div class="misi-item mb-2">
+                                            <div class="input-group">
+                                                <textarea class="form-control misi-input" name="misi[]" rows="2" placeholder="Masukkan poin misi">{{ $misi }}</textarea>
+                                                <button type="button" class="btn btn-outline-danger remove-misi" {{ if eq $index 0 }}style="display: none;"{{ end }}>
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {{ else }}
+                                        <div class="misi-item mb-2">
+                                            <div class="input-group">
+                                                <textarea class="form-control misi-input" name="misi[]" rows="2" placeholder="Masukkan poin misi">Meningkatkan kesejahteraan anggota melalui usaha yang inovatif dan berkelanjutan</textarea>
+                                                <button type="button" class="btn btn-outline-danger remove-misi" style="display: none;">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="misi-item mb-2">
+                                            <div class="input-group">
+                                                <textarea class="form-control misi-input" name="misi[]" rows="2" placeholder="Masukkan poin misi">Menyediakan layanan simpan pinjam yang mudah, cepat, dan transparan</textarea>
+                                                <button type="button" class="btn btn-outline-danger remove-misi">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="misi-item mb-2">
+                                            <div class="input-group">
+                                                <textarea class="form-control misi-input" name="misi[]" rows="2" placeholder="Masukkan poin misi">Mengembangkan program pendidikan dan pelatihan koperasi</textarea>
+                                                <button type="button" class="btn btn-outline-danger remove-misi">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="misi-item mb-2">
+                                            <div class="input-group">
+                                                <textarea class="form-control misi-input" name="misi[]" rows="2" placeholder="Masukkan poin misi">Membangun kemitraan dengan stakeholder untuk kemajuan bersama</textarea>
+                                                <button type="button" class="btn btn-outline-danger remove-misi">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {{ end }}
                                     </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="gambar2_visi_misi" class="form-label">Gambar Misi</label>
-                                        <input type="file" class="form-control file-upload" id="gambar2_visi_misi" data-target="gambar2">
-                                        <img id="preview_gambar2" src="{{ .Konten.gambar2 }}" class="img-thumbnail mt-2" width="200">
-                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="add-misi">
+                                        <i class="fas fa-plus me-1"></i>Tambah Poin Misi
+                                    </button>
                                 </div>
 
                                 <div class="text-end mt-4">

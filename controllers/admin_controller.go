@@ -111,6 +111,26 @@ func ShowEditHalamanForm(c *gin.Context) {
 		konten = map[string]interface{}{}
 	}
 
+	// Ensure misi is always an array for visi-misi page
+	if slug == "visi-misi" {
+		if misi, exists := konten["misi"]; exists {
+			// If misi exists, ensure it's an array
+			switch v := misi.(type) {
+			case []interface{}:
+				// Already an array, do nothing
+			case string:
+				// If it's a string, convert to array with single element
+				konten["misi"] = []interface{}{v}
+			default:
+				// If it's something else, set to empty array
+				konten["misi"] = []interface{}{}
+			}
+		} else {
+			// If misi doesn't exist, set to empty array
+			konten["misi"] = []interface{}{}
+		}
+	}
+
 	// Pilih template berdasarkan slug (ganti - dengan _ untuk nama file)
 	templateSlug := strings.ReplaceAll(slug, "-", "_")
 	templateName := "admin_halaman_edit_" + templateSlug + ".html"
