@@ -1,4 +1,4 @@
-<!doctype html>
+q<!doctype html>
 <html lang="id">
 <head>
   <meta charset="utf-8"/>
@@ -15,6 +15,15 @@
         <!-- Bagian 1: Data Pribadi Peminjam -->
         <fieldset class="border p-3 mb-4">
             <legend class="w-auto">Bagian 1: Data Pribadi Peminjam (Anggota)</legend>
+            <div class="mb-3">
+                <label for="unit_kerja_pilihan" class="form-label">Unit Kerja</label>
+                <select class="form-select" id="unit_kerja_pilihan" name="unit_kerja_pilihan" required>
+                    <option value="">Pilih Unit Kerja</option>
+                    <option value="01">Dosen</option>
+                    <option value="02">Karyawan/Staff</option>
+                    <option value="03">Mahasiswa</option>
+                </select>
+            </div>
             <div class="mb-3">
                 <label for="nama_lengkap" class="form-label">Nama Lengkap (Sesuai KTP)</label>
                 <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" required>
@@ -109,60 +118,42 @@
             </div>
         </fieldset>
 
-        <!-- Bagian 3: Rincian Penghasilan dan Kemampuan Bayar -->
+        <!-- Bagian 3: Pernyataan dan Kuasa -->
         <fieldset class="border p-3 mb-4">
-            <legend class="w-auto">Bagian 3: Rincian Penghasilan dan Kemampuan Bayar</legend>
-            <div class="mb-3">
-                <label for="gaji_pokok" class="form-label">Gaji Pokok per Bulan (Rp)</label>
-                <input type="number" class="form-control" id="gaji_pokok" name="gaji_pokok" required>
+            <legend class="w-auto">Bagian 3: Pernyataan dan Kuasa</legend>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="cek_semua" name="cek_semua">
+                <label class="form-check-label fw-bold" for="cek_semua">
+                    Centang Semua Pernyataan
+                </label>
             </div>
-            <div class="mb-3">
-                <label for="tunjangan_tetap" class="form-label">Tunjangan Tetap Lainnya (Rp)</label>
-                <input type="number" class="form-control" id="tunjangan_tetap" name="tunjangan_tetap">
-            </div>
-            <div class="mb-3">
-                <label for="total_penghasilan" class="form-label">Total Penghasilan Kotor per Bulan (Rp)</label>
-                <input type="number" class="form-control" id="total_penghasilan" name="total_penghasilan" readonly>
-            </div>
-            <div class="mb-3">
-                <label for="potongan_rutin" class="form-label">Potongan Rutin per Bulan (Rp)</label>
-                <input type="number" class="form-control" id="potongan_rutin" name="potongan_rutin">
-            </div>
-            <div class="mb-3">
-                <label for="penghasilan_bersih" class="form-label">Penghasilan Bersih (Take Home Pay) (Rp)</label>
-                <input type="number" class="form-control" id="penghasilan_bersih" name="penghasilan_bersih" readonly>
-            </div>
-        </fieldset>
-
-        <!-- Bagian 4: Pernyataan dan Kuasa -->
-        <fieldset class="border p-3 mb-4">
-            <legend class="w-auto">Bagian 4: Pernyataan dan Kuasa</legend>
+            <hr class="my-3">
             <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="pernyataan_benar" name="pernyataan_benar" required>
+                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="pernyataan_benar" name="pernyataan_benar" required>
                 <label class="form-check-label" for="pernyataan_benar">
                     Menyatakan bahwa data yang diberikan adalah benar.
                 </label>
             </div>
             <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="sanggup_bayar" name="sanggup_bayar" required>
+                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="sanggup_bayar" name="sanggup_bayar" required>
                 <label class="form-check-label" for="sanggup_bayar">
                     Sanggup untuk membayar angsuran pinjaman setiap bulan sesuai jadwal.
                 </label>
             </div>
             <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="setuju_potong_gaji" name="setuju_potong_gaji" required>
+                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="setuju_potong_gaji" name="setuju_potong_gaji" required>
                 <label class="form-check-label" for="setuju_potong_gaji">
                     Bersedia jika gaji dipotong langsung oleh bendahara gaji universitas untuk pembayaran angsuran.
                 </label>
             </div>
             <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="kuasa_potong_gaji" name="kuasa_potong_gaji" required>
+                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="kuasa_potong_gaji" name="kuasa_potong_gaji" required>
                 <label class="form-check-label" for="kuasa_potong_gaji">
                     Memberikan kuasa kepada pengurus koperasi untuk melakukan pemotongan gaji melalui bendahara.
                 </label>
             </div>
             <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="kuasa_pakai_simpanan" name="kuasa_pakai_simpanan" required>
+                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="kuasa_pakai_simpanan" name="kuasa_pakai_simpanan" required>
                 <label class="form-check-label" for="kuasa_pakai_simpanan">
                     Memberikan kuasa kepada koperasi untuk menggunakan simpanan (pokok dan wajib) untuk melunasi sisa pinjaman jika terjadi gagal bayar atau pemohon berhenti bekerja.
                 </label>
@@ -175,29 +166,30 @@
 </div>
 
 <script>
-    // Calculate total penghasilan and penghasilan bersih dynamically
-    const gajiPokokInput = document.getElementById('gaji_pokok');
-    const tunjanganTetapInput = document.getElementById('tunjangan_tetap');
-    const potonganRutinInput = document.getElementById('potongan_rutin');
-    const totalPenghasilanInput = document.getElementById('total_penghasilan');
-    const penghasilanBersihInput = document.getElementById('penghasilan_bersih');
+// Function to handle "Centang Semua" checkbox
+document.getElementById('cek_semua').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.pernyataan-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
 
-    function calculateIncome() {
-        const gajiPokok = parseFloat(gajiPokokInput.value) || 0;
-        const tunjanganTetap = parseFloat(tunjanganTetapInput.value) || 0;
-        const potonganRutin = parseFloat(potonganRutinInput.value) || 0;
+// Function to update "Centang Semua" when individual checkboxes change
+document.querySelectorAll('.pernyataan-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const allCheckboxes = document.querySelectorAll('.pernyataan-checkbox');
+        const checkedCheckboxes = document.querySelectorAll('.pernyataan-checkbox:checked');
+        const masterCheckbox = document.getElementById('cek_semua');
 
-        const totalPenghasilan = gajiPokok + tunjanganTetap;
-        const penghasilanBersih = totalPenghasilan - potonganRutin;
-
-        totalPenghasilanInput.value = totalPenghasilan.toFixed(2);
-        penghasilanBersihInput.value = penghasilanBersih.toFixed(2);
-    }
-
-    gajiPokokInput.addEventListener('input', calculateIncome);
-    tunjanganTetapInput.addEventListener('input', calculateIncome);
-    potonganRutinInput.addEventListener('input', calculateIncome);
+        if (checkedCheckboxes.length === allCheckboxes.length) {
+            masterCheckbox.checked = true;
+        } else {
+            masterCheckbox.checked = false;
+        }
+    });
+});
 </script>
+
 </div>
 {{ template "footer.html" . }}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
