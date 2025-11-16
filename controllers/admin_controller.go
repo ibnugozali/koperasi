@@ -73,22 +73,41 @@ func AdminKonfirmasi(c *gin.Context) {
 func ConfirmMembership(c *gin.Context) {
 	// Ambil id anggota dari URL
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+
+	// Generate id_anggota based on unit_kerja, fakultas_code, year, and sequential number
+	// First, get the anggota data to get unit_kerja and fakultas_code
+	anggota, err := repository.GetAnggotaByID(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data anggota: " + err.Error()})
 		return
 	}
 
-	// Buat kode anggota baru, contoh: KSPWIR-ID
-	// ID yang digunakan adalah ID dari primary key yang auto-increment,
-	// ini memastikan urutannya benar.
-	newMemberCode := fmt.Sprintf("KSPWIR-%d", id)
+	// Get current year
+	currentYear := time.Now().Year()
 
-	// Panggil repository untuk update status dan kode anggota
-	err = repository.UpdateAnggotaStatusWithCode(id, "aktif", newMemberCode)
+	// Generate sequential number for this unit_kerja + fakultas_code + year
+	// Count existing members with same unit_kerja, fakultas_code, and year
+	db := config.GetDB()
+	var count int
+	query := `SELECT COUNT(*) FROM anggota WHERE unit_kerja = $1 AND fakultas_code = $2 AND tahun = $3 AND status = 'aktif'`
+	err = db.QueryRow(query, anggota.UnitKerja, anggota.FakultasCode, fmt.Sprintf("%d", currentYear)).Scan(&count)
 	if err != nil {
-		// Handle error, mungkin tampilkan pesan kesalahan
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengkonfirmasi anggota"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghitung nomor urut"})
+		return
+	}
+
+	// Sequential number starts from 0001
+	sequentialNumber := count + 1
+	nomorUrut := fmt.Sprintf("%04d", sequentialNumber)
+
+	// Generate id_anggota: unit_kerja + fakultas_code + year + nomor_urut
+	newIDAnggota := anggota.UnitKerja + anggota.FakultasCode + fmt.Sprintf("%d", currentYear) + nomorUrut
+
+	// Update the anggota with new id_anggota, status, tahun, nomor_urut
+	updateQuery := `UPDATE anggota SET id_anggota = $1, status = $2, tahun = $3, nomor_urut = $4 WHERE id_anggota = $5`
+	_, err = db.Exec(updateQuery, newIDAnggota, "aktif", fmt.Sprintf("%d", currentYear), nomorUrut, idStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengkonfirmasi anggota: " + err.Error()})
 		return
 	}
 
@@ -389,13 +408,8 @@ func ListAllAnggota(c *gin.Context) {
 // ViewAnggota menampilkan detail anggota berdasarkan ID
 func ViewAnggota(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID tidak valid"})
-		return
-	}
 
-	anggota, err := repository.GetAnggotaByID(id)
+	anggota, err := repository.GetAnggotaByID(idStr)
 	if err != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
 		return
@@ -409,13 +423,8 @@ func ViewAnggota(c *gin.Context) {
 // EditAnggota menampilkan form edit anggota
 func EditAnggota(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID tidak valid"})
-		return
-	}
 
-	anggota, err := repository.GetAnggotaByID(id)
+	anggota, err := repository.GetAnggotaByID(idStr)
 	if err != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
 		return
@@ -429,11 +438,6 @@ func EditAnggota(c *gin.Context) {
 // UpdateAnggota memproses update data anggota
 func UpdateAnggota(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
-		return
-	}
 
 	var anggota models.Anggota
 	if err := c.ShouldBind(&anggota); err != nil {
@@ -448,9 +452,9 @@ func UpdateAnggota(c *gin.Context) {
 			nama_anggota = $1, username = $2, tgl_lahir = $3, nik_ktp = $4,
 			no_telepon = $5, alamat = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9
 		WHERE id_anggota = $10`
-	_, err = db.Exec(query,
+	_, err := db.Exec(query,
 		anggota.NamaAnggota, anggota.Username, anggota.TglLahir, anggota.NikKTP,
-		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, id)
+		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, idStr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui anggota"})
 		return
@@ -462,13 +466,8 @@ func UpdateAnggota(c *gin.Context) {
 // DeleteAnggota menghapus anggota
 func DeleteAnggota(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
-		return
-	}
 
-	err = repository.DeleteAnggota(id)
+	err := repository.DeleteAnggota(idStr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus anggota"})
 		return

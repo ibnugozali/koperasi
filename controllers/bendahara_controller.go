@@ -3,9 +3,6 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"koperasi-simpan-pinjam/config"
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -15,6 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+
+	"koperasi-simpan-pinjam/config"
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 )
 
 // Menampilkan dashboard bendahara dengan daftar calon anggota
@@ -67,19 +68,14 @@ func BendaharaKonfirmasi(c *gin.Context) {
 func BendaharaConfirmMembership(c *gin.Context) {
 	// Ambil id anggota dari URL
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
-		return
-	}
 
 	// Buat kode anggota baru, contoh: KSPWIR-ID
 	// ID yang digunakan adalah ID dari primary key yang auto-increment,
 	// ini memastikan urutannya benar.
-	newMemberCode := fmt.Sprintf("KSPWIR-%d", id)
+	newMemberCode := fmt.Sprintf("KSPWIR-%s", idStr)
 
 	// Panggil repository untuk update status dan kode anggota
-	err = repository.UpdateAnggotaStatusWithCode(id, "aktif", newMemberCode)
+	err := repository.UpdateAnggotaStatusWithCode(idStr, "aktif", newMemberCode)
 	if err != nil {
 		// Handle error, mungkin tampilkan pesan kesalahan
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengkonfirmasi anggota"})
@@ -221,13 +217,8 @@ func BendaharaListAllAnggota(c *gin.Context) {
 // ViewAnggota menampilkan detail anggota berdasarkan ID
 func BendaharaViewAnggota(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID tidak valid"})
-		return
-	}
 
-	anggota, err := repository.GetAnggotaByID(id)
+	anggota, err := repository.GetAnggotaByID(idStr)
 	if err != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
 		return
@@ -241,13 +232,8 @@ func BendaharaViewAnggota(c *gin.Context) {
 // EditAnggota menampilkan form edit anggota
 func BendaharaEditAnggota(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID tidak valid"})
-		return
-	}
 
-	anggota, err := repository.GetAnggotaByID(id)
+	anggota, err := repository.GetAnggotaByID(idStr)
 	if err != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
 		return
@@ -261,11 +247,6 @@ func BendaharaEditAnggota(c *gin.Context) {
 // UpdateAnggota memproses update data anggota
 func BendaharaUpdateAnggota(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
-		return
-	}
 
 	var anggota models.Anggota
 	if err := c.ShouldBind(&anggota); err != nil {
@@ -280,9 +261,9 @@ func BendaharaUpdateAnggota(c *gin.Context) {
 			nama_anggota = $1, username = $2, tgl_lahir = $3, nik_ktp = $4,
 			no_telepon = $5, alamat = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9
 		WHERE id_anggota = $10`
-	_, err = db.Exec(query,
+	_, err := db.Exec(query,
 		anggota.NamaAnggota, anggota.Username, anggota.TglLahir, anggota.NikKTP,
-		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, id)
+		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, idStr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui anggota"})
 		return
@@ -294,13 +275,8 @@ func BendaharaUpdateAnggota(c *gin.Context) {
 // DeleteAnggota menghapus anggota
 func BendaharaDeleteAnggota(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
-		return
-	}
 
-	err = repository.DeleteAnggota(id)
+	err := repository.DeleteAnggota(idStr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus anggota"})
 		return

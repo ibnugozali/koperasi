@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS halaman CASCADE;
 -- =================================================================
 
 CREATE TABLE anggota (
-    id_anggota SERIAL PRIMARY KEY,
+    id_anggota VARCHAR(13) PRIMARY KEY,
     nama_anggota VARCHAR(50) NOT NULL,
     username VARCHAR(25) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
@@ -24,7 +24,12 @@ CREATE TABLE anggota (
     provinsi VARCHAR(50),
     jenis_kelamin VARCHAR(12),
     status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('aktif', 'nonaktif', 'pending')),
-    kode_anggota VARCHAR(50) UNIQUE
+    status_anggota VARCHAR(50),
+    fakultas VARCHAR(100),
+    unit_kerja VARCHAR(2),
+    fakultas_code VARCHAR(2),
+    tahun VARCHAR(4),
+    nomor_urut VARCHAR(4)
 );
 
 CREATE TABLE pengelola (
@@ -49,7 +54,7 @@ CREATE TABLE simpanan (
 -- jika seorang pengelola dihapus dari sistem.
 CREATE TABLE detail (
     id_detail SERIAL PRIMARY KEY,
-    id_anggota INT REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    id_anggota VARCHAR(13) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
     id_simpanan INT REFERENCES simpanan(id_simpanan) ON DELETE CASCADE,
     id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL, -- Diubah
     tgl_transaksi DATE DEFAULT CURRENT_DATE,
@@ -59,7 +64,7 @@ CREATE TABLE detail (
 
 CREATE TABLE pinjaman (
     id_pinjaman SERIAL PRIMARY KEY,
-    id_anggota INT REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    id_anggota VARCHAR(13) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
     id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL, -- Diubah
     tgl_pinjaman DATE DEFAULT CURRENT_DATE,
     jumlah_pinjaman NUMERIC(15,2),
@@ -94,7 +99,7 @@ CREATE TABLE halaman (
 DROP TABLE IF EXISTS pesan CASCADE;
 CREATE TABLE pesan (
     id_pesan SERIAL PRIMARY KEY,
-    id_anggota INT REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    id_anggota VARCHAR(13) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
     judul VARCHAR(100) NOT NULL,
     isi TEXT NOT NULL,
     tgl_kirim TIMESTAMPTZ DEFAULT NOW(),
@@ -183,10 +188,10 @@ CREATE INDEX idx_detail_anggota ON detail(id_anggota);
 CREATE INDEX idx_detail_simpanan ON detail(id_simpanan);
 CREATE INDEX idx_halaman_slug ON halaman(slug);
 
--- Add new columns for status_anggota, fakultas, and provinsi
-ALTER TABLE anggota ADD COLUMN status_anggota VARCHAR(50);
-ALTER TABLE anggota ADD COLUMN fakultas VARCHAR(100);
-ALTER TABLE anggota ADD COLUMN provinsi VARCHAR(50);
+-- Add new columns for status_anggota and fakultas
+ALTER TABLE anggota ADD COLUMN IF NOT EXISTS status_anggota VARCHAR(50);
+ALTER TABLE anggota ADD COLUMN IF NOT EXISTS fakultas VARCHAR(100);
+-- Note: provinsi column already exists in the CREATE TABLE statement above
 
 -- Mengisi data awal untuk halaman struktur
 INSERT INTO halaman (slug, judul, kategori, konten) VALUES

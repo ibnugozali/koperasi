@@ -14,7 +14,7 @@ type Simpanan struct {
 // Detail merepresentasikan detail transaksi simpanan anggota
 type Detail struct {
 	IDDetail       int       `json:"id_detail"`
-	IDAnggota      int       `json:"id_anggota"`
+	IDAnggota      string    `json:"id_anggota"`
 	NamaAnggota    string    `json:"nama_anggota"`
 	IDSimpanan     int       `json:"id_simpanan"`
 	IDPengelola    int       `json:"id_pengelola"`
@@ -27,7 +27,7 @@ type Detail struct {
 // Pinjaman merepresentasikan data pinjaman anggota
 type Pinjaman struct {
 	IDPinjaman     int           `json:"id_pinjaman"`
-	IDAnggota      int           `json:"id_anggota"`
+	IDAnggota      string        `json:"id_anggota"`
 	NamaAnggota    string        `json:"nama_anggota"`
 	IDPengelola    sql.NullInt64 `json:"id_pengelola"` // Bisa NULL
 	TglPinjaman    time.Time     `json:"tgl_pinjaman"`

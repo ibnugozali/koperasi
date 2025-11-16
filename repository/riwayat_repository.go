@@ -5,7 +5,7 @@ import (
 	"koperasi-simpan-pinjam/models"
 )
 
-func GetRiwayatSimpananByAnggotaID(id int, search string) ([]models.Detail, error) {
+func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, error) {
 	db := config.GetDB()
 	var details []models.Detail
 	query := `
@@ -39,7 +39,7 @@ func GetRiwayatSimpananByAnggotaID(id int, search string) ([]models.Detail, erro
 	return details, nil
 }
 
-func GetRiwayatPinjamanByAnggotaID(id int, search string) ([]models.Pinjaman, error) {
+func GetRiwayatPinjamanByAnggotaID(id string, search string) ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
 	query := `
@@ -68,7 +68,7 @@ func GetRiwayatPinjamanByAnggotaID(id int, search string) ([]models.Pinjaman, er
 	}
 	return pinjamans, nil
 }
-func GetRiwayatAngsuranByAnggotaID(id int, search string) ([]models.Angsuran, error) {
+func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran, error) {
 	db := config.GetDB()
 	var angsurans []models.Angsuran
 	query := `

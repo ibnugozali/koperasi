@@ -15,7 +15,7 @@ import (
 // AnggotaDashboard menampilkan halaman utama untuk anggota.
 func AnggotaDashboard(c *gin.Context) {
 	session := sessions.Default(c)
-	userID, ok := session.Get("user_id").(int)
+	userID, ok := session.Get("user_id").(string)
 	if !ok {
 		// Jika user_id tidak ada di session, redirect ke login
 		c.Redirect(http.StatusFound, "/login")
@@ -72,7 +72,7 @@ func AnggotaDashboard(c *gin.Context) {
 // AnggotaProfil menampilkan halaman profil untuk anggota.
 func AnggotaProfil(c *gin.Context) {
 	session := sessions.Default(c)
-	userID, ok := session.Get("user_id").(int)
+	userID, ok := session.Get("user_id").(string)
 	if !ok {
 		// Jika user_id tidak ada di session, redirect ke login
 		c.Redirect(http.StatusFound, "/login")
@@ -106,7 +106,7 @@ func AnggotaProfil(c *gin.Context) {
 // AnggotaPesan handles the /anggota/pesan route.
 func AnggotaPesan(c *gin.Context) {
 	session := sessions.Default(c)
-	userID, ok := session.Get("user_id").(int)
+	userID, ok := session.Get("user_id").(string)
 	if !ok {
 		// Jika user_id tidak ada di session, redirect ke login
 		c.Redirect(http.StatusFound, "/login")
@@ -139,7 +139,7 @@ func AnggotaPesan(c *gin.Context) {
 // GantiPassword handles the /anggota/ganti-password route.
 func GantiPassword(c *gin.Context) {
 	session := sessions.Default(c)
-	userID, ok := session.Get("user_id").(int)
+	userID, ok := session.Get("user_id").(string)
 	if !ok {
 		// Jika user_id tidak ada di session, redirect ke login
 		c.Redirect(http.StatusFound, "/login")
@@ -164,7 +164,7 @@ func GantiPassword(c *gin.Context) {
 // GantiPasswordPost handles the POST request for changing password and username.
 func GantiPasswordPost(c *gin.Context) {
 	session := sessions.Default(c)
-	userID, ok := session.Get("user_id").(int)
+	userID, ok := session.Get("user_id").(string)
 	if !ok {
 		c.Redirect(http.StatusFound, "/login")
 		return
@@ -256,7 +256,7 @@ func GantiPasswordPost(c *gin.Context) {
 // KeluarKoperasi handles the POST request for exiting the cooperative.
 func KeluarKoperasi(c *gin.Context) {
 	session := sessions.Default(c)
-	userID, ok := session.Get("user_id").(int)
+	userID, ok := session.Get("user_id").(string)
 	if !ok {
 		c.Redirect(http.StatusFound, "/login")
 		return
@@ -288,7 +288,7 @@ func KeluarKoperasi(c *gin.Context) {
 // AjukanPinjaman menampilkan form pengajuan pinjaman
 func AjukanPinjaman(c *gin.Context) {
 	session := sessions.Default(c)
-	userID, ok := session.Get("user_id").(int)
+	userID, ok := session.Get("user_id").(string)
 	if !ok {
 		c.Redirect(http.StatusFound, "/login")
 		return
@@ -308,7 +308,7 @@ func AjukanPinjaman(c *gin.Context) {
 // AjukanPinjamanPost memproses pengajuan pinjaman
 func AjukanPinjamanPost(c *gin.Context) {
 	session := sessions.Default(c)
-	userID, ok := session.Get("user_id").(int)
+	userID, ok := session.Get("user_id").(string)
 	if !ok {
 		c.Redirect(http.StatusFound, "/login")
 		return

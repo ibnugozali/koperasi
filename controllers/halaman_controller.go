@@ -31,7 +31,7 @@ func ShowHalaman(c *gin.Context) {
 	var anggota models.Anggota
 	userID := session.Get("user_id")
 	if userID != nil {
-		anggota, _ = repository.GetAnggotaByID(userID.(int))
+		anggota, _ = repository.GetAnggotaByID(userID.(string))
 	}
 
 	// Decode konten JSON menjadi sebuah map
@@ -68,7 +68,7 @@ func ShowTentang(c *gin.Context) {
 	var anggota models.Anggota
 	userID := session.Get("user_id")
 	if userID != nil {
-		anggota, _ = repository.GetAnggotaByID(userID.(int))
+		anggota, _ = repository.GetAnggotaByID(userID.(string))
 	}
 
 	switch slug {
@@ -141,7 +141,7 @@ func ShowHubungiKami(c *gin.Context) {
 	var anggota models.Anggota
 	userID := session.Get("user_id")
 	if userID != nil {
-		anggota, _ = repository.GetAnggotaByID(userID.(int))
+		anggota, _ = repository.GetAnggotaByID(userID.(string))
 	}
 
 	c.HTML(http.StatusOK, "hubungi_kami.html", gin.H{
@@ -173,7 +173,7 @@ func ShowRiwayatPage(c *gin.Context) {
 
 	// Ambil data lengkap anggota dari repository
 	// Pastikan untuk menangani error jika anggota tidak ditemukan
-	anggota, err := repository.GetAnggotaByID(userID.(int))
+	anggota, err := repository.GetAnggotaByID(userID.(string))
 	if err != nil {
 		// Jika data anggota tidak ditemukan di DB (mungkin sesi aneh)
 		// Sebaiknya redirect ke halaman login dan hapus sesi
@@ -187,17 +187,17 @@ func ShowRiwayatPage(c *gin.Context) {
 	search := c.DefaultQuery("search", "")
 
 	// Fetch all riwayat without search filter first
-	riwayatSimpanan, err := repository.GetRiwayatSimpananByAnggotaID(userID.(int), "")
+	riwayatSimpanan, err := repository.GetRiwayatSimpananByAnggotaID(userID.(string), "")
 	if err != nil {
 		// Jika gagal ambil riwayat simpanan, tetap tampilkan halaman dengan simpanan kosong
 		riwayatSimpanan = []models.Detail{}
 	}
-	riwayatPinjaman, err := repository.GetRiwayatPinjamanByAnggotaID(userID.(int), "")
+	riwayatPinjaman, err := repository.GetRiwayatPinjamanByAnggotaID(userID.(string), "")
 	if err != nil {
 		// Jika gagal ambil riwayat pinjaman, tetap tampilkan halaman dengan pinjaman kosong
 		riwayatPinjaman = []models.Pinjaman{}
 	}
-	riwayatAngsuran, err := repository.GetRiwayatAngsuranByAnggotaID(userID.(int), "")
+	riwayatAngsuran, err := repository.GetRiwayatAngsuranByAnggotaID(userID.(string), "")
 	if err != nil {
 		// Jika gagal ambil riwayat angsuran, tetap tampilkan halaman dengan angsuran kosong
 		riwayatAngsuran = []models.Angsuran{}

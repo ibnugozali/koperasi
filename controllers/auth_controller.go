@@ -37,6 +37,38 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// Map status_anggota to unit_kerja
+	switch newAnggota.StatusAnggota {
+	case "dosen":
+		newAnggota.UnitKerja = "01"
+	case "karyawan":
+		newAnggota.UnitKerja = "02"
+	case "mahasiswa":
+		newAnggota.UnitKerja = "03"
+	}
+
+	// Map fakultas to fakultas_code
+	switch newAnggota.Fakultas {
+	case "Fakultas Agama Islam (FAI)":
+		newAnggota.FakultasCode = "01"
+	case "Fakultas Ekonomi (FE)":
+		newAnggota.FakultasCode = "02"
+	case "Fakultas Hukum (FH)":
+		newAnggota.FakultasCode = "03"
+	case "Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)":
+		newAnggota.FakultasCode = "04"
+	case "Fakultas Keguruan dan Ilmu Pendidikan (FKIP)":
+		newAnggota.FakultasCode = "05"
+	case "Fakultas Kesehatan Masyarakat (FKM)":
+		newAnggota.FakultasCode = "06"
+	case "Fakultas Pertanian (FAPERTA)":
+		newAnggota.FakultasCode = "07"
+	case "Fakultas Teknik (FT)":
+		newAnggota.FakultasCode = "08"
+	case "Rektorat / Yayasan / Staff":
+		newAnggota.FakultasCode = "09"
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newAnggota.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Gagal memproses pendaftaran"})
@@ -45,9 +77,13 @@ func Register(c *gin.Context) {
 	newAnggota.Password = string(hashedPassword)
 	newAnggota.TglGabung, _ = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 
+	// Generate temporary id_anggota for registration (will be updated during confirmation)
+	// Use a temporary ID that will be replaced when admin confirms
+	newAnggota.IDAnggota = "TEMP" + newAnggota.Username // Temporary ID
+
 	err = repository.CreateAnggota(newAnggota)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Username atau NIK mungkin sudah terdaftar"})
+		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Gagal menyimpan data: " + err.Error()})
 		return
 	}
 

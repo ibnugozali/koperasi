@@ -2,8 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
 	"net/http"
 	"strconv"
 
@@ -11,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 )
 
 // Menampilkan dashboard ketua dengan daftar calon anggota
@@ -89,13 +89,8 @@ func KetuaListAllAnggota(c *gin.Context) {
 // ViewAnggota menampilkan detail anggota berdasarkan ID
 func KetuaViewAnggota(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID tidak valid"})
-		return
-	}
 
-	anggota, err := repository.GetAnggotaByID(id)
+	anggota, err := repository.GetAnggotaByID(idStr)
 	if err != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
 		return

@@ -6,7 +6,7 @@ import (
 )
 
 // GetPesanByAnggotaID mengambil semua pesan untuk anggota tertentu
-func GetPesanByAnggotaID(idAnggota int) ([]models.Pesan, error) {
+func GetPesanByAnggotaID(idAnggota string) ([]models.Pesan, error) {
 	db := config.GetDB()
 	var pesans []models.Pesan
 
