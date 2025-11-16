@@ -103,10 +103,46 @@
                     <hr>
                     <div class="row">
                         <div class="col-sm-3">
-                            <strong>Kode Anggota:</strong>
+                            <strong>ID Anggota:</strong>
                         </div>
                         <div class="col-sm-9">
-                            {{ .Anggota.KodeAnggota.String }}
+                            {{ .Anggota.IDAnggota }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-3">
+                            <strong>Unit Kerja:</strong>
+                        </div>
+                        <div class="col-sm-9">
+                            {{ if eq .Anggota.UnitKerja "01" }}Dosen{{ else if eq .Anggota.UnitKerja "02" }}Karyawan/Staff{{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa{{ else }}-{{ end }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-3">
+                            <strong>Fakultas:</strong>
+                        </div>
+                        <div class="col-sm-9">
+                            {{ if eq .Anggota.FakultasCode "01" }}Fakultas Agama Islam (FAI){{ else if eq .Anggota.FakultasCode "02" }}Fakultas Ekonomi (FE){{ else if eq .Anggota.FakultasCode "03" }}Fakultas Hukum (FH){{ else if eq .Anggota.FakultasCode "04" }}Fakultas Ilmu Sosial dan Ilmu Politik (FISIP){{ else if eq .Anggota.FakultasCode "05" }}Fakultas Keguruan dan Ilmu Pendidikan (FKIP){{ else if eq .Anggota.FakultasCode "06" }}Fakultas Kesehatan Masyarakat (FKM){{ else if eq .Anggota.FakultasCode "07" }}Fakultas Pertanian (FAPERTA){{ else if eq .Anggota.FakultasCode "08" }}Fakultas Teknik (FT){{ else if eq .Anggota.FakultasCode "09" }}Rektorat / Yayasan / Staff{{ else }}-{{ end }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-3">
+                            <strong>Tahun Gabung:</strong>
+                        </div>
+                        <div class="col-sm-9">
+                            {{ if .Anggota.Tahun }}{{ .Anggota.Tahun }}{{ else }}-{{ end }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-3">
+                            <strong>Nomor Urut:</strong>
+                        </div>
+                        <div class="col-sm-9">
+                            {{ if .Anggota.NomorUrut }}{{ .Anggota.NomorUrut }}{{ else }}-{{ end }}
                         </div>
                     </div>
                 </div>
