@@ -200,6 +200,45 @@ INSERT INTO halaman (slug, judul, kategori, konten) VALUES
     "deskripsi": "Koperasi Wirya memiliki struktur organisasi yang terdiri dari berbagai jabatan penting yang saling mendukung untuk mencapai tujuan bersama. Struktur ini memastikan pengelolaan yang efektif dan demokratis sesuai dengan prinsip-prinsip koperasi.",
     "gambar_struktur": "/static/images/placeholder.png"
   }'
+),
+('sejarah', 'Sejarah Koperasi', 'tentang',
+  '{
+    "timeline": [
+      {
+        "title": "Pendirian Koperasi (2020)",
+        "marker": "bg-primary",
+        "text": "Koperasi Wirya didirikan pada tahun 2020 oleh sekelompok masyarakat yang peduli dengan pemberdayaan ekonomi lokal. Dengan semangat kebersamaan, koperasi ini mulai beroperasi dengan modal awal dari kontribusi anggota pendiri."
+      },
+      {
+        "title": "Pengembangan Layanan (2021)",
+        "marker": "bg-success",
+        "text": "Pada tahun 2021, koperasi mulai mengembangkan layanan simpan pinjam yang lebih komprehensif. Sistem manajemen yang lebih baik diimplementasikan untuk meningkatkan efisiensi dan transparansi operasional."
+      },
+      {
+        "title": "Digitalisasi Layanan (2022)",
+        "marker": "bg-warning",
+        "text": "Tahun 2022 menandai era digitalisasi koperasi. Platform online dikembangkan untuk memudahkan anggota mengakses layanan dari mana saja, kapan saja, melalui aplikasi web modern."
+      },
+      {
+        "title": "Pertumbuhan dan Inovasi (2023-Sekarang)",
+        "marker": "bg-info",
+        "text": "Saat ini, Koperasi Wirya terus berkembang dengan fokus pada inovasi layanan dan peningkatan kesejahteraan anggota. Kami berkomitmen untuk menjadi mitra terpercaya dalam membangun ekonomi bersama."
+      }
+    ],
+    "komitmen_title": "Komitmen Kami",
+    "komitmen_text": "Koperasi Wirya berkomitmen untuk terus berkembang dan berinovasi dalam memberikan layanan terbaik kepada anggota. Dengan prinsip kebersamaan dan demokrasi, kami berusaha menciptakan dampak positif bagi masyarakat dan ekonomi lokal."
+  }'
+),
+('visi-misi', 'Visi dan Misi', 'tentang',
+  '{
+    "visi": "Menjadi koperasi simpan pinjam terdepan yang mampu mendorong pemberdayaan ekonomi anggota dan masyarakat melalui layanan keuangan yang inovatif, transparan, dan berkelanjutan.",
+    "misi": [
+      "Meningkatkan kesejahteraan anggota melalui usaha yang inovatif dan berkelanjutan",
+      "Menyediakan layanan simpan pinjam yang mudah, cepat, dan transparan",
+      "Mengembangkan program pendidikan dan pelatihan koperasi",
+      "Membangun kemitraan dengan stakeholder untuk kemajuan bersama"
+    ]
+  }'
 );
 
 -- Update sejarah content
