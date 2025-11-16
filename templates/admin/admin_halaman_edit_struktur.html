@@ -42,9 +42,9 @@
                                     <textarea class="form-control" id="deskripsi_struktur" name="deskripsi" rows="4">{{ .Konten.deskripsi }}</textarea>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="gambar_struktur_struktur" class="form-label">Gambar Struktur Organisasi</label>
-                                    <input type="file" class="form-control file-upload" id="gambar_struktur_struktur" data-target="gambar_struktur">
-                                    <img id="preview_gambar_struktur" src="{{ .Konten.gambar_struktur }}" class="img-fluid img-thumbnail mt-2" width="300">
+                                    <label for="gambar_struktur" class="form-label">Gambar Struktur Organisasi</label>
+                                    <input type="file" class="form-control file-upload" id="gambar_struktur" data-target="gambar_struktur">
+                                    <img id="preview_gambar_struktur" src="{{if .Konten.gambar_struktur}}{{ .Konten.gambar_struktur }}{{else}}/static/images/placeholder.png{{end}}" class="img-fluid img-thumbnail mt-2" width="300">
                                 </div>
 
                                 <div class="text-end mt-4">

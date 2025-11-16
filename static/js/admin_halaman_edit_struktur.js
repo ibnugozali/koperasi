@@ -80,17 +80,73 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle form submission with file uploads
     if (editForm) {
-        editForm.addEventListener('submit', function(event) {
+        let isSubmitting = false; // Flag to prevent multiple submissions
+
+        editForm.addEventListener('submit', async function(event) {
             event.preventDefault();
+
+            if (isSubmitting) {
+                return; // Prevent multiple submissions
+            }
+
+            isSubmitting = true;
+
+            // Disable submit button
+            const submitBtn = editForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Menyimpan...';
+            }
 
             // Collect text content based on slug
             const slug = 'struktur';
             const konten = {};
 
             konten.deskripsi = document.getElementById('deskripsi_struktur').value;
+
             // Handle image upload for struktur
             const gambarStrukturImg = document.getElementById('preview_gambar_struktur');
-            konten.gambar_struktur = gambarStrukturImg ? gambarStrukturImg.src : '';
+            let gambarPath = '';
+
+            // Check if there's a new image to upload (data URL from file reader)
+            if (gambarStrukturImg && gambarStrukturImg.src && gambarStrukturImg.src.startsWith('data:')) {
+                // Convert data URL to blob and upload
+                try {
+                    const response = await fetch(gambarStrukturImg.src);
+                    const blob = await response.blob();
+
+                    const formData = new FormData();
+                    formData.append('file', blob, 'struktur_' + Date.now() + '.png');
+
+                    const uploadResponse = await fetch('/admin/upload/struktur', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const uploadData = await uploadResponse.json();
+                    if (uploadData.success) {
+                        gambarPath = uploadData.filePath;
+                    } else {
+                        throw new Error('Gagal upload gambar: ' + uploadData.message);
+                    }
+                } catch (uploadError) {
+                    console.error('Upload error:', uploadError);
+                    // Fallback to existing image or placeholder
+                    if (gambarStrukturImg.src && !gambarStrukturImg.src.includes('placeholder')) {
+                        gambarPath = gambarStrukturImg.src;
+                    } else {
+                        gambarPath = '/static/images/placeholder.png';
+                    }
+                }
+            } else if (gambarStrukturImg && gambarStrukturImg.src && !gambarStrukturImg.src.includes('placeholder')) {
+                // Keep existing image if it's not placeholder
+                gambarPath = gambarStrukturImg.src;
+            } else {
+                // Use placeholder if no image
+                gambarPath = '/static/images/placeholder.png';
+            }
+
+            konten.gambar_struktur = gambarPath;
 
             // Set hidden konten field
             document.getElementById('konten').value = JSON.stringify(konten);
@@ -114,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     alert('Halaman berhasil diperbarui!');
                     // Optional: reload page or update UI
-                    // window.location.reload();
+                    window.location.reload();
                 } else {
                     throw new Error(data.message || 'Gagal memperbarui halaman');
                 }
@@ -122,6 +178,14 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error:', error);
                 alert('Gagal memperbarui halaman: ' + error.message);
+            })
+            .finally(() => {
+                // Re-enable submit button
+                isSubmitting = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Simpan Perubahan';
+                }
             });
         });
     }

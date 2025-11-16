@@ -32,9 +32,10 @@
 
     <!-- Konten Website -->
     <a href="#" onclick="toggleSubmenu(this, 'kontenWebsite'); return false;" class="dropdown-toggle"><i class="fa-solid fa-globe me-2"></i> Konten Website</a>
-    <div class="collapse {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "pinjaman") (eq .ActivePage "simpanan") (eq .ActivePage "angsuran") (eq .ActivePage "halaman") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "pinjaman") (eq .ActivePage "simpanan") (eq .ActivePage "angsuran") (eq .ActivePage "halaman") }}style="display: block;"{{ end }}>
+    <div class="collapse {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "pinjaman") (eq .ActivePage "simpanan") (eq .ActivePage "angsuran") (eq .ActivePage "halaman") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "pinjaman") (eq .ActivePage "simpanan") (eq .ActivePage "angsuran") (eq .ActivePage "halaman") }}style="display: block;"{{ end }}>
         <a href="/admin/halaman/edit/sejarah" class="ms-3 {{ if eq .ActivePage "sejarah" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Edit Sejarah</a>
         <a href="/admin/halaman/edit/visi-misi" class="ms-3 {{ if eq .ActivePage "visi_misi" }}active{{ end }}"><i class="fa-solid fa-eye me-2"></i> Edit Visi & Misi</a>
+        <a href="/admin/halaman/edit/struktur" class="ms-3 {{ if eq .ActivePage "struktur" }}active{{ end }}"><i class="fa-solid fa-sitemap me-2"></i> Edit Struktur Organisasi</a>
         <a href="/admin/halaman/edit/pinjaman" class="ms-3 {{ if eq .ActivePage "pinjaman" }}active{{ end }}"><i class="fa-solid fa-money-bill-wave me-2"></i> Edit Pinjaman</a>
         <a href="/admin/halaman/edit/simpanan" class="ms-3 {{ if eq .ActivePage "simpanan" }}active{{ end }}"><i class="fa-solid fa-piggy-bank me-2"></i> Edit Simpanan</a>
         <a href="/admin/halaman/edit/angsuran" class="ms-3 {{ if eq .ActivePage "angsuran" }}active{{ end }}"><i class="fa-solid fa-calendar-check me-2"></i> Edit Angsuran</a>

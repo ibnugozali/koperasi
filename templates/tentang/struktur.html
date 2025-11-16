@@ -15,101 +15,93 @@
       <h1 class="card-title mb-4">{{ .Judul }}</h1>
       <hr>
 
-    <div class="container my-5">
-     
-          
-                    
-                
-                        <div class="text-center mb-4">
-                            <p class="lead">Berikut adalah struktur organisasi Koperasi Wirya periode 2024-2026</p>
-                        </div>
+      <div class="text-center mb-4">
+        <p class="lead">{{ .Konten.deskripsi }}</p>
+      </div>
 
-                        <div class="organizational-chart text-center">
-                            <img src="/static/images/struktur-organisasi.jpg" alt="Struktur Organisasi Koperasi Wirya" class="img-fluid rounded shadow" style="max-width: 100%; height: auto;">
-                        </div>
+      <div class="organizational-chart text-center mb-5">
+        <img src="{{ .Konten.gambar_struktur }}" alt="Struktur Organisasi Koperasi Wirya" class="img-fluid rounded shadow" style="max-width: 100%; height: auto;" onerror="this.src='/static/images/placeholder.png'">
+      </div>
 
-                        <hr class="my-4">
+      <hr class="my-4">
 
-                        <div class="roles-description">
-                            <h4 class="mb-3">Penjelasan Jabatan</h4>
-                            <div class="accordion" id="jabatanAccordion">
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#ketua">
-                                            Ketua
-                                        </button>
-                                    </h2>
-                                    <div id="ketua" class="accordion-collapse collapse show" data-bs-parent="#jabatanAccordion">
-                                        <div class="accordion-body">
-                                            <p>Bertanggung jawab atas kepemimpinan umum koperasi, mewakili koperasi dalam forum eksternal, dan memastikan visi misi koperasi tercapai.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sekretaris">
-                                            Sekretaris
-                                        </button>
-                                    </h2>
-                                    <div id="sekretaris" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
-                                        <div class="accordion-body">
-                                            <p>Mengurus semua dokumentasi, administrasi, dan komunikasi koperasi baik internal maupun eksternal.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#bendahara">
-                                            Bendahara
-                                        </button>
-                                    </h2>
-                                    <div id="bendahara" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
-                                        <div class="accordion-body">
-                                            <p>Mengurus semua aspek keuangan koperasi, termasuk pembukuan, laporan keuangan, dan pengelolaan dana.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pengawas">
-                                            Pengawas
-                                        </button>
-                                    </h2>
-                                    <div id="pengawas" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
-                                        <div class="accordion-body">
-                                            <p>Mengawasi kegiatan operasional koperasi, memastikan kepatuhan terhadap peraturan, dan memberikan nasihat strategis.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#manager">
-                                            Manager
-                                        </button>
-                                    </h2>
-                                    <div id="manager" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
-                                        <div class="accordion-body">
-                                            <p>Mengkoordinasikan operasional sehari-hari, mengelola staff, dan memastikan layanan kepada anggota berjalan lancar.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#staff">
-                                            Staff
-                                        </button>
-                                    </h2>
-                                    <div id="staff" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
-                                        <div class="accordion-body">
-                                            <p>Melayani kebutuhan anggota, mengurus administrasi transaksi, dan memberikan dukungan operasional.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+      <div class="roles-description">
+        <h4 class="mb-3">Penjelasan Jabatan</h4>
+        <div class="accordion" id="jabatanAccordion">
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#ketua">
+                Ketua
+              </button>
+            </h2>
+            <div id="ketua" class="accordion-collapse collapse show" data-bs-parent="#jabatanAccordion">
+              <div class="accordion-body">
+                <p>Bertanggung jawab atas kepemimpinan umum koperasi, mewakili koperasi dalam forum eksternal, dan memastikan visi misi koperasi tercapai.</p>
+              </div>
             </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sekretaris">
+                Sekretaris
+              </button>
+            </h2>
+            <div id="sekretaris" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
+              <div class="accordion-body">
+                <p>Mengurus semua dokumentasi, administrasi, dan komunikasi koperasi baik internal maupun eksternal.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#bendahara">
+                Bendahara
+              </button>
+            </h2>
+            <div id="bendahara" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
+              <div class="accordion-body">
+                <p>Mengurus semua aspek keuangan koperasi, termasuk pembukuan, laporan keuangan, dan pengelolaan dana.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pengawas">
+                Pengawas
+              </button>
+            </h2>
+            <div id="pengawas" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
+              <div class="accordion-body">
+                <p>Mengawasi kegiatan operasional koperasi, memastikan kepatuhan terhadap peraturan, dan memberikan nasihat strategis.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#manager">
+                Manager
+              </button>
+            </h2>
+            <div id="manager" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
+              <div class="accordion-body">
+                <p>Mengkoordinasikan operasional sehari-hari, mengelola staff, dan memastikan layanan kepada anggota berjalan lancar.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#staff">
+                Staff
+              </button>
+            </h2>
+            <div id="staff" class="accordion-collapse collapse" data-bs-parent="#jabatanAccordion">
+              <div class="accordion-body">
+                <p>Melayani kebutuhan anggota, mengurus administrasi transaksi, dan memberikan dukungan operasional.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       
     </div>
 {{ template "footer.html" . }}

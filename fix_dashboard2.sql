@@ -1,0 +1,1 @@
+UPDATE halaman SET konten = '{"welcome":"Selamat Datang di Koperasi Wirya","slogan":"Dari Anggota, Oleh Anggota, dan Untuk Anggota","teks":"Selamat datang di dashboard anggota.","gambar":"/static/images/placeholder.png"}' WHERE slug = 'dashboard_anggota';

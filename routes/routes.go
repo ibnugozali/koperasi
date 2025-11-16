@@ -1,14 +1,14 @@
 package routes
 
 import (
-	"koperasi-simpan-pinjam/controllers"
-	"koperasi-simpan-pinjam/middleware"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 
+	"koperasi-simpan-pinjam/controllers"
+	"koperasi-simpan-pinjam/middleware"
 )
 
 func SetupRouter() *gin.Engine {
@@ -68,6 +68,7 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/halaman/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/halaman/update/:slug", controllers.UpdateHalaman)
 		adminRoutes.POST("/upload", controllers.UploadFile)
+		adminRoutes.POST("/upload/struktur", controllers.UploadStruktur)
 		adminRoutes.GET("/transaksi", controllers.AdminTransaksi)
 		adminRoutes.POST("/transaksi/simpanan", controllers.CatatSimpanan)
 		adminRoutes.POST("/transaksi/pinjaman", controllers.CatatPinjaman)

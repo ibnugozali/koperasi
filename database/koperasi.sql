@@ -188,6 +188,15 @@ ALTER TABLE anggota ADD COLUMN status_anggota VARCHAR(50);
 ALTER TABLE anggota ADD COLUMN fakultas VARCHAR(100);
 ALTER TABLE anggota ADD COLUMN provinsi VARCHAR(50);
 
+-- Mengisi data awal untuk halaman struktur
+INSERT INTO halaman (slug, judul, kategori, konten) VALUES
+('struktur', 'Struktur Organisasi', 'tentang',
+  '{
+    "deskripsi": "Koperasi Wirya memiliki struktur organisasi yang terdiri dari berbagai jabatan penting yang saling mendukung untuk mencapai tujuan bersama. Struktur ini memastikan pengelolaan yang efektif dan demokratis sesuai dengan prinsip-prinsip koperasi.",
+    "gambar_struktur": "/static/images/placeholder.png"
+  }'
+);
+
 -- Update sejarah content
 UPDATE halaman SET konten = '{
   "teks": "Koperasi adalah bentuk organisasi ekonomi yang didirikan oleh masyarakat untuk memenuhi kebutuhan bersama. Gerakan koperasi modern dimulai di Eropa pada abad ke-19, dipelopori oleh tokoh-tokoh seperti Robert Owen di Inggris dan Charles Fourier di Prancis. Mereka melihat koperasi sebagai alternatif terhadap kapitalisme yang eksploitatif.\n\nDi Indonesia, perkembangan koperasi dimulai pada masa kolonial Belanda. Pada tahun 1896, Raden Aria Wiriatmadja mendirikan Koperasi Kredit pertama di Purwokerto, Jawa Tengah. Gerakan ini semakin berkembang setelah Indonesia merdeka, dengan dukungan pemerintah untuk membangun ekonomi rakyat.\n\nPada tahun 1967, pemerintah mengeluarkan Undang-Undang No. 12 Tahun 1967 tentang Pokok-Pokok Perkoperasian. Undang-undang ini kemudian diganti dengan Undang-Undang No. 25 Tahun 1992 tentang Perkoperasian, yang menjadi dasar hukum koperasi di Indonesia hingga saat ini.\n\nKoperasi di Indonesia berperan penting dalam berbagai sektor, termasuk simpan pinjam, pertanian, konsumsi, dan produksi. Prinsip-prinsip koperasi seperti keanggotaan sukarela, pengelolaan demokratis, dan pembagian hasil secara adil menjadi landasan operasional koperasi.",
