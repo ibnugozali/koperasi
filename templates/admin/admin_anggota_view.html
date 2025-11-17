@@ -1,300 +1,258 @@
-{{ template "admin_layout.html" . }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Detail Anggota - Koperasi Simpan Pinjam</title>
 
-{{ define "content" }}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Profil Saya</h5>
+    <!-- Bootstrap & Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/admin_layout.css" rel="stylesheet">
+</head>
+<body>
+
+    {{template "admin_navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container mt-4">
+            <div class="row">
+                <div class="col-md-8 mx-auto">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Profil Saya</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Nama Anggota:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ .Anggota.NamaAnggota }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Username:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ .Anggota.Username }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Password:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    <span id="password-text">{{ .Anggota.Password }}</span>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Tanggal Lahir:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ .Anggota.TglLahir }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>NIK KTP:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ .Anggota.NikKTP }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>No Telepon:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ .Anggota.NoTelepon }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Alamat:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ .Anggota.Alamat }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Jenis Kelamin:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ .Anggota.JenisKelamin }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Status:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ .Anggota.Status }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>ID Anggota:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ .Anggota.IDAnggota }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Unit Kerja:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ if eq .Anggota.UnitKerja "01" }}Dosen{{ else if eq .Anggota.UnitKerja "02" }}Karyawan/Staff{{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa{{ else }}-{{ end }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Fakultas:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ if eq .Anggota.FakultasCode "01" }}Fakultas Agama Islam (FAI){{ else if eq .Anggota.FakultasCode "02" }}Fakultas Ekonomi (FE){{ else if eq .Anggota.FakultasCode "03" }}Fakultas Hukum (FH){{ else if eq .Anggota.FakultasCode "04" }}Fakultas Ilmu Sosial dan Ilmu Politik (FISIP){{ else if eq .Anggota.FakultasCode "05" }}Fakultas Keguruan dan Ilmu Pendidikan (FKIP){{ else if eq .Anggota.FakultasCode "06" }}Fakultas Kesehatan Masyarakat (FKM){{ else if eq .Anggota.FakultasCode "07" }}Fakultas Pertanian (FAPERTA){{ else if eq .Anggota.FakultasCode "08" }}Fakultas Teknik (FT){{ else if eq .Anggota.FakultasCode "09" }}Rektorat / Yayasan / Staff{{ else }}-{{ end }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Tahun Gabung:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ if .Anggota.Tahun }}{{ .Anggota.Tahun }}{{ else }}-{{ end }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3">
+                                    <strong>Nomor Urut:</strong>
+                                </div>
+                                <div class="col-sm-9">
+                                    {{ if .Anggota.NomorUrut }}{{ .Anggota.NomorUrut }}{{ else }}-{{ end }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Nama Anggota:</strong>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Saldo</h5>
                         </div>
-                        <div class="col-sm-9">
-                            {{ .Anggota.NamaAnggota }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Username:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ .Anggota.Username }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Password:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            <span id="password-text">{{ .Anggota.Password }}</span>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Tanggal Lahir:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ .Anggota.TglLahir }}
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <strong>Total Simpanan:</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    Rp {{ printf "%.0f" .TotalSimpanan }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <strong>Total Pinjaman:</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    Rp {{ printf "%.0f" .TotalPinjaman }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <strong>Saldo Bersih:</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    Rp {{ printf "%.0f" .SaldoBersih }}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>NIK KTP:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ .Anggota.NikKTP }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>No Telepon:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ .Anggota.NoTelepon }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Alamat:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ .Anggota.Alamat }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Jenis Kelamin:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ .Anggota.JenisKelamin }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Status:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ .Anggota.Status }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>ID Anggota:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ .Anggota.IDAnggota }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Unit Kerja:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ if eq .Anggota.UnitKerja "01" }}Dosen{{ else if eq .Anggota.UnitKerja "02" }}Karyawan/Staff{{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa{{ else }}-{{ end }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Fakultas:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ if eq .Anggota.FakultasCode "01" }}Fakultas Agama Islam (FAI){{ else if eq .Anggota.FakultasCode "02" }}Fakultas Ekonomi (FE){{ else if eq .Anggota.FakultasCode "03" }}Fakultas Hukum (FH){{ else if eq .Anggota.FakultasCode "04" }}Fakultas Ilmu Sosial dan Ilmu Politik (FISIP){{ else if eq .Anggota.FakultasCode "05" }}Fakultas Keguruan dan Ilmu Pendidikan (FKIP){{ else if eq .Anggota.FakultasCode "06" }}Fakultas Kesehatan Masyarakat (FKM){{ else if eq .Anggota.FakultasCode "07" }}Fakultas Pertanian (FAPERTA){{ else if eq .Anggota.FakultasCode "08" }}Fakultas Teknik (FT){{ else if eq .Anggota.FakultasCode "09" }}Rektorat / Yayasan / Staff{{ else }}-{{ end }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Tahun Gabung:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ if .Anggota.Tahun }}{{ .Anggota.Tahun }}{{ else }}-{{ end }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-3">
-                            <strong>Nomor Urut:</strong>
-                        </div>
-                        <div class="col-sm-9">
-                            {{ if .Anggota.NomorUrut }}{{ .Anggota.NomorUrut }}{{ else }}-{{ end }}
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h6 class="card-title">Aksi</h6>
+                            <a href="/admin/anggota/edit/{{.Anggota.IDAnggota}}" class="btn btn-warning w-100 mb-2">Edit Anggota</a>
+                            <button type="button" class="btn btn-info w-100 mb-2" data-bs-toggle="modal" data-bs-target="#editPasswordModal">Edit Username dan Password</button>
+                            <a href="/admin/anggota" class="btn btn-secondary w-100">Kembali ke Daftar Anggota</a>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Saldo</h5>
+    </div>
+
+    {{template "admin_footer" .}}
+
+    <!-- Modal Edit Password dan Username -->
+    <div class="modal fade" id="editPasswordModal" tabindex="-1" aria-labelledby="editPasswordModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editPasswordModalLabel">Edit Username dan Password Anggota</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form method="POST" action="/admin/update-anggota-password/{{.Anggota.IDAnggota}}">
+              <div class="mb-3">
+                <label for="old_password" class="form-label">Password Lama</label>
+                <div class="input-group">
+                  <input type="password" class="form-control" id="old_password" name="old_password" required>
+                  <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('old_password')">
+                    <i class="bi bi-eye" id="old_password_icon"></i>
+                  </button>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <strong>Total Simpanan:</strong>
-                        </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .TotalSimpanan }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <strong>Total Pinjaman:</strong>
-                        </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .TotalPinjaman }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <strong>Saldo Bersih:</strong>
-                        </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .SaldoBersih }}
-                        </div>
-                    </div>
+              </div>
+              <div class="mb-3">
+                <label for="new_username" class="form-label">Username Baru (Opsional)</label>
+                <input type="text" class="form-control" id="new_username" name="new_username" value="{{ .Anggota.Username }}">
+              </div>
+              <div class="mb-3">
+                <label for="new_password" class="form-label">Password Baru</label>
+                <div class="input-group">
+                  <input type="password" class="form-control" id="new_password" name="new_password" required>
+                  <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('new_password')">
+                    <i class="bi bi-eye" id="new_password_icon"></i>
+                  </button>
                 </div>
-            </div>
-            <div class="card mt-3">
-                <div class="card-body">
-                    <h6 class="card-title">Aksi</h6>
-                    <a href="/admin/anggota/edit/{{.Anggota.IDAnggota}}" class="btn btn-warning w-100 mb-2">Edit Anggota</a>
-                    <button type="button" class="btn btn-info w-100 mb-2" data-bs-toggle="modal" data-bs-target="#editPasswordModal">Edit Username dan Password</button>
-                    <a href="/admin/anggota" class="btn btn-secondary w-100">Kembali ke Daftar Anggota</a>
+              </div>
+              <div class="mb-3">
+                <label for="confirm_password" class="form-label">Konfirmasi Password Baru</label>
+                <div class="input-group">
+                  <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                  <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password')">
+                    <i class="bi bi-eye" id="confirm_password_icon"></i>
+                  </button>
                 </div>
-            </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+          </div>
         </div>
-    </div>
-</div>
-<!-- Modal Edit Password dan Username -->
-<div class="modal fade" id="editPasswordModal" tabindex="-1" aria-labelledby="editPasswordModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="editPasswordModalLabel">Edit Username dan Password Anggota</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form method="POST" action="/admin/update-anggota-password/{{.Anggota.IDAnggota}}">
-          <div class="mb-3">
-            <label for="old_password" class="form-label">Password Lama</label>
-            <div class="input-group">
-              <input type="password" class="form-control" id="old_password" name="old_password" required>
-              <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('old_password')">
-                <i class="bi bi-eye" id="old_password_icon"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="new_username" class="form-label">Username Baru (Opsional)</label>
-            <input type="text" class="form-control" id="new_username" name="new_username" value="{{ .Anggota.Username }}">
-          </div>
-          <div class="mb-3">
-            <label for="new_password" class="form-label">Password Baru</label>
-            <div class="input-group">
-              <input type="password" class="form-control" id="new_password" name="new_password" required>
-              <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('new_password')">
-                <i class="bi bi-eye" id="new_password_icon"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="confirm_password" class="form-label">Konfirmasi Password Baru</label>
-            <div class="input-group">
-              <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-              <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password')">
-                <i class="bi bi-eye" id="confirm_password_icon"></i>
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="submit" class="btn btn-primary">Simpan</button>
       </div>
     </div>
-  </div>
-</div>
 
-<script>
-function togglePassword(fieldId) {
-  const input = document.getElementById(fieldId);
-  const icon = document.getElementById(fieldId + '_icon');
-
-  if (input.type === 'password') {
-    input.type = 'text';
-    icon.className = 'bi bi-eye-slash';
-  } else {
-    input.type = 'password';
-    icon.className = 'bi bi-eye';
-  }
-}
-
-function updatePassword() {
-  const oldPassword = document.getElementById('old_password').value;
-  const newUsername = document.getElementById('new_username').value;
-  const newPassword = document.getElementById('new_password').value;
-  const confirmPassword = document.getElementById('confirm_password').value;
-
-  if (oldPassword === '') {
-    alert('Password lama harus diisi!');
-    return;
-  }
-
-  if (newPassword !== confirmPassword) {
-    alert('Password baru dan konfirmasi password tidak cocok!');
-    return;
-  }
-
-  if (newPassword.length < 6) {
-    alert('Password minimal 6 karakter!');
-    return;
-  }
-
-  // Send AJAX request to update username and password
-  fetch('/admin/update-anggota-password/{{.Anggota.IDAnggota}}', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      old_password: oldPassword,
-      new_username: newUsername,
-      new_password: newPassword
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      alert('Username dan password berhasil diperbarui!');
-      document.getElementById('password-text').textContent = '*'.repeat(newPassword.length);
-      bootstrap.Modal.getInstance(document.getElementById('editPasswordModal')).hide();
-      document.getElementById('editPasswordForm').reset();
-    } else {
-      alert('Gagal memperbarui username dan password: ' + data.message);
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    alert('Terjadi kesalahan saat memperbarui username dan password');
-  });
-}
-</script>
-{{ end }}
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

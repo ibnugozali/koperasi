@@ -46,7 +46,7 @@
                                         <tr>
                                             <td>{{.IDAnggota}}</td>
                                             <td>{{.NamaAnggota}}</td>
-                                            <td>{{.UnitKerja}}</td>
+                                            <td>{{ if eq .UnitKerja "01" }}Dosen{{ else if eq .UnitKerja "02" }}Karyawan/Staff{{ else if eq .UnitKerja "03" }}Mahasiswa{{ else }}-{{ end }}</td>
                                             <td>{{.Fakultas}}</td>
                                             <td>{{.TglGabung.Format "02 Jan 2006"}}</td>
                                             <td>
