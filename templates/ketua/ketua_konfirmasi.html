@@ -15,7 +15,6 @@
                                     <th>ID</th>
                                     <th>Nama</th>
                                     <th>Username</th>
-                                    <th>Email</th>
                                     <th>Tanggal Daftar</th>
                                     <th>Aksi</th>
                                 </tr>
@@ -26,7 +25,6 @@
                                     <td>{{.IDAnggota}}</td>
                                     <td>{{.NamaAnggota}}</td>
                                     <td>{{.Username}}</td>
-                                    <td>{{.Email}}</td>
                                     <td>{{.TglGabung.Format "2006-01-02"}}</td>
                                     <td>
                                         <form action="/ketua/confirm/{{.IDAnggota}}" method="post" style="display: inline;">
