@@ -131,6 +131,9 @@ func ConfirmMembership(c *gin.Context) {
 		return
 	}
 
+	// Log the confirmation action
+	fmt.Printf("Anggota %s berhasil dikonfirmasi dengan ID baru: %s\n", idStr, newIDAnggota)
+
 	// Arahkan kembali ke dashboard admin
 	c.Redirect(http.StatusFound, "/admin/dashboard")
 }

@@ -50,7 +50,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label"><strong>Unit Kerja</strong></label>
-                            <p class="form-control-plaintext">{{ if eq .Anggota.UnitKerja "01" }}Dosen{{ else if eq .Anggota.UnitKerja "02" }}Karyawan / Staff{{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa{{ else }}-{{ end }}</p>
+                            <p class="form-control-plaintext">{{ if eq .Anggota.StatusAnggota "dosen" }}Dosen{{ else if eq .Anggota.StatusAnggota "karyawan" }}Karyawan / Staff{{ else if eq .Anggota.StatusAnggota "mahasiswa" }}Mahasiswa{{ else }}-{{ end }}</p>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label"><strong>Fakultas</strong></label>

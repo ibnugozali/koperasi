@@ -32,8 +32,41 @@ func ShowRegisterPage(c *gin.Context) {
 // Register memproses data registrasi anggota baru.
 func Register(c *gin.Context) {
 	var newAnggota models.Anggota
-	if err := c.ShouldBind(&newAnggota); err != nil {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Data tidak valid"})
+
+	// Bind form data manually for multipart/form-data
+	newAnggota.NamaAnggota = c.PostForm("NamaAnggota")
+	newAnggota.Username = c.PostForm("Username")
+	newAnggota.Password = c.PostForm("Password")
+	newAnggota.TglLahir = c.PostForm("TglLahir")
+	newAnggota.NikKTP = c.PostForm("NikKTP")
+	newAnggota.NoTelepon = c.PostForm("NoTelepon")
+	newAnggota.Alamat = c.PostForm("Alamat")
+	newAnggota.JenisKelamin = c.PostForm("JenisKelamin")
+	newAnggota.StatusAnggota = c.PostForm("StatusAnggota")
+	newAnggota.Fakultas = c.PostForm("Fakultas")
+
+	// Handle file upload
+	file, err := c.FormFile("BuktiTransfer")
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Bukti transfer wajib diupload"})
+		return
+	}
+
+	// Save the uploaded file
+	filename := time.Now().Format("20060102150405") + "_" + file.Filename
+	dst := "./static/uploads/" + filename
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Gagal menyimpan file"})
+		return
+	}
+	newAnggota.BuktiTransfer = filename
+
+	// Validate required fields
+	if newAnggota.NamaAnggota == "" || newAnggota.Username == "" || newAnggota.Password == "" ||
+		newAnggota.TglLahir == "" || newAnggota.NikKTP == "" || newAnggota.NoTelepon == "" ||
+		newAnggota.Alamat == "" || newAnggota.JenisKelamin == "" || newAnggota.StatusAnggota == "" ||
+		newAnggota.Fakultas == "" {
+		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Semua field wajib diisi"})
 		return
 	}
 
@@ -74,9 +107,9 @@ func Register(c *gin.Context) {
 
 	// Generate temporary id_anggota for registration (will be updated during confirmation)
 	// Use a temporary ID that will be replaced when admin confirms
-	newAnggota.IDAnggota = "TEMP" + newAnggota.Username // Temporary ID
+	newAnggota.IDAnggota = "TEMP" + time.Now().Format("060102150405") // Temporary ID with timestamp
 
-	err := repository.CreateAnggota(newAnggota)
+	err = repository.CreateAnggota(newAnggota)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Gagal menyimpan data: " + err.Error()})
 		return

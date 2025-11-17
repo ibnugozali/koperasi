@@ -3,6 +3,7 @@ package repository
 import (
 	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
+
 )
 
 // Mengambil semua anggota dengan status pending
@@ -39,8 +40,8 @@ func UpdateAnggotaStatusWithCode(id string, newStatus string, memberCode string)
 func CreateAnggota(anggota models.Anggota) error {
 	db := config.GetDB()
 	query := `
-		INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	`
 	_, err := db.Exec(query,
 		anggota.IDAnggota,
@@ -57,6 +58,7 @@ func CreateAnggota(anggota models.Anggota) error {
 		anggota.TglGabung,
 		anggota.UnitKerja,
 		anggota.FakultasCode,
+		anggota.BuktiTransfer,
 	)
 	return err
 }
@@ -74,7 +76,7 @@ func GetAnggotaByID(id string) (models.Anggota, error) {
 			id_anggota, nama_anggota, username, password,
 			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
 			alamat, jenis_kelamin, status,
-			unit_kerja, fakultas_code, COALESCE(tahun, ''), COALESCE(nomor_urut, ''), COALESCE(bukti_transfer, '')
+			unit_kerja, fakultas_code, COALESCE(tahun, ''), COALESCE(nomor_urut, ''), COALESCE(bukti_transfer, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, '')
 		FROM anggota
 		WHERE id_anggota = $1`
 
@@ -82,7 +84,7 @@ func GetAnggotaByID(id string) (models.Anggota, error) {
 		&a.IDAnggota, &a.NamaAnggota, &a.Username, &encryptedPassword,
 		&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
 		&a.Alamat, &a.JenisKelamin, &a.Status,
-		&a.UnitKerja, &a.FakultasCode, &a.Tahun, &a.NomorUrut, &a.BuktiTransfer,
+		&a.UnitKerja, &a.FakultasCode, &a.Tahun, &a.NomorUrut, &a.BuktiTransfer, &a.StatusAnggota, &a.Fakultas,
 	)
 	if err != nil {
 		return a, err
