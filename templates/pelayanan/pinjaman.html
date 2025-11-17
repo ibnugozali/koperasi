@@ -15,22 +15,20 @@
         <!-- Bagian 1: Rincian Permohonan Pinjaman -->
         <fieldset class="border p-3 mb-4">
             <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
-            <div class="mb-3">
-                <label for="unit_kerja_pilihan" class="form-label">Unit Kerja</label>
-                <select class="form-select" id="unit_kerja_pilihan" name="unit_kerja_pilihan" required>
-                    <option value="">Pilih Unit Kerja</option>
-                    <option value="01">Dosen</option>
-                    <option value="02">Karyawan/Staff</option>
-                    <option value="03">Mahasiswa</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label for="gaji_bulanan" class="form-label">Jumlah Gaji Bulanan (Rp)</label>
-                <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" required>
-            </div>
-            <div class="mb-3">
-                <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
-                <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required>
+
+            <div class="row">
+                <div class="col-md-6" id="gaji_bulanan_container">
+                    <div class="mb-3">
+                        <label for="gaji_bulanan" class="form-label">Jumlah Gaji Bulanan (Rp)</label>
+                        <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
+                        <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required>
+                    </div>
+                </div>
             </div>
             <div class="mb-3">
                 <label for="jumlah_pinjaman_terbilang" class="form-label">Jumlah Pinjaman Terbilang</label>
@@ -126,6 +124,22 @@
 </div>
 
 <script>
+// Initialize on page load based on unit kerja
+document.addEventListener('DOMContentLoaded', function() {
+    const unitKerjaValue = '{{.Anggota.UnitKerja}}';
+    const gajiContainer = document.getElementById('gaji_bulanan_container');
+    const gajiInput = document.getElementById('gaji_bulanan');
+
+    if (unitKerjaValue === '03') { // Mahasiswa
+        gajiContainer.style.display = 'none';
+        gajiInput.required = false;
+        gajiInput.value = '';
+    } else { // Dosen atau Karyawan/Staff
+        gajiContainer.style.display = 'block';
+        gajiInput.required = true;
+    }
+});
+
 // Function to handle "Centang Semua" checkbox
 document.getElementById('cek_semua').addEventListener('change', function() {
     const checkboxes = document.querySelectorAll('.pernyataan-checkbox');
