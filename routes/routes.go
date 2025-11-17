@@ -65,6 +65,7 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/dashboard", controllers.AdminDashboard)
 		adminRoutes.GET("/konfirmasi", controllers.AdminKonfirmasi)
 		adminRoutes.POST("/confirm/:id", controllers.ConfirmMembership)
+		adminRoutes.GET("/view-registration/:id", controllers.ViewRegistration)
 		adminRoutes.GET("/halaman/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/halaman/update/:slug", controllers.UpdateHalaman)
 		adminRoutes.POST("/upload", controllers.UploadFile)

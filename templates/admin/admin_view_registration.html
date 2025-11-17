@@ -1,0 +1,93 @@
+{{ template "admin_layout.html" . }}
+
+{{ define "content" }}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Data Registrasi Anggota</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Nama Lengkap</strong></label>
+                        <p class="form-control-plaintext">{{ .Anggota.NamaAnggota }}</p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Nama Pengguna</strong></label>
+                            <p class="form-control-plaintext">{{ .Anggota.Username }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Kata Sandi</strong></label>
+                            <p class="form-control-plaintext">********</p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>NIK KTP</strong></label>
+                            <p class="form-control-plaintext">{{ .Anggota.NikKTP }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>No. Telepon</strong></label>
+                            <p class="form-control-plaintext">{{ .Anggota.NoTelepon }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Tanggal Lahir</strong></label>
+                            <p class="form-control-plaintext">{{ .Anggota.TglLahir }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Jenis Kelamin</strong></label>
+                            <p class="form-control-plaintext">{{ .Anggota.JenisKelamin }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Unit Kerja</strong></label>
+                            <p class="form-control-plaintext">{{ if eq .Anggota.UnitKerja "01" }}Dosen{{ else if eq .Anggota.UnitKerja "02" }}Karyawan / Staff{{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa{{ else }}-{{ end }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Fakultas</strong></label>
+                            <p class="form-control-plaintext">{{ .Anggota.Fakultas }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Bukti Transfer Simpanan Pokok Wajib Rp. 100.000,-</strong></label>
+                        <p class="form-control-plaintext text-muted">Nomor rekening koperasi: 1234567890 (Bank ABC)</p>
+                        {{if .Anggota.BuktiTransfer}}
+                        <p class="form-control-plaintext">
+                            <a href="/static/uploads/{{.Anggota.BuktiTransfer}}" target="_blank" class="btn btn-primary btn-sm">
+                                <i class="fas fa-eye"></i> Lihat Bukti Transfer
+                            </a>
+                        </p>
+                        {{else}}
+                        <p class="form-control-plaintext">File belum diupload</p>
+                        {{end}}
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Alamat</strong></label>
+                        <p class="form-control-plaintext">{{ .Anggota.Alamat }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Tanggal Daftar</strong></label>
+                        <p class="form-control-plaintext">{{ .Anggota.TglGabung.Format "2006-01-02 15:04:05" }}</p>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="/admin/konfirmasi" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Kembali ke Konfirmasi
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}

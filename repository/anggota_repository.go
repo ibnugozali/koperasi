@@ -65,7 +65,6 @@ func CreateAnggota(anggota models.Anggota) error {
 
 // ... (fungsi-fungsi lain yang sudah ada)
 
-// GetAnggotaByID mengambil data lengkap anggota berdasarkan ID
 func GetAnggotaByID(id string) (models.Anggota, error) {
 	db := config.GetDB()
 	var a models.Anggota
@@ -75,7 +74,7 @@ func GetAnggotaByID(id string) (models.Anggota, error) {
 			id_anggota, nama_anggota, username, password,
 			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
 			alamat, jenis_kelamin, status,
-			unit_kerja, fakultas_code, COALESCE(tahun, ''), COALESCE(nomor_urut, '')
+			unit_kerja, fakultas_code, COALESCE(tahun, ''), COALESCE(nomor_urut, ''), COALESCE(bukti_transfer, '')
 		FROM anggota
 		WHERE id_anggota = $1`
 
@@ -83,7 +82,7 @@ func GetAnggotaByID(id string) (models.Anggota, error) {
 		&a.IDAnggota, &a.NamaAnggota, &a.Username, &encryptedPassword,
 		&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
 		&a.Alamat, &a.JenisKelamin, &a.Status,
-		&a.UnitKerja, &a.FakultasCode, &a.Tahun, &a.NomorUrut,
+		&a.UnitKerja, &a.FakultasCode, &a.Tahun, &a.NomorUrut, &a.BuktiTransfer,
 	)
 	if err != nil {
 		return a, err

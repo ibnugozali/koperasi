@@ -148,73 +148,11 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Saldo</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <strong>Total Simpanan:</strong>
-                        </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .TotalSimpanan }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <strong>Total Pinjaman:</strong>
-                        </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .TotalPinjaman }}
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <strong>Saldo Bersih:</strong>
-                        </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .SaldoBersih }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card mt-3">
-                <div class="card-body">
-                    <h6 class="card-title">Keluar dari Koperasi</h6>
-                    <p class="card-text">Apakah Anda yakin ingin keluar dari koperasi? Tindakan ini tidak dapat dibatalkan.</p>
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#keluarModal">
-                        Keluar dari Koperasi
-                    </button>
-                </div>
-            </div>
-        </div>
+
     </div>
 </main>
 
-<!-- Modal Konfirmasi Keluar -->
-<div class="modal fade" id="keluarModal" tabindex="-1" aria-labelledby="keluarModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="keluarModalLabel">Konfirmasi Keluar</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        Apakah Anda yakin ingin keluar dari koperasi? Setelah keluar, Anda tidak akan dapat mengakses akun ini lagi.
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <form method="POST" action="/anggota/keluar" style="display: inline;">
-          <button type="submit" class="btn btn-danger">Ya, Keluar</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <form id="logout-form" action="/logout" method="POST" style="display:none;"></form>
 

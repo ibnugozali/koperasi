@@ -24,4 +24,5 @@ type Anggota struct {
 	FakultasCode  string    `json:"fakultas_code"`
 	Tahun         string    `json:"tahun"`
 	NomorUrut     string    `json:"nomor_urut"`
+	BuktiTransfer string    `json:"bukti_transfer"`
 }

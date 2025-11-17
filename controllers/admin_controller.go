@@ -27,7 +27,7 @@ func AdminDashboard(c *gin.Context) {
 	// Panggil repository untuk mendapatkan anggota dengan status 'pending'
 	pendingMembers, err := repository.GetPendingAnggota()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
+		c.String(http.StatusInternalServerError, "Gagal mengambil data anggota")
 		return
 	}
 
@@ -57,7 +57,7 @@ func AdminKonfirmasi(c *gin.Context) {
 	// Panggil repository untuk mendapatkan anggota dengan status 'pending'
 	pendingMembers, err := repository.GetPendingAnggota()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
+		c.String(http.StatusInternalServerError, "Gagal mengambil data anggota")
 		return
 	}
 
@@ -65,6 +65,27 @@ func AdminKonfirmasi(c *gin.Context) {
 		"PendingMembers": pendingMembers,
 		"ActivePage":     "konfirmasi",
 		"Title":          "Konfirmasi Anggota",
+	})
+}
+
+// ViewRegistration menampilkan detail registrasi anggota pending
+func ViewRegistration(c *gin.Context) {
+	idStr := c.Param("id")
+
+	anggota, err := repository.GetAnggotaByID(idStr)
+	if err != nil {
+		c.HTML(http.StatusOK, "admin_view_registration.html", gin.H{
+			"Error":      "Data registrasi tidak ditemukan",
+			"ActivePage": "konfirmasi",
+			"Title":      "Data Registrasi Anggota",
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "admin_view_registration.html", gin.H{
+		"Anggota":    anggota,
+		"ActivePage": "konfirmasi",
+		"Title":      "Data Registrasi Anggota",
 	})
 }
 
@@ -394,7 +415,7 @@ func UploadStruktur(c *gin.Context) {
 func ListAllAnggota(c *gin.Context) {
 	anggotas, err := repository.GetAllAnggota()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
+		c.String(http.StatusInternalServerError, "Gagal mengambil data anggota")
 		return
 	}
 	c.HTML(http.StatusOK, "admin_anggota_list.html", gin.H{
@@ -410,7 +431,7 @@ func ViewAnggota(c *gin.Context) {
 
 	anggota, err := repository.GetAnggotaByID(idStr)
 	if err != nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		c.String(http.StatusNotFound, "Anggota tidak ditemukan")
 		return
 	}
 

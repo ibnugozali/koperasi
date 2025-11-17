@@ -54,6 +54,9 @@
                                                 <td>{{.NoTelepon}}</td>
                                                 <td>{{.TglGabung.Format "2006-01-02"}}</td>
                                                 <td>
+                                                    <a href="/admin/view-registration/{{.IDAnggota}}" class="btn btn-info btn-sm me-2">
+                                                        <i class="fa-solid fa-eye"></i> Lihat
+                                                    </a>
                                                     <form action="/admin/confirm/{{.IDAnggota}}" method="post" class="d-inline">
                                                         <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Apakah Anda yakin ingin mengkonfirmasi anggota ini?')">
                                                             <i class="fa-solid fa-check"></i> Konfirmasi
