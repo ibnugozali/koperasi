@@ -122,6 +122,7 @@ func Register(c *gin.Context) {
 func Login(c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
+	ipAddress := c.ClientIP()
 
 	// Cek di tabel pengelola
 	pengelola, err := repository.GetPengelolaByUsername(username)
@@ -133,6 +134,16 @@ func Login(c *gin.Context) {
 			session.Set("username", pengelola.Username)
 			session.Set("role", pengelola.Level)
 			session.Save()
+
+			// Log successful login
+			loginHistory := models.LoginHistory{
+				Username:  username,
+				Role:      pengelola.Level,
+				LoginTime: time.Now(),
+				IPAddress: ipAddress,
+				Status:    "success",
+			}
+			repository.CreateLoginHistory(loginHistory)
 
 			switch pengelola.Level {
 			case "admin":
@@ -158,10 +169,31 @@ func Login(c *gin.Context) {
 			session.Set("username", anggota.Username)
 			session.Set("role", "anggota")
 			session.Save()
+
+			// Log successful login
+			loginHistory := models.LoginHistory{
+				Username:  username,
+				Role:      "anggota",
+				LoginTime: time.Now(),
+				IPAddress: ipAddress,
+				Status:    "success",
+			}
+			repository.CreateLoginHistory(loginHistory)
+
 			c.Redirect(http.StatusFound, "/anggota/dashboard")
 			return
 		}
 	}
+
+	// Log failed login attempt
+	loginHistory := models.LoginHistory{
+		Username:  username,
+		Role:      "unknown",
+		LoginTime: time.Now(),
+		IPAddress: ipAddress,
+		Status:    "failed",
+	}
+	repository.CreateLoginHistory(loginHistory)
 
 	c.HTML(http.StatusUnauthorized, "login.html", gin.H{"error": "Username atau password salah."})
 }

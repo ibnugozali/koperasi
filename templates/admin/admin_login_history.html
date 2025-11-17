@@ -29,18 +29,17 @@
                                 <table class="table table-striped table-hover">
                                     <thead class="table-dark">
                                         <tr>
-                                            <th>ID</th>
+                                            <th>No</th>
                                             <th>Username</th>
                                             <th>Role</th>
                                             <th>Waktu Login</th>
-                                            <th>Alamat IP</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {{ range .LoginHistory }}
+                                        {{ range $index, $history := .LoginHistory }}
                                         <tr>
-                                            <td>{{ .ID }}</td>
+                                            <td>{{ $index }}</td>
                                             <td>
                                                 <i class="fa-solid fa-user me-1"></i>{{ .Username }}
                                             </td>
@@ -58,13 +57,6 @@
                                                 {{ end }}
                                             </td>
                                             <td>{{ .LoginTime.Format "02-01-2006 15:04:05" }}</td>
-                                            <td>
-                                                {{ if .IPAddress }}
-                                                <i class="fa-solid fa-network-wired me-1"></i>{{ .IPAddress }}
-                                                {{ else }}
-                                                <span class="text-muted">Tidak tersedia</span>
-                                                {{ end }}
-                                            </td>
                                             <td>
                                                 {{ if eq .Status "success" }}
                                                 <span class="badge bg-success">Berhasil</span>
