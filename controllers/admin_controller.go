@@ -509,9 +509,8 @@ func DeleteAnggota(c *gin.Context) {
 		return
 	}
 
-	session := sessions.Default(c)
-	adminID := session.Get("user_id")
-	_ = adminID // Suppress unused variable warning
+	// Redirect kembali ke halaman daftar anggota setelah penghapusan berhasil
+	c.Redirect(http.StatusFound, "/admin/anggota")
 }
 
 // AdminTransaksi menampilkan halaman transaksi admin dengan form input
