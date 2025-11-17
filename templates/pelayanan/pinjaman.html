@@ -1,4 +1,4 @@
-q<!doctype html>
+<!doctype html>
 <html lang="id">
 <head>
   <meta charset="utf-8"/>
@@ -12,9 +12,9 @@ q<!doctype html>
 <div style="padding: 20px;">
 <h1>{{ .Judul }}</h1>
     <form action="/pelayanan/pinjamanTentu" method="POST">
-        <!-- Bagian 1: Data Pribadi Peminjam -->
+        <!-- Bagian 1: Rincian Permohonan Pinjaman -->
         <fieldset class="border p-3 mb-4">
-            <legend class="w-auto">Bagian 1: Data Pribadi Peminjam (Anggota)</legend>
+            <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
             <div class="mb-3">
                 <label for="unit_kerja_pilihan" class="form-label">Unit Kerja</label>
                 <select class="form-select" id="unit_kerja_pilihan" name="unit_kerja_pilihan" required>
@@ -25,49 +25,9 @@ q<!doctype html>
                 </select>
             </div>
             <div class="mb-3">
-                <label for="nama_lengkap" class="form-label">Nama Lengkap (Sesuai KTP)</label>
-                <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" required>
+                <label for="gaji_bulanan" class="form-label">Jumlah Gaji Bulanan (Rp)</label>
+                <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" required>
             </div>
-            <div class="mb-3">
-                <label for="nomor_anggota" class="form-label">Nomor Anggota Koperasi</label>
-                <input type="text" class="form-control" id="nomor_anggota" name="nomor_anggota" required>
-            </div>
-            <div class="mb-3">
-                <label for="nip_nidn" class="form-label">Nomor Induk Pegawai (NIP) / NIDN</label>
-                <input type="text" class="form-control" id="nip_nidn" name="nip_nidn" required>
-            </div>
-            <div class="mb-3">
-                <label for="unit_kerja" class="form-label">Unit Kerja / Fakultas / Jurusan</label>
-                <input type="text" class="form-control" id="unit_kerja" name="unit_kerja" required>
-            </div>
-            <div class="mb-3">
-                <label for="jabatan" class="form-label">Jabatan</label>
-                <input type="text" class="form-control" id="jabatan" name="jabatan" required>
-            </div>
-            <div class="mb-3">
-                <label for="alamat" class="form-label">Alamat Lengkap (Sesuai KTP dan Domisili)</label>
-                <textarea class="form-control" id="alamat" name="alamat" rows="3" required></textarea>
-            </div>
-            <div class="mb-3">
-                <label for="nomor_telepon" class="form-label">Nomor Telepon / HP</label>
-                <input type="text" class="form-control" id="nomor_telepon" name="nomor_telepon" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Status Kepegawaian</label><br>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="status_kepegawaian" id="pegawai_tetap" value="Pegawai Tetap" required>
-                    <label class="form-check-label" for="pegawai_tetap">Pegawai Tetap</label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="status_kepegawaian" id="pegawai_kontrak" value="Pegawai Kontrak" required>
-                    <label class="form-check-label" for="pegawai_kontrak">Pegawai Kontrak</label>
-                </div>
-            </div>
-        </fieldset>
-
-        <!-- Bagian 2: Rincian Permohonan Pinjaman -->
-        <fieldset class="border p-3 mb-4">
-            <legend class="w-auto">Bagian 2: Rincian Permohonan Pinjaman</legend>
             <div class="mb-3">
                 <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
                 <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required>
@@ -120,7 +80,7 @@ q<!doctype html>
 
         <!-- Bagian 3: Pernyataan dan Kuasa -->
         <fieldset class="border p-3 mb-4">
-            <legend class="w-auto">Bagian 3: Pernyataan dan Kuasa</legend>
+            <legend class="w-auto">Bagian 2: Pernyataan dan Kuasa</legend>
             <div class="form-check mb-3">
                 <input class="form-check-input" type="checkbox" id="cek_semua" name="cek_semua">
                 <label class="form-check-label fw-bold" for="cek_semua">
