@@ -60,6 +60,11 @@
                                                             <i class="fa-solid fa-check"></i> Konfirmasi
                                                         </button>
                                                     </form>
+                                                    <form action="/admin/reject/{{.IDAnggota}}" method="post" class="d-inline">
+                                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Apakah Anda yakin ingin menolak dan menghapus anggota ini?')">
+                                                            <i class="fa-solid fa-times"></i> Tolak
+                                                        </button>
+                                                    </form>
                                                 </td>
                                             </tr>
                                             {{end}}

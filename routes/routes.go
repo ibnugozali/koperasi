@@ -9,6 +9,7 @@ import (
 
 	"koperasi-simpan-pinjam/controllers"
 	"koperasi-simpan-pinjam/middleware"
+
 )
 
 func SetupRouter() *gin.Engine {
@@ -65,6 +66,7 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/dashboard", controllers.AdminDashboard)
 		adminRoutes.GET("/konfirmasi", controllers.AdminKonfirmasi)
 		adminRoutes.POST("/confirm/:id", controllers.ConfirmMembership)
+		adminRoutes.POST("/reject/:id", controllers.RejectMembership)
 		adminRoutes.GET("/view-registration/:id", controllers.ViewRegistration)
 		adminRoutes.GET("/halaman/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/halaman/update/:slug", controllers.UpdateHalaman)

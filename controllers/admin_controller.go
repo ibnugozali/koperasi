@@ -138,6 +138,25 @@ func ConfirmMembership(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/admin/dashboard")
 }
 
+// Menolak keanggotaan (menghapus anggota)
+func RejectMembership(c *gin.Context) {
+	// Ambil id anggota dari URL
+	idStr := c.Param("id")
+
+	// Hapus anggota dari database
+	err := repository.DeleteAnggota(idStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menolak anggota: " + err.Error()})
+		return
+	}
+
+	// Log the rejection action
+	fmt.Printf("Anggota %s berhasil ditolak dan dihapus\n", idStr)
+
+	// Arahkan kembali ke halaman konfirmasi admin
+	c.Redirect(http.StatusFound, "/admin/konfirmasi")
+}
+
 // ShowEditHalamanForm menampilkan form untuk mengedit halaman.
 func ShowEditHalamanForm(c *gin.Context) {
 	slug := c.Param("slug")
