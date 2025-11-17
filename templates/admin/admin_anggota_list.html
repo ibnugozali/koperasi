@@ -35,9 +35,8 @@
                                         <tr>
                                             <th>ID</th>
                                             <th>Nama Anggota</th>
-                                            <th>Username</th>
-                                            <th>NIK KTP</th>
-                                            <th>Kode Anggota</th>
+                                            <th>Unit Kerja</th>
+                                            <th>Fakultas</th>
                                             <th>Tanggal Gabung</th>
                                             <th>Aksi</th>
                                         </tr>
@@ -47,9 +46,8 @@
                                         <tr>
                                             <td>{{.IDAnggota}}</td>
                                             <td>{{.NamaAnggota}}</td>
-                                            <td>{{.Username}}</td>
-                                            <td>{{.NikKTP}}</td>
-                                            <td>{{.KodeAnggota}}</td>
+                                            <td>{{.UnitKerja}}</td>
+                                            <td>{{.Fakultas}}</td>
                                             <td>{{.TglGabung.Format "02 Jan 2006"}}</td>
                                             <td>
                                                 <a href="/admin/anggota/{{.IDAnggota}}" class="btn btn-info btn-sm me-1">Lihat</a>
@@ -61,7 +59,7 @@
                                         </tr>
                                         {{else}}
                                         <tr>
-                                            <td colspan="7" class="text-center">Tidak ada anggota aktif.</td>
+                                            <td colspan="6" class="text-center">Tidak ada anggota aktif.</td>
                                         </tr>
                                         {{end}}
                                     </tbody>

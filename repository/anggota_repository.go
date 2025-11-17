@@ -69,9 +69,10 @@ func CreateAnggota(anggota models.Anggota) error {
 func GetAnggotaByID(id string) (models.Anggota, error) {
 	db := config.GetDB()
 	var a models.Anggota
+	var encryptedPassword string
 	query := `
 		SELECT
-			id_anggota, nama_anggota, username,
+			id_anggota, nama_anggota, username, password,
 			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
 			alamat, jenis_kelamin, status,
 			unit_kerja, fakultas_code, COALESCE(tahun, ''), COALESCE(nomor_urut, '')
@@ -79,11 +80,18 @@ func GetAnggotaByID(id string) (models.Anggota, error) {
 		WHERE id_anggota = $1`
 
 	err := db.QueryRow(query, id).Scan(
-		&a.IDAnggota, &a.NamaAnggota, &a.Username,
+		&a.IDAnggota, &a.NamaAnggota, &a.Username, &encryptedPassword,
 		&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
 		&a.Alamat, &a.JenisKelamin, &a.Status,
 		&a.UnitKerja, &a.FakultasCode, &a.Tahun, &a.NomorUrut,
 	)
+	if err != nil {
+		return a, err
+	}
+
+	// Password sudah dalam bentuk plain text dari database
+	a.Password = encryptedPassword
+
 	return a, err
 }
 
@@ -96,7 +104,7 @@ func GetAllAnggota() ([]models.Anggota, error) {
 		SELECT
 			id_anggota, nama_anggota, username,
 			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
-			alamat, jenis_kelamin, status
+			alamat, jenis_kelamin, status, unit_kerja, fakultas
 		FROM anggota
 		WHERE status = 'aktif'
 		ORDER BY tgl_gabung DESC`
@@ -112,7 +120,7 @@ func GetAllAnggota() ([]models.Anggota, error) {
 		err := rows.Scan(
 			&a.IDAnggota, &a.NamaAnggota, &a.Username,
 			&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
-			&a.Alamat, &a.JenisKelamin, &a.Status,
+			&a.Alamat, &a.JenisKelamin, &a.Status, &a.UnitKerja, &a.Fakultas,
 		)
 		if err != nil {
 			return nil, err
@@ -131,7 +139,7 @@ func DeleteAnggota(id string) error {
 }
 
 // UpdateAnggotaPassword memperbarui password anggota berdasarkan ID
-func UpdateAnggotaPassword(id int, newPassword string) error {
+func UpdateAnggotaPassword(id string, newPassword string) error {
 	db := config.GetDB()
 	query := "UPDATE anggota SET password = $1 WHERE id_anggota = $2"
 	_, err := db.Exec(query, newPassword, id)

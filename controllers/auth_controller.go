@@ -69,19 +69,14 @@ func Register(c *gin.Context) {
 		newAnggota.FakultasCode = "09"
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newAnggota.Password), bcrypt.DefaultCost)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Gagal memproses pendaftaran"})
-		return
-	}
-	newAnggota.Password = string(hashedPassword)
+	// Password disimpan dalam bentuk plain text sesuai permintaan
 	newAnggota.TglGabung, _ = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 
 	// Generate temporary id_anggota for registration (will be updated during confirmation)
 	// Use a temporary ID that will be replaced when admin confirms
 	newAnggota.IDAnggota = "TEMP" + newAnggota.Username // Temporary ID
 
-	err = repository.CreateAnggota(newAnggota)
+	err := repository.CreateAnggota(newAnggota)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Gagal menyimpan data: " + err.Error()})
 		return
@@ -123,8 +118,8 @@ func Login(c *gin.Context) {
 	// Cek di tabel anggota
 	anggota, err := repository.GetAnggotaByUsername(username)
 	if err == nil {
-		err = bcrypt.CompareHashAndPassword([]byte(anggota.Password), []byte(password))
-		if err == nil { // Password cocok
+		// Password disimpan dalam plain text, jadi bandingkan langsung
+		if anggota.Password == password { // Password cocok
 			session := sessions.Default(c)
 			session.Set("user_id", anggota.IDAnggota)
 			session.Set("username", anggota.Username)

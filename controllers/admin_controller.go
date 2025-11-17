@@ -16,7 +16,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
@@ -415,8 +414,21 @@ func ViewAnggota(c *gin.Context) {
 		return
 	}
 
+	// Get saldo information
+	totalSimpanan, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
+	if err != nil {
+		totalSimpanan = 0
+		totalPinjaman = 0
+	}
+	saldoBersih := totalSimpanan - totalPinjaman
+
 	c.HTML(http.StatusOK, "admin_anggota_view.html", gin.H{
-		"Anggota": anggota,
+		"Anggota":       anggota,
+		"TotalSimpanan": totalSimpanan,
+		"TotalPinjaman": totalPinjaman,
+		"SaldoBersih":   saldoBersih,
+		"ActivePage":    "anggota",
+		"Title":         "Detail Anggota",
 	})
 }
 
@@ -659,17 +671,9 @@ func UpdateAdminProfile(c *gin.Context) {
 		}
 	}
 
-	// Hash password jika ada
+	// Password disimpan dalam bentuk plain text sesuai permintaan
 	passwordToUpdate := request.Password
-	if passwordToUpdate != "" {
-		// Import bcrypt
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordToUpdate), bcrypt.DefaultCost)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengenkripsi password"})
-			return
-		}
-		passwordToUpdate = string(hashedPassword)
-	} else {
+	if passwordToUpdate == "" {
 		// Jika password kosong, ambil password lama
 		admin, err := repository.GetPengelolaByID(adminID.(int))
 		if err != nil {
@@ -987,6 +991,69 @@ func UploadLogo(c *gin.Context) {
 			"logoPath": logoPath,
 		})
 	}
+}
+
+// UpdateAnggotaPassword memperbarui username dan password anggota berdasarkan ID
+func UpdateAnggotaPassword(c *gin.Context) {
+	idStr := c.Param("id")
+
+	var request struct {
+		OldPassword     string `form:"old_password" binding:"required"`
+		NewUsername     string `form:"new_username"`
+		NewPassword     string `form:"new_password" binding:"required"`
+		ConfirmPassword string `form:"confirm_password" binding:"required"`
+	}
+
+	if err := c.ShouldBind(&request); err != nil {
+		c.HTML(http.StatusBadRequest, "admin_anggota_view.html", gin.H{
+			"Error": "Data tidak valid",
+		})
+		return
+	}
+
+	// Get current anggota data to verify old password
+	anggota, err := repository.GetAnggotaByID(idStr)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "admin_anggota_view.html", gin.H{
+			"Error": "Gagal mengambil data anggota",
+		})
+		return
+	}
+
+	// Verify old password
+	if anggota.Password != request.OldPassword {
+		c.HTML(http.StatusBadRequest, "admin_anggota_view.html", gin.H{
+			"Error": "Password lama tidak sesuai",
+		})
+		return
+	}
+
+	// Verify new password confirmation
+	if request.NewPassword != request.ConfirmPassword {
+		c.HTML(http.StatusBadRequest, "admin_anggota_view.html", gin.H{
+			"Error": "Password baru dan konfirmasi password tidak cocok",
+		})
+		return
+	}
+
+	if len(request.NewPassword) < 6 {
+		c.HTML(http.StatusBadRequest, "admin_anggota_view.html", gin.H{
+			"Error": "Password minimal 6 karakter",
+		})
+		return
+	}
+
+	// Update username dan password anggota
+	err = repository.UpdateAnggotaUsernamePassword(idStr, request.NewUsername, request.NewPassword)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "admin_anggota_view.html", gin.H{
+			"Error": "Gagal memperbarui username dan password",
+		})
+		return
+	}
+
+	// Redirect back to the view page with success message
+	c.Redirect(http.StatusFound, "/admin/anggota/"+idStr)
 }
 
 // Handle JSON request (data canvas dari JavaScript)

@@ -1,6 +1,6 @@
-- [ ] Add GetSaldoAnggota function in repository/anggota_repository.go to calculate total simpanan, total pinjaman, and net saldo
-- [ ] Update AnggotaProfil controller to fetch saldo data
-- [ ] Update anggota_profil.html to display saldo sections
-- [ ] Add route for keluar koperasi POST /anggota/keluar
-- [ ] Add KeluarKoperasi controller function to update status to 'keluar'
-- [ ] Update anggota_profil.html with keluar button and modal confirmation
+- [x] Add GetSaldoAnggota function in repository/anggota_repository.go to calculate total simpanan, total pinjaman, and net saldo
+- [x] Update AnggotaProfil controller to fetch saldo data
+- [x] Update anggota_profil.html to display saldo sections
+- [x] Add route for keluar koperasi POST /anggota/keluar
+- [x] Add KeluarKoperasi controller function to update status to 'keluar'
+- [x] Update anggota_profil.html with keluar button and modal confirmation

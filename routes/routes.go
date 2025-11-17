@@ -91,6 +91,7 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/anggota/edit/:id", controllers.EditAnggota)
 		adminRoutes.POST("/anggota/update/:id", controllers.UpdateAnggota)
 		adminRoutes.POST("/anggota/delete/:id", controllers.DeleteAnggota)
+		adminRoutes.POST("/update-anggota-password/:id", controllers.UpdateAnggotaPassword)
 		adminRoutes.GET("/pesan", controllers.AdminPesan)
 		adminRoutes.POST("/update-profile", controllers.UpdateAdminProfile)
 	}
