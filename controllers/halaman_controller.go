@@ -222,7 +222,7 @@ func ShowRiwayatPage(c *gin.Context) {
 
 	// Add simpanan transactions
 	for _, s := range riwayatSimpanan {
-		desc := s.Simpanan.JenisSimpanan
+		desc := "Simpanan " + s.Simpanan.JenisSimpanan
 		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", s.JumlahSimpanan)), " ", "")
 		if strings.Contains(strings.ToLower(desc+" "+amount), strings.ToLower(search)) {
 			allTransactions = append(allTransactions, UnifiedTransaction{
@@ -230,7 +230,7 @@ func ShowRiwayatPage(c *gin.Context) {
 				Type:        desc,
 				Description: desc,
 				Amount:      amount,
-				Status:      "",
+				Status:      "Selesai",
 			})
 		}
 	}
