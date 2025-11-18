@@ -763,6 +763,24 @@ func AdminLoginHistory(c *gin.Context) {
 	})
 }
 
+// DeleteLoginHistory menghapus riwayat login berdasarkan ID
+func DeleteLoginHistory(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	err = repository.DeleteLoginHistory(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus riwayat login"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Riwayat login berhasil dihapus"})
+}
+
 // AdminKeamananSimpanan menampilkan halaman keamanan data simpanan
 func AdminKeamananSimpanan(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin_keamanan_simpanan.html", gin.H{

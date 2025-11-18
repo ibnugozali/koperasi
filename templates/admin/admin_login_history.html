@@ -34,12 +34,13 @@
                                             <th>Role</th>
                                             <th>Waktu Login</th>
                                             <th>Status</th>
+                                            <th>Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {{ range $index, $history := .LoginHistory }}
                                         <tr>
-                                            <td>{{ $index }}</td>
+                                            <td>{{ add $index 1 }}</td>
                                             <td>
                                                 <i class="fa-solid fa-user me-1"></i>{{ .Username }}
                                             </td>
@@ -59,12 +60,17 @@
                                             <td>{{ .LoginTime.Format "02-01-2006 15:04:05" }}</td>
                                             <td>
                                                 {{ if eq .Status "success" }}
-                                                <span class="badge bg-success">Berhasil</span>
+                                                <input type="checkbox" class="form-check-input" id="check-{{ .ID }}" checked disabled> <span class="badge bg-success">Berhasil</span>
                                                 {{ else if eq .Status "failed" }}
                                                 <span class="badge bg-danger">Gagal</span>
                                                 {{ else }}
                                                 <span class="badge bg-warning">{{ .Status }}</span>
                                                 {{ end }}
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-danger" data-id="{{ .ID }}" onclick="deleteLoginHistory(this)">
+                                                    <i class="fa-solid fa-trash me-1"></i>Hapus
+                                                </button>
                                             </td>
                                         </tr>
                                         {{ end }}
@@ -88,5 +94,31 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/admin_layout.js"></script>
+    <script>
+        function deleteLoginHistory(button) {
+            const id = button.getAttribute('data-id');
+            if (confirm('Apakah Anda yakin ingin menghapus riwayat login ini?')) {
+                fetch('/admin/login-history/' + id, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        alert('Riwayat login berhasil dihapus');
+                        location.reload();
+                    } else {
+                        alert('Gagal menghapus riwayat login: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Terjadi kesalahan saat menghapus riwayat login');
+                });
+            }
+        }
+    </script>
 </body>
 </html>

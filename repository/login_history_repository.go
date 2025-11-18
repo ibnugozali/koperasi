@@ -43,3 +43,11 @@ func CreateLoginHistory(loginHistory models.LoginHistory) error {
 	_, err := db.Exec(query, loginHistory.Username, loginHistory.Role, loginHistory.LoginTime, loginHistory.IPAddress, loginHistory.Status)
 	return err
 }
+
+// DeleteLoginHistory menghapus riwayat login berdasarkan ID
+func DeleteLoginHistory(id int) error {
+	db := config.GetDB()
+	query := `DELETE FROM login_history WHERE id = $1`
+	_, err := db.Exec(query, id)
+	return err
+}

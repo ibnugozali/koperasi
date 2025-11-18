@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"html/template"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -23,6 +24,9 @@ func SetupRouter() *gin.Engine {
 
 	// PERBAIKAN: Gunakan SATU baris ini untuk memuat semua file .html
 	// dari folder templates dan semua subfoldernya.
+	router.SetFuncMap(template.FuncMap{
+		"add": func(a, b int) int { return a + b },
+	})
 	router.LoadHTMLGlob("templates/**/*.html")
 
 	// 3. Definisikan rute dan middleware
@@ -85,6 +89,7 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/pengaturan", controllers.AdminPengaturan)
 		adminRoutes.GET("/keamanan/login", controllers.AdminKeamananLogin)
 		adminRoutes.GET("/login-history", controllers.AdminLoginHistory)
+		adminRoutes.DELETE("/login-history/:id", controllers.DeleteLoginHistory)
 		adminRoutes.GET("/edit-logo", controllers.AdminLogo)
 		adminRoutes.POST("/upload-logo", controllers.UploadLogo)
 		adminRoutes.GET("/keamanan/simpanan", controllers.AdminKeamananSimpanan)
