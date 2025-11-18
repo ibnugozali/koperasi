@@ -371,7 +371,152 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	// Berhasil, redirect ke dashboard dengan pesan sukses
 	c.HTML(http.StatusOK, "anggota_ajukan_pinjaman.html", gin.H{
-		"Anggota": anggota,
 		"Success": "Pengajuan pinjaman berhasil dikirim. Silakan tunggu konfirmasi dari admin.",
+	})
+}
+
+// AnggotaSimpanan menampilkan halaman simpanan untuk anggota.
+func AnggotaSimpanan(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
+	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
+		"Anggota": anggota,
+	})
+}
+
+// AnggotaAngsuran menampilkan halaman angsuran untuk anggota.
+func AnggotaAngsuran(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
+	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
+		"Judul":   "Angsuran",
+		"Anggota": anggota,
+	})
+}
+
+// AnggotaSejarah menampilkan halaman sejarah untuk anggota.
+func AnggotaSejarah(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
+	// Ambil data dari database
+	halaman, err := repository.GetHalamanBySlug("sejarah")
+	if err != nil {
+		c.String(http.StatusNotFound, "Halaman tidak ditemukan")
+		return
+	}
+
+	// Parse konten JSON
+	var konten map[string]interface{}
+	if err := json.Unmarshal([]byte(halaman.Konten), &konten); err != nil {
+		konten = map[string]interface{}{}
+	}
+
+	c.HTML(http.StatusOK, "anggota_sejarah.html", gin.H{
+		"Judul":   halaman.Judul,
+		"Konten":  konten,
+		"Anggota": anggota,
+	})
+}
+
+// AnggotaVisiMisi menampilkan halaman visi misi untuk anggota.
+func AnggotaVisiMisi(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
+	// Ambil data dari database
+	halaman, err := repository.GetHalamanBySlug("visi-misi")
+	if err != nil {
+		c.String(http.StatusNotFound, "Halaman tidak ditemukan")
+		return
+	}
+
+	// Parse konten JSON
+	var konten map[string]interface{}
+	if err := json.Unmarshal([]byte(halaman.Konten), &konten); err != nil {
+		konten = map[string]interface{}{}
+	}
+
+	c.HTML(http.StatusOK, "anggota_visi_misi.html", gin.H{
+		"Judul":   halaman.Judul,
+		"Konten":  konten,
+		"Anggota": anggota,
+	})
+}
+
+// AnggotaStruktur menampilkan halaman struktur untuk anggota.
+func AnggotaStruktur(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
+	// Ambil data dari database
+	halaman, err := repository.GetHalamanBySlug("struktur")
+	if err != nil {
+		c.String(http.StatusNotFound, "Halaman tidak ditemukan")
+		return
+	}
+
+	// Parse konten JSON
+	var konten map[string]interface{}
+	if err := json.Unmarshal([]byte(halaman.Konten), &konten); err != nil {
+		konten = map[string]interface{}{}
+	}
+
+	c.HTML(http.StatusOK, "anggota_struktur.html", gin.H{
+		"Judul":   halaman.Judul,
+		"Konten":  konten,
+		"Anggota": anggota,
 	})
 }

@@ -9,7 +9,6 @@ import (
 
 	"koperasi-simpan-pinjam/controllers"
 	"koperasi-simpan-pinjam/middleware"
-
 )
 
 func SetupRouter() *gin.Engine {
@@ -56,6 +55,11 @@ func SetupRouter() *gin.Engine {
 		anggotaRoutes.POST("/keluar", controllers.KeluarKoperasi)
 		anggotaRoutes.GET("/ajukan-pinjaman", controllers.AjukanPinjaman)
 		anggotaRoutes.POST("/ajukan-pinjaman", controllers.AjukanPinjamanPost)
+		anggotaRoutes.GET("/simpanan", controllers.AnggotaSimpanan)
+		anggotaRoutes.GET("/angsuran", controllers.AnggotaAngsuran)
+		anggotaRoutes.GET("/sejarah", controllers.AnggotaSejarah)
+		anggotaRoutes.GET("/visi-misi", controllers.AnggotaVisiMisi)
+		anggotaRoutes.GET("/struktur", controllers.AnggotaStruktur)
 		anggotaRoutes.GET("/riwayat", controllers.ShowRiwayatPage)
 	}
 

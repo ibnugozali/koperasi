@@ -42,11 +42,17 @@ func ShowHalaman(c *gin.Context) {
 	var templateName string
 	switch slug {
 	case "pinjaman":
-		templateName = "pinjaman.html"
+		// Redirect ke halaman ajukan pinjaman anggota
+		c.Redirect(http.StatusFound, "/anggota/ajukan-pinjaman")
+		return
 	case "simpanan":
-		templateName = "simpanan.html"
+		// Redirect ke halaman simpanan anggota
+		c.Redirect(http.StatusFound, "/anggota/simpanan")
+		return
 	case "angsuran":
-		templateName = "angsuran.html"
+		// Redirect ke halaman angsuran anggota
+		c.Redirect(http.StatusFound, "/anggota/angsuran")
+		return
 	default:
 		templateName = "halaman_statis.html"
 	}
@@ -86,7 +92,7 @@ func ShowTentang(c *gin.Context) {
 			konten = map[string]interface{}{}
 		}
 
-		c.HTML(http.StatusOK, "sejarah.html", gin.H{
+		c.HTML(http.StatusOK, "anggota_sejarah.html", gin.H{
 			"Judul":   halaman.Judul,
 			"Konten":  konten,
 			"Anggota": anggota,
@@ -105,7 +111,7 @@ func ShowTentang(c *gin.Context) {
 			konten = map[string]interface{}{}
 		}
 
-		c.HTML(http.StatusOK, "visi_misi.html", gin.H{
+		c.HTML(http.StatusOK, "anggota_visi_misi.html", gin.H{
 			"Judul":   halaman.Judul,
 			"Konten":  konten,
 			"Anggota": anggota,
@@ -124,7 +130,7 @@ func ShowTentang(c *gin.Context) {
 			konten = map[string]interface{}{}
 		}
 
-		c.HTML(http.StatusOK, "struktur.html", gin.H{
+		c.HTML(http.StatusOK, "anggota_struktur.html", gin.H{
 			"Judul":   halaman.Judul,
 			"Konten":  konten,
 			"Anggota": anggota,
