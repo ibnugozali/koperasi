@@ -203,10 +203,16 @@ func ShowRiwayatPage(c *gin.Context) {
 		// Jika gagal ambil riwayat pinjaman, tetap tampilkan halaman dengan pinjaman kosong
 		riwayatPinjaman = []models.Pinjaman{}
 	}
+	riwayatAngsuran, err := repository.GetRiwayatAngsuranByAnggotaID(userID.(string), "")
+	if err != nil {
+		// Jika gagal ambil riwayat angsuran, tetap tampilkan halaman dengan angsuran kosong
+		riwayatAngsuran = []models.Angsuran{}
+	}
 
 	// Define a unified transaction struct
 	type UnifiedTransaction struct {
 		Date        time.Time
+		Time        string
 		Type        string
 		Description string
 		Amount      string
@@ -214,7 +220,6 @@ func ShowRiwayatPage(c *gin.Context) {
 	}
 
 	var allTransactions []UnifiedTransaction
-
 	// Add simpanan transactions
 	for _, s := range riwayatSimpanan {
 		desc := "Simpanan " + s.Simpanan.JenisSimpanan
@@ -222,6 +227,7 @@ func ShowRiwayatPage(c *gin.Context) {
 		if strings.Contains(strings.ToLower(desc+" "+amount), strings.ToLower(search)) {
 			allTransactions = append(allTransactions, UnifiedTransaction{
 				Date:        s.TglTransaksi,
+				Time:        s.TglTransaksi.Format("15:04:05"),
 				Type:        desc,
 				Description: desc,
 				Amount:      amount,
@@ -248,7 +254,33 @@ func ShowRiwayatPage(c *gin.Context) {
 		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
 			allTransactions = append(allTransactions, UnifiedTransaction{
 				Date:        p.TglPinjaman,
+				Time:        p.TglPinjaman.Format("15:04:05"),
 				Type:        "Pinjaman",
+				Description: desc,
+				Amount:      amount,
+				Status:      status,
+			})
+		}
+	}
+
+	// Add angsuran transactions
+	for _, a := range riwayatAngsuran {
+		desc := "Angsuran"
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", a.SisaPinjaman)), " ", "")
+		var status string
+		switch a.Status {
+		case "valid":
+			status = "Valid"
+		case "invalid":
+			status = "Invalid"
+		default:
+			status = a.Status
+		}
+		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
+			allTransactions = append(allTransactions, UnifiedTransaction{
+				Date:        a.TglBayar,
+				Time:        a.TglBayar.Format("15:04:05"),
+				Type:        "Angsuran",
 				Description: desc,
 				Amount:      amount,
 				Status:      status,

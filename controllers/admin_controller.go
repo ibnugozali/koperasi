@@ -20,6 +20,7 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
+
 )
 
 // Menampilkan dashboard admin dengan daftar calon anggota
@@ -659,23 +660,29 @@ func AdminPengaturan(c *gin.Context) {
 
 	// Map judul ke nama keamanan
 	securityTitles := map[string]string{
-		"visi-misi":         "Pengaturan Keamanan Login",
-		"pinjaman":          "Pengaturan Keamanan Data Pinjaman",
-		"simpanan":          "Pengaturan Keamanan Data Simpanan",
-		"angsuran":          "Pengaturan Keamanan Pembayaran",
-		"dashboard_anggota": "Pengaturan Keamanan Dashboard",
-		"sejarah":           "Pengaturan Keamanan Riwayat",
-		"struktur":          "Pengaturan Keamanan Organisasi",
+		"visi-misi": "Pengaturan Keamanan Login",
+		"pinjaman":  "Pengaturan Keamanan Data Pinjaman",
+		"simpanan":  "Pengaturan Keamanan Data Simpanan",
+		"angsuran":  "Pengaturan Keamanan Pembayaran",
+		"sejarah":   "Pengaturan Keamanan Riwayat",
 	}
 
-	for i, halaman := range allHalaman {
+	// Filter out dashboard_anggota and struktur from the list
+	var filteredHalaman []models.Halaman
+	for _, halaman := range allHalaman {
+		if halaman.Slug != "dashboard_anggota" && halaman.Slug != "struktur" {
+			filteredHalaman = append(filteredHalaman, halaman)
+		}
+	}
+
+	for i, halaman := range filteredHalaman {
 		if title, ok := securityTitles[halaman.Slug]; ok {
-			allHalaman[i].Judul = title
+			filteredHalaman[i].Judul = title
 		}
 	}
 
 	c.HTML(http.StatusOK, "admin_pengaturan.html", gin.H{
-		"AllHalaman": allHalaman,
+		"AllHalaman": filteredHalaman,
 		"ActivePage": "pengaturan",
 	})
 }

@@ -500,30 +500,11 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 
 	// Ambil input dari form
-	tanggalPengajuanStr := c.PostForm("tanggal_pengajuan")
 	jenisSimpanan := c.PostForm("jenis_simpanan")
 	jumlahStr := c.PostForm("jumlah")
 
-	// Validasi input
-	if tanggalPengajuanStr == "" {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Tanggal pengajuan wajib diisi.",
-		})
-		return
-	}
-
-	// Parse tanggal pengajuan
-	tanggalPengajuan, err := time.Parse("2006-01-02", tanggalPengajuanStr)
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Format tanggal pengajuan tidak valid.",
-		})
-		return
-	}
+	// Set tanggal pengajuan otomatis ke waktu sekarang
+	tanggalPengajuan := time.Now()
 
 	if jenisSimpanan == "" {
 		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{

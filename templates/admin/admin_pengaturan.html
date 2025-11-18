@@ -10,7 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/admin_pengaturan.css" rel="stylesheet">
 </head>
-<body>
+<body>admin_pengaturan
 
     {{template "admin_navbar.html" .}}
 
@@ -50,14 +50,8 @@
                                                 <a href="/admin/keamanan/pinjaman" class="btn btn-primary btn-sm">Edit</a>
                                                 {{else if eq .Slug "angsuran"}}
                                                 <a href="/admin/keamanan/pembayaran" class="btn btn-primary btn-sm">Edit</a>
-                                                {{else if eq .Slug "dashboard_anggota"}}
-                                                <a href="/admin/keamanan/dashboard" class="btn btn-primary btn-sm">Edit</a>
                                                 {{else if eq .Slug "sejarah"}}
                                                 <a href="/admin/keamanan/riwayat" class="btn btn-primary btn-sm">Edit</a>
-                                                {{else if eq .Slug "struktur"}}
-                                                <a href="/admin/keamanan/organisasi" class="btn btn-primary btn-sm">Edit</a>
-                                                {{else}}
-                                                <a href="/admin/halaman/edit/{{.Slug}}" class="btn btn-primary btn-sm">Edit</a>
                                                 {{end}}
                                             </td>
                                         </tr>
