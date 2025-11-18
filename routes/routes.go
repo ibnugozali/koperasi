@@ -60,6 +60,7 @@ func SetupRouter() *gin.Engine {
 		anggotaRoutes.GET("/ajukan-pinjaman", controllers.AjukanPinjaman)
 		anggotaRoutes.POST("/ajukan-pinjaman", controllers.AjukanPinjamanPost)
 		anggotaRoutes.GET("/simpanan", controllers.AnggotaSimpanan)
+		anggotaRoutes.POST("/simpanan", controllers.AnggotaSimpananPost)
 		anggotaRoutes.GET("/angsuran", controllers.AnggotaAngsuran)
 		anggotaRoutes.GET("/sejarah", controllers.AnggotaSejarah)
 		anggotaRoutes.GET("/visi-misi", controllers.AnggotaVisiMisi)

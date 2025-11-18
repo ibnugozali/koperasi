@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -484,7 +485,139 @@ func AnggotaSimpanan(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
+		"Judul":   "Simpanan",
 		"Anggota": anggota,
+	})
+}
+
+// AnggotaSimpananPost memproses pengajuan simpanan
+func AnggotaSimpananPost(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Ambil data anggota untuk error handling
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
+	// Ambil input dari form
+	jenisSimpanan := c.PostForm("jenis_simpanan")
+	jumlahStr := c.PostForm("jumlah")
+
+	// Validasi input
+	if jenisSimpanan == "" {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Jenis simpanan wajib dipilih.",
+		})
+		return
+	}
+
+	if jumlahStr == "" {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Jumlah simpanan wajib diisi.",
+		})
+		return
+	}
+
+	// Parse jumlah
+	var jumlah float64
+	if _, err := fmt.Sscanf(jumlahStr, "%f", &jumlah); err != nil {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Format jumlah tidak valid.",
+		})
+		return
+	}
+
+	if jumlah <= 0 {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Jumlah simpanan harus lebih dari 0.",
+		})
+		return
+	}
+
+	// Handle file upload
+	file, err := c.FormFile("bukti")
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Bukti pembayaran wajib diupload.",
+		})
+		return
+	}
+
+	// Save the uploaded file
+	filename := time.Now().Format("20060102150405") + "_" + file.Filename
+	dst := "./static/uploads/" + filename
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Gagal menyimpan file bukti pembayaran.",
+		})
+		return
+	}
+
+	// Map jenis simpanan ke ID
+	var idSimpanan int
+	switch jenisSimpanan {
+	case "pokok":
+		idSimpanan = 1
+	case "wajib":
+		idSimpanan = 2
+	case "sukarela":
+		idSimpanan = 3
+	case "hari_raya":
+		idSimpanan = 4
+	default:
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Jenis simpanan tidak valid.",
+		})
+		return
+	}
+
+	// Buat detail simpanan
+	detail := models.Detail{
+		IDAnggota:      userID,
+		IDSimpanan:     idSimpanan,
+		IDPengelola:    1, // Default pengelola (bisa disesuaikan)
+		TglTransaksi:   time.Now(),
+		JumlahSimpanan: jumlah,
+		TotalSimpanan:  jumlah, // Untuk sementara, total = jumlah (bisa dihitung ulang)
+	}
+
+	// Simpan ke database
+	err = repository.CreateSimpanan(detail)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Gagal menyimpan simpanan. Silakan coba lagi.",
+		})
+		return
+	}
+
+	// Berhasil, tampilkan pesan sukses
+	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
+		"Judul":   "Simpanan",
+		"Anggota": anggota,
+		"Success": "Simpanan berhasil dikirim. Silakan tunggu konfirmasi dari admin.",
 	})
 }
 
