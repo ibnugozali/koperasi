@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -300,8 +301,33 @@ func AjukanPinjaman(c *gin.Context) {
 		return
 	}
 
+	// Hitung total simpanan untuk menampilkan limit
+	totalSimpanan, _, _, err := repository.GetSaldoAnggota(userID)
+	if err != nil {
+		totalSimpanan = 0
+	}
+
+	// Hitung limit pinjaman berdasarkan jenis anggota
+	var limitPinjaman float64
+	var jenisAnggota string
+
+	switch anggota.UnitKerja {
+	case "03": // Mahasiswa
+		jenisAnggota = "Mahasiswa"
+		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
+	case "01", "02": // Dosen (01) atau Staff (02)
+		jenisAnggota = "Dosen/Staff"
+		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
+	default:
+		jenisAnggota = "Tidak Diketahui"
+		limitPinjaman = 0
+	}
+
 	c.HTML(http.StatusOK, "anggota_ajukan_pinjaman.html", gin.H{
-		"Anggota": anggota,
+		"Anggota":       anggota,
+		"TotalSimpanan": totalSimpanan,
+		"LimitPinjaman": limitPinjaman,
+		"JenisAnggota":  jenisAnggota,
 	})
 }
 
@@ -356,6 +382,73 @@ func AjukanPinjamanPost(c *gin.Context) {
 		})
 		return
 	}
+
+	// Hitung total simpanan
+	totalSimpanan, _, _, err := repository.GetSaldoAnggota(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Gagal menghitung total simpanan.",
+		})
+		return
+	}
+
+	// Hitung limit pinjaman berdasarkan jenis anggota
+	var limitPinjaman float64
+	var jenisAnggota string
+
+	switch anggota.UnitKerja {
+	case "03": // Mahasiswa
+		jenisAnggota = "Mahasiswa"
+		// Mahasiswa hanya bisa pinjam jika memiliki simpanan
+		if totalSimpanan <= 0 {
+			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+				"Anggota": anggota,
+				"Error":   "Mahasiswa tidak dapat mengajukan pinjaman karena belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu.",
+			})
+			return
+		}
+		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
+	case "01", "02": // Dosen (01) atau Staff (02)
+		jenisAnggota = "Dosen/Staff"
+		// Ambil gaji dari form
+		gajiStr := c.PostForm("gaji_bulanan")
+		if gajiStr == "" {
+			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+				"Anggota": anggota,
+				"Error":   "Gaji bulanan wajib diisi untuk dosen/staff.",
+			})
+			return
+		}
+		// Parse gaji (asumsi dalam ribuan atau jutaan, sesuaikan dengan input)
+		var gaji float64
+		if _, err := fmt.Sscanf(gajiStr, "%f", &gaji); err != nil {
+			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+				"Anggota": anggota,
+				"Error":   "Format gaji tidak valid.",
+			})
+			return
+		}
+		limitPinjaman = (0.4 * gaji * float64(pinjaman.JangkaWaktu)) + totalSimpanan // (40% * gaji * tenor) + total simpanan
+	default:
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Jenis anggota tidak valid.",
+		})
+		return
+	}
+
+	// Validasi limit pinjaman
+	if pinjaman.JumlahPinjaman > limitPinjaman {
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   fmt.Sprintf("Jumlah pinjaman melebihi limit maksimal Rp %.0f untuk %s.", limitPinjaman, jenisAnggota),
+		})
+		return
+	}
+
+	// Set bunga flat 2%
+	pinjaman.Bunga = 2.0
 
 	pinjaman.IDAnggota = userID
 	pinjaman.Status = "proses" // Status awal pengajuan

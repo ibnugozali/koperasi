@@ -11,6 +11,23 @@
 {{ template "navbar.html" . }}
 <div style="padding: 20px;">
 <h1>{{ .Judul }}</h1>
+
+<!-- Info Limit Pinjaman -->
+<div class="alert alert-info" role="alert">
+    <h5>Informasi Limit Pinjaman</h5>
+    <p><strong>Jenis Anggota:</strong> {{ .JenisAnggota }}</p>
+    <p><strong>Total Simpanan:</strong> Rp {{ printf "%.0f" .TotalSimpanan }}</p>
+    <p id="limit_info">
+        {{if eq .JenisAnggota "Mahasiswa"}}
+            <strong>Limit Pinjaman:</strong> Rp {{ printf "%.0f" .LimitPinjaman }} (5x total simpanan)
+        {{else if eq .JenisAnggota "Dosen/Staff"}}
+            <strong>Limit Pinjaman:</strong> Dihitung berdasarkan gaji bulanan dan tenor
+        {{else}}
+            <strong>Limit Pinjaman:</strong> Tidak dapat ditentukan
+        {{end}}
+    </p>
+</div>
+
     <form action="/anggota/ajukan-pinjaman" method="POST">
         <!-- Bagian 1: Rincian Permohonan Pinjaman -->
         <fieldset class="border p-3 mb-4">
@@ -26,7 +43,12 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
-                        <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required>
+                        <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} disabled {{end}}>
+                        <small class="form-text text-muted" id="limit_warning">
+                            {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}}
+                                ⚠️ Anda belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu untuk dapat mengajukan pinjaman.
+                            {{end}}
+                        </small>
                     </div>
                 </div>
             </div>
@@ -119,7 +141,7 @@
         </fieldset>
 
        
-        <button type="submit" class="btn btn-primary">Ajukan Pinjaman</button>
+        <button type="submit" class="btn btn-primary" {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} disabled {{end}}>Ajukan Pinjaman</button>
     </form>
 </div>
 
@@ -138,7 +160,67 @@ document.addEventListener('DOMContentLoaded', function() {
         gajiContainer.style.display = 'block';
         gajiInput.required = true;
     }
+
+    // Hitung perkiraan angsuran saat input berubah
+    calculateAngsuran();
 });
+
+// Function to calculate perkiraan angsuran
+function calculateAngsuran() {
+    const jumlahPinjaman = parseFloat(document.getElementById('jumlah_pinjaman').value) || 0;
+    const jangkaWaktu = parseInt(document.getElementById('jangka_waktu').value) || 0;
+    const gajiBulanan = parseFloat(document.getElementById('gaji_bulanan').value) || 0;
+    const unitKerjaValue = '{{.Anggota.UnitKerja}}';
+    const totalSimpanan = parseFloat('{{.TotalSimpanan | printf "%.0f"}}') || 0;
+
+    let limitPinjaman = 0;
+    let jenisAnggota = '';
+
+    if (unitKerjaValue === '03') { // Mahasiswa
+        jenisAnggota = 'Mahasiswa';
+        limitPinjaman = 5 * totalSimpanan;
+    } else { // Dosen/Staff
+        jenisAnggota = 'Dosen/Staff';
+        if (gajiBulanan > 0 && jangkaWaktu > 0) {
+            limitPinjaman = (0.4 * gajiBulanan * jangkaWaktu) + totalSimpanan;
+        }
+    }
+
+    // Update limit info
+    const limitInfo = document.getElementById('limit_info');
+    if (jenisAnggota === 'Mahasiswa') {
+        limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
+    } else if (jenisAnggota === 'Dosen/Staff' && limitPinjaman > 0) {
+        limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' ((40% x gaji x tenor) + total simpanan)';
+    } else {
+        limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
+    }
+
+    // Check limit and show warning
+    const limitWarning = document.getElementById('limit_warning');
+    if (jumlahPinjaman > limitPinjaman && limitPinjaman > 0) {
+        limitWarning.textContent = '⚠️ Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID');
+        limitWarning.style.color = 'red';
+    } else if (limitPinjaman > 0) {
+        limitWarning.textContent = '✓ Jumlah pinjaman dalam batas limit';
+        limitWarning.style.color = 'green';
+    } else {
+        limitWarning.textContent = '';
+    }
+
+    // Calculate perkiraan angsuran (pokok + bunga 2%)
+    if (jumlahPinjaman > 0 && jangkaWaktu > 0) {
+        const pokok = jumlahPinjaman / jangkaWaktu;
+        const bunga = jumlahPinjaman * 0.02;
+        const totalAngsuran = pokok + bunga;
+        document.getElementById('perkiraan_angsuran').value = Math.round(totalAngsuran);
+    }
+}
+
+// Add event listeners for real-time calculation
+document.getElementById('jumlah_pinjaman').addEventListener('input', calculateAngsuran);
+document.getElementById('jangka_waktu').addEventListener('change', calculateAngsuran);
+document.getElementById('gaji_bulanan').addEventListener('input', calculateAngsuran);
 
 // Function to handle "Centang Semua" checkbox
 document.getElementById('cek_semua').addEventListener('change', function() {

@@ -1,14 +1,21 @@
-# TODO: Perbaiki Pinjaman - Tambahkan Kolom Gaji Bulanan
+# TODO: Perbaiki Logika Ajukan Pinjaman
 
-- [x] Tambahkan kolom input "Jumlah Gaji Bulanan (Rp)" di Bagian 2: Rincian Permohonan Pinjaman dalam file templates/pelayanan/pinjaman.html
-- [x] Pindahkan posisi kolom "Jumlah Gaji Bulanan (Rp)" ke atas "Jumlah Pinjaman yang Diajukan (Rp)"
-- [x] Hapus Bagian 1: Data Pribadi Peminjam (Anggota) dan renumber bagian berikutnya
-- [x] Tambahkan pilihan Unit Kerja di atas kolom "Jumlah Gaji Bulanan (Rp)"
-- [x] Verifikasi bahwa formulir ditampilkan dengan benar setelah perubahan (server berjalan di localhost:8081)
+## 1. Update Controller AjukanPinjamanPost
+- [ ] Tambahkan logika menghitung total simpanan menggunakan GetSaldoAnggota
+- [ ] Tentukan jenis anggota berdasarkan UnitKerja (01=Dosen, 02=Staff, 03=Mahasiswa)
+- [ ] Hitung limit pinjaman berdasarkan rumus:
+  - Mahasiswa: 5x total simpanan (maksimal)
+  - Dosen/Staff: (40% * gaji * tenor) + total simpanan
+- [ ] Validasi jumlah pinjaman tidak melebihi limit
+- [ ] Hitung perkiraan angsuran: (pinjaman / tenor) + (pinjaman * 0.02)
 
-# TODO: Tambahkan Tombol Tolak di Konfirmasi Admin
+## 2. Update Template anggota_ajukan_pinjaman.html
+- [ ] Tambahkan tampilan limit pinjaman maksimal
+- [ ] Update script JS untuk menghitung perkiraan angsuran real-time
+- [ ] Pastikan field gaji hanya untuk Dosen/Staff
 
-- [x] Tambahkan tombol "Tolak" di kolom Aksi pada templates/admin/konfirmasi.html dengan konfirmasi JavaScript
-- [x] Tambah route POST /admin/reject/:id di routes/routes.go
-- [x] Tambah function RejectMembership di controllers/admin_controller.go untuk menghapus anggota
-- [x] Test tombol tolak menghapus anggota dari database
+## 3. Test dan Validasi
+- [ ] Test untuk Mahasiswa: limit = 5x simpanan
+- [ ] Test untuk Dosen/Staff: limit = (0.4 * gaji * tenor) + simpanan
+- [ ] Pastikan error jika melebihi limit
+- [ ] Verifikasi perhitungan angsuran
