@@ -203,11 +203,6 @@ func ShowRiwayatPage(c *gin.Context) {
 		// Jika gagal ambil riwayat pinjaman, tetap tampilkan halaman dengan pinjaman kosong
 		riwayatPinjaman = []models.Pinjaman{}
 	}
-	riwayatAngsuran, err := repository.GetRiwayatAngsuranByAnggotaID(userID.(string), "")
-	if err != nil {
-		// Jika gagal ambil riwayat angsuran, tetap tampilkan halaman dengan angsuran kosong
-		riwayatAngsuran = []models.Angsuran{}
-	}
 
 	// Define a unified transaction struct
 	type UnifiedTransaction struct {
@@ -254,22 +249,6 @@ func ShowRiwayatPage(c *gin.Context) {
 			allTransactions = append(allTransactions, UnifiedTransaction{
 				Date:        p.TglPinjaman,
 				Type:        "Pinjaman",
-				Description: desc,
-				Amount:      amount,
-				Status:      status,
-			})
-		}
-	}
-
-	// Add angsuran transactions
-	for _, a := range riwayatAngsuran {
-		desc := "Angsuran"
-		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", a.SisaPinjaman)), " ", "")
-		status := a.StatusAngsuran + " - " + a.Status
-		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
-			allTransactions = append(allTransactions, UnifiedTransaction{
-				Date:        a.TglBayar,
-				Type:        "Angsuran",
 				Description: desc,
 				Amount:      amount,
 				Status:      status,
