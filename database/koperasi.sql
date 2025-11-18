@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS halaman CASCADE;
 -- =================================================================
 
 CREATE TABLE anggota (
-    id_anggota VARCHAR(13) PRIMARY KEY,
+    id_anggota VARCHAR(50) PRIMARY KEY,
     nama_anggota VARCHAR(50) NOT NULL,
     username VARCHAR(25) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
@@ -29,7 +29,8 @@ CREATE TABLE anggota (
     unit_kerja VARCHAR(2),
     fakultas_code VARCHAR(2),
     tahun VARCHAR(4),
-    nomor_urut VARCHAR(4)
+    nomor_urut VARCHAR(4),
+    bukti_transfer VARCHAR(255)
 );
 
 CREATE TABLE pengelola (
@@ -54,7 +55,7 @@ CREATE TABLE simpanan (
 -- jika seorang pengelola dihapus dari sistem.
 CREATE TABLE detail (
     id_detail SERIAL PRIMARY KEY,
-    id_anggota VARCHAR(13) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
     id_simpanan INT REFERENCES simpanan(id_simpanan) ON DELETE CASCADE,
     id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL, -- Diubah
     tgl_transaksi DATE DEFAULT CURRENT_DATE,
@@ -64,7 +65,7 @@ CREATE TABLE detail (
 
 CREATE TABLE pinjaman (
     id_pinjaman SERIAL PRIMARY KEY,
-    id_anggota VARCHAR(13) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
     id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL, -- Diubah
     tgl_pinjaman DATE DEFAULT CURRENT_DATE,
     jumlah_pinjaman NUMERIC(15,2),
@@ -99,7 +100,7 @@ CREATE TABLE halaman (
 DROP TABLE IF EXISTS pesan CASCADE;
 CREATE TABLE pesan (
     id_pesan SERIAL PRIMARY KEY,
-    id_anggota VARCHAR(13) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
     judul VARCHAR(100) NOT NULL,
     isi TEXT NOT NULL,
     tgl_kirim TIMESTAMPTZ DEFAULT NOW(),
@@ -145,7 +146,10 @@ VALUES (
 
 -- Mengisi data awal untuk jenis simpanan
 INSERT INTO simpanan (jenis_simpanan) VALUES
-('Simpanan');
+('pokok'),
+('wajib'),
+('sukarela'),
+('hari_raya');
 
 -- Mengisi data awal untuk halaman statis dengan format JSON
 INSERT INTO halaman (slug, judul, kategori, konten) VALUES
@@ -246,3 +250,6 @@ UPDATE halaman SET konten = '{
   "teks": "Koperasi adalah bentuk organisasi ekonomi yang didirikan oleh masyarakat untuk memenuhi kebutuhan bersama. Gerakan koperasi modern dimulai di Eropa pada abad ke-19, dipelopori oleh tokoh-tokoh seperti Robert Owen di Inggris dan Charles Fourier di Prancis. Mereka melihat koperasi sebagai alternatif terhadap kapitalisme yang eksploitatif.\n\nDi Indonesia, perkembangan koperasi dimulai pada masa kolonial Belanda. Pada tahun 1896, Raden Aria Wiriatmadja mendirikan Koperasi Kredit pertama di Purwokerto, Jawa Tengah. Gerakan ini semakin berkembang setelah Indonesia merdeka, dengan dukungan pemerintah untuk membangun ekonomi rakyat.\n\nPada tahun 1967, pemerintah mengeluarkan Undang-Undang No. 12 Tahun 1967 tentang Pokok-Pokok Perkoperasian. Undang-undang ini kemudian diganti dengan Undang-Undang No. 25 Tahun 1992 tentang Perkoperasian, yang menjadi dasar hukum koperasi di Indonesia hingga saat ini.\n\nKoperasi di Indonesia berperan penting dalam berbagai sektor, termasuk simpan pinjam, pertanian, konsumsi, dan produksi. Prinsip-prinsip koperasi seperti keanggotaan sukarela, pengelolaan demokratis, dan pembagian hasil secara adil menjadi landasan operasional koperasi.",
   "gambar": "/static/images/placeholder.png"
 }' WHERE slug = 'sejarah';
+
+-- Update dashboard content
+UPDATE halaman SET konten = '{"welcome":"Selamat Datang di Koperasi KOPMA","slogan":"Dari Anggota, Oleh Anggota, dan Untuk Anggota","teks":"Selamat datang di dashboard anggota.","gambar":"/static/images/placeholder.png"}' WHERE slug = 'dashboard_anggota';
