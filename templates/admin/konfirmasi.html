@@ -33,7 +33,7 @@
                                     <table class="table table-striped table-hover">
                                         <thead class="table-dark">
                                             <tr>
-                                                <th>ID</th>
+                                                <th>No</th>
                                                 <th>Nama</th>
                                                 <th>Username</th>
                                                 <th>NIK</th>
@@ -43,9 +43,9 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {{range .PendingMembers}}
+                                            {{range $index, $member := .PendingMembers}}
                                             <tr>
-                                                <td>{{.IDAnggota}}</td>
+                                                <td>{{ add $index 1 }}</td>
                                                 <td>{{.NamaAnggota}}</td>
                                                 <td>{{.Username}}</td>
                                                 <td>{{.NikKTP}}</td>

@@ -28,6 +28,14 @@
     </p>
 </div>
 
+{{ if .Success }}
+<div class="alert alert-success mt-3">{{ .Success }}</div>
+{{ end }}
+
+{{ if .Error }}
+<div class="alert alert-danger mt-3">{{ .Error }}</div>
+{{ end }}
+
     <form action="/anggota/ajukan-pinjaman" method="POST">
         <!-- Bagian 1: Rincian Permohonan Pinjaman -->
         <fieldset class="border p-3 mb-4">

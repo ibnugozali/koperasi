@@ -358,14 +358,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
-	// Validasi minimal pinjaman
-	if pinjaman.JumlahPinjaman < 1000000 {
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
-			"Anggota": anggota,
-			"Error":   "Jumlah pinjaman minimal Rp 1.000.000.",
-		})
-		return
-	}
+	// Validasi minimal pinjaman dihapus
 
 	// Validasi jangka waktu
 	if pinjaman.JangkaWaktu < 6 || pinjaman.JangkaWaktu > 36 {
@@ -453,7 +446,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 	pinjaman.Bunga = 2.0
 
 	pinjaman.IDAnggota = userID
-	pinjaman.Status = "proses" // Status awal pengajuan
+	pinjaman.Status = "aktif" // Status langsung aktif agar muncul di riwayat
 
 	err = repository.CreatePinjaman(pinjaman)
 	if err != nil {
@@ -464,10 +457,8 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
-	// Berhasil, redirect ke dashboard dengan pesan sukses
-	c.HTML(http.StatusOK, "anggota_ajukan_pinjaman.html", gin.H{
-		"Success": "Pengajuan pinjaman berhasil dikirim. Silakan tunggu konfirmasi dari admin.",
-	})
+	// Berhasil, redirect ke riwayat untuk melihat data pinjaman
+	c.Redirect(http.StatusFound, "/anggota/riwayat")
 }
 
 // AnggotaSimpanan menampilkan halaman simpanan untuk anggota.

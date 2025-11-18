@@ -31,9 +31,9 @@ type Pinjaman struct {
 	NamaAnggota    string        `json:"nama_anggota"`
 	IDPengelola    sql.NullInt64 `json:"id_pengelola"` // Bisa NULL
 	TglPinjaman    time.Time     `json:"tgl_pinjaman"`
-	JumlahPinjaman float64       `json:"jumlah_pinjaman" form:"JumlahPinjaman"`
-	JangkaWaktu    int           `json:"jangka_waktu" form:"JangkaWaktu"` // Dalam bulan
-	Bunga          float64       `json:"bunga" form:"Bunga"`
+	JumlahPinjaman float64       `json:"jumlah_pinjaman" form:"jumlah_pinjaman"`
+	JangkaWaktu    int           `json:"jangka_waktu" form:"jangka_waktu"` // Dalam bulan
+	Bunga          float64       `json:"bunga" form:"bunga"`
 	Status         string        `json:"status"` // (proses, aktif, lunas, gagal)
 }
 

@@ -49,6 +49,15 @@
                     <hr>
                     <div class="row">
                         <div class="col-sm-3">
+                            <strong>Password:</strong>
+                        </div>
+                        <div class="col-sm-9">
+                            <span id="password-text">{{ .Anggota.Password }}</span>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-3">
                             <strong>Tanggal Lahir:</strong>
                         </div>
                         <div class="col-sm-9">
@@ -148,7 +157,47 @@
                 </div>
             </div>
         </div>
-
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Saldo</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <strong>Total Simpanan:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            Rp {{ printf "%.0f" .TotalSimpanan }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <strong>Total Pinjaman:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            Rp {{ printf "%.0f" .TotalPinjaman }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <strong>Saldo Bersih:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            Rp {{ printf "%.0f" .SaldoBersih }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6 class="card-title">Aksi</h6>
+                    <a href="/anggota/ganti-password" class="btn btn-info w-100">Edit Password</a>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 
