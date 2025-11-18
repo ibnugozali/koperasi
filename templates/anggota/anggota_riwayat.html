@@ -48,7 +48,6 @@
                     <tr>
                         <th>Tanggal</th>
                         <th>Jenis Transaksi</th>
-                        <th>Deskripsi</th>
                         <th>Jumlah</th>
                         <th>Status</th>
                     </tr>
@@ -58,13 +57,12 @@
                     <tr>
                         <td>{{ .Date.Format "02 January 2006" }}</td>
                         <td>{{ .Type }}</td>
-                        <td>{{ .Description }}</td>
                         <td>{{ .Amount }}</td>
                         <td>{{ .Status }}</td>
                     </tr>
                     {{ else }}
                     <tr>
-                        <td colspan="5" class="text-center py-4">Belum ada riwayat transaksi.</td>
+                        <td colspan="4" class="text-center py-4">Belum ada riwayat transaksi.</td>
                     </tr>
                     {{ end }}
                 </tbody>
