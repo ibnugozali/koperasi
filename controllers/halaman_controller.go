@@ -239,7 +239,17 @@ func ShowRiwayatPage(c *gin.Context) {
 	for _, p := range riwayatPinjaman {
 		desc := "Pinjaman"
 		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", p.JumlahPinjaman)), " ", "")
-		status := p.Status
+		var status string
+		switch p.Status {
+		case "proses":
+			status = "Dalam Proses"
+		case "aktif":
+			status = "Diterima"
+		case "ditolak":
+			status = "Ditolak"
+		default:
+			status = p.Status
+		}
 		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
 			allTransactions = append(allTransactions, UnifiedTransaction{
 				Date:        p.TglPinjaman,

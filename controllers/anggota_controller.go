@@ -349,13 +349,54 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
-	var pinjaman models.Pinjaman
-	if err := c.ShouldBind(&pinjaman); err != nil {
+	// Ambil input dari form secara manual
+	jumlahPinjamanStr := c.PostForm("jumlah_pinjaman")
+	jangkaWaktuStr := c.PostForm("jangka_waktu")
+
+	// Validasi input dasar
+	if jumlahPinjamanStr == "" {
 		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
 			"Anggota": anggota,
-			"Error":   "Data tidak valid. Pastikan semua field diisi dengan benar.",
+			"Error":   "Jumlah pinjaman wajib diisi.",
 		})
 		return
+	}
+
+	if jangkaWaktuStr == "" {
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Jangka waktu wajib dipilih.",
+		})
+		return
+	}
+
+	// Parse jumlah pinjaman
+	var jumlahPinjaman float64
+	if _, err := fmt.Sscanf(jumlahPinjamanStr, "%f", &jumlahPinjaman); err != nil {
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Format jumlah pinjaman tidak valid.",
+		})
+		return
+	}
+
+	// Parse jangka waktu
+	var jangkaWaktu int
+	if _, err := fmt.Sscanf(jangkaWaktuStr, "%d", &jangkaWaktu); err != nil {
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
+			"Anggota": anggota,
+			"Error":   "Format jangka waktu tidak valid.",
+		})
+		return
+	}
+
+	// Buat objek pinjaman
+	pinjaman := models.Pinjaman{
+		IDAnggota:      userID,
+		NamaAnggota:    anggota.NamaAnggota,
+		TglPinjaman:    time.Now(), // Gunakan tanggal sekarang sebagai default
+		JumlahPinjaman: jumlahPinjaman,
+		JangkaWaktu:    jangkaWaktu,
 	}
 
 	// Validasi minimal pinjaman dihapus
@@ -445,8 +486,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 	// Set bunga flat 2%
 	pinjaman.Bunga = 2.0
 
-	pinjaman.IDAnggota = userID
-	pinjaman.Status = "aktif" // Status langsung aktif agar muncul di riwayat
+	pinjaman.Status = "proses" // Status awal proses sebelum konfirmasi bendahara
 
 	err = repository.CreatePinjaman(pinjaman)
 	if err != nil {
@@ -499,10 +539,20 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 
 	// Ambil input dari form
+	tanggalPengajuanStr := c.PostForm("tanggal_pengajuan")
 	jenisSimpanan := c.PostForm("jenis_simpanan")
 	jumlahStr := c.PostForm("jumlah")
 
 	// Validasi input
+	if tanggalPengajuanStr == "" {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Tanggal pengajuan wajib diisi.",
+		})
+		return
+	}
+
 	if jenisSimpanan == "" {
 		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
 			"Judul":   "Simpanan",
@@ -517,6 +567,17 @@ func AnggotaSimpananPost(c *gin.Context) {
 			"Judul":   "Simpanan",
 			"Anggota": anggota,
 			"Error":   "Jumlah simpanan wajib diisi.",
+		})
+		return
+	}
+
+	// Parse tanggal pengajuan
+	tanggalPengajuan, err := time.Parse("2006-01-02", tanggalPengajuanStr)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Format tanggal pengajuan tidak valid.",
 		})
 		return
 	}
@@ -584,12 +645,11 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Buat detail simpanan
 	detail := models.Detail{
 		IDAnggota:      userID,
 		IDSimpanan:     idSimpanan,
 		IDPengelola:    1, // Default pengelola (bisa disesuaikan)
-		TglTransaksi:   time.Now(),
+		TglTransaksi:   tanggalPengajuan,
 		JumlahSimpanan: jumlah,
 		TotalSimpanan:  jumlah, // Untuk sementara, total = jumlah (bisa dihitung ulang)
 	}
