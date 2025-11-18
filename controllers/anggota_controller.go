@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -639,6 +640,148 @@ func AnggotaAngsuran(c *gin.Context) {
 	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
 		"Judul":   "Angsuran",
 		"Anggota": anggota,
+	})
+}
+
+// AnggotaAngsuranPost memproses pembayaran angsuran
+func AnggotaAngsuranPost(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Ambil data anggota untuk error handling
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Gagal mengambil data pengguna.",
+		})
+		return
+	}
+
+	// Ambil input dari form
+	jumlahAngsuranStr := c.PostForm("jumlah_angsuran")
+	tanggalPembayaranStr := c.PostForm("tanggal_pembayaran")
+	metodePembayaran := c.PostForm("metode_pembayaran")
+
+	// Validasi input
+	if jumlahAngsuranStr == "" {
+		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Jumlah angsuran wajib diisi.",
+		})
+		return
+	}
+
+	if tanggalPembayaranStr == "" {
+		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Tanggal pembayaran wajib diisi.",
+		})
+		return
+	}
+
+	if metodePembayaran == "" {
+		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Metode pembayaran wajib dipilih.",
+		})
+		return
+	}
+
+	// Parse jumlah angsuran
+	var jumlahAngsuran float64
+	if _, err := fmt.Sscanf(jumlahAngsuranStr, "%f", &jumlahAngsuran); err != nil {
+		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Format jumlah angsuran tidak valid.",
+		})
+		return
+	}
+
+	if jumlahAngsuran <= 0 {
+		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Jumlah angsuran harus lebih dari 0.",
+		})
+		return
+	}
+
+	// Parse tanggal pembayaran
+	tanggalPembayaran, err := time.Parse("2006-01-02", tanggalPembayaranStr)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Format tanggal pembayaran tidak valid.",
+		})
+		return
+	}
+
+	// Handle file upload
+	file, err := c.FormFile("bukti")
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Bukti pembayaran wajib diupload.",
+		})
+		return
+	}
+
+	// Save the uploaded file
+	filename := time.Now().Format("20060102150405") + "_" + file.Filename
+	dst := "./static/uploads/" + filename
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Gagal menyimpan file bukti pembayaran.",
+		})
+		return
+	}
+
+	// Untuk sementara, kita asumsikan ID pinjaman pertama yang aktif untuk user ini
+	// Dalam implementasi nyata, Anda mungkin perlu menambahkan dropdown untuk memilih pinjaman mana yang akan diangsur
+	var idPinjaman int = 1 // Placeholder - perlu diganti dengan logika untuk mendapatkan ID pinjaman yang aktif
+
+	// Buat angsuran baru
+	angsuran := models.Angsuran{
+		IDPinjaman:     idPinjaman,
+		IDPengelola:    sql.NullInt64{Int64: 1, Valid: true}, // Default pengelola
+		TglBayar:       tanggalPembayaran,
+		SisaPinjaman:   jumlahAngsuran,   // Untuk sementara, sisa pinjaman = jumlah angsuran
+		StatusAngsuran: "belum_lunas",    // Status awal
+		BuktiAngsuran:  []byte(filename), // Simpan nama file sebagai byte array
+		Status:         "valid",          // Status valid
+		NamaAnggota:    anggota.NamaAnggota,
+	}
+
+	// Simpan ke database
+	err = repository.CreateAngsuran(angsuran)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_angsuran.html", gin.H{
+			"Judul":   "Angsuran",
+			"Anggota": anggota,
+			"Error":   "Gagal menyimpan angsuran. Silakan coba lagi.",
+		})
+		return
+	}
+
+	// Berhasil, tampilkan pesan sukses
+	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
+		"Judul":   "Angsuran",
+		"Anggota": anggota,
+		"Success": "Angsuran berhasil dikirim. Silakan tunggu konfirmasi dari admin.",
 	})
 }
 

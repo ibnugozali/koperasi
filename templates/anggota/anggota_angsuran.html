@@ -17,11 +17,7 @@
       <hr>
         <div class="mt-4">
 
-<form action="/pelayanan/angsuran" method="POST" style="max-width: 600px; margin: auto;">
-<div style="margin-bottom: 10px;">
-<label>Nomor Pinjaman</label><br>
-<input type="text" name="nomor_pinjaman" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-</div>
+<form action="/anggota/angsuran" method="POST" enctype="multipart/form-data" style="max-width: 600px; margin: auto;">
 <div style="margin-bottom: 10px;">
 <label>Jumlah Angsuran (Rp)</label><br>
 <input type="number" name="jumlah_angsuran" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
@@ -40,10 +36,10 @@
 </select>
 </div>
 <div style="margin-bottom: 10px;">
-<label>Keterangan</label><br>
-<textarea name="keterangan" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+<label for="bukti" class="form-label">Bukti Pembayaran</label>
+<input type="file" class="form-control" id="bukti" name="bukti" accept="image/*" required>
 </div>
-<input type="submit" value="Bayar Angsuran" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+<input type="submit" value="Kirim Simpanan" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
 </form>
 </div>
 </div>
