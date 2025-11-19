@@ -22,10 +22,7 @@
 <label>Jumlah Angsuran (Rp)</label><br>
 <input type="number" name="jumlah_angsuran" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
 </div>
-<div style="margin-bottom: 10px;">
-<label>Tanggal Pembayaran</label><br>
-<input type="date" name="tanggal_pembayaran" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-</div>
+
 <div style="margin-bottom: 10px;">
 <label>Metode Pembayaran</label><br>
 <select name="metode_pembayaran" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
@@ -47,5 +44,40 @@
 
 {{ template "footer.html" . }}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Set tanggal pembayaran otomatis ke hari ini (hidden field)
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const hiddenTanggal = document.createElement('input');
+    hiddenTanggal.type = 'hidden';
+    hiddenTanggal.name = 'tanggal_pembayaran';
+    hiddenTanggal.value = new Date().toISOString().split('T')[0];
+    form.appendChild(hiddenTanggal);
+
+    // Handle metode pembayaran change
+    const metodeSelect = document.querySelector('select[name="metode_pembayaran"]');
+    const buktiInput = document.getElementById('bukti');
+
+    metodeSelect.addEventListener('change', function() {
+        if (this.value === 'Transfer') {
+            buktiInput.disabled = false;
+            buktiInput.required = true;
+        } else if (this.value === 'Tunai' || this.value === 'Potong Gaji') {
+            buktiInput.disabled = true;
+            buktiInput.required = false;
+            buktiInput.value = ''; // Clear any selected file
+        }
+    });
+
+    // Initial check in case of pre-selected value
+    if (metodeSelect.value === 'Transfer') {
+        buktiInput.disabled = false;
+        buktiInput.required = true;
+    } else if (metodeSelect.value === 'Tunai' || metodeSelect.value === 'Potong Gaji') {
+        buktiInput.disabled = true;
+        buktiInput.required = false;
+    }
+});
+</script>
 </body>
 </html>

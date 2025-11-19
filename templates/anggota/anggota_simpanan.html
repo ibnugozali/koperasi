@@ -60,10 +60,7 @@
                   <option value="hari_raya">Simpanan Hari Raya</option>
                 </select>
               </div>
-              <div class="mb-3">
-                <label for="tanggal_pengajuan" class="form-label">Tanggal Pengajuan</label>
-                <input type="date" class="form-control" id="tanggal_pengajuan" name="tanggal_pengajuan" required>
-              </div>
+
               <div class="mb-3">
                 <label for="jumlah" class="form-label">Jumlah (Rp)</label>
                 <input type="number" class="form-control" id="jumlah" name="jumlah" min="0" required>
@@ -85,5 +82,16 @@
 
 {{ template "footer.html" . }}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Set tanggal pengajuan otomatis ke hari ini (hidden field)
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const hiddenTanggal = document.createElement('input');
+    hiddenTanggal.type = 'hidden';
+    hiddenTanggal.name = 'tanggal_pengajuan';
+    hiddenTanggal.value = new Date().toISOString().split('T')[0];
+    form.appendChild(hiddenTanggal);
+});
+</script>
 </body>
 </html>
