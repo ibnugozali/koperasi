@@ -65,7 +65,7 @@ func BendaharaDashboard(c *gin.Context) {
 		"ActivePage":         "dashboard",
 	}
 
-	c.HTML(http.StatusOK, "bendahara_layout.html", data)
+	c.HTML(http.StatusOK, "bendahara_dashboard_content.html", data)
 }
 
 // Menampilkan halaman konfirmasi anggota
