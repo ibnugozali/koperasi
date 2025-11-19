@@ -50,20 +50,37 @@
           <div class="mt-4">
             <h5 class="text-primary">Formulir Simpanan</h5>
             <form action="/anggota/simpanan" method="post" enctype="multipart/form-data">
-              <div class="mb-3">
-                <label for="jenis_simpanan" class="form-label">Jenis Simpanan</label>
-                <select class="form-select" id="jenis_simpanan" name="jenis_simpanan" required>
-                  <option value="">Pilih Jenis Simpanan</option>
-                  <option value="pokok">Simpanan Pokok</option>
-                  <option value="wajib">Simpanan Wajib</option>
-                  <option value="sukarela">Simpanan Sukarela</option>
-                  <option value="hari_raya">Simpanan Hari Raya</option>
-                </select>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="simpanan_wajib" class="form-label">Simpanan Wajib (Rp)</label>
+                </div>
+                <div class="col-md-6">
+                  <input type="number" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" min="0" value="0">
+                </div>
               </div>
-
-              <div class="mb-3">
-                <label for="jumlah" class="form-label">Jumlah (Rp)</label>
-                <input type="number" class="form-control" id="jumlah" name="jumlah" min="0" required>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="simpanan_sukarela" class="form-label">Simpanan Sukarela (Rp)</label>
+                </div>
+                <div class="col-md-6">
+                  <input type="number" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" min="0" value="0">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="simpanan_hari_raya" class="form-label">Simpanan Hari Raya (Rp)</label>
+                </div>
+                <div class="col-md-6">
+                  <input type="number" class="form-control simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" min="0" value="0">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="total_simpanan" class="form-label">Total Simpanan (Rp)</label>
+                </div>
+                <div class="col-md-6">
+                  <input type="number" class="form-control" id="total_simpanan" name="total_simpanan" readonly>
+                </div>
               </div>
               <div class="mb-3">
                 <label for="bukti" class="form-label">Bukti Pembayaran</label>
@@ -91,6 +108,23 @@ document.addEventListener('DOMContentLoaded', function() {
     hiddenTanggal.name = 'tanggal_pengajuan';
     hiddenTanggal.value = new Date().toISOString().split('T')[0];
     form.appendChild(hiddenTanggal);
+
+    // Function to calculate total
+    function calculateTotal() {
+        const wajib = parseFloat(document.getElementById('simpanan_wajib').value) || 0;
+        const sukarela = parseFloat(document.getElementById('simpanan_sukarela').value) || 0;
+        const hariRaya = parseFloat(document.getElementById('simpanan_hari_raya').value) || 0;
+        const total = wajib + sukarela + hariRaya;
+        document.getElementById('total_simpanan').value = total;
+    }
+
+    // Add event listeners to input fields
+    document.getElementById('simpanan_wajib').addEventListener('input', calculateTotal);
+    document.getElementById('simpanan_sukarela').addEventListener('input', calculateTotal);
+    document.getElementById('simpanan_hari_raya').addEventListener('input', calculateTotal);
+
+    // Initial calculation
+    calculateTotal();
 });
 </script>
 </body>
