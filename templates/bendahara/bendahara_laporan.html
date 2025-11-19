@@ -1,4 +1,4 @@
-{{define "bendahara_laporan_content"}}
+{{define "content"}}
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
@@ -135,9 +135,9 @@
 <script>
     /* eslint-disable */
     // Grafik Arus Kas
-    var totalSimpanan = {{if .Report.total_simpanan}}{{.Report.total_simpanan}}{{else}}0{{end}};
-    var totalPinjaman = {{if .Report.total_pinjaman}}{{.Report.total_pinjaman}}{{else}}0{{end}};
-    var totalAngsuran = {{if .Report.total_angsuran}}{{.Report.total_angsuran}}{{else}}0{{end}};
+    var totalSimpanan = parseFloat('{{if .Report.total_simpanan}}{{.Report.total_simpanan}}{{else}}0{{end}}');
+    var totalPinjaman = parseFloat('{{if .Report.total_pinjaman}}{{.Report.total_pinjaman}}{{else}}0{{end}}');
+    var totalAngsuran = parseFloat('{{if .Report.total_angsuran}}{{.Report.total_angsuran}}{{else}}0{{end}}');
 
     const ctx = document.getElementById('laporanChart').getContext('2d');
     const laporanChart = new Chart(ctx, {
