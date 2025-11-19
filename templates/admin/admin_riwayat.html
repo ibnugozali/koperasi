@@ -46,7 +46,7 @@
                                         {{range .Riwayats}}
                                         <tr>
                                             <td>{{.ID}}</td>
-                                            <td>{{.Tanggal.Format "2006-01-02 15:04:05"}}</td>
+                                            <td>{{.Tanggal.Format "02-01-2006 15:04:05"}}</td>
                                             <td>{{.Jenis}}</td>
                                             <td>Rp {{printf "%.0f" .Jumlah}}</td>
                                             <td>{{if eq .Status "valid"}}Sah{{else if eq .Status "invalid"}}Tidak Sah{{else}}{{.Status}}{{end}}</td>

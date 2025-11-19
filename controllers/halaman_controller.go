@@ -224,10 +224,14 @@ func ShowRiwayatPage(c *gin.Context) {
 	for _, s := range riwayatSimpanan {
 		desc := "Simpanan " + s.Simpanan.JenisSimpanan
 		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", s.JumlahSimpanan)), " ", "")
+		timeStr := s.TglTransaksi.Format("15:04:05")
+		if timeStr == "00:00:00" {
+			timeStr = "-"
+		}
 		if strings.Contains(strings.ToLower(desc+" "+amount), strings.ToLower(search)) {
 			allTransactions = append(allTransactions, UnifiedTransaction{
 				Date:        s.TglTransaksi,
-				Time:        s.TglTransaksi.Format("15:04:05"),
+				Time:        timeStr,
 				Type:        desc,
 				Description: desc,
 				Amount:      amount,
@@ -251,10 +255,14 @@ func ShowRiwayatPage(c *gin.Context) {
 		default:
 			status = p.Status
 		}
+		timeStr := p.TglPinjaman.Format("15:04:05")
+		if timeStr == "00:00:00" {
+			timeStr = "-"
+		}
 		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
 			allTransactions = append(allTransactions, UnifiedTransaction{
 				Date:        p.TglPinjaman,
-				Time:        p.TglPinjaman.Format("15:04:05"),
+				Time:        timeStr,
 				Type:        "Pinjaman",
 				Description: desc,
 				Amount:      amount,
@@ -276,10 +284,14 @@ func ShowRiwayatPage(c *gin.Context) {
 		default:
 			status = a.Status
 		}
+		timeStr := a.TglBayar.Format("15:04:05")
+		if timeStr == "00:00:00" {
+			timeStr = "-"
+		}
 		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
 			allTransactions = append(allTransactions, UnifiedTransaction{
 				Date:        a.TglBayar,
-				Time:        a.TglBayar.Format("15:04:05"),
+				Time:        timeStr,
 				Type:        "Angsuran",
 				Description: desc,
 				Amount:      amount,
