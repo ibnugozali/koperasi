@@ -1,9 +1,9 @@
 package repository
 
 import (
+	"database/sql"
 	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
-
 )
 
 // Mengambil semua anggota dengan status pending
@@ -193,4 +193,20 @@ func UpdateAnggotaStatus(id string, status string) error {
 	query := "UPDATE anggota SET status = $1 WHERE id_anggota = $2"
 	_, err := db.Exec(query, status, id)
 	return err
+}
+
+// GetTotalAnggota mengambil total anggota aktif
+func GetTotalAnggota(db *sql.DB) (int, error) {
+	var count int
+	query := "SELECT COUNT(*) FROM anggota WHERE status = 'aktif'"
+	err := db.QueryRow(query).Scan(&count)
+	return count, err
+}
+
+// GetMenungguKonfirmasi mengambil jumlah anggota yang menunggu konfirmasi (status pending)
+func GetMenungguKonfirmasi(db *sql.DB) (int, error) {
+	var count int
+	query := "SELECT COUNT(*) FROM anggota WHERE status = 'pending'"
+	err := db.QueryRow(query).Scan(&count)
+	return count, err
 }

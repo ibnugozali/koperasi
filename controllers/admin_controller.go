@@ -20,37 +20,55 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
-
 )
 
-// Menampilkan dashboard admin dengan daftar calon anggota
+// Menampilkan dashboard admin dengan data statistik
 func AdminDashboard(c *gin.Context) {
-	// Panggil repository untuk mendapatkan anggota dengan status 'pending'
-	pendingMembers, err := repository.GetPendingAnggota()
+	db := config.GetDB()
+
+	// Ambil data dashboard
+	totalAnggota, err := repository.GetTotalAnggota(db)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Gagal mengambil data anggota")
-		return
+		totalAnggota = 0
 	}
 
-	// Ambil konten dashboard anggota untuk form edit
-	dashboardHalaman, err := repository.GetHalamanBySlug("dashboard_anggota")
-	var dashboardKonten map[string]interface{}
-	if err == nil {
-		// Parse JSON
-		json.Unmarshal([]byte(dashboardHalaman.Konten), &dashboardKonten)
-	} else {
-		dashboardKonten = map[string]interface{}{
-			"teks":    "Selamat datang di dashboard anggota.",
-			"gambar":  "/static/images/placeholder.png",
-			"welcome": "Selamat Datang di Koperasi Wirya",
-			"slogan":  "Dari Anggota, Oleh Anggota, dan Untuk Anggota",
-		}
+	menungguKonfirmasi, err := repository.GetMenungguKonfirmasi(db)
+	if err != nil {
+		menungguKonfirmasi = 0
 	}
 
-	c.HTML(http.StatusOK, "admin_dashboard.html", gin.H{
-		"PendingMembers":  pendingMembers,
-		"DashboardKonten": dashboardKonten,
-	})
+	totalSimpanan, err := repository.GetTotalSimpanan(db)
+	if err != nil {
+		totalSimpanan = 0
+	}
+
+	totalPinjaman, err := repository.GetTotalPinjaman(db)
+	if err != nil {
+		totalPinjaman = 0
+	}
+
+	// Ambil data aktivitas terbaru untuk grafik
+	aktivitasData, err := repository.GetAktivitasTerbaru(db)
+	if err != nil {
+		aktivitasData = []map[string]interface{}{}
+	}
+
+	// Encode aktivitasData ke JSON untuk template
+	aktivitasJSON, err := json.Marshal(aktivitasData)
+	if err != nil {
+		aktivitasJSON = []byte("[]")
+	}
+
+	// Data untuk template
+	data := map[string]interface{}{
+		"TotalAnggota":       totalAnggota,
+		"MenungguKonfirmasi": menungguKonfirmasi,
+		"TotalSimpanan":      totalSimpanan,
+		"TotalPinjaman":      totalPinjaman,
+		"AktivitasData":      string(aktivitasJSON),
+	}
+
+	c.HTML(http.StatusOK, "admin_dashboard.html", data)
 }
 
 // Menampilkan halaman konfirmasi anggota

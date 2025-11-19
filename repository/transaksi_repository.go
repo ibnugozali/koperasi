@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"time"
 
 	"koperasi-simpan-pinjam/config"
@@ -374,4 +375,111 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 	}
 
 	return riwayats, nil
+}
+
+// GetTotalSimpanan mengambil total simpanan semua anggota
+func GetTotalSimpanan(db *sql.DB) (float64, error) {
+	var total float64
+	query := "SELECT COALESCE(SUM(jumlah_simpanan), 0) FROM detail"
+	err := db.QueryRow(query).Scan(&total)
+	return total, err
+}
+
+// GetTotalPinjaman mengambil total pinjaman semua anggota yang belum lunas
+func GetTotalPinjaman(db *sql.DB) (float64, error) {
+	var total float64
+	query := "SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman WHERE status != 'lunas'"
+	err := db.QueryRow(query).Scan(&total)
+	return total, err
+}
+
+// GetAktivitasTerbaru mengambil aktivitas terbaru untuk grafik (simpanan, pinjaman, angsuran dalam 30 hari terakhir)
+func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
+	var aktivitas []map[string]interface{}
+
+	// Simpanan terbaru
+	querySimpanan := `
+		SELECT d.tgl_transaksi, 'Simpanan' as jenis, d.jumlah_simpanan
+		FROM detail d
+		WHERE d.tgl_transaksi >= CURRENT_DATE - INTERVAL '30 days'
+		ORDER BY d.tgl_transaksi DESC
+		LIMIT 10
+	`
+	rows, err := db.Query(querySimpanan)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var tanggal time.Time
+		var jenis string
+		var jumlah float64
+		if err := rows.Scan(&tanggal, &jenis, &jumlah); err != nil {
+			return nil, err
+		}
+		aktivitas = append(aktivitas, map[string]interface{}{
+			"Tanggal": tanggal,
+			"Jenis":   jenis,
+			"Jumlah":  jumlah,
+		})
+	}
+
+	// Pinjaman terbaru
+	queryPinjaman := `
+		SELECT p.tgl_pinjaman, 'Pinjaman' as jenis, p.jumlah_pinjaman
+		FROM pinjaman p
+		WHERE p.tgl_pinjaman >= CURRENT_DATE - INTERVAL '30 days'
+		ORDER BY p.tgl_pinjaman DESC
+		LIMIT 10
+	`
+	rows2, err := db.Query(queryPinjaman)
+	if err != nil {
+		return nil, err
+	}
+	defer rows2.Close()
+
+	for rows2.Next() {
+		var tanggal time.Time
+		var jenis string
+		var jumlah float64
+		if err := rows2.Scan(&tanggal, &jenis, &jumlah); err != nil {
+			return nil, err
+		}
+		aktivitas = append(aktivitas, map[string]interface{}{
+			"Tanggal": tanggal,
+			"Jenis":   jenis,
+			"Jumlah":  jumlah,
+		})
+	}
+
+	// Angsuran terbaru
+	queryAngsuran := `
+		SELECT a.tgl_bayar, 'Angsuran' as jenis, a.sisa_pinjaman
+		FROM angsuran a
+		WHERE a.tgl_bayar >= CURRENT_DATE - INTERVAL '30 days'
+		ORDER BY a.tgl_bayar DESC
+		LIMIT 10
+	`
+	rows3, err := db.Query(queryAngsuran)
+	if err != nil {
+		return nil, err
+	}
+	defer rows3.Close()
+
+	for rows3.Next() {
+		var tanggal time.Time
+		var jenis string
+		var jumlah float64
+		if err := rows3.Scan(&tanggal, &jenis, &jumlah); err != nil {
+			return nil, err
+		}
+		aktivitas = append(aktivitas, map[string]interface{}{
+			"Tanggal": tanggal,
+			"Jenis":   jenis,
+			"Jumlah":  jumlah,
+		})
+	}
+
+	return aktivitas, nil
 }
