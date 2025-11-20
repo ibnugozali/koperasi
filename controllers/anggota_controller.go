@@ -349,6 +349,13 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
+	// Convert userID to int for pinjaman.IDAnggota
+	userIDInt, err := strconv.Atoi(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
 	var pinjaman models.Pinjaman
 	if err := c.ShouldBind(&pinjaman); err != nil {
 		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
@@ -445,7 +452,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 	// Set bunga flat 2%
 	pinjaman.Bunga = 2.0
 
-	pinjaman.IDAnggota = userID
+	pinjaman.IDAnggota = userIDInt
 	pinjaman.TglPinjaman = time.Now() // Set tanggal pengajuan otomatis
 	pinjaman.Status = "aktif"         // Status langsung aktif agar muncul di riwayat
 
@@ -824,10 +831,10 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		IDPinjaman:     idPinjaman,
 		IDPengelola:    sql.NullInt64{Int64: 1, Valid: true}, // Default pengelola
 		TglBayar:       tanggalPembayaran,
-		SisaPinjaman:   jumlahAngsuran,   // Untuk sementara, sisa pinjaman = jumlah angsuran
-		StatusAngsuran: "belum_lunas",    // Status awal
-		BuktiAngsuran:  []byte(filename), // Simpan nama file sebagai byte array
-		Status:         "valid",          // Status valid
+		SisaPinjaman:   jumlahAngsuran, // Untuk sementara, sisa pinjaman = jumlah angsuran
+		StatusAngsuran: "belum_lunas",  // Status awal
+		BuktiAngsuran:  filename,       // Simpan nama file sebagai string
+		Status:         "valid",        // Status valid
 		NamaAnggota:    anggota.NamaAnggota,
 	}
 

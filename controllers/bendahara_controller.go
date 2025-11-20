@@ -70,17 +70,8 @@ func BendaharaDashboard(c *gin.Context) {
 
 // Menampilkan halaman konfirmasi anggota
 func BendaharaKonfirmasi(c *gin.Context) {
-	// Panggil repository untuk mendapatkan anggota dengan status 'pending'
-	pendingMembers, err := repository.GetPendingAnggota()
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
-		return
-	}
-
-	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
-		"PendingMembers": pendingMembers,
-		"ActivePage":     "konfirmasi",
-	})
+	// Redirect ke halaman konfirmasi transaksi
+	c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi")
 }
 
 // Mengkonfirmasi keanggotaan
@@ -227,7 +218,7 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
 		return
 	}
-	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
+	c.HTML(http.StatusOK, "bendahara_anggota_list_content.html", gin.H{
 		"Anggotas":   anggotas,
 		"ActivePage": "anggota",
 	})
@@ -525,4 +516,69 @@ func UpdateBendaharaProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Profil berhasil diperbarui"})
+}
+
+// BendaharaKonfirmasiTransaksi menampilkan halaman konfirmasi transaksi
+func BendaharaKonfirmasiTransaksi(c *gin.Context) {
+	pendingSimpanan := []models.Detail{}
+
+	// Ambil pending pinjaman
+	pendingPinjaman, err := repository.GetPendingPinjaman()
+	if err != nil {
+		pendingPinjaman = []models.Pinjaman{}
+	}
+
+	// Ambil pending angsuran
+	pendingAngsuran, err := repository.GetAllAngsurans()
+	if err != nil {
+		pendingAngsuran = []models.Angsuran{}
+	}
+
+	c.HTML(http.StatusOK, "bendahara_konfirmasi_transaksi.html", gin.H{
+		"PendingSimpanan": pendingSimpanan,
+		"PendingPinjaman": pendingPinjaman,
+		"PendingAngsuran": pendingAngsuran,
+		"ActivePage":      "konfirmasi-transaksi",
+	})
+}
+
+// BendaharaKonfirmasiTransaksiPost menangani konfirmasi/reject transaksi
+func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
+	transactionType := c.Param("type")
+	idStr := c.Param("id")
+	action := c.PostForm("action")
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	switch transactionType {
+	case "simpanan":
+		// Simpanan tidak perlu update status, langsung return success
+		err = nil
+	case "pinjaman":
+		if action == "confirm" {
+			err = repository.UpdatePinjamanStatus(id, "aktif")
+		} else {
+			err = repository.UpdatePinjamanStatus(id, "rejected")
+		}
+	case "angsuran":
+		if action == "confirm" {
+			err = repository.UpdateAngsuranStatus(id, "confirmed")
+		} else {
+			err = repository.UpdateAngsuranStatus(id, "rejected")
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe transaksi tidak valid"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses transaksi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Transaksi berhasil diproses"})
 }

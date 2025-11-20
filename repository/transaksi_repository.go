@@ -114,6 +114,14 @@ func UpdatePinjamanStatus(id int, status string) error {
 	return err
 }
 
+// UpdateAngsuranStatus memperbarui status angsuran
+func UpdateAngsuranStatus(id int, status string) error {
+	db := config.GetDB()
+	query := "UPDATE angsuran SET status = $1 WHERE id_angsuran = $2"
+	_, err := db.Exec(query, status, id)
+	return err
+}
+
 // GetPendingPinjaman mengambil pinjaman dengan status 'proses'
 func GetPendingPinjaman() ([]models.Pinjaman, error) {
 	db := config.GetDB()

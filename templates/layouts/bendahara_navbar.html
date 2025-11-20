@@ -12,6 +12,13 @@
     </div>
     <a href="/bendahara/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
 
+    <!-- Manajemen Anggota -->
+    <a href="#manajemenAnggota" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
+    <div class="collapse" id="manajemenAnggota">
+        <a href="/bendahara/konfirmasi" class="ms-3 {{ if eq .ActivePage "konfirmasi" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
+        <a href="/bendahara/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
+    </div>
+
     <!-- Transaksi & Laporan -->
     <a href="#transaksiLaporan" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fa-solid fa-chart-bar me-2"></i> Transaksi & Laporan</a>
     <div class="collapse" id="transaksiLaporan">

@@ -605,7 +605,6 @@ func CatatSimpanan(c *gin.Context) {
 		return
 	}
 
-	detail.IDPengelola = adminID.(int)
 	detail.TglTransaksi = time.Now()
 
 	// Hitung total simpanan (kumulatif)
