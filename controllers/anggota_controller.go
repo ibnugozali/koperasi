@@ -92,10 +92,10 @@ func AnggotaProfil(c *gin.Context) {
 	}
 
 	// Ambil data saldo
-	totalSimpanan, totalPinjaman, saldoBersih, err := repository.GetSaldoAnggota(userID)
+	totalSimpanan, totalPinjaman, _, err := repository.GetSaldoAnggota(userID)
 	if err != nil {
 		// Jika gagal ambil saldo, tetap tampilkan halaman dengan saldo 0
-		totalSimpanan, totalPinjaman, saldoBersih = 0, 0, 0
+		totalSimpanan, totalPinjaman = 0, 0
 	}
 
 	// Render halaman profil dan kirim data anggota dan saldo ke sana
@@ -103,7 +103,6 @@ func AnggotaProfil(c *gin.Context) {
 		"Anggota":       anggota,
 		"TotalSimpanan": totalSimpanan,
 		"TotalPinjaman": totalPinjaman,
-		"SaldoBersih":   saldoBersih,
 	})
 }
 
