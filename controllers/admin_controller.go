@@ -22,6 +22,26 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
+// AdminAnggotaRegister menampilkan detail registrasi anggota berdasarkan ID
+func AdminAnggotaRegister(c *gin.Context) {
+	idStr := c.Param("id")
+
+	anggota, err := repository.GetAnggotaByID(idStr)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"message":    "Data registrasi tidak ditemukan",
+			"ActivePage": "konfirmasi",
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "admin_anggota_register.html", gin.H{
+		"Anggota":    anggota,
+		"ActivePage": "konfirmasi",
+		"Title":      "Detail Pendaftaran Anggota",
+	})
+}
+
 // Menampilkan dashboard admin dengan data statistik
 func AdminDashboard(c *gin.Context) {
 	db := config.GetDB()
@@ -80,7 +100,7 @@ func AdminKonfirmasi(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "konfirmasi.html", gin.H{
+	c.HTML(http.StatusOK, "admin_konfirmasi.html", gin.H{
 		"PendingMembers": pendingMembers,
 		"ActivePage":     "konfirmasi",
 		"Title":          "Konfirmasi Anggota",

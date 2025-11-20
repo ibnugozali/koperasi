@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -630,9 +631,46 @@ func AnggotaAngsuran(c *gin.Context) {
 		return
 	}
 
+	// Convert userID to int
+	userIDInt, err := strconv.Atoi(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Invalid user ID."})
+		return
+	}
+
+	// Ambil pinjaman aktif anggota
+	pinjaman, err := repository.GetPinjamanAktifByAnggotaID(userIDInt)
+	var jumlahPinjaman, sisaPinjaman float64
+	var angsuranKe int
+	if err == nil && pinjaman.IDPinjaman != 0 {
+		jumlahPinjaman = pinjaman.JumlahPinjaman
+
+		// Hitung sisa pinjaman: jumlah pinjaman - total angsuran yang sudah dibayar
+		angsurans, err := repository.GetAngsuranByPinjamanID(pinjaman.IDPinjaman)
+		if err == nil {
+			totalAngsuran := 0.0
+			for _, a := range angsurans {
+				totalAngsuran += a.SisaPinjaman
+			}
+			sisaPinjaman = jumlahPinjaman - totalAngsuran
+			angsuranKe = len(angsurans) + 1
+		} else {
+			sisaPinjaman = jumlahPinjaman
+			angsuranKe = 1
+		}
+	} else {
+		// Jika tidak ada pinjaman aktif, set default 0
+		jumlahPinjaman = 0
+		sisaPinjaman = 0
+		angsuranKe = 0
+	}
+
 	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
-		"Judul":   "Angsuran",
-		"Anggota": anggota,
+		"Judul":          "Angsuran",
+		"Anggota":        anggota,
+		"JumlahPinjaman": jumlahPinjaman,
+		"SisaPinjaman":   sisaPinjaman,
+		"AngsuranKe":     angsuranKe,
 	})
 }
 

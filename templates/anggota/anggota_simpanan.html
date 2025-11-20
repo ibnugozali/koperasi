@@ -50,41 +50,25 @@
           <div class="mt-4">
             <h5 class="text-primary">Formulir Simpanan</h5>
             <form action="/anggota/simpanan" method="post" enctype="multipart/form-data">
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="simpanan_wajib" class="form-label">Simpanan Wajib (Rp)</label>
-                </div>
-                <div class="col-md-6">
-                  <input type="number" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" min="0" value="0">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="simpanan_sukarela" class="form-label">Simpanan Sukarela (Rp)</label>
-                </div>
-                <div class="col-md-6">
-                  <input type="number" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" min="0" value="0">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="simpanan_hari_raya" class="form-label">Simpanan Hari Raya (Rp)</label>
-                </div>
-                <div class="col-md-6">
-                  <input type="number" class="form-control simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" min="0" value="0">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="total_simpanan" class="form-label">Total Simpanan (Rp)</label>
-                </div>
-                <div class="col-md-6">
-                  <input type="number" class="form-control" id="total_simpanan" name="total_simpanan" readonly>
-                </div>
+              <div class="mb-3">
+                <label for="simpanan_wajib" class="form-label d-inline me-3">Simpanan Wajib (Rp)</label>
+                <input type="number" class="form-control d-inline w-auto simpanan-input" id="simpanan_wajib" name="simpanan_wajib" min="0" value="0">
               </div>
               <div class="mb-3">
-                <label for="bukti" class="form-label">Bukti Pembayaran</label>
-                <input type="file" class="form-control" id="bukti" name="bukti" accept="image/*" required>
+                <label for="simpanan_sukarela" class="form-label d-inline me-3">Simpanan Sukarela (Rp)</label>
+                <input type="number" class="form-control d-inline w-auto simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" min="0" value="0">
+              </div>
+              <div class="mb-3">
+                <label for="simpanan_hari_raya" class="form-label d-inline me-3">Simpanan Hari Raya (Rp)</label>
+                <input type="number" class="form-control d-inline w-auto simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" min="0" value="0">
+              </div>
+              <div class="mb-3">
+                <label for="total_simpanan" class="form-label d-inline me-3">Total Simpanan (Rp)</label>
+                <input type="number" class="form-control d-inline w-auto" id="total_simpanan" name="total_simpanan" readonly>
+              </div>
+              <div class="mb-3">
+                <label for="bukti" class="form-label d-inline me-3">Bukti Pembayaran</label>
+                <input type="file" class="form-control d-inline w-auto" id="bukti" name="bukti" accept="image/*" required>
               </div>
               <button type="submit" class="btn btn-success">Kirim Simpanan</button>
             </form>
