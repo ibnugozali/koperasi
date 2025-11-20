@@ -1,0 +1,174 @@
+{{define "bendahara_konfirmasi_transaksi_content"}}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-check-circle me-2"></i>Konfirmasi Transaksi</h5>
+                    <small class="text-white-50">Kelola pengajuan simpanan, pinjaman, dan angsuran yang menunggu konfirmasi</small>
+                </div>
+                <div class="card-body">
+                    <!-- Pending Simpanan -->
+                    <div class="stat-card mb-4">
+                        <h5><i class="fa-solid fa-piggy-bank me-2"></i>Simpanan Pending</h5>
+                        {{if .PendingSimpanan}}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nama Anggota</th>
+                                        <th>Jenis Simpanan</th>
+                                        <th>Jumlah</th>
+                                        <th>Tanggal</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{range .PendingSimpanan}}
+                                    <tr>
+                                        <td>{{.IDDetail}}</td>
+                                        <td>{{.NamaAnggota}}</td>
+                                        <td>{{.Simpanan.JenisSimpanan}}</td>
+                                        <td>Rp {{printf "%.0f" .JumlahSimpanan}}</td>
+                                        <td>{{.TglTransaksi.Format "2006-01-02"}}</td>
+                                        <td>
+                                            <button class="btn btn-success btn-sm me-2" onclick="confirmTransaction('simpanan', '{{.IDDetail}}', 'confirm')">
+                                                <i class="fa-solid fa-check"></i> Konfirmasi
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" onclick="confirmTransaction('simpanan', '{{.IDDetail}}', 'reject')">
+                                                <i class="fa-solid fa-times"></i> Tolak
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                        {{else}}
+                        <div class="alert alert-info">
+                            <i class="fa-solid fa-info-circle me-2"></i>Tidak ada simpanan yang menunggu konfirmasi.
+                        </div>
+                        {{end}}
+                    </div>
+
+                    <!-- Pending Pinjaman -->
+                    <div class="stat-card mb-4">
+                        <h5><i class="fa-solid fa-money-bill-wave me-2"></i>Pinjaman Pending</h5>
+                        {{if .PendingPinjaman}}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nama Anggota</th>
+                                        <th>Jumlah</th>
+                                        <th>Jangka Waktu</th>
+                                        <th>Bunga</th>
+                                        <th>Tanggal</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{range .PendingPinjaman}}
+                                    <tr>
+                                        <td>{{.IDPinjaman}}</td>
+                                        <td>{{.NamaAnggota}}</td>
+                                        <td>Rp {{printf "%.0f" .JumlahPinjaman}}</td>
+                                        <td>{{.JangkaWaktu}} bulan</td>
+                                        <td>{{.Bunga}}%</td>
+                                        <td>{{.TglPinjaman.Format "2006-01-02"}}</td>
+                                        <td>
+                                            <button class="btn btn-success btn-sm me-2" onclick="confirmTransaction('pinjaman', '{{.IDPinjaman}}', 'confirm')">
+                                                <i class="fa-solid fa-check"></i> Konfirmasi
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" onclick="confirmTransaction('pinjaman', '{{.IDPinjaman}}', 'reject')">
+                                                <i class="fa-solid fa-times"></i> Tolak
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                        {{else}}
+                        <div class="alert alert-info">
+                            <i class="fa-solid fa-info-circle me-2"></i>Tidak ada pinjaman yang menunggu konfirmasi.
+                        </div>
+                        {{end}}
+                    </div>
+
+                    <!-- Pending Angsuran -->
+                    <div class="stat-card">
+                        <h5><i class="fa-solid fa-coins me-2"></i>Angsuran Pending</h5>
+                        {{if .PendingAngsuran}}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nama Anggota</th>
+                                        <th>Jumlah Angsuran</th>
+                                        <th>Tanggal Bayar</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{range .PendingAngsuran}}
+                                    <tr>
+                                        <td>{{.IDAngsuran}}</td>
+                                        <td>{{.NamaAnggota}}</td>
+                                        <td>Rp {{printf "%.0f" .SisaPinjaman}}</td>
+                                        <td>{{.TglBayar.Format "2006-01-02"}}</td>
+                                        <td>
+                                            <button class="btn btn-success btn-sm me-2" onclick="confirmTransaction('angsuran', '{{.IDAngsuran}}', 'confirm')">
+                                                <i class="fa-solid fa-check"></i> Konfirmasi
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" onclick="confirmTransaction('angsuran', '{{.IDAngsuran}}', 'reject')">
+                                                <i class="fa-solid fa-times"></i> Tolak
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                        {{else}}
+                        <div class="alert alert-info">
+                            <i class="fa-solid fa-info-circle me-2"></i>Tidak ada angsuran yang menunggu konfirmasi.
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmTransaction(type, id, action) {
+    if (confirm(`Apakah Anda yakin ingin ${action === 'confirm' ? 'mengkonfirmasi' : 'menolak'} transaksi ini?`)) {
+        fetch(`/bendahara/konfirmasi-transaksi/${type}/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=${action}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                alert(data.message);
+                location.reload();
+            } else if (data.error) {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan saat memproses transaksi');
+        });
+    }
+}
+</script>
+{{end}}

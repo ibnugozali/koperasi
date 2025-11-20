@@ -483,39 +483,3 @@ func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
 
 	return aktivitas, nil
 }
-
-// GetPinjamanAktifByAnggotaID mengambil pinjaman aktif berdasarkan ID anggota
-func GetPinjamanAktifByAnggotaID(idAnggota int) (models.Pinjaman, error) {
-	db := config.GetDB()
-	var p models.Pinjaman
-	query := "SELECT id_pinjaman, id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status FROM pinjaman WHERE id_anggota = $1 AND status = 'aktif' ORDER BY tgl_pinjaman DESC LIMIT 1"
-	err := db.QueryRow(query, idAnggota).Scan(&p.IDPinjaman, &p.IDAnggota, &p.IDPengelola, &p.TglPinjaman, &p.JumlahPinjaman, &p.JangkaWaktu, &p.Bunga, &p.Status)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return models.Pinjaman{}, nil // No active loan
-		}
-		return models.Pinjaman{}, err
-	}
-	return p, nil
-}
-
-// GetAngsuranByPinjamanID mengambil semua angsuran berdasarkan ID pinjaman
-func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
-	db := config.GetDB()
-	var angsurans []models.Angsuran
-	query := "SELECT id_angsuran, id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, status_angsuran, bukti_angsuran, status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC"
-	rows, err := db.Query(query, idPinjaman)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var a models.Angsuran
-		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.StatusAngsuran, &a.BuktiAngsuran, &a.Status); err != nil {
-			return nil, err
-		}
-		angsurans = append(angsurans, a)
-	}
-	return angsurans, nil
-}

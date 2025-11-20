@@ -74,11 +74,11 @@ func SetupRouter() *gin.Engine {
 	adminRoutes.Use(middleware.AuthRequired(), middleware.AdminOnly())
 	{
 		adminRoutes.GET("/dashboard", controllers.AdminDashboard)
-		adminRoutes.GET("/anggota-register/:id", controllers.AdminAnggotaRegister)
 		adminRoutes.GET("/konfirmasi", controllers.AdminKonfirmasi)
 		adminRoutes.POST("/confirm/:id", controllers.ConfirmMembership)
 		adminRoutes.POST("/reject/:id", controllers.RejectMembership)
 		adminRoutes.GET("/view-registration/:id", controllers.ViewRegistration)
+		adminRoutes.GET("/anggota-register/:id", controllers.AdminAnggotaRegister)
 		adminRoutes.GET("/halaman/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/halaman/update/:slug", controllers.UpdateHalaman)
 		adminRoutes.POST("/upload", controllers.UploadFile)
