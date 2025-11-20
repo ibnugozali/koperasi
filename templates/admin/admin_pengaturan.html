@@ -10,7 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/admin_pengaturan.css" rel="stylesheet">
 </head>
-<body>admin_pengaturan
+<body>
 
     {{template "admin_navbar.html" .}}
 
@@ -23,51 +23,8 @@
             <div class="row">
                 <div class="col-12">
                     <div class="card shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="fa-solid fa-edit me-2"></i>Daftar Halaman Statis</h5>
-                        </div>
-                        <div class="card-body">
-                            <p class="mb-4">Berikut adalah daftar halaman statis yang dapat diedit kontennya.</p>
-
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead class="table-dark">
-                                        <tr>
-                                            <th>Judul Halaman</th>
-                                            <th>Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {{range .AllHalaman}}
-                                        <tr>
-                                            <td>{{.Judul}}</td>
-                                            <td>
-                                                {{if eq .Slug "visi-misi"}}
-                                                <a href="/admin/keamanan/login" class="btn btn-primary btn-sm">Edit</a>
-                                                {{else if eq .Slug "simpanan"}}
-                                                <a href="/admin/keamanan/simpanan" class="btn btn-primary btn-sm">Edit</a>
-                                                {{else if eq .Slug "pinjaman"}}
-                                                <a href="/admin/keamanan/pinjaman" class="btn btn-primary btn-sm">Edit</a>
-                                                {{else if eq .Slug "angsuran"}}
-                                                <a href="/admin/keamanan/pembayaran" class="btn btn-primary btn-sm">Edit</a>
-                                                {{else if eq .Slug "sejarah"}}
-                                                <a href="/admin/keamanan/riwayat" class="btn btn-primary btn-sm">Edit</a>
-                                                {{end}}
-                                            </td>
-                                        </tr>
-                                        {{else}}
-                                        <tr>
-                                            <td colspan="2" class="text-center">Tidak ada halaman statis.</td>
-                                        </tr>
-                                        {{end}}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+                        
+                                 
             <div class="row mt-4">
                 <div class="col-12">
                     <div class="stat-card">

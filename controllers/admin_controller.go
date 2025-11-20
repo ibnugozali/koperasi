@@ -698,11 +698,9 @@ func AdminPengaturan(c *gin.Context) {
 
 	// Map judul ke nama keamanan
 	securityTitles := map[string]string{
-		"visi-misi": "Pengaturan Keamanan Login",
-		"pinjaman":  "Pengaturan Keamanan Data Pinjaman",
-		"simpanan":  "Pengaturan Keamanan Data Simpanan",
-		"angsuran":  "Pengaturan Keamanan Pembayaran",
-		"sejarah":   "Pengaturan Keamanan Riwayat",
+		"pinjaman": "Pengaturan Keamanan Data Pinjaman",
+		"simpanan": "Pengaturan Keamanan Data Simpanan",
+		"angsuran": "Pengaturan Keamanan Pembayaran",
 	}
 
 	// Filter out dashboard_anggota and struktur from the list
