@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -630,9 +631,48 @@ func AnggotaAngsuran(c *gin.Context) {
 		return
 	}
 
+	// Ambil pinjaman aktif anggota
+	userIDInt, err := strconv.Atoi(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+	pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userIDInt)
+	if err != nil {
+		pinjamans = []models.Pinjaman{} // Default kosong jika error
+	}
+
+	// Hitung jumlah pinjaman dan sisa pinjaman
+	var jumlahPinjaman float64
+	var sisaPinjaman float64
+	var angsuranKe int
+
+	if len(pinjamans) > 0 {
+		pinjaman := pinjamans[0] // Ambil pinjaman pertama yang aktif
+		jumlahPinjaman = pinjaman.JumlahPinjaman
+
+		// Hitung total angsuran yang sudah dibayar
+		angsurans, err := repository.GetAngsuranByPinjamanID(pinjaman.IDPinjaman)
+		if err == nil {
+			var totalAngsuran float64
+			for _, ang := range angsurans {
+				totalAngsuran += ang.SisaPinjaman
+			}
+			sisaPinjaman = jumlahPinjaman - totalAngsuran
+			angsuranKe = len(angsurans) + 1
+		} else {
+			sisaPinjaman = jumlahPinjaman
+			angsuranKe = 1
+		}
+	}
+
 	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
-		"Judul":   "Angsuran",
-		"Anggota": anggota,
+		"Judul":          "Angsuran",
+		"Anggota":        anggota,
+		"JumlahPinjaman": jumlahPinjaman,
+		"SisaPinjaman":   sisaPinjaman,
+		"AngsuranKe":     angsuranKe,
+		"Pinjamans":      pinjamans,
 	})
 }
 
@@ -743,9 +783,42 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		return
 	}
 
-	// Untuk sementara, kita asumsikan ID pinjaman pertama yang aktif untuk user ini
-	// Dalam implementasi nyata, Anda mungkin perlu menambahkan dropdown untuk memilih pinjaman mana yang akan diangsur
-	var idPinjaman int = 1 // Placeholder - perlu diganti dengan logika untuk mendapatkan ID pinjaman yang aktif
+	// Ambil ID pinjaman dari form (jika ada) atau gunakan pinjaman aktif pertama
+	idPinjamanStr := c.PostForm("id_pinjaman")
+	var idPinjaman int
+	if idPinjamanStr != "" {
+		if parsedID, err := strconv.Atoi(idPinjamanStr); err == nil {
+			idPinjaman = parsedID
+		} else {
+			c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+				"Judul":   "Angsuran",
+				"Anggota": anggota,
+				"Error":   "ID pinjaman tidak valid.",
+			})
+			return
+		}
+	} else {
+		// Jika tidak ada ID pinjaman di form, ambil pinjaman aktif pertama
+		userIDInt, err := strconv.Atoi(userID)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "anggota_angsuran.html", gin.H{
+				"Judul":   "Angsuran",
+				"Anggota": anggota,
+				"Error":   "Gagal mengambil data pengguna.",
+			})
+			return
+		}
+		pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userIDInt)
+		if err != nil || len(pinjamans) == 0 {
+			c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+				"Judul":   "Angsuran",
+				"Anggota": anggota,
+				"Error":   "Tidak ada pinjaman aktif.",
+			})
+			return
+		}
+		idPinjaman = pinjamans[0].IDPinjaman
+	}
 
 	// Buat angsuran baru
 	angsuran := models.Angsuran{
