@@ -394,7 +394,7 @@ func BendaharaCatatPinjaman(c *gin.Context) {
 
 // BendaharaRiwayat menampilkan halaman riwayat transaksi bendahara
 func BendaharaRiwayat(c *gin.Context) {
-	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
+	c.HTML(http.StatusOK, "bendahara_riwayat_content.html", gin.H{
 		"ActivePage": "riwayat",
 	})
 }
@@ -416,14 +416,14 @@ func BendaharaLaporan(c *gin.Context) {
 
 	report, err := repository.GetLaporanKeuangan(bulan, tahun)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "bendahara_layout.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "bendahara_laporan.html", gin.H{
 			"ActivePage": "laporan",
 			"Error":      "Gagal mengambil laporan",
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
+	c.HTML(http.StatusOK, "bendahara_laporan.html", gin.H{
 		"ActivePage": "laporan",
 		"Report":     report,
 		"Bulan":      bulan,
