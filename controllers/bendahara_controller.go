@@ -218,7 +218,7 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
 		return
 	}
-	c.HTML(http.StatusOK, "bendahara_anggota_list_content.html", gin.H{
+	c.HTML(http.StatusOK, "bendahara_anggota_konfirmasi.html", gin.H{
 		"Anggotas":   anggotas,
 		"ActivePage": "anggota",
 	})

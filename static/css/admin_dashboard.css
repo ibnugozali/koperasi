@@ -18,6 +18,10 @@ body {
     padding: 20px 0;
     overflow-y: auto;
     z-index: 1000;
+
+    /* MATCH admin_konfirmasi */
+    transform: translateX(0);
+    transition: transform 0.3s ease;
 }
 
 /* Hamburger Menu */
@@ -44,7 +48,6 @@ body {
 @media (max-width: 768px) {
     .sidebar {
         transform: translateX(-100%);
-        transition: transform 0.3s ease;
     }
 
     .sidebar.show {
@@ -56,26 +59,11 @@ body {
     }
 
     .main-content, .navbar, footer {
-        margin-left: 0;
+        margin-left: 0 !important;
     }
 
-    /* Adjust main content padding on mobile */
     .main-content {
         padding: 20px 15px;
-    }
-
-    /* Make stat cards responsive */
-    .stat-card {
-        margin-bottom: 20px;
-    }
-
-    /* Sidebar open state for mobile */
-    .sidebar-open .sidebar {
-        transform: translateX(0);
-    }
-
-    .sidebar-open .main-content {
-        margin-left: 0;
     }
 }
 
@@ -101,9 +89,10 @@ body {
 
 /* Navbar */
 .navbar {
-    margin-left: 0;
+    margin-left: 240px;
     background: #ffffff;
     box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+    transition: margin-left 0.3s ease;
 }
 
 /* Main Content */
@@ -129,27 +118,13 @@ body {
     box-shadow: 0 8px 25px rgba(0,0,0,0.1);
 }
 
-.stat-icon {
-    font-size: 2.3rem;
-    margin-bottom: 12px;
-}
-
-.stat-number {
-    font-size: 1.8rem;
-    font-weight: 700;
-}
-
-.stat-label {
-    color: #6c757d;
-    font-size: 0.95rem;
-    margin-top: 5px;
-}
-
+/* Footer */
 footer {
-    margin-left: 0;
+    margin-left: 240px;
     padding: 15px;
     text-align: center;
     color: #666;
     background: #fff;
     border-top: 1px solid #ddd;
+    transition: margin-left 0.3s ease;
 }
