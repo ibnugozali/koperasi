@@ -1,13 +1,13 @@
 # TODO: Add Transaction Confirmation Feature for Bendahara
 
 ## 1. Modify Anggota Controller (controllers/anggota_controller.go)
-- [ ] Change AjukanPinjamanPost to save pinjaman with status 'pending' instead of 'aktif'
-- [ ] Change AnggotaSimpananPost to save simpanan with status 'pending' instead of direct creation
-- [ ] Change AnggotaAngsuranPost to save angsuran with status 'pending' instead of 'valid'
+- [ ] Change AjukanPinjamanPost: Set status to 'pending' instead of 'aktif'
+- [ ] Change AnggotaSimpananPost: Set status to 'pending' (ensure Detail model has status)
+- [ ] Change AnggotaAngsuranPost: Set status to 'pending' instead of 'valid'
 
 ## 2. Update Routes (routes/routes.go)
-- [ ] Add new route: GET /bendahara/konfirmasi-transaksi for viewing pending transactions
-- [ ] Add new route: POST /bendahara/konfirmasi-transaksi/:type/:id for confirming transactions
+- [ ] Add GET /bendahara/konfirmasi-transaksi for viewing pending transactions
+- [ ] Add POST /bendahara/konfirmasi-transaksi/:type/:id for confirming/rejecting transactions
 
 ## 3. Add Bendahara Controller Functions (controllers/bendahara_controller.go)
 - [ ] Add BendaharaKonfirmasiTransaksi function to display pending transactions
@@ -18,6 +18,7 @@
 - [ ] Add GetPendingPinjaman function to get pinjaman with status 'pending'
 - [ ] Add GetPendingAngsuran function to get angsuran with status 'pending'
 - [ ] Add UpdateSimpananStatus function
+- [ ] Add UpdatePinjamanStatus function
 - [ ] Add UpdateAngsuranStatus function
 
 ## 5. Update Navbar (templates/layouts/bendahara_navbar.html)
@@ -28,4 +29,4 @@
 - [ ] Include buttons to confirm/reject each transaction
 
 ## 7. Update Models if needed (models/transaksi.go)
-- [ ] Ensure models support 'pending' status for all transaction types
+- [ ] Ensure Status fields support 'pending' (already do)

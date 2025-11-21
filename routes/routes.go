@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/json"
 	"html/template"
 	"net/http"
 
@@ -15,17 +16,25 @@ import (
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
 
+	// Set trusted proxies to avoid security warning
+	router.SetTrustedProxies([]string{"127.0.0.1", "::1"})
+
 	// 1. Setup session middleware
 	store := cookie.NewStore([]byte("kuncirahasia-anda-yang-aman"))
 	router.Use(sessions.Sessions("koperasisession", store))
 
 	// 2. Muat file statis dan template HTML
 	router.Static("/static", "./static")
+	router.StaticFile("/favicon.ico", "./static/images/logo.png")
 
 	// PERBAIKAN: Gunakan SATU baris ini untuk memuat semua file .html
 	// dari folder templates dan semua subfoldernya.
 	router.SetFuncMap(template.FuncMap{
 		"add": func(a, b int) int { return a + b },
+		"json": func(v interface{}) template.JS {
+			a, _ := json.Marshal(v)
+			return template.JS(a)
+		},
 	})
 	router.LoadHTMLGlob("templates/**/*.html")
 
@@ -112,13 +121,13 @@ func SetupRouter() *gin.Engine {
 
 	// --- Rute Bendahara (Dilindungi Middleware) ---
 	bendaharaRoutes := router.Group("/bendahara")
-	bendaharaRoutes.Use(middleware.AuthRequired(), middleware.BendaharaOnly())
+	bendaharaRoutes.Use(middleware.AuthRequired(), middleware.BendaharaOnly(), middleware.BendaharaLogoMiddleware())
 	{
 		bendaharaRoutes.GET("/dashboard", controllers.BendaharaDashboard)
 		bendaharaRoutes.GET("/konfirmasi", controllers.BendaharaKonfirmasi)
+		bendaharaRoutes.POST("/confirm/:id", controllers.BendaharaConfirmMembership)
 		bendaharaRoutes.GET("/konfirmasi-transaksi", controllers.BendaharaKonfirmasiTransaksi)
 		bendaharaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.BendaharaKonfirmasiTransaksiPost)
-		bendaharaRoutes.POST("/confirm/:id", controllers.BendaharaConfirmMembership)
 		bendaharaRoutes.GET("/halaman", controllers.BendaharaListHalaman)
 		bendaharaRoutes.POST("/halaman/update/:slug", controllers.BendaharaUpdateHalaman)
 		bendaharaRoutes.POST("/upload", controllers.BendaharaUploadFile)

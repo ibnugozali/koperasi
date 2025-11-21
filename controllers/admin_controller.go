@@ -72,20 +72,13 @@ func AdminDashboard(c *gin.Context) {
 	if err != nil {
 		aktivitasData = []map[string]interface{}{}
 	}
-
-	// Encode aktivitasData ke JSON untuk template
-	aktivitasJSON, err := json.Marshal(aktivitasData)
-	if err != nil {
-		aktivitasJSON = []byte("[]")
-	}
-
 	// Data untuk template
 	data := map[string]interface{}{
 		"TotalAnggota":       totalAnggota,
 		"MenungguKonfirmasi": menungguKonfirmasi,
 		"TotalSimpanan":      totalSimpanan,
 		"TotalPinjaman":      totalPinjaman,
-		"AktivitasData":      string(aktivitasJSON),
+		"AktivitasData":      aktivitasData,
 	}
 
 	c.HTML(http.StatusOK, "admin_dashboard.html", data)

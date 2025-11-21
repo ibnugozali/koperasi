@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Pastikan submenu tetap terbuka berdasarkan URL saat ini dengan animasi
     var currentURL = window.location.pathname;
-    if (currentURL.includes('/admin/konfirmasi') || currentURL.includes('/admin/anggota') || currentURL.includes('/admin/login-history')) {
+    if (currentURL.includes('/bendahara/konfirmasi') || currentURL.includes('/bendahara/anggota')) {
         var manajemenAnggota = document.getElementById('manajemenAnggota');
         if (manajemenAnggota && !manajemenAnggota.classList.contains('show')) {
             manajemenAnggota.style.display = 'block';
@@ -61,29 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    if (currentURL.includes('/admin/halaman/') || currentURL.includes('/admin/halaman')) {
-        var kontenWebsite = document.getElementById('kontenWebsite');
-        if (kontenWebsite && !kontenWebsite.classList.contains('show')) {
-            kontenWebsite.style.display = 'block';
-            kontenWebsite.style.maxHeight = '0px';
-            kontenWebsite.style.opacity = '0';
-            kontenWebsite.style.transition = 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out';
-            setTimeout(function() {
-                kontenWebsite.classList.add('show');
-                kontenWebsite.style.maxHeight = kontenWebsite.scrollHeight + 'px';
-                kontenWebsite.style.opacity = '1';
-            }, 10);
-            setTimeout(function() {
-                kontenWebsite.style.maxHeight = '';
-                kontenWebsite.style.transition = '';
-            }, 300);
-            var toggle = kontenWebsite.previousElementSibling;
-            if (toggle) {
-                toggle.setAttribute('aria-expanded', 'true');
-            }
-        }
-    }
-    if (currentURL.includes('/admin/riwayat') || currentURL.includes('/admin/laporan') || currentURL.includes('/admin/transaksi')) {
+    if (currentURL.includes('/bendahara/riwayat') || currentURL.includes('/bendahara/laporan')) {
         var transaksiLaporan = document.getElementById('transaksiLaporan');
         if (transaksiLaporan && !transaksiLaporan.classList.contains('show')) {
             transaksiLaporan.style.display = 'block';
@@ -106,6 +84,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Fungsi toggle sidebar
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const hamburger = document.querySelector('.hamburger');
+
+    if (sidebar && hamburger) {
+        sidebar.classList.toggle('show');
+        hamburger.classList.toggle('active');
+    }
+}
 
 // Fungsi toggle submenu dengan animasi
 function toggleSubmenu(toggle, id) {

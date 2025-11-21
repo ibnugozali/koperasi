@@ -17,12 +17,13 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="text-center mb-3">
-        <img id="navbarLogo" src="/static/images/placeholder.png" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;">
+        <img id="navbarLogo" src="{{.LogoPath}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;">
         <h5 class="mt-2">KOPMA</h5>
     </div>
     <a href="/admin/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
      <a href="/admin/edit-logo" class="{{ if eq .ActivePage "edit_logo" }}active{{ end }}"><i class="fa-solid fa-image me-2"></i> Edit Logo</a>
-    <!-- Manajemen Anggota -->
+    
+     <!-- Manajemen Anggota -->
     <a href="#" onclick="toggleSubmenu(this, 'manajemenAnggota'); return false;" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
     <div class="collapse {{ if or (eq .ActivePage "konfirmasi") (eq .ActivePage "anggota") (eq .ActivePage "login_history") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi") (eq .ActivePage "anggota") (eq .ActivePage "login_history") }}style="display: block;"{{ end }}>
         <a href="/admin/konfirmasi" class="ms-3 {{ if eq .ActivePage "konfirmasi" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
@@ -163,6 +164,17 @@
             }
         }
     });
+
+    // Fungsi toggle sidebar
+    function toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const hamburger = document.querySelector('.hamburger');
+
+        if (sidebar && hamburger) {
+            sidebar.classList.toggle('show');
+            hamburger.classList.toggle('active');
+        }
+    }
 
     // Fungsi toggle submenu dengan animasi
     function toggleSubmenu(toggle, id) {

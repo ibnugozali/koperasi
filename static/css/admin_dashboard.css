@@ -68,6 +68,15 @@ body {
     .stat-card {
         margin-bottom: 20px;
     }
+
+    /* Sidebar open state for mobile */
+    .sidebar-open .sidebar {
+        transform: translateX(0);
+    }
+
+    .sidebar-open .main-content {
+        margin-left: 0;
+    }
 }
 
 .sidebar h4 {
@@ -92,7 +101,7 @@ body {
 
 /* Navbar */
 .navbar {
-    margin-left: 240px;
+    margin-left: 0;
     background: #ffffff;
     box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
 }
@@ -137,7 +146,7 @@ body {
 }
 
 footer {
-    margin-left: 240px;
+    margin-left: 0;
     padding: 15px;
     text-align: center;
     color: #666;

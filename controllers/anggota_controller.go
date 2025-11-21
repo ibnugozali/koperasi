@@ -454,7 +454,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	pinjaman.IDAnggota = userIDInt
 	pinjaman.TglPinjaman = time.Now() // Set tanggal pengajuan otomatis
-	pinjaman.Status = "aktif"         // Status langsung aktif agar muncul di riwayat
+	pinjaman.Status = "pending"       // Status pending untuk konfirmasi bendahara
 
 	err = repository.CreatePinjaman(pinjaman)
 	if err != nil {

@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -65,6 +67,36 @@ func KetuaOnly() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Akses ditolak"})
 			return
 		}
+		c.Next()
+	}
+}
+
+// BendaharaLogoMiddleware adalah middleware untuk mengatur path logo terbaru.
+func BendaharaLogoMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		logoPath := "/static/images/placeholder.png"
+		// Find the latest logo file based on modification time
+		files, err := os.ReadDir("static/images")
+		if err == nil {
+			var latestLogo string
+			var latestTime int64
+			for _, file := range files {
+				if strings.HasPrefix(file.Name(), "logo_") && (strings.HasSuffix(file.Name(), ".png") || strings.HasSuffix(file.Name(), ".jpg")) {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + file.Name()
+						}
+					}
+				}
+			}
+			if latestLogo != "" {
+				logoPath = latestLogo
+			}
+		}
+		c.Set("LogoPath", logoPath)
 		c.Next()
 	}
 }

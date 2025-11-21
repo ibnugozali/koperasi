@@ -1,27 +1,37 @@
 {{define "bendahara_navbar.html"}}
 <!-- Hamburger Menu -->
-<button class="hamburger" onclick="toggleSidebar()">
+<button class="hamburger">
     <i class="fas fa-bars"></i>
 </button>
 
-<!-- Sidebar -->
-<div class="sidebar">
-    <div class="text-center mb-3">
-        <img src="/static/images/placeholder.png" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px;">
-        <h5 class="mt-2">Koperasi Simpan Pinjam</h5>
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg fixed-top">
+    <div class="container-fluid">
+        <button class="hamburger me-3" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+        <span class="navbar-brand fw-bold">Dasbor Bendahara</span>
     </div>
-    <a href="/bendahara/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
+</nav>
 
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="text-center mb-3">
+        <img id="navbarLogo" src="{{.LogoPath}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;">
+        <h5 class="mt-2">KOPMA</h5>
+    </div>
+    <a href="/admin/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
     <!-- Manajemen Anggota -->
-    <a href="#manajemenAnggota" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
-    <div class="collapse" id="manajemenAnggota">
-        <a href="/bendahara/konfirmasi" class="ms-3 {{ if eq .ActivePage "konfirmasi" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
+    <a href="#" onclick="toggleSubmenu(this, 'manajemenAnggota'); return false;" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
+    <div class="collapse {{ if or (eq .ActivePage "konfirmasi") (eq .ActivePage "anggota") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi") (eq .ActivePage "anggota") }}style="display: block;"{{ end }}>
+        <a href="/bendahara/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
         <a href="/bendahara/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
     </div>
 
     <!-- Transaksi & Laporan -->
-    <a href="#transaksiLaporan" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fa-solid fa-chart-bar me-2"></i> Transaksi & Laporan</a>
-    <div class="collapse" id="transaksiLaporan">
+    <a href="#" onclick="toggleSubmenu(this, 'transaksiLaporan'); return false;" class="dropdown-toggle"><i class="fa-solid fa-chart-bar me-2"></i> Transaksi & Laporan</a>
+    <div class="collapse {{ if or (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "riwayat") (eq .ActivePage "laporan") }}show{{ end }}" id="transaksiLaporan" {{ if or (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "riwayat") (eq .ActivePage "laporan") }}style="display: block;"{{ end }}>
+        <a href="/bendahara/konfirmasi-transaksi" class="ms-3 {{ if eq .ActivePage "konfirmasi-transaksi" }}active{{ end }}"><i class="fa-solid fa-check-circle me-2"></i> Konfirmasi Transaksi</a>
         <a href="/bendahara/riwayat" class="ms-3 {{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Riwayat</a>
         <a href="/bendahara/laporan" class="ms-3 {{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
     </div>
@@ -30,15 +40,5 @@
     <a href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
 </div>
 
-<script>
-    // Initialize Bootstrap collapse
-    document.addEventListener('DOMContentLoaded', function() {
-        var collapseElements = document.querySelectorAll('.collapse');
-        collapseElements.forEach(function(element) {
-            new bootstrap.Collapse(element, {
-                hide: true
-            });
-        });
-    });
-</script>
+<script src="/static/js/bendahara_navbar.js"></script>
 {{end}}
