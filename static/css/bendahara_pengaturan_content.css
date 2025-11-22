@@ -1,0 +1,187 @@
+/* Custom styles for bendahara_pengaturan_content.html */
+
+.top-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.top-header h4 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.top-header small {
+    color: #6c757d;
+}
+
+/* Card customizations */
+.card {
+    border: none;
+    border-radius: 10px;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+}
+
+.card-header i {
+    margin-right: 0.5rem;
+}
+
+/* Form styling */
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    border: none;
+    color: #212529;
+}
+
+/* Profile image styling */
+.rounded-circle {
+    border: 3px solid #e9ecef;
+    transition: border-color 0.2s ease-in-out;
+}
+
+.rounded-circle:hover {
+    border-color: #007bff;
+}
+
+/* Badge styling */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Activity list styling */
+.card-body .small .mb-2 {
+    padding: 0.25rem 0;
+    border-left: 3px solid transparent;
+    padding-left: 0.75rem;
+    transition: border-left-color 0.2s ease-in-out;
+}
+
+.card-body .small .mb-2:hover {
+    border-left-color: #007bff;
+}
+
+.card-body .small i {
+    width: 16px;
+    margin-right: 0.5rem;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .top-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .card {
+        margin-bottom: 1rem;
+    }
+
+    .btn {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .text-end {
+        text-align: center !important;
+    }
+}
+
+/* Loading state for buttons */
+.btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* Custom scrollbar for activity section */
+.card-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.card-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.card-body::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+.card-body::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Focus states for accessibility */
+.form-control:focus,
+.btn:focus {
+    outline: none;
+}
+
+/* Animation for form validation */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.form-control.is-invalid {
+    animation: shake 0.3s ease-in-out;
+}

@@ -253,3 +253,13 @@ UPDATE halaman SET konten = '{
 
 -- Update dashboard content
 UPDATE halaman SET konten = '{"welcome":"Selamat Datang di Koperasi KOPMA","slogan":"Dari Anggota, Oleh Anggota, dan Untuk Anggota","teks":"Selamat datang di dashboard anggota.","gambar":"/static/images/placeholder.png"}' WHERE slug = 'dashboard_anggota';
+
+-- PERBAIKAN: Ubah kolom tanggal dari DATE ke TIMESTAMP agar menyimpan waktu
+ALTER TABLE detail ALTER COLUMN tgl_transaksi TYPE TIMESTAMP WITHOUT TIME ZONE;
+ALTER TABLE detail ALTER COLUMN tgl_transaksi SET DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE pinjaman ALTER COLUMN tgl_pinjaman TYPE TIMESTAMP WITHOUT TIME ZONE;
+ALTER TABLE pinjaman ALTER COLUMN tgl_pinjaman SET DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE angsuran ALTER COLUMN tgl_bayar TYPE TIMESTAMP WITHOUT TIME ZONE;
+ALTER TABLE angsuran ALTER COLUMN tgl_bayar SET DEFAULT CURRENT_TIMESTAMP;

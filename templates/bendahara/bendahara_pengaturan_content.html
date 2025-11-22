@@ -1,4 +1,6 @@
 {{define "content"}}
+<link rel="stylesheet" href="/static/css/bendahara_pengaturan_content.css">
+
 <div class="top-header">
     <h4 class="mb-1">Pengaturan Akun</h4>
     <small class="text-muted">Kelola informasi akun dan keamanan</small>
@@ -13,7 +15,7 @@
             </div>
             <div class="card-body">
                 <form id="profileForm">
-                    <div class="row">
+                    <div class="row">\
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="namaBendahara" class="form-label">Nama Lengkap</label>
@@ -130,34 +132,5 @@
     </div>
 </div>
 
-<script>
-    // Handle profile form submission
-    document.getElementById('profileForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        // Add AJAX call here to update profile
-        alert('Profil berhasil diperbarui!');
-    });
-
-    // Handle password form submission
-    document.getElementById('passwordForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-
-        if (newPassword !== confirmPassword) {
-            alert('Password baru dan konfirmasi tidak cocok!');
-            return;
-        }
-
-        if (newPassword.length < 8) {
-            alert('Password minimal 8 karakter!');
-            return;
-        }
-
-        // Add AJAX call here to change password
-        alert('Password berhasil diubah!');
-        this.reset();
-    });
-</script>
+<script src="/static/js/bendahara_pengaturan_content.js"></script>
 {{end}}

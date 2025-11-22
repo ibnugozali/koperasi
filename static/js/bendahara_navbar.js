@@ -83,6 +83,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+
+    // Show sidebar by default on pengaturan page
+    if (currentURL.includes('/bendahara/pengaturan')) {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar && !sidebar.classList.contains('show')) {
+            sidebar.classList.add('show');
+        }
+    }
 });
 
 // Fungsi toggle sidebar
