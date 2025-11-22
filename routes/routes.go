@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -35,6 +36,7 @@ func SetupRouter() *gin.Engine {
 			a, _ := json.Marshal(v)
 			return template.JS(a)
 		},
+		"now": func() time.Time { return time.Now() },
 	})
 	router.LoadHTMLGlob("templates/**/*.html")
 
@@ -144,21 +146,8 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.POST("/anggota/update/:id", controllers.BendaharaUpdateAnggota)
 		bendaharaRoutes.POST("/anggota/delete/:id", controllers.BendaharaDeleteAnggota)
 		bendaharaRoutes.POST("/update-profile", controllers.UpdateBendaharaProfile)
-	}
-
-	// --- Rute Ketua (Dilindungi Middleware) ---
-	ketuaRoutes := router.Group("/ketua")
-	ketuaRoutes.Use(middleware.AuthRequired(), middleware.KetuaOnly())
-	{
-		ketuaRoutes.GET("/dashboard", controllers.KetuaDashboard)
-		ketuaRoutes.GET("/konfirmasi", controllers.KetuaKonfirmasi)
-		ketuaRoutes.GET("/halaman", controllers.KetuaListHalaman)
-		ketuaRoutes.GET("/transaksi", controllers.KetuaTransaksi)
-		ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
-		ketuaRoutes.GET("/tentang", controllers.KetuaTentang)
-		ketuaRoutes.GET("/pengaturan", controllers.KetuaPengaturan)
-		ketuaRoutes.GET("/anggota", controllers.KetuaListAllAnggota)
-		ketuaRoutes.GET("/anggota/:id", controllers.KetuaViewAnggota)
+		bendaharaRoutes.GET("/edit-rekening-register", controllers.BendaharaEditRekeningRegister)
+		bendaharaRoutes.POST("/edit-rekening-register", controllers.BendaharaUpdateRekeningRegister)
 	}
 
 	return router

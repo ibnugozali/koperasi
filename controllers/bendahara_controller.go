@@ -69,9 +69,41 @@ func BendaharaDashboard(c *gin.Context) {
 }
 
 // Menampilkan halaman konfirmasi anggota
+// BendaharaEditRekeningRegister menampilkan halaman edit nomor rekening koperasi
+// BendaharaKonfirmasi menampilkan halaman konfirmasi anggota dengan redirect ke konfirmasi-transaksi
 func BendaharaKonfirmasi(c *gin.Context) {
 	// Redirect ke halaman konfirmasi transaksi
 	c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi")
+}
+
+func BendaharaEditRekeningRegister(c *gin.Context) {
+	// TODO: Ambil nomor rekening dari penyimpanan, contoh hardcode dulu
+	nomorRekening := "1234567890 (Bank ABC)"
+
+	c.HTML(http.StatusOK, "bendahara_edit_rekening_register.html", gin.H{
+		"NomorRekening": nomorRekening,
+		"ActivePage":    "edit-rekening-register",
+	})
+}
+
+// BendaharaUpdateRekeningRegister memproses update nomor rekening koperasi
+func BendaharaUpdateRekeningRegister(c *gin.Context) {
+	nomorRekening := c.PostForm("nomor_rekening")
+	if nomorRekening == "" {
+		c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
+			"Error":         "Nomor rekening harus diisi",
+			"NomorRekening": nomorRekening,
+			"ActivePage":    "edit-rekening-register",
+		})
+		return
+	}
+
+	// TODO: Simpan nomor rekening ke penyimpanan (database, file, dsb)
+	// Saat ini hanya simulasi sukses
+	// Misalnya: err := repository.UpdateNomorRekening(nomorRekening)
+
+	// Jika berhasil simpan, redirect ke halaman dashboard bendahara
+	c.Redirect(http.StatusFound, "/bendahara/dashboard")
 }
 
 // Mengkonfirmasi keanggotaan

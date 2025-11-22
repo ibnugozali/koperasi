@@ -487,6 +487,7 @@ func AnggotaSimpanan(c *gin.Context) {
 	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
 		"Judul":   "Simpanan",
 		"Anggota": anggota,
+		"Now":     time.Now(),
 	})
 }
 
@@ -614,12 +615,8 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Berhasil, tampilkan pesan sukses
-	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
-		"Judul":   "Simpanan",
-		"Anggota": anggota,
-		"Success": "Simpanan berhasil dikirim. Silakan tunggu konfirmasi dari admin.",
-	})
+	// Berhasil, redirect ke riwayat
+	c.Redirect(http.StatusFound, "/anggota/riwayat")
 }
 
 // AnggotaAngsuran menampilkan halaman angsuran untuk anggota.
@@ -828,14 +825,13 @@ func AnggotaAngsuranPost(c *gin.Context) {
 
 	// Buat angsuran baru
 	angsuran := models.Angsuran{
-		IDPinjaman:     idPinjaman,
-		IDPengelola:    sql.NullInt64{Int64: 1, Valid: true}, // Default pengelola
-		TglBayar:       tanggalPembayaran,
-		SisaPinjaman:   jumlahAngsuran, // Untuk sementara, sisa pinjaman = jumlah angsuran
-		StatusAngsuran: "belum_lunas",  // Status awal
-		BuktiAngsuran:  filename,       // Simpan nama file sebagai string
-		Status:         "valid",        // Status valid
-		NamaAnggota:    anggota.NamaAnggota,
+		IDPinjaman:    idPinjaman,
+		IDPengelola:   sql.NullInt64{Int64: 1, Valid: true}, // Default pengelola
+		TglBayar:      tanggalPembayaran,
+		SisaPinjaman:  jumlahAngsuran, // Untuk sementara, sisa pinjaman = jumlah angsuran
+		BuktiAngsuran: filename,       // Simpan nama file sebagai string
+		Status:        "valid",        // Status valid
+		NamaAnggota:   anggota.NamaAnggota,
 	}
 
 	// Simpan ke database

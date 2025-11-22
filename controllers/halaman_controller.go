@@ -228,16 +228,14 @@ func ShowRiwayatPage(c *gin.Context) {
 		if timeStr == "00:00:00" {
 			timeStr = "-"
 		}
-		if strings.Contains(strings.ToLower(desc+" "+amount), strings.ToLower(search)) {
-			allTransactions = append(allTransactions, UnifiedTransaction{
-				Date:        s.TglTransaksi,
-				Time:        timeStr,
-				Type:        desc,
-				Description: desc,
-				Amount:      amount,
-				Status:      "Selesai",
-			})
-		}
+		allTransactions = append(allTransactions, UnifiedTransaction{
+			Date:        s.TglTransaksi,
+			Time:        timeStr,
+			Type:        desc,
+			Description: desc,
+			Amount:      amount,
+			Status:      "Selesai",
+		})
 	}
 
 	// Add pinjaman transactions
@@ -259,16 +257,14 @@ func ShowRiwayatPage(c *gin.Context) {
 		if timeStr == "00:00:00" {
 			timeStr = "-"
 		}
-		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
-			allTransactions = append(allTransactions, UnifiedTransaction{
-				Date:        p.TglPinjaman,
-				Time:        timeStr,
-				Type:        "Pinjaman",
-				Description: desc,
-				Amount:      amount,
-				Status:      status,
-			})
-		}
+		allTransactions = append(allTransactions, UnifiedTransaction{
+			Date:        p.TglPinjaman,
+			Time:        timeStr,
+			Type:        "Pinjaman",
+			Description: desc,
+			Amount:      amount,
+			Status:      status,
+		})
 	}
 
 	// Add angsuran transactions
@@ -288,16 +284,14 @@ func ShowRiwayatPage(c *gin.Context) {
 		if timeStr == "00:00:00" {
 			timeStr = "-"
 		}
-		if strings.Contains(strings.ToLower(desc+" "+amount+" "+status), strings.ToLower(search)) {
-			allTransactions = append(allTransactions, UnifiedTransaction{
-				Date:        a.TglBayar,
-				Time:        timeStr,
-				Type:        "Angsuran",
-				Description: desc,
-				Amount:      amount,
-				Status:      status,
-			})
-		}
+		allTransactions = append(allTransactions, UnifiedTransaction{
+			Date:        a.TglBayar,
+			Time:        timeStr,
+			Type:        "Angsuran",
+			Description: desc,
+			Amount:      amount,
+			Status:      status,
+		})
 	}
 
 	// Sort by date descending

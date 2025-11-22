@@ -72,14 +72,14 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 	db := config.GetDB()
 	var angsurans []models.Angsuran
 	query := `
-		SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.status_angsuran, a.status
+		SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.status
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		WHERE p.id_anggota = $1
 	`
 	args := []interface{}{id}
 	if search != "" {
-		query += ` AND (a.status_angsuran ILIKE $2 OR a.status ILIKE $2 OR CAST(a.sisa_pinjaman AS TEXT) ILIKE $2)`
+		query += ` AND (a.status ILIKE $2 OR CAST(a.sisa_pinjaman AS TEXT) ILIKE $2)`
 		args = append(args, "%"+search+"%")
 	}
 	query += ` ORDER BY a.tgl_bayar DESC`
@@ -91,7 +91,7 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 
 	for rows.Next() {
 		var a models.Angsuran
-		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.StatusAngsuran, &a.Status); err != nil {
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.Status); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)

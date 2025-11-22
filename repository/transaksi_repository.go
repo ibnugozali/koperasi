@@ -61,15 +61,14 @@ func CreateAngsuran(angsuran models.Angsuran) error {
 		angsuran.TglBayar = time.Now()
 	}
 	query := `
-		INSERT INTO angsuran (id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, status_angsuran, bukti_angsuran, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO angsuran (id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, bukti_angsuran, status)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 	_, err := db.Exec(query,
 		angsuran.IDPinjaman,
 		angsuran.IDPengelola,
 		angsuran.TglBayar,
 		angsuran.SisaPinjaman,
-		angsuran.StatusAngsuran,
 		angsuran.BuktiAngsuran,
 		angsuran.Status,
 	)
@@ -517,16 +516,15 @@ func GetPinjamanAktifByAnggotaID(idAnggota int) ([]models.Pinjaman, error) {
 func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
 	db := config.GetDB()
 	var angsurans []models.Angsuran
-	query := "SELECT id_angsuran, id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, status_angsuran, bukti_angsuran, status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar DESC"
+	query := "SELECT id_angsuran, id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, bukti_angsuran, status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar DESC"
 	rows, err := db.Query(query, idPinjaman)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
 	for rows.Next() {
 		var a models.Angsuran
-		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.StatusAngsuran, &a.BuktiAngsuran, &a.Status); err != nil {
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.BuktiAngsuran, &a.Status); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)

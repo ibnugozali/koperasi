@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+
 	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
 )
@@ -192,6 +193,40 @@ func UpdateAnggotaStatus(id string, status string) error {
 	db := config.GetDB()
 	query := "UPDATE anggota SET status = $1 WHERE id_anggota = $2"
 	_, err := db.Exec(query, status, id)
+	return err
+}
+
+// GetNomorRekening mengambil nomor rekening berdasarkan jenis (simpanan, angsuran, register)
+func GetNomorRekening(jenis string) (string, error) {
+	db := config.GetDB()
+	var nomor string
+	query := "SELECT nomor FROM nomor_rekening WHERE jenis = $1 LIMIT 1"
+	err := db.QueryRow(query, jenis).Scan(&nomor)
+	if err == sql.ErrNoRows {
+		// Jika tidak ada, return string kosong dan no error
+		return "", nil
+	}
+	return nomor, err
+}
+
+// UpdateNomorRekening memperbarui atau menambahkan nomor rekening untuk jenis tertentu
+func UpdateNomorRekening(jenis string, nomor string) error {
+	db := config.GetDB()
+
+	// Cek apakah sudah ada entri untuk jenis ini
+	var exists bool
+	err := db.QueryRow("SELECT EXISTS (SELECT 1 FROM nomor_rekening WHERE jenis = $1)", jenis).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		// Update
+		_, err = db.Exec("UPDATE nomor_rekening SET nomor = $1 WHERE jenis = $2", nomor, jenis)
+	} else {
+		// Insert
+		_, err = db.Exec("INSERT INTO nomor_rekening (jenis, nomor) VALUES ($1, $2)", jenis, nomor)
+	}
 	return err
 }
 

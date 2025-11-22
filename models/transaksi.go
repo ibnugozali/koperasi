@@ -23,6 +23,7 @@ type Detail struct {
 	JumlahSimpanan float64   `json:"jumlah_simpanan" db:"jumlah_simpanan"`
 	TotalSimpanan  float64   `json:"total_simpanan" db:"total_simpanan"`
 	Status         string    `json:"status" db:"status"`
+	StatusAngsuran string    `json:"status_angsuran" db:"status_angsuran"`
 }
 
 // Pinjaman mewakili pinjaman
@@ -45,8 +46,8 @@ type Angsuran struct {
 	IDPengelola    sql.NullInt64 `json:"id_pengelola" db:"id_pengelola"`
 	TglBayar       time.Time     `json:"tgl_bayar" db:"tgl_bayar"`
 	SisaPinjaman   float64       `json:"sisa_pinjaman" db:"sisa_pinjaman"`
-	StatusAngsuran string        `json:"status_angsuran" db:"status_angsuran"`
 	BuktiAngsuran  string        `json:"bukti_angsuran" db:"bukti_angsuran"`
+	StatusAngsuran string        `json:"status_angsuran" db:"status_angsuran"`
 	Status         string        `json:"status" db:"status"`
 	NamaAnggota    string        `json:"nama_anggota" db:"nama_anggota"`
 }
