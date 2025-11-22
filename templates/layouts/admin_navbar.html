@@ -21,7 +21,7 @@
      <!-- Manajemen Anggota -->
     <a href="#" onclick="toggleSubmenu(this, 'manajemenAnggota'); return false;" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
     <div class="collapse {{ if or (eq .ActivePage "konfirmasi") (eq .ActivePage "anggota") (eq .ActivePage "login_history") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi") (eq .ActivePage "anggota") (eq .ActivePage "login_history") }}style="display: block;"{{ end }}>
-        <a href="/bendahara/anggota" class="ms-3 {{ if eq .ActivePage "konfirmasi" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
+        <a href="/admin/konfirmasi" class="ms-3 {{ if eq .ActivePage "konfirmasi" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
         <a href="/admin/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
         <a href="/admin/login-history" class="ms-3 {{ if eq .ActivePage "login_history" }}active{{ end }}"><i class="fa-solid fa-sign-in-alt me-2"></i> Riwayat Login</a>
     </div>
