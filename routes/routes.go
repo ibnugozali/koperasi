@@ -148,6 +148,10 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.POST("/update-profile", controllers.UpdateBendaharaProfile)
 		bendaharaRoutes.GET("/edit-rekening-register", controllers.BendaharaEditRekeningRegister)
 		bendaharaRoutes.POST("/edit-rekening-register", controllers.BendaharaUpdateRekeningRegister)
+
+		// Routes for editing bunga (interest)
+		bendaharaRoutes.GET("/edit-bunga", controllers.BendaharaEditBunga)
+		bendaharaRoutes.POST("/edit-bunga", controllers.BendaharaUpdateBunga)
 	}
 
 	return router

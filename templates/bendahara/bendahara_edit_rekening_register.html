@@ -1,4 +1,19 @@
-{{ define "bendahara_edit_rekening_register.html" }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Edit Bunga - Koperasi Simpan Pinjam</title>
+
+    <!-- Bootstrap & Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/bendahara_edit_bunga.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/admin_dashboard.css">
+</head>
+<body>
+    {{ template "bendahara_navbar.html" . }}
+    
 <div class="container mt-4">
     <h2>Edit Nomor Rekening Register</h2>
     <form method="POST" action="/bendahara/edit-rekening-register">
@@ -7,8 +22,16 @@
             <input type="text" class="form-control" id="nomorRekening" name="nomor_rekening" placeholder="Contoh: 1234567890 (Bank ABC)" value="{{ .NomorRekening }}" required>
             <div class="form-text">Masukkan nomor rekening koperasi beserta nama bank.</div>
         </div>
+        <div class="mb-3">
+            <label for="nominalSimpanan" class="form-label">Nominal Simpanan Pokok Wajib</label>
+            <div class="input-group">
+                <span class="input-group-text">Rp.</span>
+                <input type="number" class="form-control" id="nominalSimpanan" name="nominal_simpanan" placeholder="100000" value="{{ .NominalSimpanan }}" min="0" required>
+            </div>
+            <div class="form-text">Masukkan nominal simpanan pokok wajib dalam rupiah (contoh: 100000 untuk Rp. 100.000).</div>
+        </div>
         <button type="submit" class="btn btn-primary">Simpan</button>
         <a href="/bendahara/dashboard" class="btn btn-secondary ms-2">Batal</a>
     </form>
 </div>
-{{ end }}
+

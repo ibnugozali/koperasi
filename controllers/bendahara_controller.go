@@ -77,30 +77,47 @@ func BendaharaKonfirmasi(c *gin.Context) {
 }
 
 func BendaharaEditRekeningRegister(c *gin.Context) {
-	// TODO: Ambil nomor rekening dari penyimpanan, contoh hardcode dulu
+	// TODO: Ambil nomor rekening, nominal simpanan, dan keterangan bukti transfer dari penyimpanan, contoh hardcode dulu
 	nomorRekening := "1234567890 (Bank ABC)"
+	nominalSimpanan := "100000"
+	keteranganBuktiTransfer := "Transfer dari rekening pribadi ke rekening koperasi sebesar Rp. 100.000 untuk simpanan pokok wajib."
 
 	c.HTML(http.StatusOK, "bendahara_edit_rekening_register.html", gin.H{
-		"NomorRekening": nomorRekening,
-		"ActivePage":    "edit-rekening-register",
+		"NomorRekening":           nomorRekening,
+		"NominalSimpanan":         nominalSimpanan,
+		"KeteranganBuktiTransfer": keteranganBuktiTransfer,
+		"ActivePage":              "edit-rekening-register",
 	})
 }
 
 // BendaharaUpdateRekeningRegister memproses update nomor rekening koperasi
 func BendaharaUpdateRekeningRegister(c *gin.Context) {
 	nomorRekening := c.PostForm("nomor_rekening")
+	nominalSimpanan := c.PostForm("nominal_simpanan")
+
 	if nomorRekening == "" {
 		c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
-			"Error":         "Nomor rekening harus diisi",
-			"NomorRekening": nomorRekening,
-			"ActivePage":    "edit-rekening-register",
+			"Error":           "Nomor rekening harus diisi",
+			"NomorRekening":   nomorRekening,
+			"NominalSimpanan": nominalSimpanan,
+			"ActivePage":      "edit-rekening-register",
 		})
 		return
 	}
 
-	// TODO: Simpan nomor rekening ke penyimpanan (database, file, dsb)
+	if nominalSimpanan == "" {
+		c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
+			"Error":           "Nominal simpanan harus diisi",
+			"NomorRekening":   nomorRekening,
+			"NominalSimpanan": nominalSimpanan,
+			"ActivePage":      "edit-rekening-register",
+		})
+		return
+	}
+
+	// TODO: Simpan nomor rekening dan nominal simpanan ke penyimpanan (database, file, dsb)
 	// Saat ini hanya simulasi sukses
-	// Misalnya: err := repository.UpdateNomorRekening(nomorRekening)
+	// Misalnya: err := repository.UpdateNomorRekeningDanNominal(nomorRekening, nominalSimpanan)
 
 	// Jika berhasil simpan, redirect ke halaman dashboard bendahara
 	c.Redirect(http.StatusFound, "/bendahara/dashboard")
@@ -613,4 +630,41 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Transaksi berhasil diproses"})
+}
+
+var currentBunga float64 = 2.0 // default bunga value for demonstration purposes
+
+func BendaharaEditBunga(c *gin.Context) {
+	c.HTML(http.StatusOK, "bendahara_edit_bunga.html", gin.H{
+		"CurrentBunga": fmt.Sprintf("%.2f", currentBunga),
+		"ActivePage":   "edit-bunga",
+	})
+}
+
+func BendaharaUpdateBunga(c *gin.Context) {
+	bungaStr := c.PostForm("bunga")
+	if bungaStr == "" {
+		c.HTML(http.StatusBadRequest, "bendahara/bendahara_edit_bunga.html", gin.H{
+			"Error":        "Nilai bunga harus diisi",
+			"CurrentBunga": "",
+			"ActivePage":   "edit-bunga",
+		})
+		return
+	}
+
+	bungaVal, err := strconv.ParseFloat(bungaStr, 64)
+	if err != nil || bungaVal < 0 {
+		c.HTML(http.StatusBadRequest, "bendahara_edit_bunga.html", gin.H{
+			"Error":        "Nilai bunga tidak valid",
+			"CurrentBunga": bungaStr,
+			"ActivePage":   "edit-bunga",
+		})
+		return
+	}
+
+	// Simulate saving bunga value
+	currentBunga = bungaVal
+
+	// Redirect back to edit page after update
+	c.Redirect(http.StatusFound, "/bendahara/edit-bunga")
 }
