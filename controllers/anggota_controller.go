@@ -507,47 +507,53 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Ambil input dari form
-	jenisSimpanan := c.PostForm("jenis_simpanan")
-	jumlahStr := c.PostForm("jumlah")
+	// Ambil input dari form untuk berbagai jenis simpanan
+	simpananWajibStr := c.PostForm("simpanan_wajib")
+	simpananSukarelaStr := c.PostForm("simpanan_sukarela")
+	simpananHariRayaStr := c.PostForm("simpanan_hari_raya")
 
-	// Set tanggal pengajuan otomatis ke waktu sekarang
-	tanggalPengajuan := time.Now()
+	// Parse jumlah untuk setiap jenis simpanan
+	var simpananWajib, simpananSukarela, simpananHariRaya float64
 
-	if jenisSimpanan == "" {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Jenis simpanan wajib dipilih.",
-		})
-		return
+	if simpananWajibStr != "" {
+		if _, err := fmt.Sscanf(simpananWajibStr, "%f", &simpananWajib); err != nil {
+			c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+				"Judul":   "Simpanan",
+				"Anggota": anggota,
+				"Error":   "Format jumlah simpanan wajib tidak valid.",
+			})
+			return
+		}
 	}
 
-	if jumlahStr == "" {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Jumlah simpanan wajib diisi.",
-		})
-		return
+	if simpananSukarelaStr != "" {
+		if _, err := fmt.Sscanf(simpananSukarelaStr, "%f", &simpananSukarela); err != nil {
+			c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+				"Judul":   "Simpanan",
+				"Anggota": anggota,
+				"Error":   "Format jumlah simpanan sukarela tidak valid.",
+			})
+			return
+		}
 	}
 
-	// Parse jumlah
-	var jumlah float64
-	if _, err := fmt.Sscanf(jumlahStr, "%f", &jumlah); err != nil {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Format jumlah tidak valid.",
-		})
-		return
+	if simpananHariRayaStr != "" {
+		if _, err := fmt.Sscanf(simpananHariRayaStr, "%f", &simpananHariRaya); err != nil {
+			c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+				"Judul":   "Simpanan",
+				"Anggota": anggota,
+				"Error":   "Format jumlah simpanan hari raya tidak valid.",
+			})
+			return
+		}
 	}
 
-	if jumlah <= 0 {
+	// Validasi: setidaknya satu jenis simpanan harus memiliki jumlah positif
+	if simpananWajib <= 0 && simpananSukarela <= 0 && simpananHariRaya <= 0 {
 		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
 			"Judul":   "Simpanan",
 			"Anggota": anggota,
-			"Error":   "Jumlah simpanan harus lebih dari 0.",
+			"Error":   "Setidaknya satu jenis simpanan harus memiliki jumlah lebih dari 0.",
 		})
 		return
 	}
@@ -575,44 +581,41 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Map jenis simpanan ke ID
-	var idSimpanan int
-	switch jenisSimpanan {
-	case "pokok":
-		idSimpanan = 1
-	case "wajib":
-		idSimpanan = 2
-	case "sukarela":
-		idSimpanan = 3
-	case "hari_raya":
-		idSimpanan = 4
-	default:
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Jenis simpanan tidak valid.",
-		})
-		return
+	// Set tanggal pengajuan otomatis ke waktu sekarang
+	tanggalPengajuan := time.Now()
+
+	// Simpan setiap jenis simpanan yang memiliki jumlah positif
+	simpananTypes := map[string]struct {
+		jumlah float64
+		id     int
+	}{
+		"wajib":     {simpananWajib, 2},
+		"sukarela":  {simpananSukarela, 3},
+		"hari_raya": {simpananHariRaya, 4},
 	}
 
-	detail := models.Detail{
-		IDAnggota:      userID,
-		IDSimpanan:     idSimpanan,
-		IDPengelola:    1, // Default pengelola (bisa disesuaikan)
-		TglTransaksi:   tanggalPengajuan,
-		JumlahSimpanan: jumlah,
-		TotalSimpanan:  jumlah, // Untuk sementara, total = jumlah (bisa dihitung ulang)
-	}
+	for jenis, data := range simpananTypes {
+		if data.jumlah > 0 {
+			detail := models.Detail{
+				IDAnggota:      userID,
+				IDSimpanan:     data.id,
+				IDPengelola:    1, // Default pengelola (bisa disesuaikan)
+				TglTransaksi:   tanggalPengajuan,
+				JumlahSimpanan: data.jumlah,
+				TotalSimpanan:  data.jumlah, // Untuk sementara, total = jumlah (bisa dihitung ulang)
+			}
 
-	// Simpan ke database
-	err = repository.CreateSimpanan(detail)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Gagal menyimpan simpanan. Silakan coba lagi.",
-		})
-		return
+			// Simpan ke database
+			err = repository.CreateSimpanan(detail)
+			if err != nil {
+				c.HTML(http.StatusInternalServerError, "anggota_simpanan.html", gin.H{
+					"Judul":   "Simpanan",
+					"Anggota": anggota,
+					"Error":   fmt.Sprintf("Gagal menyimpan simpanan %s. Silakan coba lagi.", jenis),
+				})
+				return
+			}
+		}
 	}
 
 	// Berhasil, redirect ke riwayat

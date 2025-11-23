@@ -12,3 +12,9 @@
 - [ ] Update template includes in templates/bendahara/bendahara_anggota_konfirmasi.html
 - [ ] Fix render path in controllers/bendahara_controller.go BendaharaUpdateBunga function
 - [ ] Test the application to ensure error is resolved
+
+## Completed Tasks
+- [x] Fix 400 Bad Request error on POST "/anggota/simpanan"
+  - Updated AnggotaSimpananPost controller to handle multiple savings types (wajib, sukarela, hari_raya)
+  - Added proper validation for multiple form fields
+  - Tested application build and startup successfully
