@@ -470,6 +470,9 @@ func AjukanPinjamanPost(c *gin.Context) {
 	pinjaman.TglPinjaman = time.Now() // Set tanggal pengajuan otomatis
 	pinjaman.Status = "proses"        // Status proses untuk konfirmasi bendahara
 
+	// Log the final pinjaman struct before creating to help debugging
+	fmt.Printf("DEBUG: Pinjaman ready to create: %+v\n", pinjaman)
+
 	err = repository.CreatePinjaman(pinjaman)
 	if err != nil {
 		// Log CreatePinjaman error
@@ -522,47 +525,45 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Ambil input dari form
-	jenisSimpanan := c.PostForm("jenis_simpanan")
-	jumlahStr := c.PostForm("jumlah")
+	// Ambil input dari form (template mengirim beberapa field: simpanan_wajib, simpanan_sukarela, simpanan_hari_raya, total_simpanan)
+	wajibStr := c.PostForm("simpanan_wajib")
+	sukarelaStr := c.PostForm("simpanan_sukarela")
+	hariRayaStr := c.PostForm("simpanan_hari_raya")
+	totalStr := c.PostForm("total_simpanan")
 
-	// Set tanggal pengajuan otomatis ke waktu sekarang
+	// Set tanggal pengajuan otomatis ke waktu sekarang (atau gunakan yang dikirim jika ada)
 	tanggalPengajuan := time.Now()
-
-	if jenisSimpanan == "" {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Jenis simpanan wajib dipilih.",
-		})
-		return
+	if t := c.PostForm("tanggal_pengajuan"); t != "" {
+		if parsed, err := time.Parse("2006-01-02", t); err == nil {
+			// Combine parsed date with current time-of-day so timestamp reflects submission time
+			now := time.Now()
+			tanggalPengajuan = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location())
+		}
 	}
 
-	if jumlahStr == "" {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Jumlah simpanan wajib diisi.",
-		})
-		return
+	// Parse values (toleran terhadap empty)
+	var wajib, sukarela, hariRaya float64
+	if wajibStr != "" {
+		fmt.Sscanf(wajibStr, "%f", &wajib)
+	}
+	if sukarelaStr != "" {
+		fmt.Sscanf(sukarelaStr, "%f", &sukarela)
+	}
+	if hariRayaStr != "" {
+		fmt.Sscanf(hariRayaStr, "%f", &hariRaya)
+	}
+	var total float64
+	if totalStr != "" {
+		fmt.Sscanf(totalStr, "%f", &total)
+	} else {
+		total = wajib + sukarela + hariRaya
 	}
 
-	// Parse jumlah
-	var jumlah float64
-	if _, err := fmt.Sscanf(jumlahStr, "%f", &jumlah); err != nil {
+	if wajib <= 0 && sukarela <= 0 && hariRaya <= 0 {
 		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
 			"Judul":   "Simpanan",
 			"Anggota": anggota,
-			"Error":   "Format jumlah tidak valid.",
-		})
-		return
-	}
-
-	if jumlah <= 0 {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Jumlah simpanan harus lebih dari 0.",
+			"Error":   "Minimal salah satu nilai simpanan harus lebih dari 0.",
 		})
 		return
 	}
@@ -590,42 +591,54 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Map jenis simpanan ke ID
-	var idSimpanan int
-	switch jenisSimpanan {
-	case "pokok":
-		idSimpanan = 1
-	case "wajib":
-		idSimpanan = 2
-	case "sukarela":
-		idSimpanan = 3
-	case "hari_raya":
-		idSimpanan = 4
-	default:
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Jenis simpanan tidak valid.",
-		})
-		return
+	// Buat entri untuk setiap jenis simpanan yang > 0
+	// IDSimpanan mapping: pokok(1) mungkin tidak ada di form, wajib(2), sukarela(3), hari_raya(4)
+	var errs []error
+	if wajib > 0 {
+		d := models.Detail{
+			IDAnggota:      userID,
+			IDSimpanan:     2,
+			IDPengelola:    1,
+			TglTransaksi:   tanggalPengajuan,
+			JumlahSimpanan: wajib,
+			TotalSimpanan:  total,
+		}
+		if e := repository.CreateSimpanan(d); e != nil {
+			errs = append(errs, e)
+		}
+	}
+	if sukarela > 0 {
+		d := models.Detail{
+			IDAnggota:      userID,
+			IDSimpanan:     3,
+			IDPengelola:    1,
+			TglTransaksi:   tanggalPengajuan,
+			JumlahSimpanan: sukarela,
+			TotalSimpanan:  total,
+		}
+		if e := repository.CreateSimpanan(d); e != nil {
+			errs = append(errs, e)
+		}
+	}
+	if hariRaya > 0 {
+		d := models.Detail{
+			IDAnggota:      userID,
+			IDSimpanan:     4,
+			IDPengelola:    1,
+			TglTransaksi:   tanggalPengajuan,
+			JumlahSimpanan: hariRaya,
+			TotalSimpanan:  total,
+		}
+		if e := repository.CreateSimpanan(d); e != nil {
+			errs = append(errs, e)
+		}
 	}
 
-	detail := models.Detail{
-		IDAnggota:      userID,
-		IDSimpanan:     idSimpanan,
-		IDPengelola:    1, // Default pengelola (bisa disesuaikan)
-		TglTransaksi:   tanggalPengajuan,
-		JumlahSimpanan: jumlah,
-		TotalSimpanan:  jumlah, // Untuk sementara, total = jumlah (bisa dihitung ulang)
-	}
-
-	// Simpan ke database
-	err = repository.CreateSimpanan(detail)
-	if err != nil {
+	if len(errs) > 0 {
 		c.HTML(http.StatusInternalServerError, "anggota_simpanan.html", gin.H{
 			"Judul":   "Simpanan",
 			"Anggota": anggota,
-			"Error":   "Gagal menyimpan simpanan. Silakan coba lagi.",
+			"Error":   "Gagal menyimpan beberapa data simpanan. Silakan coba lagi.",
 		})
 		return
 	}
@@ -762,8 +775,8 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		return
 	}
 
-	// Parse tanggal pembayaran
-	tanggalPembayaran, err := time.Parse("2006-01-02", tanggalPembayaranStr)
+	// Parse tanggal pembayaran and combine with current time-of-day so timestamp reflects submission time
+	parsedDate, err := time.Parse("2006-01-02", tanggalPembayaranStr)
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
 			"Judul":   "Angsuran",
@@ -772,6 +785,8 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		})
 		return
 	}
+	now := time.Now()
+	tanggalPembayaran := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location())
 
 	// Handle file upload
 	file, err := c.FormFile("bukti")

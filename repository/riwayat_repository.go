@@ -52,7 +52,7 @@ func GetRiwayatPinjamanByAnggotaID(id string, search string) ([]models.Pinjaman,
 		query += ` AND (status ILIKE $2 OR CAST(jumlah_pinjaman AS TEXT) ILIKE $2 OR CAST(jangka_waktu AS TEXT) ILIKE $2 OR CAST(bunga AS TEXT) ILIKE $2)`
 		args = append(args, "%"+search+"%")
 	}
-	query += ` ORDER BY tgl_pinjaman DESC`
+	query += ` ORDER BY tgl_pinjaman DESC, id_pinjaman DESC`
 	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 		query += ` AND (a.status ILIKE $2 OR CAST(a.sisa_pinjaman AS TEXT) ILIKE $2)`
 		args = append(args, "%"+search+"%")
 	}
-	query += ` ORDER BY a.tgl_bayar DESC`
+	query += ` ORDER BY a.tgl_bayar DESC, a.id_angsuran DESC`
 	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err

@@ -211,6 +211,7 @@ func ShowRiwayatPage(c *gin.Context) {
 
 	// Define a unified transaction struct
 	type UnifiedTransaction struct {
+		ID          int
 		Date        time.Time
 		Time        string
 		Type        string
@@ -229,6 +230,7 @@ func ShowRiwayatPage(c *gin.Context) {
 			timeStr = "-"
 		}
 		allTransactions = append(allTransactions, UnifiedTransaction{
+			ID:          s.IDDetail,
 			Date:        s.TglTransaksi,
 			Time:        timeStr,
 			Type:        desc,
@@ -258,6 +260,7 @@ func ShowRiwayatPage(c *gin.Context) {
 			timeStr = "-"
 		}
 		allTransactions = append(allTransactions, UnifiedTransaction{
+			ID:          p.IDPinjaman,
 			Date:        p.TglPinjaman,
 			Time:        timeStr,
 			Type:        "Pinjaman",
@@ -285,6 +288,7 @@ func ShowRiwayatPage(c *gin.Context) {
 			timeStr = "-"
 		}
 		allTransactions = append(allTransactions, UnifiedTransaction{
+			ID:          a.IDAngsuran,
 			Date:        a.TglBayar,
 			Time:        timeStr,
 			Type:        "Angsuran",
@@ -296,7 +300,14 @@ func ShowRiwayatPage(c *gin.Context) {
 
 	// Sort by date descending
 	sort.Slice(allTransactions, func(i, j int) bool {
-		return allTransactions[i].Date.After(allTransactions[j].Date)
+		// Use UnixNano for strict comparison (descending)
+		ti := allTransactions[i].Date.UnixNano()
+		tj := allTransactions[j].Date.UnixNano()
+		if ti == tj {
+			// If timestamps exactly equal, tie-break by ID (descending)
+			return allTransactions[i].ID > allTransactions[j].ID
+		}
+		return ti > tj
 	})
 
 	judulHalaman := "Riwayat Transaksi"

@@ -11,10 +11,8 @@ import (
 // CreateSimpanan mencatat transaksi simpanan
 func CreateSimpanan(detail models.Detail) error {
 	db := config.GetDB()
-	// Set waktu transaksi ke saat ini jika belum diset
-	if detail.TglTransaksi.IsZero() {
-		detail.TglTransaksi = time.Now()
-	}
+	// Set waktu transaksi ke saat ini (server-side) untuk memastikan konsistensi
+	detail.TglTransaksi = time.Now()
 	query := `
 		INSERT INTO detail (id_anggota, id_simpanan, id_pengelola, tgl_transaksi, jumlah_simpanan, total_simpanan)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -33,10 +31,8 @@ func CreateSimpanan(detail models.Detail) error {
 // CreatePinjaman mencatat pinjaman baru
 func CreatePinjaman(pinjaman models.Pinjaman) error {
 	db := config.GetDB()
-	// Set waktu pinjaman ke saat ini jika belum diset
-	if pinjaman.TglPinjaman.IsZero() {
-		pinjaman.TglPinjaman = time.Now()
-	}
+	// Set waktu pinjaman ke saat ini (server-side)
+	pinjaman.TglPinjaman = time.Now()
 	query := `
 		INSERT INTO pinjaman (id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -56,10 +52,8 @@ func CreatePinjaman(pinjaman models.Pinjaman) error {
 // CreateAngsuran mencatat pembayaran angsuran
 func CreateAngsuran(angsuran models.Angsuran) error {
 	db := config.GetDB()
-	// Set waktu bayar ke saat ini jika belum diset
-	if angsuran.TglBayar.IsZero() {
-		angsuran.TglBayar = time.Now()
-	}
+	// Set waktu bayar ke saat ini (server-side)
+	angsuran.TglBayar = time.Now()
 	query := `
 		INSERT INTO angsuran (id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, bukti_angsuran, status)
 		VALUES ($1, $2, $3, $4, $5, $6)
