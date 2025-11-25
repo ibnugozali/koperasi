@@ -27,6 +27,7 @@
             <strong>Limit Pinjaman:</strong> Tidak dapat ditentukan
         {{end}}
     </p>
+    <p id="bunga_info"><strong>Bunga:</strong> 2% (flat)</p>
 </div>
 
 {{ if .Success }}
@@ -100,6 +101,7 @@
                     <option value="20">20 bulan</option>
                     <option value="30">30 bulan</option>
                 </select>
+                <div id="tenor_info" class="form-text mt-2 text-muted">Pilih tenor pinjaman.</div>
             </div>
             <div class="mb-3">
                 <label for="perkiraan_angsuran" class="form-label">Perkiraan Angsuran per Bulan (Rp)</label>
@@ -197,12 +199,21 @@ function calculateAngsuran() {
 
     // Update limit info
     const limitInfo = document.getElementById('limit_info');
+    const bungaInfo = document.getElementById('bunga_info');
     if (jenisAnggota === 'Mahasiswa') {
         limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
-    } else if (jenisAnggota === 'Dosen/Staff' && limitPinjaman > 0) {
-        limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' ((40% x gaji x tenor) + total simpanan)';
+        bungaInfo.innerHTML = '<strong>Bunga:</strong> 2% (flat)';
+    } else if (jenisAnggota === 'Dosen/Staff') {
+        if (gajiBulanan > 0 && jangkaWaktu > 0) {
+            limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' ((40% x gaji x tenor) + total simpanan)';
+            bungaInfo.innerHTML = '<strong>Bunga:</strong> 2% (flat)';
+        } else {
+            limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
+            bungaInfo.innerHTML = '<strong>Bunga:</strong> 2% (flat)';
+        }
     } else {
-        limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
+        limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Tidak dapat ditentukan';
+        bungaInfo.innerHTML = '<strong>Bunga:</strong> -';
     }
 
     // Check limit and show warning
