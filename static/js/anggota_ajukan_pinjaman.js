@@ -97,6 +97,9 @@ document.addEventListener('DOMContentLoaded', function() {
             terbilangInput.value = numberToWords(initialValue);
         }
     }
+
+    // Removed AJAX form submit handler to allow normal form submission and redirect
+
 });
 
 // Function to calculate perkiraan angsuran

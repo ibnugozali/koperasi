@@ -349,18 +349,32 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
-	// Convert userID to int for pinjaman.IDAnggota
-	userIDInt, err := strconv.Atoi(userID)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
-		return
+	var pinjaman models.Pinjaman
+	bindErr := c.ShouldBind(&pinjaman)
+
+	// Debug print form values and error
+	formDebug := make(map[string][]string)
+	for k, v := range c.Request.Form {
+		formDebug[k] = v
 	}
 
-	var pinjaman models.Pinjaman
-	if err := c.ShouldBind(&pinjaman); err != nil {
+	// Log pinjaman struct after binding
+	fmt.Printf("DEBUG: Pinjaman struct after binding: %+v\n", pinjaman)
+
+	// Log important form fields
+	jumlahPinjamanStr := c.PostForm("jumlah_pinjaman")
+	jangkaWaktuStr := c.PostForm("jangka_waktu")
+	bungaStr := c.PostForm("bunga")
+	gajiBulananStr := c.PostForm("gaji_bulanan")
+
+	fmt.Printf("DEBUG: Form Inputs - jumlah_pinjaman: %s, jangka_waktu: %s, bunga: %s, gaji_bulanan: %s\n",
+		jumlahPinjamanStr, jangkaWaktuStr, bungaStr, gajiBulananStr)
+
+	if bindErr != nil {
+		errMsg := fmt.Sprintf("Data tidak valid. Pastikan semua field diisi dengan benar. Error: %v, Form Data: %v", bindErr, formDebug)
 		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", gin.H{
 			"Anggota": anggota,
-			"Error":   "Data tidak valid. Pastikan semua field diisi dengan benar.",
+			"Error":   errMsg,
 		})
 		return
 	}
@@ -382,7 +396,6 @@ func AjukanPinjamanPost(c *gin.Context) {
 			"Anggota": anggota,
 			"Error":   "Bunga harus antara 0-20%.",
 		})
-		return
 	}
 
 	// Hitung total simpanan
@@ -452,15 +465,17 @@ func AjukanPinjamanPost(c *gin.Context) {
 	// Set bunga flat 2%
 	pinjaman.Bunga = 2.0
 
-	pinjaman.IDAnggota = userIDInt
+	pinjaman.IDAnggota = userID
+	pinjaman.NamaAnggota = anggota.NamaAnggota
 	pinjaman.TglPinjaman = time.Now() // Set tanggal pengajuan otomatis
-	pinjaman.Status = "pending"       // Status pending untuk konfirmasi bendahara
+	pinjaman.Status = "proses"        // Status proses untuk konfirmasi bendahara
 
 	err = repository.CreatePinjaman(pinjaman)
 	if err != nil {
+		// Log CreatePinjaman error
+		fmt.Printf("DEBUG: CreatePinjaman error: %s\n", err.Error())
 		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", gin.H{
-			"Anggota": anggota,
-			"Error":   "Gagal mengajukan pinjaman. Silakan coba lagi.",
+			"Error": "Gagal mengajukan pinjaman. Silakan coba lagi.",
 		})
 		return
 	}
@@ -507,53 +522,47 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Ambil input dari form untuk berbagai jenis simpanan
-	simpananWajibStr := c.PostForm("simpanan_wajib")
-	simpananSukarelaStr := c.PostForm("simpanan_sukarela")
-	simpananHariRayaStr := c.PostForm("simpanan_hari_raya")
+	// Ambil input dari form
+	jenisSimpanan := c.PostForm("jenis_simpanan")
+	jumlahStr := c.PostForm("jumlah")
 
-	// Parse jumlah untuk setiap jenis simpanan
-	var simpananWajib, simpananSukarela, simpananHariRaya float64
+	// Set tanggal pengajuan otomatis ke waktu sekarang
+	tanggalPengajuan := time.Now()
 
-	if simpananWajibStr != "" {
-		if _, err := fmt.Sscanf(simpananWajibStr, "%f", &simpananWajib); err != nil {
-			c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-				"Judul":   "Simpanan",
-				"Anggota": anggota,
-				"Error":   "Format jumlah simpanan wajib tidak valid.",
-			})
-			return
-		}
-	}
-
-	if simpananSukarelaStr != "" {
-		if _, err := fmt.Sscanf(simpananSukarelaStr, "%f", &simpananSukarela); err != nil {
-			c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-				"Judul":   "Simpanan",
-				"Anggota": anggota,
-				"Error":   "Format jumlah simpanan sukarela tidak valid.",
-			})
-			return
-		}
-	}
-
-	if simpananHariRayaStr != "" {
-		if _, err := fmt.Sscanf(simpananHariRayaStr, "%f", &simpananHariRaya); err != nil {
-			c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-				"Judul":   "Simpanan",
-				"Anggota": anggota,
-				"Error":   "Format jumlah simpanan hari raya tidak valid.",
-			})
-			return
-		}
-	}
-
-	// Validasi: setidaknya satu jenis simpanan harus memiliki jumlah positif
-	if simpananWajib <= 0 && simpananSukarela <= 0 && simpananHariRaya <= 0 {
+	if jenisSimpanan == "" {
 		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
 			"Judul":   "Simpanan",
 			"Anggota": anggota,
-			"Error":   "Setidaknya satu jenis simpanan harus memiliki jumlah lebih dari 0.",
+			"Error":   "Jenis simpanan wajib dipilih.",
+		})
+		return
+	}
+
+	if jumlahStr == "" {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Jumlah simpanan wajib diisi.",
+		})
+		return
+	}
+
+	// Parse jumlah
+	var jumlah float64
+	if _, err := fmt.Sscanf(jumlahStr, "%f", &jumlah); err != nil {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Format jumlah tidak valid.",
+		})
+		return
+	}
+
+	if jumlah <= 0 {
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Jumlah simpanan harus lebih dari 0.",
 		})
 		return
 	}
@@ -581,41 +590,44 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Set tanggal pengajuan otomatis ke waktu sekarang
-	tanggalPengajuan := time.Now()
-
-	// Simpan setiap jenis simpanan yang memiliki jumlah positif
-	simpananTypes := map[string]struct {
-		jumlah float64
-		id     int
-	}{
-		"wajib":     {simpananWajib, 2},
-		"sukarela":  {simpananSukarela, 3},
-		"hari_raya": {simpananHariRaya, 4},
+	// Map jenis simpanan ke ID
+	var idSimpanan int
+	switch jenisSimpanan {
+	case "pokok":
+		idSimpanan = 1
+	case "wajib":
+		idSimpanan = 2
+	case "sukarela":
+		idSimpanan = 3
+	case "hari_raya":
+		idSimpanan = 4
+	default:
+		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Jenis simpanan tidak valid.",
+		})
+		return
 	}
 
-	for jenis, data := range simpananTypes {
-		if data.jumlah > 0 {
-			detail := models.Detail{
-				IDAnggota:      userID,
-				IDSimpanan:     data.id,
-				IDPengelola:    1, // Default pengelola (bisa disesuaikan)
-				TglTransaksi:   tanggalPengajuan,
-				JumlahSimpanan: data.jumlah,
-				TotalSimpanan:  data.jumlah, // Untuk sementara, total = jumlah (bisa dihitung ulang)
-			}
+	detail := models.Detail{
+		IDAnggota:      userID,
+		IDSimpanan:     idSimpanan,
+		IDPengelola:    1, // Default pengelola (bisa disesuaikan)
+		TglTransaksi:   tanggalPengajuan,
+		JumlahSimpanan: jumlah,
+		TotalSimpanan:  jumlah, // Untuk sementara, total = jumlah (bisa dihitung ulang)
+	}
 
-			// Simpan ke database
-			err = repository.CreateSimpanan(detail)
-			if err != nil {
-				c.HTML(http.StatusInternalServerError, "anggota_simpanan.html", gin.H{
-					"Judul":   "Simpanan",
-					"Anggota": anggota,
-					"Error":   fmt.Sprintf("Gagal menyimpan simpanan %s. Silakan coba lagi.", jenis),
-				})
-				return
-			}
-		}
+	// Simpan ke database
+	err = repository.CreateSimpanan(detail)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "anggota_simpanan.html", gin.H{
+			"Judul":   "Simpanan",
+			"Anggota": anggota,
+			"Error":   "Gagal menyimpan simpanan. Silakan coba lagi.",
+		})
+		return
 	}
 
 	// Berhasil, redirect ke riwayat
@@ -638,12 +650,7 @@ func AnggotaAngsuran(c *gin.Context) {
 	}
 
 	// Ambil pinjaman aktif anggota
-	userIDInt, err := strconv.Atoi(userID)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
-		return
-	}
-	pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userIDInt)
+	pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
 	if err != nil {
 		pinjamans = []models.Pinjaman{} // Default kosong jika error
 	}
@@ -805,16 +812,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		}
 	} else {
 		// Jika tidak ada ID pinjaman di form, ambil pinjaman aktif pertama
-		userIDInt, err := strconv.Atoi(userID)
-		if err != nil {
-			c.HTML(http.StatusInternalServerError, "anggota_angsuran.html", gin.H{
-				"Judul":   "Angsuran",
-				"Anggota": anggota,
-				"Error":   "Gagal mengambil data pengguna.",
-			})
-			return
-		}
-		pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userIDInt)
+		pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
 		if err != nil || len(pinjamans) == 0 {
 			c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
 				"Judul":   "Angsuran",

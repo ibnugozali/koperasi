@@ -29,13 +29,13 @@ type Detail struct {
 // Pinjaman mewakili pinjaman
 type Pinjaman struct {
 	IDPinjaman     int           `json:"id_pinjaman" db:"id_pinjaman"`
-	IDAnggota      int           `json:"id_anggota" db:"id_anggota"`
+	IDAnggota      string        `json:"id_anggota" db:"id_anggota"`
 	NamaAnggota    string        `json:"nama_anggota" db:"nama_anggota"`
 	IDPengelola    sql.NullInt64 `json:"id_pengelola" db:"id_pengelola"`
 	TglPinjaman    time.Time     `json:"tgl_pinjaman" db:"tgl_pinjaman"`
-	JumlahPinjaman float64       `json:"jumlah_pinjaman" db:"jumlah_pinjaman"`
-	JangkaWaktu    int           `json:"jangka_waktu" db:"jangka_waktu"`
-	Bunga          float64       `json:"bunga" db:"bunga"`
+	JumlahPinjaman float64       `form:"jumlah_pinjaman" json:"jumlah_pinjaman" db:"jumlah_pinjaman"`
+	JangkaWaktu    int           `form:"jangka_waktu" json:"jangka_waktu" db:"jangka_waktu"`
+	Bunga          float64       `form:"bunga" json:"bunga" db:"bunga"`
 	Status         string        `json:"status" db:"status"`
 }
 

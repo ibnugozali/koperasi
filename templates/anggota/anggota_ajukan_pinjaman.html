@@ -17,7 +17,7 @@
 <div class="alert alert-info" role="alert">
     <h5>Informasi Limit Pinjaman</h5>
     <p><strong>Jenis Anggota:</strong> {{ .JenisAnggota }}</p>
-    <p><strong>Total Simpanan:</strong> Rp {{ printf "%.0f" .TotalSimpanan }}</p>
+    <p><strong>Total Simpanan:</strong> Rp {{ if .TotalSimpanan }}{{ printf "%.0f" .TotalSimpanan }}{{ else }}0{{ end }}</p>
     <p id="limit_info">
         {{if eq .JenisAnggota "Mahasiswa"}}
             <strong>Limit Pinjaman:</strong> Rp {{ printf "%.0f" .LimitPinjaman }} (5x total simpanan)
@@ -37,7 +37,7 @@
 <div class="alert alert-danger mt-3">{{ .Error }}</div>
 {{ end }}
 
-    <form action="/anggota/ajukan-pinjaman" method="POST">
+   <form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman">
         <!-- Bagian 1: Rincian Permohonan Pinjaman -->
         <fieldset class="border p-3 mb-4">
             <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
@@ -52,7 +52,7 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
-                        <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} disabled {{end}}>
+<input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} readonly {{end}}>
                         <small class="form-text text-muted" id="limit_warning">
                             {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}}
                                 ⚠️ Anda belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu untuk dapat mengajukan pinjaman.

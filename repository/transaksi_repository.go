@@ -491,8 +491,7 @@ func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
 	return aktivitas, nil
 }
 
-// GetPinjamanAktifByAnggotaID mengambil pinjaman aktif berdasarkan ID anggota
-func GetPinjamanAktifByAnggotaID(idAnggota int) ([]models.Pinjaman, error) {
+func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
 	query := "SELECT id_pinjaman, id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status FROM pinjaman WHERE id_anggota = $1 AND status = 'aktif'"
