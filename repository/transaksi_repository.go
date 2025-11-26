@@ -122,7 +122,7 @@ func GetPendingPinjaman() ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
 	query := `
-		SELECT p.id_pinjaman, p.id_anggota, a.nama_anggota, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga
+		SELECT p.id_pinjaman, p.id_anggota, a.nama_anggota, p.id_pengelola, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status
 		FROM pinjaman p
 		JOIN anggota a ON p.id_anggota = a.id_anggota
 		WHERE p.status = 'proses'
@@ -136,7 +136,7 @@ func GetPendingPinjaman() ([]models.Pinjaman, error) {
 
 	for rows.Next() {
 		var p models.Pinjaman
-		if err := rows.Scan(&p.IDPinjaman, &p.IDAnggota, &p.IDPengelola, &p.TglPinjaman, &p.JumlahPinjaman, &p.JangkaWaktu, &p.Bunga); err != nil {
+		if err := rows.Scan(&p.IDPinjaman, &p.IDAnggota, &p.NamaAnggota, &p.IDPengelola, &p.TglPinjaman, &p.JumlahPinjaman, &p.JangkaWaktu, &p.Bunga, &p.Status); err != nil {
 			return nil, err
 		}
 		pinjamans = append(pinjamans, p)

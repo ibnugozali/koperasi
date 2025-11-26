@@ -250,8 +250,10 @@ func ShowRiwayatPage(c *gin.Context) {
 			status = "Dalam Proses"
 		case "aktif":
 			status = "Diterima"
-		case "ditolak":
+		case "gagal":
 			status = "Ditolak"
+		case "lunas":
+			status = "Lunas"
 		default:
 			status = p.Status
 		}

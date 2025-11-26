@@ -88,6 +88,7 @@
                                         <th>Jangka Waktu</th>
                                         <th>Bunga</th>
                                         <th>Tanggal</th>
+                                        <th>Waktu</th>
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
@@ -100,6 +101,7 @@
                                         <td>{{.JangkaWaktu}} bulan</td>
                                         <td>{{.Bunga}}%</td>
                                         <td>{{.TglPinjaman.Format "2006-01-02"}}</td>
+                                        <td>{{.TglPinjaman.Format "15:04:05"}}</td>
                                         <td>
                                             <button class="btn btn-success btn-sm me-2" onclick="confirmTransaction('pinjaman', '{{.IDPinjaman}}', 'confirm')">
                                                 <i class="fa-solid fa-check"></i> Konfirmasi

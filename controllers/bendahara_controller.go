@@ -611,7 +611,7 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 		if action == "confirm" {
 			err = repository.UpdatePinjamanStatus(id, "aktif")
 		} else {
-			err = repository.UpdatePinjamanStatus(id, "rejected")
+			err = repository.UpdatePinjamanStatus(id, "gagal")
 		}
 	case "angsuran":
 		if action == "confirm" {
