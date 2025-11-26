@@ -3,9 +3,6 @@ package repository
 import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
-
-
-
 )
 
 func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, error) {
@@ -13,7 +10,7 @@ func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, e
 	var details []models.Detail
 	query := `
 		SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan,
-		       s.jenis_simpanan
+		       s.jenis_simpanan, COALESCE(d.status, 'confirmed') as status
 		FROM detail d
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 		WHERE d.id_anggota = $1
@@ -33,7 +30,7 @@ func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, e
 	for rows.Next() {
 		var d models.Detail
 		var s models.Simpanan
-		if err := rows.Scan(&d.IDDetail, &d.IDAnggota, &d.IDSimpanan, &d.IDPengelola, &d.TglTransaksi, &d.JumlahSimpanan, &d.TotalSimpanan, &s.JenisSimpanan); err != nil {
+		if err := rows.Scan(&d.IDDetail, &d.IDAnggota, &d.IDSimpanan, &d.IDPengelola, &d.TglTransaksi, &d.JumlahSimpanan, &d.TotalSimpanan, &s.JenisSimpanan, &d.Status); err != nil {
 			return nil, err
 		}
 		d.Simpanan = s
@@ -75,7 +72,8 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 	db := config.GetDB()
 	var angsurans []models.Angsuran
 	query := `
-		SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.bukti_angsuran, a.status, ang.nama_anggota
+		SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.bukti_angsuran, 
+		       COALESCE(a.status, 'confirmed') as status, ang.nama_anggota
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota

@@ -583,7 +583,7 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 	}
 
 	// Ambil pending angsuran
-	pendingAngsuran, err := repository.GetAllAngsurans()
+	pendingAngsuran, err := repository.GetPendingAngsuran()
 	if err != nil {
 		pendingAngsuran = []models.Angsuran{}
 	}
@@ -710,8 +710,12 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 
 	switch transactionType {
 	case "simpanan":
-		// Simpanan tidak perlu update status, langsung return success
-		err = nil
+		// Update status simpanan
+		if action == "confirm" {
+			err = repository.UpdateSimpananStatus(id, "confirmed")
+		} else {
+			err = repository.UpdateSimpananStatus(id, "rejected")
+		}
 	case "pinjaman":
 		if action == "confirm" {
 			err = repository.UpdatePinjamanStatus(id, "aktif")

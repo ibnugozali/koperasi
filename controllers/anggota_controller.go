@@ -1014,7 +1014,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		TglBayar:      tanggalPembayaran,
 		SisaPinjaman:  jumlahAngsuran, // Untuk sementara, sisa pinjaman = jumlah angsuran
 		BuktiAngsuran: filename,       // Simpan nama file sebagai string
-		Status:        "valid",        // Status valid
+		Status:        "",             // Status akan diset ke pending oleh repository
 		NamaAnggota:   anggota.NamaAnggota,
 	}
 

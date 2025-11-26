@@ -229,6 +229,17 @@ func ShowRiwayatPage(c *gin.Context) {
 		if timeStr == "00:00:00" {
 			timeStr = "-"
 		}
+		var status string
+		switch s.Status {
+		case "pending":
+			status = "Dalam Proses"
+		case "confirmed":
+			status = "Diterima"
+		case "rejected":
+			status = "Ditolak"
+		default:
+			status = "Diterima" // Default untuk data lama tanpa status
+		}
 		allTransactions = append(allTransactions, UnifiedTransaction{
 			ID:          s.IDDetail,
 			Date:        s.TglTransaksi,
@@ -236,7 +247,7 @@ func ShowRiwayatPage(c *gin.Context) {
 			Type:        desc,
 			Description: desc,
 			Amount:      amount,
-			Status:      "Selesai",
+			Status:      status,
 		})
 	}
 
@@ -278,12 +289,18 @@ func ShowRiwayatPage(c *gin.Context) {
 		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", a.SisaPinjaman)), " ", "")
 		var status string
 		switch a.Status {
+		case "pending":
+			status = "Dalam Proses"
+		case "confirmed":
+			status = "Diterima"
+		case "rejected":
+			status = "Ditolak"
 		case "valid":
-			status = "Valid"
+			status = "Diterima" // Backward compatibility
 		case "invalid":
-			status = "Invalid"
+			status = "Ditolak" // Backward compatibility
 		default:
-			status = a.Status
+			status = "Diterima" // Default untuk data lama
 		}
 		timeStr := a.TglBayar.Format("15:04:05")
 		if timeStr == "00:00:00" {

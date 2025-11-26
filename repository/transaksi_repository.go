@@ -13,9 +13,13 @@ func CreateSimpanan(detail models.Detail) error {
 	db := config.GetDB()
 	// Set waktu transaksi ke saat ini (server-side) untuk memastikan konsistensi
 	detail.TglTransaksi = time.Now()
+	// Set status default ke pending untuk menunggu konfirmasi bendahara
+	if detail.Status == "" {
+		detail.Status = "pending"
+	}
 	query := `
-		INSERT INTO detail (id_anggota, id_simpanan, id_pengelola, tgl_transaksi, jumlah_simpanan, total_simpanan)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO detail (id_anggota, id_simpanan, id_pengelola, tgl_transaksi, jumlah_simpanan, total_simpanan, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 	_, err := db.Exec(query,
 		detail.IDAnggota,
@@ -24,6 +28,7 @@ func CreateSimpanan(detail models.Detail) error {
 		detail.TglTransaksi,
 		detail.JumlahSimpanan,
 		detail.TotalSimpanan,
+		detail.Status,
 	)
 	return err
 }
@@ -56,6 +61,10 @@ func CreateAngsuran(angsuran models.Angsuran) error {
 	db := config.GetDB()
 	// Set waktu bayar ke saat ini (server-side)
 	angsuran.TglBayar = time.Now()
+	// Set status default ke pending untuk menunggu konfirmasi bendahara
+	if angsuran.Status == "" {
+		angsuran.Status = "pending"
+	}
 	query := `
 		INSERT INTO angsuran (id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, bukti_angsuran, status)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -105,6 +114,14 @@ func GetPinjamanByID(id int) (models.Pinjaman, error) {
 func UpdatePinjamanStatus(id int, status string) error {
 	db := config.GetDB()
 	query := "UPDATE pinjaman SET status = $1 WHERE id_pinjaman = $2"
+	_, err := db.Exec(query, status, id)
+	return err
+}
+
+// UpdateSimpananStatus memperbarui status simpanan
+func UpdateSimpananStatus(id int, status string) error {
+	db := config.GetDB()
+	query := "UPDATE detail SET status = $1 WHERE id_detail = $2"
 	_, err := db.Exec(query, status, id)
 	return err
 }
@@ -182,6 +199,35 @@ func GetPendingSimpanan() ([]models.Detail, error) {
 		details = append(details, d)
 	}
 	return details, nil
+}
+
+// GetPendingAngsuran mengambil angsuran dengan status 'pending'
+func GetPendingAngsuran() ([]models.Angsuran, error) {
+	db := config.GetDB()
+	var angsurans []models.Angsuran
+	query := `
+		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, 
+		       COALESCE(a.status_angsuran, ''), COALESCE(a.status, 'pending'), ang.nama_anggota
+		FROM angsuran a
+		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
+		JOIN anggota ang ON p.id_anggota = ang.id_anggota
+		WHERE a.status = 'pending'
+		ORDER BY a.tgl_bayar DESC
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var a models.Angsuran
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDAnggota, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.StatusAngsuran, &a.Status, &a.NamaAnggota); err != nil {
+			return nil, err
+		}
+		angsurans = append(angsurans, a)
+	}
+	return angsurans, nil
 }
 
 // GetLaporanKeuangan menghasilkan laporan keuangan bulanan
