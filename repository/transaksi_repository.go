@@ -511,7 +511,7 @@ func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
 	db := config.GetDB()
 	var angsurans []models.Angsuran
-	query := "SELECT id_angsuran, id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, bukti_angsuran, status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar DESC"
+	query := "SELECT id_angsuran, id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, COALESCE(bukti_angsuran, ''), status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar DESC"
 	rows, err := db.Query(query, idPinjaman)
 	if err != nil {
 		return nil, err

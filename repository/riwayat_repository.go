@@ -3,6 +3,9 @@ package repository
 import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
+
+
+
 )
 
 func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, error) {
@@ -72,9 +75,10 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 	db := config.GetDB()
 	var angsurans []models.Angsuran
 	query := `
-		SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.status
+		SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.bukti_angsuran, a.status, ang.nama_anggota
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
+		JOIN anggota ang ON p.id_anggota = ang.id_anggota
 		WHERE p.id_anggota = $1
 	`
 	args := []interface{}{id}
@@ -91,7 +95,7 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 
 	for rows.Next() {
 		var a models.Angsuran
-		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.Status); err != nil {
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.BuktiAngsuran, &a.Status, &a.NamaAnggota); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)

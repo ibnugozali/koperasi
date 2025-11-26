@@ -74,15 +74,15 @@ CREATE TABLE pinjaman (
     status VARCHAR(25) CHECK (status IN ('proses', 'aktif', 'lunas', 'gagal'))
 );
 
-CREATE TABLE angsuran (
-    id_angsuran SERIAL PRIMARY KEY,
-    id_pinjaman INT REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
-    id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL, -- Diubah
-    tgl_bayar DATE DEFAULT CURRENT_DATE,
-    sisa_pinjaman NUMERIC(15,2),
-    status_angsuran VARCHAR(25) CHECK (status_angsuran IN ('belum_lunas', 'lunas', 'terlambat')),
-    bukti_angsuran BYTEA,
-    status VARCHAR(25) DEFAULT 'valid' CHECK (status IN ('valid', 'invalid'))
+CREATE TABLE IF NOT EXISTS angsuran (
+  id_angsuran SERIAL PRIMARY KEY,
+  id_pinjaman INT REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
+  id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL,
+  tgl_bayar TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  sisa_pinjaman NUMERIC(15,2),
+  status_angsuran VARCHAR(25) CHECK (status_angsuran IN ('belum_lunas', 'lunas', 'terlambat')),
+  bukti_angsuran VARCHAR(255),
+  status VARCHAR(25) DEFAULT 'valid' CHECK (status IN ('valid', 'invalid'))
 );
 
 -- PERBAIKAN: Menambahkan kolom 'kategori' agar mudah memfilter halaman

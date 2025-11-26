@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -763,12 +764,65 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	// Ambil data anggota untuk error handling
 	anggota, err := repository.GetAnggotaByID(userID)
 	if err != nil {
+		// compute safe defaults to pass to template
+		_, totalPinjaman, _, _ := repository.GetSaldoAnggota("")
 		c.HTML(http.StatusInternalServerError, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Gagal mengambil data pengguna.",
+			"Judul":          "Angsuran",
+			"Anggota":        anggota,
+			"Error":          "Gagal mengambil data pengguna.",
+			"JumlahPinjaman": 0.0,
+			"SisaPinjaman":   0.0,
+			"AngsuranKe":     0,
+			"TotalPinjaman":  totalPinjaman,
 		})
 		return
+	}
+
+	// helper to render error with recomputed loan totals so template shows correct state
+	renderWithTotals := func(status int, msg string) {
+		_, totalPinjaman, _, _ := repository.GetSaldoAnggota(userID)
+		pinjamans, _ := repository.GetPinjamanAktifByAnggotaID(userID)
+
+		var jumlahPinjaman float64
+		var sisaPinjaman float64
+		var angsuranKe int
+		var totalAngsuranTerbayar float64
+
+		if len(pinjamans) > 0 {
+			p := pinjamans[0]
+			jumlahPinjaman = p.JumlahPinjaman
+			angsurans, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+			if err == nil && len(angsurans) > 0 {
+				for _, a := range angsurans {
+					if a.Status == "valid" {
+						totalAngsuranTerbayar += a.SisaPinjaman
+					}
+				}
+				sisaPinjaman = jumlahPinjaman - totalAngsuranTerbayar
+				if sisaPinjaman < 0 {
+					sisaPinjaman = 0
+				}
+				angsuranKe = len(angsurans) + 1
+			} else {
+				sisaPinjaman = jumlahPinjaman
+				angsuranKe = 1
+			}
+		} else if totalPinjaman > 0 {
+			jumlahPinjaman = totalPinjaman
+			sisaPinjaman = totalPinjaman
+			angsuranKe = 1
+		}
+
+		c.HTML(status, "anggota_angsuran.html", gin.H{
+			"Judul":          "Angsuran",
+			"Anggota":        anggota,
+			"Error":          msg,
+			"JumlahPinjaman": jumlahPinjaman,
+			"SisaPinjaman":   sisaPinjaman,
+			"AngsuranKe":     angsuranKe,
+			"Pinjamans":      pinjamans,
+			"TotalPinjaman":  totalPinjaman,
+		})
 	}
 
 	// Ambil input dari form
@@ -779,27 +833,39 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	// Validasi input
 	if jumlahAngsuranStr == "" {
 		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Jumlah angsuran wajib diisi.",
+			"Judul":          "Angsuran",
+			"Anggota":        anggota,
+			"Error":          "Jumlah angsuran wajib diisi.",
+			"JumlahPinjaman": 0.0,
+			"SisaPinjaman":   0.0,
+			"AngsuranKe":     0,
+			"TotalPinjaman":  0.0,
 		})
 		return
 	}
 
 	if tanggalPembayaranStr == "" {
 		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Tanggal pembayaran wajib diisi.",
+			"Judul":          "Angsuran",
+			"Anggota":        anggota,
+			"Error":          "Tanggal pembayaran wajib diisi.",
+			"JumlahPinjaman": 0.0,
+			"SisaPinjaman":   0.0,
+			"AngsuranKe":     0,
+			"TotalPinjaman":  0.0,
 		})
 		return
 	}
 
 	if metodePembayaran == "" {
 		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Metode pembayaran wajib dipilih.",
+			"Judul":          "Angsuran",
+			"Anggota":        anggota,
+			"Error":          "Metode pembayaran wajib dipilih.",
+			"JumlahPinjaman": 0.0,
+			"SisaPinjaman":   0.0,
+			"AngsuranKe":     0,
+			"TotalPinjaman":  0.0,
 		})
 		return
 	}
@@ -808,18 +874,26 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	var jumlahAngsuran float64
 	if _, err := fmt.Sscanf(jumlahAngsuranStr, "%f", &jumlahAngsuran); err != nil {
 		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Format jumlah angsuran tidak valid.",
+			"Judul":          "Angsuran",
+			"Anggota":        anggota,
+			"Error":          "Format jumlah angsuran tidak valid.",
+			"JumlahPinjaman": 0.0,
+			"SisaPinjaman":   0.0,
+			"AngsuranKe":     0,
+			"TotalPinjaman":  0.0,
 		})
 		return
 	}
 
 	if jumlahAngsuran <= 0 {
 		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Jumlah angsuran harus lebih dari 0.",
+			"Judul":          "Angsuran",
+			"Anggota":        anggota,
+			"Error":          "Jumlah angsuran harus lebih dari 0.",
+			"JumlahPinjaman": 0.0,
+			"SisaPinjaman":   0.0,
+			"AngsuranKe":     0,
+			"TotalPinjaman":  0.0,
 		})
 		return
 	}
@@ -828,36 +902,38 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	parsedDate, err := time.Parse("2006-01-02", tanggalPembayaranStr)
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Format tanggal pembayaran tidak valid.",
+			"Judul":          "Angsuran",
+			"Anggota":        anggota,
+			"Error":          "Format tanggal pembayaran tidak valid.",
+			"JumlahPinjaman": 0.0,
+			"SisaPinjaman":   0.0,
+			"AngsuranKe":     0,
+			"TotalPinjaman":  0.0,
 		})
 		return
 	}
 	now := time.Now()
 	tanggalPembayaran := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location())
 
-	// Handle file upload
-	file, err := c.FormFile("bukti")
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Bukti pembayaran wajib diupload.",
-		})
-		return
-	}
+	// Handle file upload: only required for transfer method
+	var filename string
+	if strings.ToLower(metodePembayaran) == "transfer" {
+		file, err := c.FormFile("bukti")
+		if err != nil {
+			renderWithTotals(http.StatusBadRequest, "Bukti pembayaran wajib diupload.")
+			return
+		}
 
-	// Save the uploaded file
-	filename := time.Now().Format("20060102150405") + "_" + file.Filename
-	dst := "./static/uploads/" + filename
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.HTML(http.StatusInternalServerError, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Gagal menyimpan file bukti pembayaran.",
-		})
-		return
+		// Save the uploaded file
+		filename = time.Now().Format("20060102150405") + "_" + file.Filename
+		dst := "./static/uploads/" + filename
+		if err := c.SaveUploadedFile(file, dst); err != nil {
+			renderWithTotals(http.StatusInternalServerError, "Gagal menyimpan file bukti pembayaran.")
+			return
+		}
+	} else {
+		// not a transfer, bukti optional
+		filename = ""
 	}
 
 	// Ambil ID pinjaman dari form (jika ada) atau gunakan pinjaman aktif pertama
@@ -868,9 +944,13 @@ func AnggotaAngsuranPost(c *gin.Context) {
 			idPinjaman = parsedID
 		} else {
 			c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-				"Judul":   "Angsuran",
-				"Anggota": anggota,
-				"Error":   "ID pinjaman tidak valid.",
+				"Judul":          "Angsuran",
+				"Anggota":        anggota,
+				"Error":          "ID pinjaman tidak valid.",
+				"JumlahPinjaman": 0.0,
+				"SisaPinjaman":   0.0,
+				"AngsuranKe":     0,
+				"TotalPinjaman":  0.0,
 			})
 			return
 		}
@@ -879,9 +959,13 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
 		if err != nil || len(pinjamans) == 0 {
 			c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-				"Judul":   "Angsuran",
-				"Anggota": anggota,
-				"Error":   "Tidak ada pinjaman aktif.",
+				"Judul":          "Angsuran",
+				"Anggota":        anggota,
+				"Error":          "Tidak ada pinjaman aktif.",
+				"JumlahPinjaman": 0.0,
+				"SisaPinjaman":   0.0,
+				"AngsuranKe":     0,
+				"TotalPinjaman":  0.0,
 			})
 			return
 		}
@@ -902,20 +986,13 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	// Simpan ke database
 	err = repository.CreateAngsuran(angsuran)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "anggota_angsuran.html", gin.H{
-			"Judul":   "Angsuran",
-			"Anggota": anggota,
-			"Error":   "Gagal menyimpan angsuran. Silakan coba lagi.",
-		})
+		fmt.Printf("CreateAngsuran error: %v\nAngsuran: %+v\n", err, angsuran)
+		renderWithTotals(http.StatusInternalServerError, "Gagal menyimpan angsuran. Silakan coba lagi.")
 		return
 	}
 
-	// Berhasil, tampilkan pesan sukses
-	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
-		"Judul":   "Angsuran",
-		"Anggota": anggota,
-		"Success": "Angsuran berhasil dikirim. Silakan tunggu konfirmasi dari admin.",
-	})
+	// Berhasil, redirect ke halaman riwayat sehingga angsuran baru muncul di sana
+	c.Redirect(http.StatusFound, "/anggota/riwayat")
 }
 
 // AnggotaSejarah menampilkan halaman sejarah untuk anggota.

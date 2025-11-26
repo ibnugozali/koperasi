@@ -14,8 +14,12 @@
   <div class="card">
       <div class="card-body p-4 p-md-5 bg-white">
       <h1 class="card-title mb-4">{{ .Judul }}</h1>
-      {{if gt .TotalPinjaman 0.0}}
-      <p class="text-muted">Jumlah Pinjaman: Rp {{printf "%.0f" .TotalPinjaman}}, Sisa Pinjaman: Rp {{printf "%.0f" .SisaPinjaman}}, Angsuran Ke: {{ .AngsuranKe }}</p>
+    {{if ne .TotalPinjaman 0.0}}
+          <p class="text-muted">
+            Jumlah Pinjaman: Rp {{if gt .TotalPinjaman 0.0}}{{printf "%.0f" .TotalPinjaman}}{{else}}0{{end}},
+            Sisa Pinjaman: Rp {{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}},
+            Angsuran Ke: {{if gt .AngsuranKe 0}}{{.AngsuranKe}}{{else}}-{{end}}
+          </p>
       <hr>
         <div class="mt-4">
 
