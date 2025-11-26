@@ -118,15 +118,25 @@ func UpdateAngsuranStatus(id int, status string) error {
 }
 
 // GetPendingPinjaman mengambil pinjaman dengan status 'proses'
+// Bunga yang ditampilkan adalah bunga terkini dari tabel pengaturan, bukan dari tabel pinjaman
 func GetPendingPinjaman() ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
+
+	// Ambil bunga terkini dari pengaturan
+	var currentBunga float64
+	err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'bunga_pinjaman'").Scan(&currentBunga)
+	if err != nil {
+		// Jika belum ada, gunakan default 2.0
+		currentBunga = 2.0
+	}
+
 	query := `
 		SELECT p.id_pinjaman, p.id_anggota, a.nama_anggota, p.id_pengelola, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status
 		FROM pinjaman p
 		JOIN anggota a ON p.id_anggota = a.id_anggota
 		WHERE p.status = 'proses'
-		ORDER BY p.tgl_pinjaman ASC
+		ORDER BY p.tgl_pinjaman DESC
 	`
 	rows, err := db.Query(query)
 	if err != nil {
@@ -139,9 +149,39 @@ func GetPendingPinjaman() ([]models.Pinjaman, error) {
 		if err := rows.Scan(&p.IDPinjaman, &p.IDAnggota, &p.NamaAnggota, &p.IDPengelola, &p.TglPinjaman, &p.JumlahPinjaman, &p.JangkaWaktu, &p.Bunga, &p.Status); err != nil {
 			return nil, err
 		}
+		// Override bunga dengan nilai terkini dari pengaturan
+		p.Bunga = currentBunga
 		pinjamans = append(pinjamans, p)
 	}
 	return pinjamans, nil
+}
+
+// GetPendingSimpanan mengambil detail simpanan dengan status 'pending'
+func GetPendingSimpanan() ([]models.Detail, error) {
+	db := config.GetDB()
+	var details []models.Detail
+	query := `
+		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, COALESCE(d.status, '')
+		FROM detail d
+		JOIN anggota a ON d.id_anggota = a.id_anggota
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+		WHERE d.status = 'pending'
+		ORDER BY d.tgl_transaksi DESC
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var d models.Detail
+		if err := rows.Scan(&d.IDDetail, &d.IDAnggota, &d.NamaAnggota, &d.IDSimpanan, &d.Simpanan.JenisSimpanan, &d.IDPengelola, &d.TglTransaksi, &d.JumlahSimpanan, &d.TotalSimpanan, &d.Status); err != nil {
+			return nil, err
+		}
+		details = append(details, d)
+	}
+	return details, nil
 }
 
 // GetLaporanKeuangan menghasilkan laporan keuangan bulanan
@@ -289,7 +329,7 @@ func GetAllAngsurans() ([]models.Angsuran, error) {
 	db := config.GetDB()
 	var angsurans []models.Angsuran
 	query := `
-		SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.status_angsuran, a.status, ang.nama_anggota
+		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.status_angsuran, a.status, ang.nama_anggota
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
@@ -303,7 +343,7 @@ func GetAllAngsurans() ([]models.Angsuran, error) {
 
 	for rows.Next() {
 		var ang models.Angsuran
-		if err := rows.Scan(&ang.IDAngsuran, &ang.IDPinjaman, &ang.IDPengelola, &ang.TglBayar, &ang.SisaPinjaman, &ang.StatusAngsuran, &ang.Status, &ang.NamaAnggota); err != nil {
+		if err := rows.Scan(&ang.IDAngsuran, &ang.IDPinjaman, &ang.IDAnggota, &ang.IDPengelola, &ang.TglBayar, &ang.SisaPinjaman, &ang.StatusAngsuran, &ang.Status, &ang.NamaAnggota); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, ang)

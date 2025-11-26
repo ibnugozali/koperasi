@@ -283,7 +283,8 @@ func BendaharaViewAnggota(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "bendahara_anggota_view.html", gin.H{
+	// Reuse admin anggota view template for bendahara
+	c.HTML(http.StatusOK, "admin_anggota_view.html", gin.H{
 		"Anggota": anggota,
 	})
 }
@@ -569,7 +570,11 @@ func UpdateBendaharaProfile(c *gin.Context) {
 
 // BendaharaKonfirmasiTransaksi menampilkan halaman konfirmasi transaksi
 func BendaharaKonfirmasiTransaksi(c *gin.Context) {
-	pendingSimpanan := []models.Detail{}
+	// Ambil pending simpanan
+	pendingSimpanan, err := repository.GetPendingSimpanan()
+	if err != nil {
+		pendingSimpanan = []models.Detail{}
+	}
 
 	// Ambil pending pinjaman
 	pendingPinjaman, err := repository.GetPendingPinjaman()
@@ -583,11 +588,111 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 		pendingAngsuran = []models.Angsuran{}
 	}
 
+	// Tambahkan nomor urut (No) mulai dari 1 untuk setiap daftar
+	type numberedDetail struct {
+		No int
+		models.Detail
+	}
+	type numberedPinjaman struct {
+		No int
+		models.Pinjaman
+	}
+	type numberedAngsuran struct {
+		No int
+		models.Angsuran
+	}
+
+	var numberedSimpanan []numberedDetail
+	for i, d := range pendingSimpanan {
+		numberedSimpanan = append(numberedSimpanan, numberedDetail{No: i + 1, Detail: d})
+	}
+
+	var numberedPinjamans []numberedPinjaman
+	for i, p := range pendingPinjaman {
+		numberedPinjamans = append(numberedPinjamans, numberedPinjaman{No: i + 1, Pinjaman: p})
+	}
+
+	var numberedAngsurans []numberedAngsuran
+	for i, a := range pendingAngsuran {
+		numberedAngsurans = append(numberedAngsurans, numberedAngsuran{No: i + 1, Angsuran: a})
+	}
+
 	c.HTML(http.StatusOK, "bendahara_konfirmasi_transaksi.html", gin.H{
-		"PendingSimpanan": pendingSimpanan,
-		"PendingPinjaman": pendingPinjaman,
-		"PendingAngsuran": pendingAngsuran,
+		"PendingSimpanan": numberedSimpanan,
+		"PendingPinjaman": numberedPinjamans,
+		"PendingAngsuran": numberedAngsurans,
 		"ActivePage":      "konfirmasi-transaksi",
+	})
+}
+
+// BendaharaLihatPersyaratanPinjaman menampilkan halaman persyaratan ajukan pinjaman untuk anggota (read-only)
+func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
+	id := c.Param("id")
+
+	anggota, err := repository.GetAnggotaByID(id)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		return
+	}
+
+	// Hitung total simpanan untuk menampilkan limit
+	totalSimpanan, _, _, err := repository.GetSaldoAnggota(id)
+	if err != nil {
+		totalSimpanan = 0
+	}
+
+	// Hitung limit pinjaman berdasarkan jenis anggota
+	var limitPinjaman float64
+	var jenisAnggota string
+
+	switch anggota.UnitKerja {
+	case "03": // Mahasiswa
+		jenisAnggota = "Mahasiswa"
+		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
+	case "01", "02": // Dosen/Staff
+		jenisAnggota = "Dosen/Staff"
+		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
+	default:
+		jenisAnggota = "Tidak Diketahui"
+		limitPinjaman = 0
+	}
+
+	// Ambil data pinjaman pending dari anggota ini (jika ada)
+	db := config.GetDB()
+	var pinjaman models.Pinjaman
+	var hasPinjaman bool
+	queryPinjaman := `
+		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, 
+		       COALESCE(metode_pencairan, '') as metode_pencairan, COALESCE(nomor_rekening, '') as nomor_rekening
+		FROM pinjaman 
+		WHERE id_anggota = $1 AND status = 'proses'
+		ORDER BY tgl_pinjaman DESC 
+		LIMIT 1
+	`
+	err = db.QueryRow(queryPinjaman, id).Scan(
+		&pinjaman.IDPinjaman,
+		&pinjaman.IDAnggota,
+		&pinjaman.TglPinjaman,
+		&pinjaman.JumlahPinjaman,
+		&pinjaman.JangkaWaktu,
+		&pinjaman.Bunga,
+		&pinjaman.Status,
+		&pinjaman.MetodePencairan,
+		&pinjaman.NomorRekening,
+	)
+	if err == nil {
+		hasPinjaman = true
+	}
+
+	// Render template persyaratan pinjaman bendahara
+	c.HTML(http.StatusOK, "bendahara_persyaratan_pinjaman.html", gin.H{
+		"Anggota":       anggota,
+		"TotalSimpanan": totalSimpanan,
+		"LimitPinjaman": limitPinjaman,
+		"JenisAnggota":  jenisAnggota,
+		"Judul":         "Lihat Persyaratan Pengajuan Pinjaman",
+		"Pinjaman":      pinjaman,
+		"HasPinjaman":   hasPinjaman,
 	})
 }
 
@@ -632,11 +737,36 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Transaksi berhasil diproses"})
 }
 
-var currentBunga float64 = 2.0 // default bunga value for demonstration purposes
+// GetCurrentBunga mengambil nilai bunga terkini dari database
+func GetCurrentBunga() float64 {
+	db := config.GetDB()
+	var bunga float64
+
+	// Buat tabel pengaturan jika belum ada
+	db.Exec(`
+		CREATE TABLE IF NOT EXISTS pengaturan (
+			id SERIAL PRIMARY KEY,
+			nama_pengaturan VARCHAR(50) UNIQUE NOT NULL,
+			nilai VARCHAR(100) NOT NULL,
+			updated_at TIMESTAMPTZ DEFAULT NOW()
+		)
+	`)
+
+	// Cek apakah bunga sudah ada di database
+	err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'bunga_pinjaman'").Scan(&bunga)
+	if err != nil {
+		// Jika belum ada, insert nilai default 2.0
+		db.Exec("INSERT INTO pengaturan (nama_pengaturan, nilai) VALUES ('bunga_pinjaman', '2.0')")
+		bunga = 2.0
+	}
+
+	return bunga
+}
 
 func BendaharaEditBunga(c *gin.Context) {
+	bunga := GetCurrentBunga()
 	c.HTML(http.StatusOK, "bendahara_edit_bunga.html", gin.H{
-		"CurrentBunga": fmt.Sprintf("%.2f", currentBunga),
+		"CurrentBunga": fmt.Sprintf("%.2f", bunga),
 		"ActivePage":   "edit-bunga",
 	})
 }
@@ -644,7 +774,7 @@ func BendaharaEditBunga(c *gin.Context) {
 func BendaharaUpdateBunga(c *gin.Context) {
 	bungaStr := c.PostForm("bunga")
 	if bungaStr == "" {
-		c.HTML(http.StatusBadRequest, "bendahara/bendahara_edit_bunga.html", gin.H{
+		c.HTML(http.StatusBadRequest, "bendahara_edit_bunga.html", gin.H{
 			"Error":        "Nilai bunga harus diisi",
 			"CurrentBunga": "",
 			"ActivePage":   "edit-bunga",
@@ -662,8 +792,23 @@ func BendaharaUpdateBunga(c *gin.Context) {
 		return
 	}
 
-	// Simulate saving bunga value
-	currentBunga = bungaVal
+	// Simpan bunga ke database
+	db := config.GetDB()
+	_, err = db.Exec(`
+		INSERT INTO pengaturan (nama_pengaturan, nilai, updated_at) 
+		VALUES ('bunga_pinjaman', $1, NOW())
+		ON CONFLICT (nama_pengaturan) 
+		DO UPDATE SET nilai = $1, updated_at = NOW()
+	`, bungaStr)
+
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "bendahara_edit_bunga.html", gin.H{
+			"Error":        "Gagal menyimpan bunga ke database",
+			"CurrentBunga": bungaStr,
+			"ActivePage":   "edit-bunga",
+		})
+		return
+	}
 
 	// Redirect back to edit page after update
 	c.Redirect(http.StatusFound, "/bendahara/edit-bunga")

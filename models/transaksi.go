@@ -45,6 +45,7 @@ type Pinjaman struct {
 type Angsuran struct {
 	IDAngsuran     int           `json:"id_angsuran" db:"id_angsuran"`
 	IDPinjaman     int           `json:"id_pinjaman" db:"id_pinjaman"`
+	IDAnggota      string        `json:"id_anggota" db:"id_anggota"`
 	IDPengelola    sql.NullInt64 `json:"id_pengelola" db:"id_pengelola"`
 	TglBayar       time.Time     `json:"tgl_bayar" db:"tgl_bayar"`
 	SisaPinjaman   float64       `json:"sisa_pinjaman" db:"sisa_pinjaman"`

@@ -25,9 +25,16 @@
     <div class="row">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fa-solid fa-check-circle me-2"></i>Konfirmasi Transaksi</h5>
-                    <small class="text-white-50">Kelola pengajuan simpanan, pinjaman, dan angsuran yang menunggu konfirmasi</small>
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0"><i class="fa-solid fa-check-circle me-2"></i>Konfirmasi Transaksi</h5>
+                        <div class="small text-white-50">Kelola pengajuan simpanan, pinjaman, dan angsuran yang menunggu konfirmasi</div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-light text-dark ms-1">Simpanan: {{len .PendingSimpanan}}</span>
+                        <span class="badge bg-light text-dark ms-1">Pinjaman: {{len .PendingPinjaman}}</span>
+                        <span class="badge bg-light text-dark ms-1">Angsuran: {{len .PendingAngsuran}}</span>
+                    </div>
                 </div>
                 <div class="card-body">
                     <!-- Pending Simpanan -->
@@ -35,32 +42,31 @@
                         <h5><i class="fa-solid fa-piggy-bank me-2"></i>Simpanan Pending</h5>
                         {{if .PendingSimpanan}}
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover table-striped table-bordered align-middle">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th style="width:5%" class="text-center">No</th>
                                         <th>Nama Anggota</th>
                                         <th>Jenis Simpanan</th>
-                                        <th>Jumlah</th>
-                                        <th>Tanggal</th>
-                                        <th>Aksi</th>
+                                        <th class="text-end">Jumlah</th>
+                                        <th style="width:12%" class="text-center">Tanggal</th>
+                                        <th style="width:18%" class="text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {{range .PendingSimpanan}}
                                     <tr>
-                                        <td>{{.IDDetail}}</td>
+                                        <td class="text-center">{{.No}}</td>
                                         <td>{{.NamaAnggota}}</td>
                                         <td>{{.Simpanan.JenisSimpanan}}</td>
-                                        <td>Rp {{printf "%.0f" .JumlahSimpanan}}</td>
-                                        <td>{{.TglTransaksi.Format "2006-01-02"}}</td>
-                                        <td>
-                                            <button class="btn btn-success btn-sm me-2" onclick="confirmTransaction('simpanan', '{{.IDDetail}}', 'confirm')">
-                                                <i class="fa-solid fa-check"></i> Konfirmasi
-                                            </button>
-                                            <button class="btn btn-danger btn-sm" onclick="confirmTransaction('simpanan', '{{.IDDetail}}', 'reject')">
-                                                <i class="fa-solid fa-times"></i> Tolak
-                                            </button>
+                                        <td class="text-end">Rp {{printf "%.0f" .JumlahSimpanan}}</td>
+                                        <td class="text-center"><span class="small text-muted">{{.TglTransaksi.Format "2006-01-02"}}</span></td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <a class="btn btn-outline-primary btn-sm" href="/bendahara/lihat-persyaratan-pinjaman/{{.IDAnggota}}" target="_blank" title="Lihat persyaratan"><i class="fa-solid fa-eye"></i></a>
+                                                <button type="button" class="btn btn-success btn-sm" onclick="confirmTransaction('simpanan', '{{.IDDetail}}', 'confirm')" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="confirmTransaction('simpanan', '{{.IDDetail}}', 'reject')" title="Tolak"><i class="fa-solid fa-times"></i></button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {{end}}
@@ -79,36 +85,35 @@
                         <h5><i class="fa-solid fa-money-bill-wave me-2"></i>Pinjaman Pending</h5>
                         {{if .PendingPinjaman}}
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover table-striped table-bordered align-middle">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th style="width:5%" class="text-center">No</th>
                                         <th>Nama Anggota</th>
-                                        <th>Jumlah</th>
-                                        <th>Jangka Waktu</th>
-                                        <th>Bunga</th>
-                                        <th>Tanggal</th>
-                                        <th>Waktu</th>
-                                        <th>Aksi</th>
+                                        <th class="text-end">Jumlah</th>
+                                        <th class="text-center">Jangka Waktu</th>
+                                        <th class="text-center">Bunga</th>
+                                        <th style="width:12%" class="text-center">Tanggal</th>
+                                        <th style="width:10%" class="text-center">Waktu</th>
+                                        <th style="width:18%" class="text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {{range .PendingPinjaman}}
                                     <tr>
-                                        <td>{{.IDPinjaman}}</td>
+                                        <td class="text-center">{{.No}}</td>
                                         <td>{{.NamaAnggota}}</td>
-                                        <td>Rp {{printf "%.0f" .JumlahPinjaman}}</td>
-                                        <td>{{.JangkaWaktu}} bulan</td>
-                                        <td>{{.Bunga}}%</td>
-                                        <td>{{.TglPinjaman.Format "2006-01-02"}}</td>
-                                        <td>{{.TglPinjaman.Format "15:04:05"}}</td>
-                                        <td>
-                                            <button class="btn btn-success btn-sm me-2" onclick="confirmTransaction('pinjaman', '{{.IDPinjaman}}', 'confirm')">
-                                                <i class="fa-solid fa-check"></i> Konfirmasi
-                                            </button>
-                                            <button class="btn btn-danger btn-sm" onclick="confirmTransaction('pinjaman', '{{.IDPinjaman}}', 'reject')">
-                                                <i class="fa-solid fa-times"></i> Tolak
-                                            </button>
+                                        <td class="text-end">Rp {{printf "%.0f" .JumlahPinjaman}}</td>
+                                        <td class="text-center">{{.JangkaWaktu}} bulan</td>
+                                        <td class="text-center">{{.Bunga}}%</td>
+                                        <td class="text-center"><span class="small text-muted">{{.TglPinjaman.Format "2006-01-02"}}</span></td>
+                                        <td class="text-center"><span class="small text-muted">{{.TglPinjaman.Format "15:04:05"}}</span></td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <a class="btn btn-outline-primary btn-sm" href="/bendahara/lihat-persyaratan-pinjaman/{{.IDAnggota}}" target="_blank" title="Lihat persyaratan"><i class="fa-solid fa-eye"></i></a>
+                                                <button type="button" class="btn btn-success btn-sm" onclick="confirmTransaction('pinjaman', '{{.IDPinjaman}}', 'confirm')" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="confirmTransaction('pinjaman', '{{.IDPinjaman}}', 'reject')" title="Tolak"><i class="fa-solid fa-times"></i></button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {{end}}
@@ -127,30 +132,29 @@
                         <h5><i class="fa-solid fa-coins me-2"></i>Angsuran Pending</h5>
                         {{if .PendingAngsuran}}
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover table-striped table-bordered align-middle">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th style="width:5%" class="text-center">No</th>
                                         <th>Nama Anggota</th>
-                                        <th>Jumlah Angsuran</th>
-                                        <th>Tanggal Bayar</th>
-                                        <th>Aksi</th>
+                                        <th class="text-end">Jumlah Angsuran</th>
+                                        <th style="width:12%" class="text-center">Tanggal Bayar</th>
+                                        <th style="width:18%" class="text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {{range .PendingAngsuran}}
                                     <tr>
-                                        <td>{{.IDAngsuran}}</td>
+                                        <td class="text-center">{{.No}}</td>
                                         <td>{{.NamaAnggota}}</td>
-                                        <td>Rp {{printf "%.0f" .SisaPinjaman}}</td>
-                                        <td>{{.TglBayar.Format "2006-01-02"}}</td>
-                                        <td>
-                                            <button class="btn btn-success btn-sm me-2" onclick="confirmTransaction('angsuran', '{{.IDAngsuran}}', 'confirm')">
-                                                <i class="fa-solid fa-check"></i> Konfirmasi
-                                            </button>
-                                            <button class="btn btn-danger btn-sm" onclick="confirmTransaction('angsuran', '{{.IDAngsuran}}', 'reject')">
-                                                <i class="fa-solid fa-times"></i> Tolak
-                                            </button>
+                                        <td class="text-end">Rp {{printf "%.0f" .SisaPinjaman}}</td>
+                                        <td class="text-center"><span class="small text-muted">{{.TglBayar.Format "2006-01-02"}}</span></td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <a class="btn btn-outline-primary btn-sm" href="/bendahara/lihat-persyaratan-pinjaman/{{.IDAnggota}}" target="_blank" title="Lihat persyaratan"><i class="fa-solid fa-eye"></i></a>
+                                                <button type="button" class="btn btn-success btn-sm" onclick="confirmTransaction('angsuran', '{{.IDAngsuran}}', 'confirm')" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="confirmTransaction('angsuran', '{{.IDAngsuran}}', 'reject')" title="Tolak"><i class="fa-solid fa-times"></i></button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {{end}}

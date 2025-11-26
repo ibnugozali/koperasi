@@ -13,6 +13,18 @@
 <div style="padding: 20px;">
 <h1>{{ .Judul }}</h1>
 
+{{if .ReadOnly}}
+<div class="alert alert-secondary">Mode tampilan: hanya melihat persyaratan pengajuan pinjaman. Form dinonaktifkan.</div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var f = document.getElementById('ajukanPinjamanForm');
+    if (f) {
+        Array.from(f.elements).forEach(function(el){ el.disabled = true; });
+    }
+});
+</script>
+{{end}}
+
 <!-- Info Limit Pinjaman -->
 <div class="alert alert-info" role="alert">
     <h5>Informasi Limit Pinjaman</h5>
@@ -27,7 +39,7 @@
             <strong>Limit Pinjaman:</strong> Tidak dapat ditentukan
         {{end}}
     </p>
-    <p id="bunga_info"><strong>Bunga:</strong> 2% (flat)</p>
+    <p id="bunga_info"><strong>Bunga:</strong> {{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}% (flat)</p>
 </div>
 
 {{ if .Success }}
@@ -238,18 +250,21 @@ function calculateAngsuran() {
     }
 
     // Update limit info
+    const bungaTerkini = parseFloat('{{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}');
+    const bungaPersenTampil = bungaTerkini.toFixed(2);
+    
     const limitInfo = document.getElementById('limit_info');
     const bungaInfo = document.getElementById('bunga_info');
     if (jenisAnggota === 'Mahasiswa') {
         limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
-        bungaInfo.innerHTML = '<strong>Bunga:</strong> 2% (flat)';
+        bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
     } else if (jenisAnggota === 'Dosen/Staff') {
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
             limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' ((40% x gaji x tenor) + total simpanan)';
-            bungaInfo.innerHTML = '<strong>Bunga:</strong> 2% (flat)';
+            bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
         } else {
             limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
-            bungaInfo.innerHTML = '<strong>Bunga:</strong> 2% (flat)';
+            bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
         }
     } else {
         limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Tidak dapat ditentukan';
@@ -268,10 +283,11 @@ function calculateAngsuran() {
         limitWarning.textContent = '';
     }
 
-    // Calculate perkiraan angsuran (pokok + bunga 2%)
+    // Calculate perkiraan angsuran (pokok + bunga dari database)
     if (jumlahPinjaman > 0 && jangkaWaktu > 0) {
+        const bungaTerkini = parseFloat('{{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}');
         const pokok = jumlahPinjaman / jangkaWaktu;
-        const bunga = jumlahPinjaman * 0.02;
+        const bunga = jumlahPinjaman * (bungaTerkini / 100);
         const totalAngsuran = pokok + bunga;
         document.getElementById('perkiraan_angsuran').value = Math.round(totalAngsuran);
     }
