@@ -104,6 +104,22 @@
                 <div id="tenor_info" class="form-text mt-2 text-muted">Pilih tenor pinjaman.</div>
             </div>
             <div class="mb-3">
+                <label class="form-label">Metode Pencairan</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_transfer" value="transfer" checked>
+                    <label class="form-check-label" for="pencairan_transfer">Transfer Bank</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_tunai" value="tunai">
+                    <label class="form-check-label" for="pencairan_tunai">Tunai</label>
+                </div>
+            </div>
+            <div class="mb-3" id="nomor_rekening_container">
+                <label for="nomor_rekening" class="form-label">Nomor Rekening Bank</label>
+                <input type="text" class="form-control" id="nomor_rekening" name="nomor_rekening" placeholder="Masukkan nomor rekening Anda">
+                <small class="form-text text-muted">Masukkan nomor rekening untuk penerimaan pencairan dana pinjaman.</small>
+            </div>
+            <div class="mb-3">
                 <label for="perkiraan_angsuran" class="form-label">Perkiraan Angsuran per Bulan (Rp)</label>
                 <input type="number" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran">
             </div>
@@ -172,9 +188,33 @@ document.addEventListener('DOMContentLoaded', function() {
         gajiInput.required = true;
     }
 
+    // Initialize metode pencairan display
+    updateMetodePencairanDisplay();
+
+    // Add event listeners for metode pencairan
+    document.querySelectorAll('input[name="metode_pencairan"]').forEach(radio => {
+        radio.addEventListener('change', updateMetodePencairanDisplay);
+    });
+
     // Hitung perkiraan angsuran saat input berubah
     calculateAngsuran();
 });
+
+// Function to show/hide nomor rekening based on metode pencairan
+function updateMetodePencairanDisplay() {
+    const metodePencairan = document.querySelector('input[name="metode_pencairan"]:checked').value;
+    const nomorRekeningContainer = document.getElementById('nomor_rekening_container');
+    const nomorRekeningInput = document.getElementById('nomor_rekening');
+
+    if (metodePencairan === 'transfer') {
+        nomorRekeningContainer.style.display = 'block';
+        nomorRekeningInput.required = true;
+    } else {
+        nomorRekeningContainer.style.display = 'none';
+        nomorRekeningInput.required = false;
+        nomorRekeningInput.value = ''; // Clear the field when hidden
+    }
+}
 
 // Function to calculate perkiraan angsuran
 function calculateAngsuran() {

@@ -171,6 +171,37 @@ document.addEventListener('DOMContentLoaded', function() {
     if (jangkaWaktu) jangkaWaktu.addEventListener('change', calculateAngsuran);
     if (gajiBulanan) gajiBulanan.addEventListener('input', calculateAngsuran);
 
+    // Add event listeners for metode pencairan (transfer bank)
+    const pencairanTransfer = document.getElementById('pencairan_transfer');
+    const pencairanTunai = document.getElementById('pencairan_tunai');
+    const nomorRekeningContainer = document.getElementById('nomor_rekening_container');
+    const nomorRekeningInput = document.getElementById('nomor_rekening');
+
+    if (pencairanTransfer) {
+        pencairanTransfer.addEventListener('change', function() {
+            if (this.checked) {
+                nomorRekeningContainer.style.display = 'block';
+                nomorRekeningInput.required = true;
+            }
+        });
+    }
+
+    if (pencairanTunai) {
+        pencairanTunai.addEventListener('change', function() {
+            if (this.checked) {
+                nomorRekeningContainer.style.display = 'none';
+                nomorRekeningInput.required = false;
+                nomorRekeningInput.value = '';
+            }
+        });
+    }
+
+    // Set initial state (transfer is checked by default)
+    if (pencairanTransfer && pencairanTransfer.checked && nomorRekeningContainer) {
+        nomorRekeningContainer.style.display = 'block';
+        nomorRekeningInput.required = true;
+    }
+
     // Function to handle "Centang Semua" checkbox
     const cekSemua = document.getElementById('cek_semua');
     if (cekSemua) {
