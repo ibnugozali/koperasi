@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
+	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
 )
@@ -26,7 +27,26 @@ func ShowLoginPage(c *gin.Context) {
 
 // ShowRegisterPage menampilkan halaman registrasi.
 func ShowRegisterPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "register.html", nil)
+	db := config.GetDB()
+
+	// Ambil nomor rekening dari database
+	var nomorRekening string
+	err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nomor_rekening'").Scan(&nomorRekening)
+	if err != nil {
+		nomorRekening = "1234567890 (Bank ABC)" // Default jika belum diset
+	}
+
+	// Ambil nominal simpanan dari database
+	var nominalSimpanan string
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpanan)
+	if err != nil {
+		nominalSimpanan = "100000" // Default jika belum diset
+	}
+
+	c.HTML(http.StatusOK, "register.html", gin.H{
+		"NomorRekening":   nomorRekening,
+		"NominalSimpanan": nominalSimpanan,
+	})
 }
 
 // Register memproses data registrasi anggota baru.

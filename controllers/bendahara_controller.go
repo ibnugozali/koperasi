@@ -77,10 +77,37 @@ func BendaharaKonfirmasi(c *gin.Context) {
 }
 
 func BendaharaEditRekeningRegister(c *gin.Context) {
-	// TODO: Ambil nomor rekening, nominal simpanan, dan keterangan bukti transfer dari penyimpanan, contoh hardcode dulu
-	nomorRekening := "1234567890 (Bank ABC)"
-	nominalSimpanan := "100000"
-	keteranganBuktiTransfer := "Transfer dari rekening pribadi ke rekening koperasi sebesar Rp. 100.000 untuk simpanan pokok wajib."
+	db := config.GetDB()
+
+	// Buat tabel pengaturan jika belum ada
+	db.Exec(`
+		CREATE TABLE IF NOT EXISTS pengaturan (
+			id SERIAL PRIMARY KEY,
+			nama_pengaturan VARCHAR(50) UNIQUE NOT NULL,
+			nilai TEXT NOT NULL,
+			updated_at TIMESTAMPTZ DEFAULT NOW()
+		)
+	`)
+
+	// Ambil nomor rekening dari database
+	var nomorRekening string
+	err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nomor_rekening'").Scan(&nomorRekening)
+	if err != nil {
+		// Jika belum ada, insert nilai default
+		db.Exec("INSERT INTO pengaturan (nama_pengaturan, nilai) VALUES ('nomor_rekening', '1234567890 (Bank ABC)')")
+		nomorRekening = "1234567890 (Bank ABC)"
+	}
+
+	// Ambil nominal simpanan dari database
+	var nominalSimpanan string
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpanan)
+	if err != nil {
+		// Jika belum ada, insert nilai default
+		db.Exec("INSERT INTO pengaturan (nama_pengaturan, nilai) VALUES ('nominal_simpanan', '100000')")
+		nominalSimpanan = "100000"
+	}
+
+	keteranganBuktiTransfer := "Transfer dari rekening pribadi ke rekening koperasi sebesar Rp. " + nominalSimpanan + " untuk simpanan pokok wajib."
 
 	c.HTML(http.StatusOK, "bendahara_edit_rekening_register.html", gin.H{
 		"NomorRekening":           nomorRekening,
@@ -92,32 +119,74 @@ func BendaharaEditRekeningRegister(c *gin.Context) {
 
 // BendaharaUpdateRekeningRegister memproses update nomor rekening koperasi
 func BendaharaUpdateRekeningRegister(c *gin.Context) {
+	db := config.GetDB()
+	fieldType := c.PostForm("field_type")
 	nomorRekening := c.PostForm("nomor_rekening")
 	nominalSimpanan := c.PostForm("nominal_simpanan")
 
-	if nomorRekening == "" {
+	// Validasi berdasarkan field_type
+	switch fieldType {
+	case "rekening":
+		if nomorRekening == "" {
+			c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
+				"Error":           "Nomor rekening harus diisi",
+				"NomorRekening":   nomorRekening,
+				"NominalSimpanan": "100000",
+				"ActivePage":      "edit-rekening-register",
+			})
+			return
+		}
+		// Simpan nomor rekening ke database
+		_, err := db.Exec(`
+			INSERT INTO pengaturan (nama_pengaturan, nilai, updated_at) 
+			VALUES ('nomor_rekening', $1, NOW())
+			ON CONFLICT (nama_pengaturan) 
+			DO UPDATE SET nilai = $1, updated_at = NOW()
+		`, nomorRekening)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "bendahara_edit_rekening_register.html", gin.H{
+				"Error":           "Gagal menyimpan nomor rekening",
+				"NomorRekening":   nomorRekening,
+				"NominalSimpanan": "100000",
+				"ActivePage":      "edit-rekening-register",
+			})
+			return
+		}
+	case "simpanan":
+		if nominalSimpanan == "" {
+			c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
+				"Error":           "Nominal simpanan harus diisi",
+				"NomorRekening":   "1234567890 (Bank ABC)",
+				"NominalSimpanan": nominalSimpanan,
+				"ActivePage":      "edit-rekening-register",
+			})
+			return
+		}
+		// Simpan nominal simpanan ke database
+		_, err := db.Exec(`
+			INSERT INTO pengaturan (nama_pengaturan, nilai, updated_at) 
+			VALUES ('nominal_simpanan', $1, NOW())
+			ON CONFLICT (nama_pengaturan) 
+			DO UPDATE SET nilai = $1, updated_at = NOW()
+		`, nominalSimpanan)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "bendahara_edit_rekening_register.html", gin.H{
+				"Error":           "Gagal menyimpan nominal simpanan",
+				"NomorRekening":   "1234567890 (Bank ABC)",
+				"NominalSimpanan": nominalSimpanan,
+				"ActivePage":      "edit-rekening-register",
+			})
+			return
+		}
+	default:
 		c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
-			"Error":           "Nomor rekening harus diisi",
-			"NomorRekening":   nomorRekening,
-			"NominalSimpanan": nominalSimpanan,
+			"Error":           "Tipe field tidak valid",
+			"NomorRekening":   "1234567890 (Bank ABC)",
+			"NominalSimpanan": "100000",
 			"ActivePage":      "edit-rekening-register",
 		})
 		return
 	}
-
-	if nominalSimpanan == "" {
-		c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
-			"Error":           "Nominal simpanan harus diisi",
-			"NomorRekening":   nomorRekening,
-			"NominalSimpanan": nominalSimpanan,
-			"ActivePage":      "edit-rekening-register",
-		})
-		return
-	}
-
-	// TODO: Simpan nomor rekening dan nominal simpanan ke penyimpanan (database, file, dsb)
-	// Saat ini hanya simulasi sukses
-	// Misalnya: err := repository.UpdateNomorRekeningDanNominal(nomorRekening, nominalSimpanan)
 
 	// Jika berhasil simpan, redirect ke halaman dashboard bendahara
 	c.Redirect(http.StatusFound, "/bendahara/dashboard")

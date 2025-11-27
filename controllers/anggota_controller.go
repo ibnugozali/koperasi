@@ -566,10 +566,20 @@ func AnggotaSimpanan(c *gin.Context) {
 		return
 	}
 
+	db := config.GetDB()
+
+	// Ambil nomor rekening dari database
+	var nomorRekening string
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nomor_rekening'").Scan(&nomorRekening)
+	if err != nil {
+		nomorRekening = "1234567890 (Bank ABC)" // Default jika belum diset
+	}
+
 	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
-		"Judul":   "Simpanan",
-		"Anggota": anggota,
-		"Now":     time.Now(),
+		"Judul":         "Simpanan",
+		"Anggota":       anggota,
+		"Now":           time.Now(),
+		"NomorRekening": nomorRekening,
 	})
 }
 
@@ -776,6 +786,15 @@ func AnggotaAngsuran(c *gin.Context) {
 		angsuranKe = 1
 	}
 
+	db := config.GetDB()
+
+	// Ambil nomor rekening dari database
+	var nomorRekening string
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nomor_rekening'").Scan(&nomorRekening)
+	if err != nil {
+		nomorRekening = "1234567890 (Bank ABC)" // Default jika belum diset
+	}
+
 	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
 		"Judul":          "Angsuran",
 		"Anggota":        anggota,
@@ -784,6 +803,7 @@ func AnggotaAngsuran(c *gin.Context) {
 		"AngsuranKe":     angsuranKe,
 		"Pinjamans":      pinjamans,
 		"TotalPinjaman":  totalPinjaman,
+		"NomorRekening":  nomorRekening,
 	})
 }
 

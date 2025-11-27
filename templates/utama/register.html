@@ -81,10 +81,12 @@
                                     </select>
                             </div>
                             <div class="mb-3">
-                                <label for="bukti_transfer" class="form-label">Bukti Transfer Simpanan Pokok Wajib Rp. 100.000,-</label>
-                                <small class="form-text text-muted">Nomor rekening koperasi: 1234567890 (Bank ABC)</small>
+                                <label for="bukti_transfer" class="form-label">Bukti Transfer Simpanan Pokok Wajib Rp. {{ .NominalSimpanan }},-</label>
                                 <input type="file" class="form-control" id="bukti_transfer" name="BuktiTransfer" accept="image/*,.pdf" required>
-                                <small class="form-text text-muted">Silakan upload bukti transfer (gambar atau PDF) setelah transfer ke rekening koperasi.</small>
+                                <small class="form-text text-muted">
+                                    Upload bukti transfer/pembayaran (format gambar) | 
+                                    <strong>Nomor rekening koperasi: {{ .NomorRekening }}</strong>
+                                </small>
                             </div>
                             <div class="mb-3">
                                 <label for="alamat" class="form-label">Alamat</label>
