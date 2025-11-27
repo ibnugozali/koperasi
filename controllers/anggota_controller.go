@@ -1154,3 +1154,107 @@ func AnggotaStruktur(c *gin.Context) {
 		"Anggota": anggota,
 	})
 }
+
+// AjukanPengambilanSimpanan menampilkan halaman form pengajuan pengambilan simpanan
+func AjukanPengambilanSimpanan(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
+	// Hitung total saldo simpanan anggota
+	totalSimpanan, _, _, err := repository.GetSaldoAnggota(userID)
+	if err != nil {
+		totalSimpanan = 0
+	}
+
+	// Ambil daftar jenis simpanan
+	db := config.GetDB()
+	rows, err := db.Query("SELECT id_simpanan, jenis_simpanan FROM simpanan ORDER BY id_simpanan")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data jenis simpanan"})
+		return
+	}
+	defer rows.Close()
+
+	type JenisSimpanan struct {
+		ID    int    `json:"id"`
+		Jenis string `json:"jenis"`
+	}
+	var jenisSimpananList []JenisSimpanan
+	for rows.Next() {
+		var js JenisSimpanan
+		if err := rows.Scan(&js.ID, &js.Jenis); err == nil {
+			jenisSimpananList = append(jenisSimpananList, js)
+		}
+	}
+
+	c.HTML(http.StatusOK, "anggota_ajukan_pengambilan simpanan.html", gin.H{
+		"Anggota":           anggota,
+		"TotalSimpanan":     totalSimpanan,
+		"JenisSimpananList": jenisSimpananList,
+		"LogoPath":          c.GetString("LogoPath"),
+	})
+}
+
+// AjukanPengambilanSimpananPost memproses pengajuan pengambilan simpanan
+func AjukanPengambilanSimpananPost(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Anda harus login"})
+		return
+	}
+
+	// Ambil data dari form
+	jumlahStr := c.PostForm("jumlah")
+	alasan := c.PostForm("alasan")
+	idSimpananStr := c.PostForm("jenis_simpanan")
+
+	// Konversi jumlah ke float
+	jumlah, err := strconv.ParseFloat(jumlahStr, 64)
+	if err != nil || jumlah <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Jumlah tidak valid"})
+		return
+	}
+
+	// Validasi jenis simpanan
+	idSimpanan, err := strconv.Atoi(idSimpananStr)
+	if err != nil || idSimpanan <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Jenis simpanan harus dipilih"})
+		return
+	}
+
+	// Cek apakah saldo mencukupi
+	totalSimpanan, _, _, err := repository.GetSaldoAnggota(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil saldo"})
+		return
+	}
+
+	if jumlah > totalSimpanan {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Saldo simpanan tidak mencukupi"})
+		return
+	}
+
+	// Simpan pengajuan pengambilan simpanan ke database
+	db := config.GetDB()
+	query := `INSERT INTO pengambilan_simpanan (id_anggota, jumlah, alasan, tgl_pengajuan, status) 
+	          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'pending')`
+
+	_, err = db.Exec(query, userID, jumlah, alasan)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pengajuan"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pengajuan pengambilan simpanan berhasil disubmit"})
+}

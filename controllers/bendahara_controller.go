@@ -70,10 +70,27 @@ func BendaharaDashboard(c *gin.Context) {
 
 // Menampilkan halaman konfirmasi anggota
 // BendaharaEditRekeningRegister menampilkan halaman edit nomor rekening koperasi
-// BendaharaKonfirmasi menampilkan halaman konfirmasi anggota dengan redirect ke konfirmasi-transaksi
+// BendaharaKonfirmasi menampilkan halaman konfirmasi anggota
 func BendaharaKonfirmasi(c *gin.Context) {
-	// Redirect ke halaman konfirmasi transaksi
-	c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi")
+	// Panggil repository untuk mendapatkan anggota dengan status 'pending'
+	pendingMembers, err := repository.GetPendingAnggota()
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Gagal mengambil data anggota")
+		return
+	}
+
+	// Get LogoPath from context (set by middleware)
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "bendahara_anggota_konfirmasi.html", gin.H{
+		"PendingMembers": pendingMembers,
+		"ActivePage":     "konfirmasi",
+		"LogoPath":       logoPath,
+		"Title":          "Konfirmasi Anggota",
+	})
 }
 
 func BendaharaEditRekeningRegister(c *gin.Context) {
@@ -214,20 +231,6 @@ func BendaharaConfirmMembership(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/bendahara/dashboard")
 }
 
-// ListHalaman menampilkan daftar semua halaman statis untuk di-edit.
-func BendaharaListHalaman(c *gin.Context) {
-	allHalaman, err := repository.GetAllHalaman()
-	if err != nil {
-		// Handle error
-		c.String(http.StatusInternalServerError, "Gagal mengambil data halaman")
-		return
-	}
-	c.HTML(http.StatusOK, "bendahara_halaman_list.html", gin.H{
-		"AllHalaman": allHalaman,
-		"ActivePage": "halaman",
-	})
-}
-
 // ShowEditHalamanForm menampilkan form untuk mengedit halaman.
 func BendaharaShowEditHalamanForm(c *gin.Context) {
 	slug := c.Param("slug")
@@ -243,9 +246,25 @@ func BendaharaShowEditHalamanForm(c *gin.Context) {
 		konten = map[string]interface{}{}
 	}
 
-	c.HTML(http.StatusOK, "bendahara_halaman_edit.html", gin.H{
-		"Halaman": halaman,
-		"Konten":  konten,
+	// Get LogoPath from context (set by middleware)
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+
+	// Gunakan template khusus untuk simpanan
+	templateName := "bendahara_halaman_edit.html"
+	activePage := "halaman"
+	if slug == "simpanan" {
+		templateName = "bendahara_halaman_edit_simpanan.html"
+		activePage = "edit_simpanan"
+	}
+
+	c.HTML(http.StatusOK, templateName, gin.H{
+		"Halaman":    halaman,
+		"Konten":     konten,
+		"LogoPath":   logoPath,
+		"ActivePage": activePage,
 	})
 }
 
@@ -331,14 +350,18 @@ func BendaharaUploadFile(c *gin.Context) {
 
 // ListAllAnggota menampilkan daftar semua anggota aktif
 func BendaharaListAllAnggota(c *gin.Context) {
+	logoPath, _ := c.Get("LogoPath")
+
 	anggotas, err := repository.GetAllAnggota()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
 		return
 	}
-	c.HTML(http.StatusOK, "bendahara_anggota_konfirmasi.html", gin.H{
+	c.HTML(http.StatusOK, "bendahara_data_anggota.html", gin.H{
 		"Anggotas":   anggotas,
 		"ActivePage": "anggota",
+		"LogoPath":   logoPath,
+		"Title":      "Data Anggota",
 	})
 }
 

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Konfirmasi Anggota - Koperasi Simpan Pinjam</title>
+
+    <!-- Bootstrap & Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/bendahara_navbar.css" rel="stylesheet">
+    <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+            }
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .page-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .anggota-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .anggota-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .anggota-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-item {
+            margin-bottom: 10px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #4a5568;
+            margin-right: 10px;
+        }
+
+        .info-value {
+            color: #2d3748;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .btn-reject {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .btn-view {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: #cbd5e0;
+            margin-bottom: 20px;
+        }
+
+        .badge-pending {
+            background-color: #fef3c7;
+            color: #f59e0b;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    {{template "bendahara_navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <br><br><br>
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1><i class="fas fa-user-check me-3"></i>Konfirmasi Anggota</h1>
+                <p>Verifikasi dan konfirmasi pendaftaran anggota baru</p>
+            </div>
+
+            <!-- Pending Members List -->
+            <div class="row">
+                {{ if .PendingMembers }}
+                    {{ range .PendingMembers }}
+                    <div class="col-lg-6 col-md-6 col-12">
+                        <div class="anggota-card">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="mb-0">{{ .NamaAnggota }}</h5>
+                                <span class="badge-pending">
+                                    <i class="fas fa-clock me-1"></i>Pending
+                                </span>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-label"><i class="fas fa-id-card me-2"></i>NIK:</span>
+                                <span class="info-value">{{ .NikKTP }}</span>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-label"><i class="fas fa-phone me-2"></i>Telepon:</span>
+                                <span class="info-value">{{ .NoTelepon }}</span>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-label"><i class="fas fa-building me-2"></i>Fakultas:</span>
+                                <span class="info-value">{{ .Fakultas }}</span>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-label"><i class="fas fa-calendar me-2"></i>Tanggal Daftar:</span>
+                                <span class="info-value">{{ .TglGabung.Format "02 Jan 2006" }}</span>
+                            </div>
+
+                            <hr>
+
+                            <div class="d-flex gap-2 justify-content-end">
+                                <a href="/bendahara/view-registration/{{ .IDAnggota }}" class="btn btn-view btn-sm">
+                                    <i class="fas fa-eye me-2"></i>Lihat Detail
+                                </a>
+                                <form action="/bendahara/confirm/{{ .IDAnggota }}" method="POST" style="display: inline;" 
+                                      onsubmit="return confirm('Konfirmasi anggota {{ .NamaAnggota }}?')">
+                                    <button type="submit" class="btn btn-confirm btn-sm">
+                                        <i class="fas fa-check me-2"></i>Konfirmasi
+                                    </button>
+                                </form>
+                                <form action="/bendahara/reject/{{ .IDAnggota }}" method="POST" style="display: inline;"
+                                      onsubmit="return confirm('Tolak pendaftaran {{ .NamaAnggota }}?')">
+                                    <button type="submit" class="btn btn-reject btn-sm">
+                                        <i class="fas fa-times me-2"></i>Tolak
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {{ end }}
+                {{ else }}
+                    <div class="col-12">
+                        <div class="empty-state">
+                            <i class="fas fa-user-check"></i>
+                            <h4>Tidak Ada Anggota Pending</h4>
+                            <p>Semua pendaftaran anggota sudah diproses</p>
+                        </div>
+                    </div>
+                {{ end }}
+            </div>
+
+            <!-- Info Card -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Catatan:</strong> Pastikan untuk memverifikasi data anggota dengan teliti sebelum melakukan konfirmasi. 
+                        Setelah dikonfirmasi, anggota akan mendapatkan ID anggota dan dapat mengakses sistem.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

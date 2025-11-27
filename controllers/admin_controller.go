@@ -3,7 +3,6 @@ package controllers
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"image"
 	"image/png"
 	"net/http"
@@ -21,26 +20,6 @@ import (
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
 )
-
-// AdminAnggotaRegister menampilkan detail registrasi anggota berdasarkan ID
-func AdminAnggotaRegister(c *gin.Context) {
-	idStr := c.Param("id")
-
-	anggota, err := repository.GetAnggotaByID(idStr)
-	if err != nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"message":    "Data registrasi tidak ditemukan",
-			"ActivePage": "konfirmasi",
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "admin_anggota_register.html", gin.H{
-		"Anggota":    anggota,
-		"ActivePage": "konfirmasi",
-		"Title":      "Detail Pendaftaran Anggota",
-	})
-}
 
 // Menampilkan dashboard admin dengan data statistik
 func AdminDashboard(c *gin.Context) {
@@ -84,112 +63,7 @@ func AdminDashboard(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin_dashboard.html", data)
 }
 
-// Menampilkan halaman konfirmasi anggota
-func AdminKonfirmasi(c *gin.Context) {
-	// Panggil repository untuk mendapatkan anggota dengan status 'pending'
-	pendingMembers, err := repository.GetPendingAnggota()
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Gagal mengambil data anggota")
-		return
-	}
-
-	c.HTML(http.StatusOK, "admin_konfirmasi.html", gin.H{
-		"PendingMembers": pendingMembers,
-		"ActivePage":     "konfirmasi",
-		"Title":          "Konfirmasi Anggota",
-	})
-}
-
 // ViewRegistration menampilkan detail registrasi anggota pending
-func ViewRegistration(c *gin.Context) {
-	idStr := c.Param("id")
-
-	anggota, err := repository.GetAnggotaByID(idStr)
-	if err != nil {
-		c.HTML(http.StatusOK, "admin_view_registration.html", gin.H{
-			"Error":      "Data registrasi tidak ditemukan",
-			"ActivePage": "konfirmasi",
-			"Title":      "Data Registrasi Anggota",
-		})
-		return
-	}
-
-	c.HTML(http.StatusOK, "admin_view_registration.html", gin.H{
-		"Anggota":    anggota,
-		"ActivePage": "konfirmasi",
-		"Title":      "Data Registrasi Anggota",
-	})
-}
-
-// Mengkonfirmasi keanggotaan
-func ConfirmMembership(c *gin.Context) {
-	// Ambil id anggota dari URL
-	idStr := c.Param("id")
-
-	// Generate id_anggota based on unit_kerja, fakultas_code, year, and sequential number
-	// First, get the anggota data to get unit_kerja and fakultas_code
-	anggota, err := repository.GetAnggotaByID(idStr)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data anggota: " + err.Error()})
-		return
-	}
-
-	// Get current year
-	currentYear := time.Now().Year()
-
-	// Generate sequential number for this unit_kerja + fakultas_code + year
-	// Count existing members with same unit_kerja, fakultas_code, and year
-	db := config.GetDB()
-	var count int
-	query := `SELECT COUNT(*) FROM anggota WHERE unit_kerja = $1 AND fakultas_code = $2 AND tahun = $3 AND status = 'aktif'`
-	err = db.QueryRow(query, anggota.UnitKerja, anggota.FakultasCode, fmt.Sprintf("%d", currentYear)).Scan(&count)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghitung nomor urut"})
-		return
-	}
-
-	// Sequential number starts from 0001
-	sequentialNumber := count + 1
-	nomorUrut := fmt.Sprintf("%04d", sequentialNumber)
-
-	// Generate id_anggota: unit_kerja + fakultas_code + year + nomor_urut
-	newIDAnggota := anggota.UnitKerja + anggota.FakultasCode + fmt.Sprintf("%d", currentYear) + nomorUrut
-
-	// Update the anggota with new id_anggota, status, tahun, nomor_urut
-	updateQuery := `UPDATE anggota SET id_anggota = $1, status = $2, tahun = $3, nomor_urut = $4 WHERE id_anggota = $5`
-	_, err = db.Exec(updateQuery, newIDAnggota, "aktif", fmt.Sprintf("%d", currentYear), nomorUrut, idStr)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengkonfirmasi anggota: " + err.Error()})
-		return
-	}
-
-	// Log the confirmation action
-	fmt.Printf("Anggota %s berhasil dikonfirmasi dengan ID baru: %s\n", idStr, newIDAnggota)
-
-	// Arahkan kembali ke dashboard admin
-	c.Redirect(http.StatusFound, "/admin/dashboard")
-}
-
-// Menolak keanggotaan (menghapus anggota)
-func RejectMembership(c *gin.Context) {
-	// Ambil id anggota dari URL
-	idStr := c.Param("id")
-
-	// Hapus anggota dari database
-	err := repository.DeleteAnggota(idStr)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menolak anggota: " + err.Error()})
-		return
-	}
-
-	// Log the rejection action
-	fmt.Printf("Anggota %s berhasil ditolak dan dihapus\n", idStr)
-
-	// Arahkan kembali ke halaman konfirmasi admin
-	c.Redirect(http.StatusFound, "/admin/konfirmasi")
-}
-
-// ShowEditHalamanForm menampilkan form untuk mengedit halaman.
 func ShowEditHalamanForm(c *gin.Context) {
 	slug := c.Param("slug")
 	halaman, err := repository.GetHalamanBySlug(slug)
@@ -465,105 +339,6 @@ func UploadStruktur(c *gin.Context) {
 	})
 }
 
-// ListAllAnggota menampilkan daftar semua anggota aktif
-func ListAllAnggota(c *gin.Context) {
-	anggotas, err := repository.GetAllAnggota()
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Gagal mengambil data anggota")
-		return
-	}
-	c.HTML(http.StatusOK, "admin_anggota_list.html", gin.H{
-		"Anggotas":   anggotas,
-		"ActivePage": "anggota",
-		"Title":      "Data Anggota",
-	})
-}
-
-// ViewAnggota menampilkan detail anggota berdasarkan ID
-func ViewAnggota(c *gin.Context) {
-	idStr := c.Param("id")
-
-	anggota, err := repository.GetAnggotaByID(idStr)
-	if err != nil {
-		c.String(http.StatusNotFound, "Anggota tidak ditemukan")
-		return
-	}
-
-	// Get saldo information
-	totalSimpanan, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
-	if err != nil {
-		totalSimpanan = 0
-		totalPinjaman = 0
-	}
-	saldoBersih := totalSimpanan - totalPinjaman
-
-	c.HTML(http.StatusOK, "admin_anggota_view.html", gin.H{
-		"Anggota":       anggota,
-		"TotalSimpanan": totalSimpanan,
-		"TotalPinjaman": totalPinjaman,
-		"SaldoBersih":   saldoBersih,
-		"ActivePage":    "anggota",
-		"Title":         "Detail Anggota",
-	})
-}
-
-// EditAnggota menampilkan form edit anggota
-func EditAnggota(c *gin.Context) {
-	idStr := c.Param("id")
-
-	anggota, err := repository.GetAnggotaByID(idStr)
-	if err != nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
-		return
-	}
-
-	c.HTML(http.StatusOK, "admin_anggota_edit.html", gin.H{
-		"Anggota": anggota,
-	})
-}
-
-// UpdateAnggota memproses update data anggota
-func UpdateAnggota(c *gin.Context) {
-	idStr := c.Param("id")
-
-	var anggota models.Anggota
-	if err := c.ShouldBind(&anggota); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
-		return
-	}
-
-	// Update query (assuming we update all fields except password for simplicity)
-	db := config.GetDB()
-	query := `
-		UPDATE anggota SET
-			nama_anggota = $1, username = $2, tgl_lahir = $3, nik_ktp = $4,
-			no_telepon = $5, alamat = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9
-		WHERE id_anggota = $10`
-	_, err := db.Exec(query,
-		anggota.NamaAnggota, anggota.Username, anggota.TglLahir, anggota.NikKTP,
-		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, idStr)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui anggota"})
-		return
-	}
-
-	c.Redirect(http.StatusFound, "/admin/anggota/"+idStr)
-}
-
-// DeleteAnggota menghapus anggota
-func DeleteAnggota(c *gin.Context) {
-	idStr := c.Param("id")
-
-	err := repository.DeleteAnggota(idStr)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus anggota"})
-		return
-	}
-
-	// Redirect kembali ke halaman daftar anggota setelah penghapusan berhasil
-	c.Redirect(http.StatusFound, "/admin/anggota")
-}
-
 // AdminTransaksi menampilkan halaman transaksi admin dengan form input
 func AdminTransaksi(c *gin.Context) {
 	details, err := repository.GetAllDetails()
@@ -780,20 +555,6 @@ func AdminKeamananLogin(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "admin_keamanan_login.html", gin.H{
 		"ActivePage":   "keamanan_login",
-		"LoginHistory": loginHistory,
-	})
-}
-
-// AdminLoginHistory menampilkan halaman riwayat login admin
-func AdminLoginHistory(c *gin.Context) {
-	// Ambil data riwayat login dari database
-	loginHistory, err := repository.GetLoginHistory()
-	if err != nil {
-		loginHistory = []models.LoginHistory{} // Default kosong jika error
-	}
-
-	c.HTML(http.StatusOK, "admin_login_history.html", gin.H{
-		"ActivePage":   "login_history",
 		"LoginHistory": loginHistory,
 	})
 }
@@ -1086,69 +847,6 @@ func UploadLogo(c *gin.Context) {
 			"logoPath": logoPath,
 		})
 	}
-}
-
-// UpdateAnggotaPassword memperbarui username dan password anggota berdasarkan ID
-func UpdateAnggotaPassword(c *gin.Context) {
-	idStr := c.Param("id")
-
-	var request struct {
-		OldPassword     string `form:"old_password" binding:"required"`
-		NewUsername     string `form:"new_username"`
-		NewPassword     string `form:"new_password" binding:"required"`
-		ConfirmPassword string `form:"confirm_password" binding:"required"`
-	}
-
-	if err := c.ShouldBind(&request); err != nil {
-		c.HTML(http.StatusBadRequest, "admin_anggota_view.html", gin.H{
-			"Error": "Data tidak valid",
-		})
-		return
-	}
-
-	// Get current anggota data to verify old password
-	anggota, err := repository.GetAnggotaByID(idStr)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "admin_anggota_view.html", gin.H{
-			"Error": "Gagal mengambil data anggota",
-		})
-		return
-	}
-
-	// Verify old password
-	if anggota.Password != request.OldPassword {
-		c.HTML(http.StatusBadRequest, "admin_anggota_view.html", gin.H{
-			"Error": "Password lama tidak sesuai",
-		})
-		return
-	}
-
-	// Verify new password confirmation
-	if request.NewPassword != request.ConfirmPassword {
-		c.HTML(http.StatusBadRequest, "admin_anggota_view.html", gin.H{
-			"Error": "Password baru dan konfirmasi password tidak cocok",
-		})
-		return
-	}
-
-	if len(request.NewPassword) < 6 {
-		c.HTML(http.StatusBadRequest, "admin_anggota_view.html", gin.H{
-			"Error": "Password minimal 6 karakter",
-		})
-		return
-	}
-
-	// Update username dan password anggota
-	err = repository.UpdateAnggotaUsernamePassword(idStr, request.NewUsername, request.NewPassword)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "admin_anggota_view.html", gin.H{
-			"Error": "Gagal memperbarui username dan password",
-		})
-		return
-	}
-
-	// Redirect back to the view page with success message
-	c.Redirect(http.StatusFound, "/admin/anggota/"+idStr)
 }
 
 // Handle JSON request (data canvas dari JavaScript)

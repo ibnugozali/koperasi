@@ -153,22 +153,33 @@ INSERT INTO simpanan (jenis_simpanan) VALUES
 
 -- Mengisi data awal untuk halaman statis dengan format JSON
 INSERT INTO halaman (slug, judul, kategori, konten) VALUES
-('pinjaman', 'Pinjaman Anggota', 'pelayanan',
-  '{
-    "teks": "Kami menyediakan layanan pinjaman untuk anggota dengan bunga yang kompetitif dan proses yang mudah. Layanan ini bertujuan untuk membantu anggota dalam memenuhi kebutuhan finansial mendesak maupun untuk modal usaha.",
-    "gambar": "/static/images/placeholder.png"
-  }'
-),
 ('simpanan', 'Simpanan', 'pelayanan',
   '{
-    "teks": "Simpanan adalah dana yang disetor oleh anggota kepada koperasi sebagai bentuk partisipasi dan investasi. Simpanan ini dapat digunakan untuk berbagai keperluan anggota dan akan mendapatkan bagi hasil sesuai dengan ketentuan koperasi.",
-    "gambar": "/static/images/placeholder.png"
-  }'
-),
-('angsuran', 'Pembayaran Angsuran', 'pelayanan',
-  '{
-    "teks": "Halaman ini berisi informasi mengenai tata cara pembayaran angsuran pinjaman. Pastikan untuk melakukan pembayaran tepat waktu untuk menghindari denda dan menjaga riwayat kredit Anda tetap baik di koperasi.",
-    "gambar": "/static/images/placeholder.png"
+    "judul": "Simpanan",
+    "jenis_simpanan": [
+      {
+        "nama": "Simpanan Pokok",
+        "deskripsi": "Simpanan wajib yang dibayarkan saat menjadi anggota"
+      },
+      {
+        "nama": "Simpanan Wajib",
+        "deskripsi": "Simpanan rutin bulanan yang harus dibayarkan anggota"
+      },
+      {
+        "nama": "Simpanan Sukarela",
+        "deskripsi": "Simpanan tambahan yang dapat dibayarkan kapan saja"
+      },
+      {
+        "nama": "Simpanan Hari Raya",
+        "deskripsi": "Simpanan yang ditujukan untuk mempersiapkan kebutuhan pada saat hari raya"
+      }
+    ],
+    "manfaat": [
+      "Mendapatkan bagi hasil sesuai ketentuan koperasi",
+      "Dapat digunakan sebagai modal pinjaman",
+      "Meningkatkan kesejahteraan anggota",
+      "Investasi yang aman dan terpercaya"
+    ]
   }'
 ),
 ('dashboard_anggota', 'Dashboard Anggota', 'dashboard',
