@@ -151,11 +151,13 @@ function calculateAngsuran() {
         }
     }
 
-    // Calculate perkiraan angsuran (pokok + bunga 2%)
+    // Calculate perkiraan angsuran (pokok + bunga dari database)
     const perkiraanAngsuran = document.getElementById('perkiraan_angsuran');
     if (perkiraanAngsuran && jumlahPinjaman > 0 && jangkaWaktu > 0) {
+        // Get bunga value from template/data attribute or script variable
+        const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
         const pokok = jumlahPinjaman / jangkaWaktu;
-        const bunga = jumlahPinjaman * 0.02;
+        const bunga = jumlahPinjaman * (bungaTerkini / 100);
         const totalAngsuran = pokok + bunga;
         perkiraanAngsuran.value = Math.round(totalAngsuran);
     }

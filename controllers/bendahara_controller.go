@@ -684,6 +684,14 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 		hasPinjaman = true
 	}
 
+	// Ambil bunga terkini dari database
+	var bungaTerkini float64
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'bunga_pinjaman'").Scan(&bungaTerkini)
+	if err != nil {
+		// Jika belum ada pengaturan, gunakan default 2.0
+		bungaTerkini = 2.0
+	}
+
 	// Render template persyaratan pinjaman bendahara
 	c.HTML(http.StatusOK, "bendahara_persyaratan_pinjaman.html", gin.H{
 		"Anggota":       anggota,
@@ -693,6 +701,7 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 		"Judul":         "Lihat Persyaratan Pengajuan Pinjaman",
 		"Pinjaman":      pinjaman,
 		"HasPinjaman":   hasPinjaman,
+		"Bunga":         bungaTerkini,
 	})
 }
 
