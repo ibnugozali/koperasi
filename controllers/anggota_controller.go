@@ -100,11 +100,27 @@ func AnggotaProfil(c *gin.Context) {
 		totalSimpanan, totalPinjaman = 0, 0
 	}
 
+	// Ambil detail simpanan per jenis
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
+	if err != nil {
+		// Jika gagal, buat map kosong
+		simpananByJenis = map[string]float64{
+			"pokok":     0,
+			"wajib":     0,
+			"sukarela":  0,
+			"hari_raya": 0,
+		}
+	}
+
 	// Render halaman profil dan kirim data anggota dan saldo ke sana
 	c.HTML(http.StatusOK, "anggota_profil.html", gin.H{
-		"Anggota":       anggota,
-		"TotalSimpanan": totalSimpanan,
-		"TotalPinjaman": totalPinjaman,
+		"Anggota":          anggota,
+		"TotalSimpanan":    totalSimpanan,
+		"TotalPinjaman":    totalPinjaman,
+		"SimpananPokok":    simpananByJenis["pokok"],
+		"SimpananWajib":    simpananByJenis["wajib"],
+		"SimpananSukarela": simpananByJenis["sukarela"],
+		"SimpananHariRaya": simpananByJenis["hari_raya"],
 	})
 }
 

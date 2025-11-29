@@ -188,6 +188,45 @@ func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float
 	return totalSimpanan, totalPinjaman, saldoBersih, nil
 }
 
+// GetDetailSimpananByJenis mengambil total simpanan per jenis
+func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
+	db := config.GetDB()
+	simpananByJenis := make(map[string]float64)
+
+	query := `
+		SELECT s.jenis_simpanan, COALESCE(SUM(d.jumlah_simpanan), 0) as total
+		FROM detail d
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+		WHERE d.id_anggota = $1
+		GROUP BY s.jenis_simpanan
+	`
+
+	rows, err := db.Query(query, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var jenis string
+		var total float64
+		if err := rows.Scan(&jenis, &total); err != nil {
+			return nil, err
+		}
+		simpananByJenis[jenis] = total
+	}
+
+	// Pastikan semua jenis simpanan ada dengan nilai 0 jika tidak ada data
+	jenisList := []string{"pokok", "wajib", "sukarela", "hari_raya"}
+	for _, jenis := range jenisList {
+		if _, exists := simpananByJenis[jenis]; !exists {
+			simpananByJenis[jenis] = 0
+		}
+	}
+
+	return simpananByJenis, nil
+}
+
 // UpdateAnggotaStatus memperbarui status anggota berdasarkan ID
 func UpdateAnggotaStatus(id string, status string) error {
 	db := config.GetDB()

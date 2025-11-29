@@ -165,10 +165,46 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-sm-6">
+                            <strong>Simpanan Pokok:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            Rp {{ printf "%.0f" .SimpananPokok }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <strong>Simpanan Wajib:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            Rp {{ printf "%.0f" .SimpananWajib }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <strong>Simpanan Sukarela:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            Rp {{ printf "%.0f" .SimpananSukarela }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <strong>Simpanan Hari Raya:</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            Rp {{ printf "%.0f" .SimpananHariRaya }}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-6">
                             <strong>Total Simpanan:</strong>
                         </div>
                         <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .TotalSimpanan }}
+                            <strong>Rp {{ printf "%.0f" .TotalSimpanan }}</strong>
                         </div>
                     </div>
                     <hr>
