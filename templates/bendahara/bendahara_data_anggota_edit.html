@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Title }} - Bendahara Koperasi</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="/static/css/bendahara_navbar.css" rel="stylesheet">
+     <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .page-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 20px;
+            border: none;
+        }
+
+        .card-body {
+            padding: 30px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 8px;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 15px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .btn-submit:hover {
+            opacity: 0.9;
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .btn-cancel:hover {
+            background: #5a6268;
+            color: white;
+        }
+
+        .section-title {
+            color: #667eea;
+            font-weight: 700;
+            margin-top: 25px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+
+    {{template "bendahara_navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <br><br><br>
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1><i class="fas fa-user-edit me-3"></i>Edit Data Anggota</h1>
+                <p>Ubah informasi data anggota koperasi</p>
+            </div>
+
+            <!-- Edit Form -->
+            <div class="row">
+                <div class="col-lg-10 col-md-12 mx-auto">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Form Edit Anggota</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="/bendahara/anggota/update/{{ .Anggota.IDAnggota }}" method="POST">
+                                
+                                <!-- Data Pribadi -->
+                                <h5 class="section-title"><i class="fas fa-user-circle me-2"></i>Data Pribadi</h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="NamaAnggota" class="form-label">
+                                            <i class="fas fa-user me-2"></i>Nama Lengkap <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="NamaAnggota" name="NamaAnggota" 
+                                               value="{{ .Anggota.NamaAnggota }}" required>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="NikKTP" class="form-label">
+                                            <i class="fas fa-id-card me-2"></i>NIK/KTP <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="NikKTP" name="NikKTP" 
+                                               value="{{ .Anggota.NikKTP }}" required>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="TglLahir" class="form-label">
+                                            <i class="fas fa-birthday-cake me-2"></i>Tanggal Lahir <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control" id="TglLahir" name="TglLahir" 
+                                               value="{{ .Anggota.TglLahir }}" required>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="JenisKelamin" class="form-label">
+                                            <i class="fas fa-venus-mars me-2"></i>Jenis Kelamin <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select" id="JenisKelamin" name="JenisKelamin" required>
+                                            <option value="L" {{ if eq .Anggota.JenisKelamin "L" }}selected{{ end }}>Laki-laki</option>
+                                            <option value="P" {{ if eq .Anggota.JenisKelamin "P" }}selected{{ end }}>Perempuan</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Kontak -->
+                                <h5 class="section-title"><i class="fas fa-address-book me-2"></i>Informasi Kontak</h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="NoTelepon" class="form-label">
+                                            <i class="fas fa-phone me-2"></i>No. Telepon <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="NoTelepon" name="NoTelepon" 
+                                               value="{{ .Anggota.NoTelepon }}" required>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="Alamat" class="form-label">
+                                            <i class="fas fa-map-marker-alt me-2"></i>Alamat <span class="text-danger">*</span>
+                                        </label>
+                                        <textarea class="form-control" id="Alamat" name="Alamat" rows="3" required>{{ .Anggota.Alamat }}</textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Data Akademik -->
+                                <h5 class="section-title"><i class="fas fa-university me-2"></i>Informasi Akademik</h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="Fakultas" class="form-label">
+                                            <i class="fas fa-building me-2"></i>Fakultas <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="Fakultas" name="Fakultas" 
+                                               value="{{ .Anggota.Fakultas }}" required>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="StatusAnggota" class="form-label">
+                                            <i class="fas fa-info-circle me-2"></i>Status Anggota <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="StatusAnggota" name="StatusAnggota" 
+                                               value="{{ .Anggota.StatusAnggota }}" required>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="text-center mt-4 pt-3 border-top">
+                                    <a href="/bendahara/anggota/{{ .Anggota.IDAnggota }}" class="btn btn-cancel">
+                                        <i class="fas fa-times me-2"></i>Batal
+                                    </a>
+                                    <button type="submit" class="btn btn-submit">
+                                        <i class="fas fa-save me-2"></i>Simpan Perubahan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

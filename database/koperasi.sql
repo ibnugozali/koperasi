@@ -11,6 +11,13 @@ DROP TABLE IF EXISTS halaman CASCADE;
 -- BAGIAN 1: PEMBUATAN STRUKTUR TABEL
 -- =================================================================
 
+-- Tabel anggota koperasi
+-- Format ID Anggota: {unit_kerja}{fakultas_code}{tahun}{nomor_urut}
+-- Contoh: 010120250001
+-- - 01: Unit Kerja (01=Dosen, 02=Karyawan/Staff, 03=Mahasiswa)
+-- - 01: Fakultas (01=FAI, 02=FE, 03=FH, 04=FISIP, 05=FKIP, 06=FKM, 07=FAPERTA, 08=FT, 09=Rektorat/Yayasan/Staff)
+-- - 2025: Tahun konfirmasi oleh bendahara
+-- - 0001: Nomor urut anggota (4 digit)
 CREATE TABLE anggota (
     id_anggota VARCHAR(50) PRIMARY KEY,
     nama_anggota VARCHAR(50) NOT NULL,
@@ -26,10 +33,10 @@ CREATE TABLE anggota (
     status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('aktif', 'nonaktif', 'pending')),
     status_anggota VARCHAR(50),
     fakultas VARCHAR(100),
-    unit_kerja VARCHAR(2),
-    fakultas_code VARCHAR(2),
-    tahun VARCHAR(4),
-    nomor_urut VARCHAR(4),
+    unit_kerja VARCHAR(2),  -- 01=Dosen, 02=Karyawan/Staff, 03=Mahasiswa
+    fakultas_code VARCHAR(2),  -- 01=FAI, 02=FE, 03=FH, 04=FISIP, 05=FKIP, 06=FKM, 07=FAPERTA, 08=FT, 09=Rektorat/Yayasan/Staff
+    tahun VARCHAR(4),  -- Tahun konfirmasi
+    nomor_urut VARCHAR(4),  -- Nomor urut 4 digit
     bukti_transfer VARCHAR(255)
 );
 
@@ -105,6 +112,21 @@ CREATE TABLE pesan (
     isi TEXT NOT NULL,
     tgl_kirim TIMESTAMPTZ DEFAULT NOW(),
     status VARCHAR(25) DEFAULT 'unread' CHECK (status IN ('read', 'unread'))
+);
+
+-- Tabel pengambilan simpanan untuk pengajuan penarikan simpanan oleh anggota
+DROP TABLE IF EXISTS pengambilan_simpanan CASCADE;
+CREATE TABLE pengambilan_simpanan (
+    id_pengambilan SERIAL PRIMARY KEY,
+    id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    id_simpanan INT REFERENCES simpanan(id_simpanan) ON DELETE CASCADE,
+    jumlah NUMERIC(15,2) NOT NULL,
+    alasan TEXT,
+    tgl_pengajuan TIMESTAMPTZ DEFAULT NOW(),
+    tgl_proses TIMESTAMPTZ,
+    status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    catatan_bendahara TEXT,
+    id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL
 );
 
 -- =================================================================
@@ -188,6 +210,42 @@ INSERT INTO halaman (slug, judul, kategori, konten) VALUES
     "gambar": "/static/images/placeholder.png",
     "welcome": "Selamat Datang di Koperasi Wirya",
     "slogan": "Dari Anggota, Oleh Anggota, dan Untuk Anggota"
+  }'
+),
+('pinjaman', 'Pinjaman', 'pelayanan',
+  '{
+    "judul": "Pinjaman",
+    "deskripsi": "Layanan pinjaman untuk membantu memenuhi kebutuhan finansial anggota dengan bunga yang kompetitif",
+    "syarat": [
+      "Sudah menjadi anggota aktif koperasi",
+      "Memiliki simpanan pokok dan wajib",
+      "Menyerahkan fotokopi KTP dan KK",
+      "Mengisi formulir pengajuan pinjaman",
+      "Melampirkan slip gaji atau surat keterangan penghasilan"
+    ],
+    "manfaat": [
+      "Proses pengajuan yang mudah dan cepat",
+      "Bunga kompetitif",
+      "Jangka waktu pembayaran yang fleksibel",
+      "Tanpa agunan untuk nominal tertentu"
+    ]
+  }'
+),
+('angsuran', 'Angsuran', 'pelayanan',
+  '{
+    "judul": "Angsuran",
+    "deskripsi": "Sistem pembayaran angsuran pinjaman yang fleksibel dan mudah",
+    "cara_bayar": [
+      "Transfer ke rekening koperasi",
+      "Pembayaran langsung di kantor koperasi",
+      "Potong gaji (untuk yang bekerja di institusi kerjasama)"
+    ],
+    "ketentuan": [
+      "Angsuran dibayarkan setiap bulan",
+      "Denda keterlambatan 0.5% per hari",
+      "Dapat melakukan pelunasan dipercepat tanpa penalti",
+      "Pembayaran dapat dilakukan melalui berbagai metode"
+    ]
   }'
 );
 

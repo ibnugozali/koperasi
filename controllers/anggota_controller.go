@@ -458,6 +458,14 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
+	// Get database connection and bunga for limit calculation
+	db := config.GetDB()
+	var bungaTerkini float64
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'bunga_pinjaman'").Scan(&bungaTerkini)
+	if err != nil {
+		bungaTerkini = 2.0
+	}
+
 	// Hitung limit pinjaman berdasarkan jenis anggota
 	var limitPinjaman float64
 	var jenisAnggota string
@@ -491,7 +499,12 @@ func AjukanPinjamanPost(c *gin.Context) {
 			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
 			return
 		}
-		limitPinjaman = (0.4 * gaji * float64(pinjaman.JangkaWaktu)) + totalSimpanan // (40% * gaji * tenor) + total simpanan
+		// Langkah 1 - Kemampuan bayar: 0.4 × gaji × tenor
+		kemampuanBayar := 0.4 * gaji * float64(pinjaman.JangkaWaktu)
+		// Langkah 3 - Limit Pinjaman (untuk informasi): (0.4 × gaji × tenor) × (1 - (bunga × tenor))
+		bungaDecimal := bungaTerkini / 100
+		limitPinjaman = kemampuanBayar * (1 - (bungaDecimal * float64(pinjaman.JangkaWaktu)))
+
 	default:
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
 		templateData["Error"] = "Jenis anggota tidak valid."
@@ -499,22 +512,26 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
-	// Validasi limit pinjaman
-	if pinjaman.JumlahPinjaman > limitPinjaman {
+	// Validasi menggunakan kemampuan bayar (Langkah 1), bukan limit pinjaman (Langkah 3)
+	var maxLimit float64
+	if anggota.UnitKerja == "03" { // Mahasiswa
+		maxLimit = limitPinjaman
+	} else { // Dosen/Staff - gunakan kemampuan bayar
+		// Hitung kemampuan bayar untuk Dosen/Staff
+		gajiStr := c.PostForm("gaji_bulanan")
+		var gaji float64
+		fmt.Sscanf(gajiStr, "%f", &gaji)
+		maxLimit = 0.4 * gaji * float64(pinjaman.JangkaWaktu)
+	}
+
+	if pinjaman.JumlahPinjaman > maxLimit {
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = fmt.Sprintf("Jumlah pinjaman melebihi limit maksimal Rp %.0f untuk %s.", limitPinjaman, jenisAnggota)
+		templateData["Error"] = fmt.Sprintf("Jumlah pinjaman melebihi limit maksimal Rp %.0f untuk %s (berdasarkan kemampuan bayar).", maxLimit, jenisAnggota)
 		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
 		return
 	}
 
-	// Ambil bunga dari database (yang bisa diubah oleh bendahara)
-	db := config.GetDB()
-	var bungaTerkini float64
-	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'bunga_pinjaman'").Scan(&bungaTerkini)
-	if err != nil {
-		// Jika belum ada pengaturan, gunakan default 2.0
-		bungaTerkini = 2.0
-	}
+	// Set bunga from previously fetched value
 	pinjaman.Bunga = bungaTerkini
 
 	pinjaman.IDAnggota = userID
@@ -1197,7 +1214,7 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "anggota_ajukan_pengambilan simpanan.html", gin.H{
+	c.HTML(http.StatusOK, "anggota_ajukan_pengambilan_simpanan.html", gin.H{
 		"Anggota":           anggota,
 		"TotalSimpanan":     totalSimpanan,
 		"JenisSimpananList": jenisSimpananList,
@@ -1247,14 +1264,15 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 
 	// Simpan pengajuan pengambilan simpanan ke database
 	db := config.GetDB()
-	query := `INSERT INTO pengambilan_simpanan (id_anggota, jumlah, alasan, tgl_pengajuan, status) 
-	          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'pending')`
+	query := `INSERT INTO pengambilan_simpanan (id_anggota, id_simpanan, jumlah, alasan, tgl_pengajuan, status) 
+	          VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, 'pending')`
 
-	_, err = db.Exec(query, userID, jumlah, alasan)
+	_, err = db.Exec(query, userID, idSimpanan, jumlah, alasan)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pengajuan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pengajuan: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Pengajuan pengambilan simpanan berhasil disubmit"})
+	// Berhasil, kirim response sukses (frontend akan redirect ke riwayat)
+	c.JSON(http.StatusOK, gin.H{"message": "Pengajuan pengambilan simpanan berhasil disubmit. Menunggu persetujuan bendahara."})
 }

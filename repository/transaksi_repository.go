@@ -134,6 +134,14 @@ func UpdateAngsuranStatus(id int, status string) error {
 	return err
 }
 
+// UpdatePengambilanSimpananStatus memperbarui status pengambilan simpanan
+func UpdatePengambilanSimpananStatus(id int, status string) error {
+	db := config.GetDB()
+	query := "UPDATE pengambilan_simpanan SET status = $1, tgl_proses = CURRENT_TIMESTAMP WHERE id_pengambilan = $2"
+	_, err := db.Exec(query, status, id)
+	return err
+}
+
 // GetPendingPinjaman mengambil pinjaman dengan status 'proses'
 // Bunga yang ditampilkan adalah bunga terkini dari tabel pengaturan, bukan dari tabel pinjaman
 func GetPendingPinjaman() ([]models.Pinjaman, error) {
@@ -611,4 +619,70 @@ func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
 		angsurans = append(angsurans, a)
 	}
 	return angsurans, nil
+}
+
+// GetPendingPengambilanSimpanan mengambil pengambilan simpanan dengan status 'pending'
+func GetPendingPengambilanSimpanan() ([]models.PengambilanSimpanan, error) {
+	db := config.GetDB()
+	var pengambilans []models.PengambilanSimpanan
+	query := `
+		SELECT ps.id_pengambilan, ps.id_anggota, a.nama_anggota, ps.id_simpanan, s.jenis_simpanan, 
+		       ps.jumlah, ps.alasan, ps.tgl_pengajuan, ps.tgl_proses, ps.status, 
+		       COALESCE(ps.catatan_bendahara, ''), ps.id_pengelola
+		FROM pengambilan_simpanan ps
+		JOIN anggota a ON ps.id_anggota = a.id_anggota
+		JOIN simpanan s ON ps.id_simpanan = s.id_simpanan
+		WHERE ps.status = 'pending'
+		ORDER BY ps.tgl_pengajuan DESC
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ps models.PengambilanSimpanan
+		if err := rows.Scan(&ps.IDPengambilan, &ps.IDAnggota, &ps.NamaAnggota, &ps.IDSimpanan, &ps.JenisSimpanan,
+			&ps.Jumlah, &ps.Alasan, &ps.TglPengajuan, &ps.TglProses, &ps.Status,
+			&ps.CatatanBendahara, &ps.IDPengelola); err != nil {
+			return nil, err
+		}
+		pengambilans = append(pengambilans, ps)
+	}
+	return pengambilans, nil
+}
+
+// GetRiwayatPengambilanSimpananByAnggotaID mengambil riwayat pengambilan simpanan berdasarkan ID anggota
+func GetRiwayatPengambilanSimpananByAnggotaID(idAnggota string, search string) ([]models.PengambilanSimpanan, error) {
+	db := config.GetDB()
+	var pengambilans []models.PengambilanSimpanan
+
+	query := `
+		SELECT ps.id_pengambilan, ps.id_anggota, a.nama_anggota, ps.id_simpanan, s.jenis_simpanan, 
+		       ps.jumlah, ps.alasan, ps.tgl_pengajuan, ps.tgl_proses, ps.status, 
+		       COALESCE(ps.catatan_bendahara, ''), ps.id_pengelola
+		FROM pengambilan_simpanan ps
+		JOIN anggota a ON ps.id_anggota = a.id_anggota
+		JOIN simpanan s ON ps.id_simpanan = s.id_simpanan
+		WHERE ps.id_anggota = $1
+		ORDER BY ps.tgl_pengajuan DESC, ps.id_pengambilan DESC
+	`
+
+	rows, err := db.Query(query, idAnggota)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ps models.PengambilanSimpanan
+		if err := rows.Scan(&ps.IDPengambilan, &ps.IDAnggota, &ps.NamaAnggota, &ps.IDSimpanan, &ps.JenisSimpanan,
+			&ps.Jumlah, &ps.Alasan, &ps.TglPengajuan, &ps.TglProses, &ps.Status,
+			&ps.CatatanBendahara, &ps.IDPengelola); err != nil {
+			return nil, err
+		}
+		pengambilans = append(pengambilans, ps)
+	}
+	return pengambilans, nil
 }

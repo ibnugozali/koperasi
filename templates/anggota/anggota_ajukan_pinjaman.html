@@ -27,16 +27,16 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <!-- Info Limit Pinjaman -->
 <div class="alert alert-info" role="alert">
-    <h5>Informasi Limit Pinjaman</h5>
+    <h5>Informasi Kemampuan Bayar</h5>
     <p><strong>Jenis Anggota:</strong> {{ .JenisAnggota }}</p>
     <p><strong>Total Simpanan:</strong> Rp {{ if .TotalSimpanan }}{{ printf "%.0f" .TotalSimpanan }}{{ else }}0{{ end }}</p>
     <p id="limit_info">
         {{if eq .JenisAnggota "Mahasiswa"}}
-            <strong>Limit Pinjaman:</strong> Rp {{ printf "%.0f" .LimitPinjaman }} (5x total simpanan)
+            <strong>Kemampuan Bayar:</strong> Rp {{ printf "%.0f" .LimitPinjaman }} (5x total simpanan)
         {{else if eq .JenisAnggota "Dosen/Staff"}}
-            <strong>Limit Pinjaman:</strong> Dihitung berdasarkan gaji bulanan dan tenor
+            <strong>Kemampuan Bayar:</strong> Dihitung berdasarkan gaji bulanan dan tenor
         {{else}}
-            <strong>Limit Pinjaman:</strong> Tidak dapat ditentukan
+            <strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan
         {{end}}
     </p>
     <p id="bunga_info"><strong>Bunga:</strong> {{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}% (flat)</p>
@@ -64,6 +64,20 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">
+                        <label for="jangka_waktu" class="form-label">Jangka Waktu Pinjaman (Tenor, bulan)</label>
+                        <select class="form-select" id="jangka_waktu" name="jangka_waktu" required>
+                            <option value="">Pilih tenor</option>
+                            <option value="10">10 bulan</option>
+                            <option value="20">20 bulan</option>
+                            <option value="30">30 bulan</option>
+                        </select>
+                        <div id="tenor_info" class="form-text mt-2 text-muted">Pilih tenor pinjaman.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
                         <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
 <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} readonly {{end}}>
                         <small class="form-text text-muted" id="limit_warning">
@@ -73,10 +87,16 @@ document.addEventListener('DOMContentLoaded', function(){
                         </small>
                     </div>
                 </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="jumlah_pinjaman_terbilang" class="form-label">Jumlah Pinjaman Terbilang</label>
+                        <input type="text" class="form-control" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" required>
+                    </div>
+                </div>
             </div>
             <div class="mb-3">
-                <label for="jumlah_pinjaman_terbilang" class="form-label">Jumlah Pinjaman Terbilang</label>
-                <input type="text" class="form-control" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" required>
+                <label for="perkiraan_angsuran" class="form-label">Perkiraan Angsuran per Bulan (Rp)</label>
+                <input type="number" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran" readonly>
             </div>
             <div class="mb-3">
                 <label class="form-label">Tujuan Penggunaan Pinjaman</label><br>
@@ -106,16 +126,6 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
             </div>
             <div class="mb-3">
-                <label for="jangka_waktu" class="form-label">Jangka Waktu Pinjaman (Tenor, bulan)</label>
-                <select class="form-select" id="jangka_waktu" name="jangka_waktu" required>
-                    <option value="">Pilih tenor</option>
-                    <option value="10">10 bulan</option>
-                    <option value="20">20 bulan</option>
-                    <option value="30">30 bulan</option>
-                </select>
-                <div id="tenor_info" class="form-text mt-2 text-muted">Pilih tenor pinjaman.</div>
-            </div>
-            <div class="mb-3">
                 <label class="form-label">Metode Pencairan</label>
                 <div class="form-check">
                     <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_transfer" value="transfer" checked>
@@ -130,10 +140,6 @@ document.addEventListener('DOMContentLoaded', function(){
                 <label for="nomor_rekening" class="form-label">Nomor Rekening Bank</label>
                 <input type="text" class="form-control" id="nomor_rekening" name="nomor_rekening" placeholder="Masukkan nomor rekening Anda">
                 <small class="form-text text-muted">Masukkan nomor rekening untuk penerimaan pencairan dana pinjaman.</small>
-            </div>
-            <div class="mb-3">
-                <label for="perkiraan_angsuran" class="form-label">Perkiraan Angsuran per Bulan (Rp)</label>
-                <input type="number" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran">
             </div>
         </fieldset>
 
@@ -245,50 +251,70 @@ function calculateAngsuran() {
     } else { // Dosen/Staff
         jenisAnggota = 'Dosen/Staff';
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
-            limitPinjaman = (0.4 * gajiBulanan * jangkaWaktu) + totalSimpanan;
+            // Ambil bunga dari element bunga_info untuk konsistensi
+            const bungaTerkiniCalc = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
+            const bungaDecimal = bungaTerkiniCalc / 100;
+            const baseAmount = 0.4 * gajiBulanan * jangkaWaktu;
+            limitPinjaman = baseAmount - (bungaDecimal * baseAmount * jangkaWaktu);
         }
     }
 
-    // Update limit info
-    const bungaTerkini = parseFloat('{{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}');
+    // Update limit info - ambil bunga dari element bunga_info
+    const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
     const bungaPersenTampil = bungaTerkini.toFixed(2);
     
     const limitInfo = document.getElementById('limit_info');
     const bungaInfo = document.getElementById('bunga_info');
     if (jenisAnggota === 'Mahasiswa') {
-        limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
+        limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
         bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
     } else if (jenisAnggota === 'Dosen/Staff') {
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
-            limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' ((40% x gaji x tenor) + total simpanan)';
+            // Hitung kemampuan bayar
+            const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
+            limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 × gaji × tenor)';
             bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
         } else {
-            limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
+            limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
             bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
         }
     } else {
-        limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Tidak dapat ditentukan';
+        limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan';
         bungaInfo.innerHTML = '<strong>Bunga:</strong> -';
     }
 
-    // Check limit and show warning
+    // Check limit and show warning (menggunakan kemampuan bayar)
     const limitWarning = document.getElementById('limit_warning');
-    if (jumlahPinjaman > limitPinjaman && limitPinjaman > 0) {
-        limitWarning.textContent = '⚠️ Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID');
-        limitWarning.style.color = 'red';
-    } else if (limitPinjaman > 0) {
-        limitWarning.textContent = '✓ Jumlah pinjaman dalam batas limit';
-        limitWarning.style.color = 'green';
+    if (jenisAnggota === 'Dosen/Staff' && gajiBulanan > 0 && jangkaWaktu > 0) {
+        const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
+        if (jumlahPinjaman > kemampuanBayar) {
+            limitWarning.textContent = '⚠️ Jumlah pinjaman melebihi limit maksimal Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (berdasarkan kemampuan bayar)';
+            limitWarning.style.color = 'red';
+        } else {
+            limitWarning.textContent = '✓ Jumlah pinjaman dalam batas limit';
+            limitWarning.style.color = 'green';
+        }
+    } else if (jenisAnggota === 'Mahasiswa' && limitPinjaman > 0) {
+        if (jumlahPinjaman > limitPinjaman) {
+            limitWarning.textContent = '⚠️ Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID');
+            limitWarning.style.color = 'red';
+        } else {
+            limitWarning.textContent = '✓ Jumlah pinjaman dalam batas limit';
+            limitWarning.style.color = 'green';
+        }
     } else {
         limitWarning.textContent = '';
     }
 
-    // Calculate perkiraan angsuran (pokok + bunga dari database)
+    // Calculate perkiraan angsuran menggunakan rumus: (pinjaman/tenor) + ((bunga × pinjaman) / tenor)
     if (jumlahPinjaman > 0 && jangkaWaktu > 0) {
-        const bungaTerkini = parseFloat('{{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}');
+        // Ambil bunga dari element bunga_info untuk konsistensi
+        const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
+        const bungaDecimal = bungaTerkini / 100;
         const pokok = jumlahPinjaman / jangkaWaktu;
-        const bunga = jumlahPinjaman * (bungaTerkini / 100);
-        const totalAngsuran = pokok + bunga;
+        const bungaTotal = bungaDecimal * jumlahPinjaman;
+        const bungaPerBulan = bungaTotal / jangkaWaktu;
+        const totalAngsuran = pokok + bungaPerBulan;
         document.getElementById('perkiraan_angsuran').value = Math.round(totalAngsuran);
     }
 }

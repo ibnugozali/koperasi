@@ -36,7 +36,8 @@ func SetupRouter() *gin.Engine {
 			a, _ := json.Marshal(v)
 			return template.JS(a)
 		},
-		"now": func() time.Time { return time.Now() },
+		"now":       func() time.Time { return time.Now() },
+		"hasPrefix": func(s, prefix string) bool { return len(s) >= len(prefix) && s[:len(prefix)] == prefix },
 	})
 	router.LoadHTMLGlob("templates/**/*.html")
 
@@ -118,6 +119,7 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.GET("/dashboard", controllers.BendaharaDashboard)
 		bendaharaRoutes.GET("/konfirmasi", controllers.BendaharaKonfirmasi)
 		bendaharaRoutes.POST("/confirm/:id", controllers.BendaharaConfirmMembership)
+		bendaharaRoutes.POST("/reject/:id", controllers.BendaharaRejectMembership)
 		bendaharaRoutes.GET("/konfirmasi-transaksi", controllers.BendaharaKonfirmasiTransaksi)
 		bendaharaRoutes.GET("/lihat-persyaratan-pinjaman/:id", controllers.BendaharaLihatPersyaratanPinjaman)
 		bendaharaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.BendaharaKonfirmasiTransaksiPost)

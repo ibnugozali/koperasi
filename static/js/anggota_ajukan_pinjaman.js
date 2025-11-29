@@ -113,15 +113,23 @@ function calculateAngsuran() {
     const totalSimpanan = parseFloat(document.querySelector('script') ? document.querySelector('script').textContent.match(/totalSimpanan = ([0-9.]+)/)?.[1] : '0') || 0;
 
     let limitPinjaman = 0;
+    let kemampuanBayar = 0;
     let jenisAnggota = '';
 
     if (unitKerjaValue === '03') { // Mahasiswa
         jenisAnggota = 'Mahasiswa';
         limitPinjaman = 5 * totalSimpanan;
+        kemampuanBayar = limitPinjaman; // Untuk mahasiswa sama
     } else { // Dosen/Staff
         jenisAnggota = 'Dosen/Staff';
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
-            limitPinjaman = (0.4 * gajiBulanan * jangkaWaktu) + totalSimpanan;
+            // Get bunga value from template/data attribute or script variable
+            const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
+            const bungaDecimal = bungaTerkini / 100;
+            // Langkah 1 - Kemampuan bayar: 0.4 × gaji × tenor
+            kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
+            // Langkah 3 - Limit Pinjaman (untuk informasi): (0.4 × gaji × tenor) × (1 - (bunga × tenor))
+            limitPinjaman = kemampuanBayar * (1 - (bungaDecimal * jangkaWaktu));
         }
     }
 
@@ -129,21 +137,21 @@ function calculateAngsuran() {
     const limitInfo = document.getElementById('limit_info');
     if (limitInfo) {
         if (jenisAnggota === 'Mahasiswa') {
-            limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
-        } else if (jenisAnggota === 'Dosen/Staff' && limitPinjaman > 0) {
-            limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' ((40% x gaji x tenor) + total simpanan)';
+            limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (5x total simpanan)';
+        } else if (jenisAnggota === 'Dosen/Staff' && kemampuanBayar > 0) {
+            limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 × gaji × tenor)';
         } else {
-            limitInfo.innerHTML = '<strong>Limit Pinjaman:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
+            limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
         }
     }
 
-    // Check limit and show warning
+    // Check limit and show warning - menggunakan kemampuan bayar (Langkah 1)
     const limitWarning = document.getElementById('limit_warning');
     if (limitWarning) {
-        if (jumlahPinjaman > limitPinjaman && limitPinjaman > 0) {
-            limitWarning.textContent = '⚠️ Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID');
+        if (jumlahPinjaman > kemampuanBayar && kemampuanBayar > 0) {
+            limitWarning.textContent = '⚠️ Jumlah pinjaman melebihi limit maksimal Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (berdasarkan kemampuan bayar)';
             limitWarning.style.color = 'red';
-        } else if (limitPinjaman > 0) {
+        } else if (kemampuanBayar > 0) {
             limitWarning.textContent = '✓ Jumlah pinjaman dalam batas limit';
             limitWarning.style.color = 'green';
         } else {
@@ -156,9 +164,12 @@ function calculateAngsuran() {
     if (perkiraanAngsuran && jumlahPinjaman > 0 && jangkaWaktu > 0) {
         // Get bunga value from template/data attribute or script variable
         const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
+        const bungaDecimal = bungaTerkini / 100;
+        // Rumus: (pinjaman/tenor) + ((bunga × pinjaman) / tenor)
         const pokok = jumlahPinjaman / jangkaWaktu;
-        const bunga = jumlahPinjaman * (bungaTerkini / 100);
-        const totalAngsuran = pokok + bunga;
+        const bungaTotal = bungaDecimal * jumlahPinjaman;
+        const bungaPerBulan = bungaTotal / jangkaWaktu;
+        const totalAngsuran = pokok + bungaPerBulan;
         perkiraanAngsuran.value = Math.round(totalAngsuran);
     }
 }

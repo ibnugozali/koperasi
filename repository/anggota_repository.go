@@ -12,7 +12,7 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 	db := config.GetDB() // Fungsi untuk mendapatkan koneksi DB
 	var anggotas []models.Anggota
 
-	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, nik_ktp, no_telepon, tgl_gabung, unit_kerja, fakultas_code FROM anggota WHERE status = 'pending' ORDER BY tgl_gabung ASC")
+	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, nik_ktp, no_telepon, tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, '') FROM anggota WHERE status = 'pending' ORDER BY tgl_gabung ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -20,7 +20,7 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 
 	for rows.Next() {
 		var a models.Anggota
-		if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.NikKTP, &a.NoTelepon, &a.TglGabung, &a.UnitKerja, &a.FakultasCode); err != nil {
+		if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.NikKTP, &a.NoTelepon, &a.TglGabung, &a.UnitKerja, &a.FakultasCode, &a.Fakultas); err != nil {
 			return nil, err
 		}
 		anggotas = append(anggotas, a)

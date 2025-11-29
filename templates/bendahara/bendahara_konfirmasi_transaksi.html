@@ -34,6 +34,7 @@
                         <span class="badge bg-light text-dark ms-1">Simpanan: {{len .PendingSimpanan}}</span>
                         <span class="badge bg-light text-dark ms-1">Pinjaman: {{len .PendingPinjaman}}</span>
                         <span class="badge bg-light text-dark ms-1">Angsuran: {{len .PendingAngsuran}}</span>
+                        <span class="badge bg-light text-dark ms-1">Pengambilan: {{len .PendingPengambilan}}</span>
                     </div>
                 </div>
                 <div class="card-body">
@@ -164,6 +165,51 @@
                         {{else}}
                         <div class="alert alert-info">
                             <i class="fa-solid fa-info-circle me-2"></i>Tidak ada angsuran yang menunggu konfirmasi.
+                        </div>
+                        {{end}}
+                    </div>
+
+                    <!-- Pending Pengambilan Simpanan -->
+                    <div class="stat-card mb-4">
+                        <h5><i class="fa-solid fa-hand-holding-usd me-2"></i>Pengambilan Simpanan Pending</h5>
+                        {{if .PendingPengambilan}}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped table-bordered align-middle">
+                                <thead>
+                                    <tr>
+                                        <th style="width:5%" class="text-center">No</th>
+                                        <th>Nama Anggota</th>
+                                        <th>Jenis Simpanan</th>
+                                        <th class="text-end">Jumlah</th>
+                                        <th>Alasan</th>
+                                        <th style="width:12%" class="text-center">Tanggal</th>
+                                        <th style="width:18%" class="text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{range .PendingPengambilan}}
+                                    <tr>
+                                        <td class="text-center">{{.No}}</td>
+                                        <td>{{.NamaAnggota}}</td>
+                                        <td>{{.JenisSimpanan}}</td>
+                                        <td class="text-end">Rp {{printf "%.0f" .Jumlah}}</td>
+                                        <td><span class="small">{{.Alasan}}</span></td>
+                                        <td class="text-center"><span class="small text-muted">{{.TglPengajuan.Format "2006-01-02"}}</span></td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <a class="btn btn-outline-primary btn-sm" href="/bendahara/anggota/{{.IDAnggota}}" target="_blank" title="Lihat detail anggota"><i class="fa-solid fa-eye"></i></a>
+                                                <button type="button" class="btn btn-success btn-sm" onclick="confirmTransaction('pengambilan', '{{.IDPengambilan}}', 'confirm')" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="confirmTransaction('pengambilan', '{{.IDPengambilan}}', 'reject')" title="Tolak"><i class="fa-solid fa-times"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                        {{else}}
+                        <div class="alert alert-info">
+                            <i class="fa-solid fa-info-circle me-2"></i>Tidak ada pengambilan simpanan yang menunggu konfirmasi.
                         </div>
                         {{end}}
                     </div>

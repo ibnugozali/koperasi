@@ -208,6 +208,11 @@ func ShowRiwayatPage(c *gin.Context) {
 		// Jika gagal ambil riwayat angsuran, tetap tampilkan halaman dengan angsuran kosong
 		riwayatAngsuran = []models.Angsuran{}
 	}
+	riwayatPengambilan, err := repository.GetRiwayatPengambilanSimpananByAnggotaID(userID.(string), "")
+	if err != nil {
+		// Jika gagal ambil riwayat pengambilan simpanan, tetap tampilkan halaman dengan pengambilan kosong
+		riwayatPengambilan = []models.PengambilanSimpanan{}
+	}
 
 	// Define a unified transaction struct
 	type UnifiedTransaction struct {
@@ -317,15 +322,46 @@ func ShowRiwayatPage(c *gin.Context) {
 		})
 	}
 
-	// Sort by date descending
+	// Add pengambilan simpanan transactions
+	for _, ps := range riwayatPengambilan {
+		desc := "Pengambilan " + ps.JenisSimpanan
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", ps.Jumlah)), " ", "")
+		var status string
+		switch ps.Status {
+		case "pending":
+			status = "Dalam Proses"
+		case "approved":
+			status = "Disetujui"
+		case "rejected":
+			status = "Ditolak"
+		default:
+			status = ps.Status
+		}
+		timeStr := ps.TglPengajuan.Format("15:04:05")
+		if timeStr == "00:00:00" {
+			timeStr = "-"
+		}
+		allTransactions = append(allTransactions, UnifiedTransaction{
+			ID:          ps.IDPengambilan,
+			Date:        ps.TglPengajuan,
+			Time:        timeStr,
+			Type:        "Pengambilan Simpanan",
+			Description: desc,
+			Amount:      amount,
+			Status:      status,
+		})
+	}
+
+	// Sort by date descending (newest first)
 	sort.Slice(allTransactions, func(i, j int) bool {
-		// Use UnixNano for strict comparison (descending)
+		// Use UnixNano for strict comparison (descending - newest first)
 		ti := allTransactions[i].Date.UnixNano()
 		tj := allTransactions[j].Date.UnixNano()
 		if ti == tj {
-			// If timestamps exactly equal, tie-break by ID (descending)
+			// If timestamps exactly equal, tie-break by ID (descending - higher ID first, assuming auto-increment)
 			return allTransactions[i].ID > allTransactions[j].ID
 		}
+		// Newest date first (descending order)
 		return ti > tj
 	})
 

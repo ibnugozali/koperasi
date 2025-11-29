@@ -87,7 +87,7 @@ func BendaharaKonfirmasi(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "bendahara_anggota_konfirmasi.html", gin.H{
 		"PendingMembers": pendingMembers,
-		"ActivePage":     "konfirmasi",
+		"ActivePage":     "konfirmasi_anggota",
 		"LogoPath":       logoPath,
 		"Title":          "Konfirmasi Anggota",
 	})
@@ -211,24 +211,80 @@ func BendaharaUpdateRekeningRegister(c *gin.Context) {
 
 // Mengkonfirmasi keanggotaan
 func BendaharaConfirmMembership(c *gin.Context) {
-	// Ambil id anggota dari URL
-	idStr := c.Param("id")
+	// Ambil id anggota dari URL (ini masih TEMP id)
+	tempID := c.Param("id")
 
-	// Buat kode anggota baru, contoh: KSPWIR-ID
-	// ID yang digunakan adalah ID dari primary key yang auto-increment,
-	// ini memastikan urutannya benar.
-	newMemberCode := fmt.Sprintf("KSPWIR-%s", idStr)
-
-	// Panggil repository untuk update status dan kode anggota
-	err := repository.UpdateAnggotaStatusWithCode(idStr, "aktif", newMemberCode)
+	// Ambil data anggota untuk mendapatkan informasi unit_kerja, fakultas, dan tahun
+	anggota, err := repository.GetAnggotaByID(tempID)
 	if err != nil {
-		// Handle error, mungkin tampilkan pesan kesalahan
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data anggota"})
+		return
+	}
+
+	// Generate ID anggota yang benar berdasarkan unit_kerja, fakultas_code, tahun konfirmasi, dan nomor urut
+	// Format: {unit_kerja}{fakultas_code}{tahun}{nomor_urut}
+	// Contoh: 010120250001
+	// - 01: Unit Kerja (01=Dosen, 02=Karyawan/Staff, 03=Mahasiswa)
+	// - 01: Fakultas Code (01=FAI, 02=FE, 03=FH, 04=FISIP, 05=FKIP, 06=FKM, 07=FAPERTA, 08=FT, 09=Rektorat/Yayasan/Staff)
+	// - 2025: Tahun konfirmasi
+	// - 0001: Nomor urut
+
+	db := config.GetDB()
+
+	// Ambil tahun konfirmasi saat ini
+	tahunKonfirmasi := time.Now().Format("2006")
+
+	// Ambil nomor urut terakhir untuk kombinasi unit_kerja, fakultas_code, dan tahun konfirmasi ini
+	var lastNumber int
+	query := `SELECT COALESCE(MAX(CAST(nomor_urut AS INTEGER)), 0) 
+	          FROM anggota 
+	          WHERE unit_kerja = $1 AND fakultas_code = $2 AND tahun = $3 AND id_anggota NOT LIKE 'TEMP%'`
+
+	err = db.QueryRow(query, anggota.UnitKerja, anggota.FakultasCode, tahunKonfirmasi).Scan(&lastNumber)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal generate nomor urut"})
+		return
+	}
+
+	// Nomor urut berikutnya (4 digit)
+	newNumber := lastNumber + 1
+	nomorUrut := fmt.Sprintf("%04d", newNumber)
+
+	// Generate ID anggota baru: {unit_kerja}{fakultas_code}{tahun}{nomor_urut}
+	newIDAnggota := fmt.Sprintf("%s%s%s%s", anggota.UnitKerja, anggota.FakultasCode, tahunKonfirmasi, nomorUrut)
+
+	// Update id_anggota, status, tahun, dan nomor_urut
+	updateQuery := `UPDATE anggota 
+	                SET id_anggota = $1, status = $2, tahun = $3, nomor_urut = $4 
+	                WHERE id_anggota = $5`
+
+	_, err = db.Exec(updateQuery, newIDAnggota, "aktif", tahunKonfirmasi, nomorUrut, tempID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengkonfirmasi anggota"})
 		return
 	}
 
-	// Arahkan kembali ke dashboard bendahara
-	c.Redirect(http.StatusFound, "/bendahara/dashboard")
+	// Arahkan kembali ke halaman konfirmasi bendahara
+	c.Redirect(http.StatusFound, "/bendahara/konfirmasi")
+}
+
+// BendaharaRejectMembership menolak pendaftaran anggota
+func BendaharaRejectMembership(c *gin.Context) {
+	// Ambil id anggota dari URL (ini masih TEMP id)
+	tempID := c.Param("id")
+
+	// Hapus anggota dari database
+	db := config.GetDB()
+	deleteQuery := `DELETE FROM anggota WHERE id_anggota = $1`
+
+	_, err := db.Exec(deleteQuery, tempID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menolak pendaftaran anggota"})
+		return
+	}
+
+	// Arahkan kembali ke halaman konfirmasi bendahara
+	c.Redirect(http.StatusFound, "/bendahara/konfirmasi")
 }
 
 // ShowEditHalamanForm menampilkan form untuk mengedit halaman.
@@ -375,9 +431,15 @@ func BendaharaViewAnggota(c *gin.Context) {
 		return
 	}
 
-	// Reuse admin anggota view template for bendahara
-	c.HTML(http.StatusOK, "admin_anggota_view.html", gin.H{
-		"Anggota": anggota,
+	// Get LogoPath from context
+	logoPath, _ := c.Get("LogoPath")
+
+	// Use bendahara template
+	c.HTML(http.StatusOK, "bendahara_data_anggota_view.html", gin.H{
+		"Anggota":    anggota,
+		"ActivePage": "anggota",
+		"LogoPath":   logoPath,
+		"Title":      "Detail Anggota",
 	})
 }
 
@@ -391,8 +453,14 @@ func BendaharaEditAnggota(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "bendahara_anggota_edit.html", gin.H{
-		"Anggota": anggota,
+	// Get LogoPath from context
+	logoPath, _ := c.Get("LogoPath")
+
+	c.HTML(http.StatusOK, "bendahara_data_anggota_edit.html", gin.H{
+		"Anggota":    anggota,
+		"ActivePage": "anggota",
+		"LogoPath":   logoPath,
+		"Title":      "Edit Data Anggota",
 	})
 }
 
@@ -680,6 +748,12 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 		pendingAngsuran = []models.Angsuran{}
 	}
 
+	// Ambil pending pengambilan simpanan
+	pendingPengambilan, err := repository.GetPendingPengambilanSimpanan()
+	if err != nil {
+		pendingPengambilan = []models.PengambilanSimpanan{}
+	}
+
 	// Tambahkan nomor urut (No) mulai dari 1 untuk setiap daftar
 	type numberedDetail struct {
 		No int
@@ -692,6 +766,10 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 	type numberedAngsuran struct {
 		No int
 		models.Angsuran
+	}
+	type numberedPengambilan struct {
+		No int
+		models.PengambilanSimpanan
 	}
 
 	var numberedSimpanan []numberedDetail
@@ -709,11 +787,22 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 		numberedAngsurans = append(numberedAngsurans, numberedAngsuran{No: i + 1, Angsuran: a})
 	}
 
+	var numberedPengambilans []numberedPengambilan
+	for i, ps := range pendingPengambilan {
+		numberedPengambilans = append(numberedPengambilans, numberedPengambilan{No: i + 1, PengambilanSimpanan: ps})
+	}
+
+	// Get LogoPath from context
+	logoPath, _ := c.Get("LogoPath")
+
 	c.HTML(http.StatusOK, "bendahara_konfirmasi_transaksi.html", gin.H{
-		"PendingSimpanan": numberedSimpanan,
-		"PendingPinjaman": numberedPinjamans,
-		"PendingAngsuran": numberedAngsurans,
-		"ActivePage":      "konfirmasi-transaksi",
+		"PendingSimpanan":    numberedSimpanan,
+		"PendingPinjaman":    numberedPinjamans,
+		"PendingAngsuran":    numberedAngsurans,
+		"PendingPengambilan": numberedPengambilans,
+		"ActivePage":         "konfirmasi-transaksi",
+		"LogoPath":           logoPath,
+		"Title":              "Konfirmasi Transaksi",
 	})
 }
 
@@ -828,6 +917,12 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 			err = repository.UpdateAngsuranStatus(id, "confirmed")
 		} else {
 			err = repository.UpdateAngsuranStatus(id, "rejected")
+		}
+	case "pengambilan":
+		if action == "confirm" {
+			err = repository.UpdatePengambilanSimpananStatus(id, "approved")
+		} else {
+			err = repository.UpdatePengambilanSimpananStatus(id, "rejected")
 		}
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe transaksi tidak valid"})

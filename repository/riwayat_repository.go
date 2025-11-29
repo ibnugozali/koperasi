@@ -20,7 +20,7 @@ func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, e
 		query += ` AND (s.jenis_simpanan ILIKE $2 OR CAST(d.jumlah_simpanan AS TEXT) ILIKE $2 OR CAST(d.total_simpanan AS TEXT) ILIKE $2)`
 		args = append(args, "%"+search+"%")
 	}
-	query += ` ORDER BY d.tgl_transaksi DESC`
+	query += ` ORDER BY d.tgl_transaksi DESC, d.id_detail DESC`
 	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
