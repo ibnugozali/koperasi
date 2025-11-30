@@ -334,6 +334,8 @@ ALTER TABLE angsuran ALTER COLUMN tgl_bayar TYPE TIMESTAMP WITHOUT TIME ZONE;
 ALTER TABLE angsuran ALTER COLUMN tgl_bayar SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS metode_pencairan VARCHAR(20);
 ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS nomor_rekening VARCHAR(50);
+ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS gaji_bulanan NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS tujuan_pinjaman TEXT;
 ALTER TABLE detail ADD COLUMN IF NOT EXISTS status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected'));
 
 -- Update angsuran status constraint to support pending workflow

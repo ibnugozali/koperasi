@@ -39,6 +39,8 @@ type Pinjaman struct {
 	Status          string        `json:"status" db:"status"`
 	MetodePencairan string        `form:"metode_pencairan" json:"metode_pencairan" db:"metode_pencairan"`
 	NomorRekening   string        `form:"nomor_rekening" json:"nomor_rekening" db:"nomor_rekening"`
+	GajiBulanan     float64       `form:"gaji_bulanan" json:"gaji_bulanan" db:"gaji_bulanan"`
+	TujuanPinjaman  string        `form:"tujuan_pinjaman" json:"tujuan_pinjaman" db:"tujuan_pinjaman"`
 }
 
 // Angsuran mewakili pembayaran angsuran

@@ -555,6 +555,23 @@ func AjukanPinjamanPost(c *gin.Context) {
 	// Capture metode pencairan from the form (transfer / tunai)
 	pinjaman.MetodePencairan = c.PostForm("metode_pencairan")
 	pinjaman.NomorRekening = c.PostForm("nomor_rekening")
+	// Capture gaji bulanan dari form
+	gajiStr := c.PostForm("gaji_bulanan")
+	if gajiStr != "" {
+		var gaji float64
+		if _, err := fmt.Sscanf(gajiStr, "%f", &gaji); err == nil {
+			pinjaman.GajiBulanan = gaji
+		}
+	}
+	// Capture tujuan pinjaman dari form (multiple checkboxes + text)
+	tujuanList := c.PostFormArray("tujuan_pinjaman")
+	tujuanLain := c.PostForm("tujuan_lain")
+	if tujuanLain != "" {
+		tujuanList = append(tujuanList, "Lain-lain: "+tujuanLain)
+	}
+	if len(tujuanList) > 0 {
+		pinjaman.TujuanPinjaman = strings.Join(tujuanList, ", ")
+	}
 
 	// Validasi nomor rekening jika metode transfer bank
 	if pinjaman.MetodePencairan == "transfer" && pinjaman.NomorRekening == "" {

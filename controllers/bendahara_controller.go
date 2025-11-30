@@ -806,6 +806,77 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 	})
 }
 
+// BendaharaLihatDetailSimpanan menampilkan detail simpanan pending untuk anggota
+func BendaharaLihatDetailSimpanan(c *gin.Context) {
+	id := c.Param("id")
+
+	// Ambil data anggota
+	anggota, err := repository.GetAnggotaByID(id)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		return
+	}
+
+	// Ambil semua simpanan pending dari anggota ini
+	db := config.GetDB()
+	query := `
+		SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.tgl_transaksi, 
+		       d.jumlah_simpanan, d.total_simpanan, s.jenis_simpanan,
+		       COALESCE(d.status, 'pending') as status
+		FROM detail d
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+		WHERE d.id_anggota = $1 AND d.status = 'pending'
+		ORDER BY d.tgl_transaksi DESC
+	`
+
+	rows, err := db.Query(query, id)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data simpanan"})
+		return
+	}
+	defer rows.Close()
+
+	var detailSimpanan []models.Detail
+	var totalWajib, totalSukarela, totalHariRaya, grandTotal float64
+
+	for rows.Next() {
+		var d models.Detail
+		var s models.Simpanan
+		err := rows.Scan(&d.IDDetail, &d.IDAnggota, &d.IDSimpanan, &d.TglTransaksi,
+			&d.JumlahSimpanan, &d.TotalSimpanan, &s.JenisSimpanan, &d.Status)
+		if err != nil {
+			continue
+		}
+		d.Simpanan = s
+		detailSimpanan = append(detailSimpanan, d)
+
+		// Hitung total per jenis
+		switch s.JenisSimpanan {
+		case "wajib":
+			totalWajib += d.JumlahSimpanan
+		case "sukarela":
+			totalSukarela += d.JumlahSimpanan
+		case "hari_raya":
+			totalHariRaya += d.JumlahSimpanan
+		}
+		grandTotal += d.JumlahSimpanan
+	}
+
+	// Ambil nomor rekening koperasi
+	nomorRekening, _ := repository.GetNomorRekening("simpanan")
+
+	c.HTML(http.StatusOK, "bendahara_detail_simpanan.html", gin.H{
+		"Anggota":        anggota,
+		"DetailSimpanan": detailSimpanan,
+		"TotalWajib":     totalWajib,
+		"TotalSukarela":  totalSukarela,
+		"TotalHariRaya":  totalHariRaya,
+		"GrandTotal":     grandTotal,
+		"NomorRekening":  nomorRekening,
+		"Judul":          "Detail Simpanan Pending",
+	})
+}
+
 // BendaharaLihatPersyaratanPinjaman menampilkan halaman persyaratan ajukan pinjaman untuk anggota (read-only)
 func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 	id := c.Param("id")
@@ -844,7 +915,8 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 	var hasPinjaman bool
 	queryPinjaman := `
 		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, 
-		       COALESCE(metode_pencairan, '') as metode_pencairan, COALESCE(nomor_rekening, '') as nomor_rekening
+		       COALESCE(metode_pencairan, '') as metode_pencairan, COALESCE(nomor_rekening, '') as nomor_rekening,
+		       COALESCE(gaji_bulanan, 0) as gaji_bulanan, COALESCE(tujuan_pinjaman, '') as tujuan_pinjaman
 		FROM pinjaman 
 		WHERE id_anggota = $1 AND status = 'proses'
 		ORDER BY tgl_pinjaman DESC 
@@ -860,6 +932,8 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 		&pinjaman.Status,
 		&pinjaman.MetodePencairan,
 		&pinjaman.NomorRekening,
+		&pinjaman.GajiBulanan,
+		&pinjaman.TujuanPinjaman,
 	)
 	if err == nil {
 		hasPinjaman = true

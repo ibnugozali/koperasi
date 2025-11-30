@@ -39,8 +39,8 @@ func CreatePinjaman(pinjaman models.Pinjaman) error {
 	// Set waktu pinjaman ke saat ini (server-side)
 	pinjaman.TglPinjaman = time.Now()
 	query := `
-		INSERT INTO pinjaman (id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, metode_pencairan, nomor_rekening)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO pinjaman (id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, metode_pencairan, nomor_rekening, gaji_bulanan, tujuan_pinjaman)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`
 	_, err := db.Exec(query,
 		pinjaman.IDAnggota,
@@ -52,6 +52,8 @@ func CreatePinjaman(pinjaman models.Pinjaman) error {
 		pinjaman.Status,
 		pinjaman.MetodePencairan,
 		pinjaman.NomorRekening,
+		pinjaman.GajiBulanan,
+		pinjaman.TujuanPinjaman,
 	)
 	return err
 }

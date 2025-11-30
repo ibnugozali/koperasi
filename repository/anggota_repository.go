@@ -160,29 +160,29 @@ func UpdateAnggotaUsernamePassword(id string, username, password string) error {
 func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float64, err error) {
 	db := config.GetDB()
 
-	// Hitung total simpanan dari detail
+	// Hitung total simpanan dari detail (hanya yang sudah dikonfirmasi/confirmed)
 	querySimpanan := `
 		SELECT COALESCE(SUM(d.jumlah_simpanan), 0)
 		FROM detail d
-		WHERE d.id_anggota = $1
+		WHERE d.id_anggota = $1 AND d.status = 'confirmed'
 	`
 	err = db.QueryRow(querySimpanan, id).Scan(&totalSimpanan)
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	// Hitung total pinjaman yang belum lunas (status != 'lunas')
+	// Hitung total pinjaman yang aktif (status = 'aktif')
 	queryPinjaman := `
 		SELECT COALESCE(SUM(p.jumlah_pinjaman), 0)
 		FROM pinjaman p
-		WHERE p.id_anggota = $1 AND p.status != 'lunas'
+		WHERE p.id_anggota = $1 AND p.status = 'aktif'
 	`
 	err = db.QueryRow(queryPinjaman, id).Scan(&totalPinjaman)
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	// Saldo bersih = total simpanan - total pinjaman belum lunas
+	// Saldo bersih = total simpanan - total pinjaman aktif
 	saldoBersih = totalSimpanan - totalPinjaman
 
 	return totalSimpanan, totalPinjaman, saldoBersih, nil
@@ -197,7 +197,7 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 		SELECT s.jenis_simpanan, COALESCE(SUM(d.jumlah_simpanan), 0) as total
 		FROM detail d
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
-		WHERE d.id_anggota = $1
+		WHERE d.id_anggota = $1 AND d.status = 'confirmed'
 		GROUP BY s.jenis_simpanan
 	`
 

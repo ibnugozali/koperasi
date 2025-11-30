@@ -16,6 +16,7 @@
 
     <!-- Main Content -->
     <div class="main-content">
+        <br><br>
         <div class="container-fluid">
             <br>
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -58,152 +59,127 @@
                 </div>
             </div>
 
-            <!-- Info Limit Pinjaman -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="fa-solid fa-calculator me-2"></i>Informasi Limit Pinjaman</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="text-center p-3 bg-light rounded">
-                                <h6 class="text-muted">Jenis Anggota</h6>
-                                <h4 class="text-primary">{{ .JenisAnggota }}</h4>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 bg-light rounded">
-                                <h6 class="text-muted">Total Simpanan</h6>
-                                <h4 class="text-success">Rp {{ if .TotalSimpanan }}{{ printf "%.0f" .TotalSimpanan }}{{ else }}0{{ end }}</h4>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 bg-light rounded">
-                                <h6 class="text-muted">Limit Pinjaman</h6>
-                                <h4 class="text-warning" id="limit_display">
-                                    {{if eq .JenisAnggota "Mahasiswa"}}
-                                        Rp {{ printf "%.0f" .LimitPinjaman }}
-                                    {{else}}
-                                        Tergantung Gaji
-                                    {{end}}
-                                </h4>
-                            </div>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="alert alert-secondary mb-0">
-                        <p class="mb-1"><strong>Perhitungan Limit:</strong></p>
-                        <p class="mb-0" id="limit_formula">
-                            {{if eq .JenisAnggota "Mahasiswa"}}
-                                <i class="fa-solid fa-calculator me-1"></i>5x Total Simpanan = Rp {{ printf "%.0f" .LimitPinjaman }}
-                            {{else}}
-                                <i class="fa-solid fa-calculator me-1"></i>(40% × Gaji × Tenor) - (Bunga × (40% × Gaji × Tenor) × Tenor)
-                            {{end}}
-                        </p>
-                        <p class="mb-0 mt-2"><strong>Bunga:</strong> <span class="badge bg-info">{{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}% (flat)</span></p>
-                    </div>
-                </div>
-            </div>
-
             <!-- Rincian Permohonan Pinjaman -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-warning text-dark">
                     <h5 class="mb-0"><i class="fa-solid fa-money-bill-wave me-2"></i>Bagian 1: Rincian Permohonan Pinjaman</h5>
                 </div>
                 <div class="card-body">
+                    {{if .HasPinjaman}}
+
                     <form id="ajukanPinjamanForm">
+                        <!-- Gaji Bulanan dan Tenor -->
                         <div class="row">
-                            <div class="col-md-6" id="gaji_bulanan_container">
+                            <div class="col-md-6" id="gaji_bulanan_container" {{if eq .JenisAnggota "Mahasiswa"}}style="display:none;"{{end}}>
                                 <div class="mb-3">
                                     <label for="gaji_bulanan" class="form-label"><i class="fa-solid fa-money-check me-1"></i>Jumlah Gaji Bulanan (Rp)</label>
-                                    <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" disabled>
+                                    <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" value="{{ printf "%.0f" .Pinjaman.GajiBulanan }}" disabled>
                                     <small class="form-text text-muted">Gaji bulanan untuk perhitungan limit pinjaman</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="jumlah_pinjaman" class="form-label"><i class="fa-solid fa-sack-dollar me-1"></i>Jumlah Pinjaman yang Diajukan (Rp)</label>
-                                    <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" disabled>
-                                    <small class="form-text" id="limit_warning"></small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="jumlah_pinjaman_terbilang" class="form-label"><i class="fa-solid fa-spell-check me-1"></i>Jumlah Pinjaman Terbilang</label>
-                            <input type="text" class="form-control" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" disabled>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label"><i class="fa-solid fa-bullseye me-1"></i>Tujuan Penggunaan Pinjaman</label>
-                            <div class="border rounded p-3 bg-light">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Biaya Pendidikan Anak" id="tujuan1" disabled>
-                                    <label class="form-check-label" for="tujuan1">Biaya Pendidikan Anak</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Renovasi Rumah" id="tujuan2" disabled>
-                                    <label class="form-check-label" for="tujuan2">Renovasi Rumah</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Pembelian Kendaraan" id="tujuan3" disabled>
-                                    <label class="form-check-label" for="tujuan3">Pembelian Kendaraan</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Keperluan Konsumtif" id="tujuan4" disabled>
-                                    <label class="form-check-label" for="tujuan4">Keperluan Konsumtif</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Modal Usaha" id="tujuan5" disabled>
-                                    <label class="form-check-label" for="tujuan5">Modal Usaha</label>
-                                </div>
-                                <div class="mt-2">
-                                    <label for="tujuan_lain" class="form-label">Lain-lain</label>
-                                    <input type="text" class="form-control" id="tujuan_lain" name="tujuan_lain" disabled>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
                                     <label for="jangka_waktu" class="form-label"><i class="fa-solid fa-clock me-1"></i>Jangka Waktu Pinjaman (Tenor, bulan)</label>
                                     <select class="form-select" id="jangka_waktu" name="jangka_waktu" disabled>
                                         <option value="">Pilih tenor</option>
-                                        <option value="10">10 bulan</option>
-                                        <option value="20">20 bulan</option>
-                                        <option value="30">30 bulan</option>
+                                        <option value="10" {{if eq .Pinjaman.JangkaWaktu 10}}selected{{end}}>10 bulan</option>
+                                        <option value="20" {{if eq .Pinjaman.JangkaWaktu 20}}selected{{end}}>20 bulan</option>
+                                        <option value="30" {{if eq .Pinjaman.JangkaWaktu 30}}selected{{end}}>30 bulan</option>
                                     </select>
+                                    <small class="form-text text-muted">Tenor pinjaman yang dipilih</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jumlah Pinjaman dan Terbilang -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="jumlah_pinjaman" class="form-label"><i class="fa-solid fa-sack-dollar me-1"></i>Jumlah Pinjaman yang Diajukan (Rp)</label>
+                                    <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" value="{{ printf "%.0f" .Pinjaman.JumlahPinjaman }}" disabled>
+                                    <small class="form-text" id="limit_warning"></small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="perkiraan_angsuran" class="form-label"><i class="fa-solid fa-coins me-1"></i>Perkiraan Angsuran per Bulan (Rp)</label>
-                                    <input type="number" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran" disabled>
+                                    <label for="jumlah_pinjaman_terbilang" class="form-label"><i class="fa-solid fa-spell-check me-1"></i>Jumlah Pinjaman Terbilang</label>
+                                    <input type="text" class="form-control" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" value="" disabled>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Perkiraan Angsuran -->
+                        <div class="mb-3">
+                            <label for="perkiraan_angsuran" class="form-label"><i class="fa-solid fa-coins me-1"></i>Perkiraan Angsuran per Bulan (Rp)</label>
+                            <input type="text" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran" value="" disabled>
+                            <small class="form-text text-muted">Bunga: {{ printf "%.2f" .Pinjaman.Bunga }}% (flat)</small>
+                        </div>
                         
+                        <!-- Tujuan Penggunaan Pinjaman -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="fa-solid fa-bullseye me-1"></i>Tujuan Penggunaan Pinjaman</label><br>
+                            {{if .Pinjaman.TujuanPinjaman}}
+                            <div class="alert alert-light border">
+                                <strong>Tujuan yang dipilih:</strong><br>
+                                {{ .Pinjaman.TujuanPinjaman }}
+                            </div>
+                            {{else}}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Biaya Pendidikan Anak" id="tujuan1" disabled>
+                                <label class="form-check-label" for="tujuan1">Biaya Pendidikan Anak</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Renovasi Rumah" id="tujuan2" disabled>
+                                <label class="form-check-label" for="tujuan2">Renovasi Rumah</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Pembelian Kendaraan" id="tujuan3" disabled>
+                                <label class="form-check-label" for="tujuan3">Pembelian Kendaraan</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Keperluan Konsumtif" id="tujuan4" disabled>
+                                <label class="form-check-label" for="tujuan4">Keperluan Konsumtif</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Modal Usaha" id="tujuan5" disabled>
+                                <label class="form-check-label" for="tujuan5">Modal Usaha</label>
+                            </div>
+                            <div class="mb-3 mt-2">
+                                <label for="tujuan_lain" class="form-label">Lain-lain</label>
+                                <input type="text" class="form-control" id="tujuan_lain" name="tujuan_lain" disabled>
+                            </div>
+                            <small class="text-muted"><i class="fa-solid fa-info-circle me-1"></i>Data tujuan penggunaan pinjaman tidak ada</small>
+                            {{end}}
+                        </div>
+                        
+                        <!-- Metode Pencairan -->
                         <div class="mb-3">
                             <label class="form-label"><i class="fa-solid fa-hand-holding-dollar me-1"></i>Metode Pencairan</label>
                             <div class="border rounded p-3 bg-light">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_transfer" value="transfer" disabled>
+                                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_transfer" value="transfer" {{if eq .Pinjaman.MetodePencairan "transfer"}}checked{{end}} disabled>
                                     <label class="form-check-label" for="pencairan_transfer">Transfer Bank</label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_tunai" value="tunai" disabled>
+                                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_tunai" value="tunai" {{if eq .Pinjaman.MetodePencairan "tunai"}}checked{{end}} disabled>
                                     <label class="form-check-label" for="pencairan_tunai">Tunai</label>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="mb-3" id="nomor_rekening_container">
+                        <!-- Nomor Rekening -->
+                        <div class="mb-3" id="nomor_rekening_container" {{if ne .Pinjaman.MetodePencairan "transfer"}}style="display:none;"{{end}}>
                             <label for="nomor_rekening" class="form-label"><i class="fa-solid fa-building-columns me-1"></i>Nomor Rekening Bank</label>
-                            <input type="text" class="form-control" id="nomor_rekening" name="nomor_rekening" disabled>
+                            <input type="text" class="form-control" id="nomor_rekening" name="nomor_rekening" value="{{ .Pinjaman.NomorRekening }}" disabled>
                             <small class="form-text text-muted">Nomor rekening untuk penerimaan pencairan dana pinjaman</small>
                         </div>
                     </form>
+                    {{else}}
+                    <div class="alert alert-warning">
+                        <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                        <strong>Tidak ada data pengajuan pinjaman pending untuk anggota ini.</strong>
+                    </div>
+                    {{end}}
                 </div>
             </div>
 
@@ -285,6 +261,67 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Function to convert number to words in Indonesian
+        function numberToWords(num) {
+            if (num === 0) return 'nol';
+            const units = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan'];
+            const teens = ['sepuluh', 'sebelas', 'dua belas', 'tiga belas', 'empat belas', 'lima belas', 'enam belas', 'tujuh belas', 'delapan belas', 'sembilan belas'];
+            const tens = ['', '', 'dua puluh', 'tiga puluh', 'empat puluh', 'lima puluh', 'enam puluh', 'tujuh puluh', 'delapan puluh', 'sembilan puluh'];
+            const thousands = ['', 'ribu', 'juta', 'miliar', 'triliun'];
+
+            function convertHundreds(n) {
+                let str = '';
+                const h = Math.floor(n / 100);
+                const t = Math.floor((n % 100) / 10);
+                const u = n % 10;
+
+                if (h > 0) {
+                    if (h === 1) str += 'seratus ';
+                    else str += units[h] + ' ratus ';
+                }
+
+                if (t > 0) {
+                    if (t === 1) {
+                        str += teens[u] + ' ';
+                        return str.trim();
+                    } else {
+                        str += tens[t] + ' ';
+                    }
+                }
+
+                if (u > 0) {
+                    str += units[u] + ' ';
+                }
+
+                return str.trim();
+            }
+
+            function convertToWords(n) {
+                if (n === 0) return '';
+                let result = '';
+                let thousandIndex = 0;
+
+                while (n > 0) {
+                    const chunk = n % 1000;
+                    if (chunk > 0) {
+                        const chunkWords = convertHundreds(chunk);
+                        if (thousandIndex === 0) {
+                            result = chunkWords + ' ' + result;
+                        } else {
+                            result = chunkWords + ' ' + thousands[thousandIndex] + ' ' + result;
+                        }
+                    }
+                    n = Math.floor(n / 1000);
+                    thousandIndex++;
+                }
+
+                return result.trim();
+            }
+
+            const words = convertToWords(num);
+            return words ? words + ' rupiah' : 'nol rupiah';
+        }
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             const unitKerjaValue = '{{.Anggota.UnitKerja}}';
@@ -293,22 +330,33 @@
 
             // Hide gaji bulanan for mahasiswa
             if (unitKerjaValue === '03') {
-                gajiContainer.style.display = 'none';
+                if (gajiContainer) gajiContainer.style.display = 'none';
             } else {
-                gajiContainer.style.display = 'block';
+                if (gajiContainer) gajiContainer.style.display = 'block';
             }
 
-            // Simulate calculation for display
-            calculateDisplay();
-        });
-
-        function calculateDisplay() {
-            const unitKerjaValue = '{{.Anggota.UnitKerja}}';
-            const totalSimpanan = parseFloat('{{.TotalSimpanan | printf "%.0f"}}') || 0;
-            const gajiBulanan = parseFloat(document.getElementById('gaji_bulanan').value) || 0;
-            const jangkaWaktu = parseInt(document.getElementById('jangka_waktu').value) || 0;
+            
+            // Set terbilang value
             const jumlahPinjaman = parseFloat(document.getElementById('jumlah_pinjaman').value) || 0;
+            if (jumlahPinjaman > 0) {
+                document.getElementById('jumlah_pinjaman_terbilang').value = numberToWords(jumlahPinjaman);
+            }
 
+            // Calculate and display perkiraan angsuran
+            const jangkaWaktu = parseInt(document.getElementById('jangka_waktu').value) || 0;
+            if (jumlahPinjaman > 0 && jangkaWaktu > 0) {
+                const bungaTerkini = parseFloat('{{ printf "%.2f" .Pinjaman.Bunga }}') || 2.0;
+                const bungaDecimal = bungaTerkini / 100;
+                const pokok = jumlahPinjaman / jangkaWaktu;
+                const bungaTotal = bungaDecimal * jumlahPinjaman;
+                const bungaPerBulan = bungaTotal / jangkaWaktu;
+                const totalAngsuran = pokok + bungaPerBulan;
+                const angsuranFormatted = Math.round(totalAngsuran).toLocaleString('id-ID');
+                document.getElementById('perkiraan_angsuran').value = angsuranFormatted;
+            }
+
+            // Calculate and show limit warning
+            const gajiBulanan = parseFloat(document.getElementById('gaji_bulanan').value) || 0;
             let limitPinjaman = 0;
 
             if (unitKerjaValue === '03') {
@@ -317,31 +365,17 @@
                 limitPinjaman = (0.4 * gajiBulanan * jangkaWaktu) + totalSimpanan;
             }
 
-            // Update limit display
-            if (unitKerjaValue !== '03' && limitPinjaman > 0) {
-                document.getElementById('limit_display').innerHTML = 'Rp ' + limitPinjaman.toLocaleString('id-ID');
-                document.getElementById('limit_formula').innerHTML = '<i class="fa-solid fa-calculator me-1"></i>(40% × Rp ' + gajiBulanan.toLocaleString('id-ID') + ' × ' + jangkaWaktu + ' bulan) + Rp ' + totalSimpanan.toLocaleString('id-ID') + ' = Rp ' + limitPinjaman.toLocaleString('id-ID');
-            }
-
             // Check limit warning
             const limitWarning = document.getElementById('limit_warning');
-            if (jumlahPinjaman > 0 && limitPinjaman > 0) {
+            if (limitWarning && jumlahPinjaman > 0 && limitPinjaman > 0) {
                 if (jumlahPinjaman > limitPinjaman) {
                     limitWarning.innerHTML = '<span class="text-danger"><i class="fa-solid fa-exclamation-triangle me-1"></i>Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID') + '</span>';
                 } else {
                     limitWarning.innerHTML = '<span class="text-success"><i class="fa-solid fa-check-circle me-1"></i>Jumlah pinjaman dalam batas limit</span>';
                 }
             }
-
-            // Calculate perkiraan angsuran (pokok + bunga dari database)
-            if (jumlahPinjaman > 0 && jangkaWaktu > 0) {
-                const bungaTerkini = parseFloat('{{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}');
-                const pokok = jumlahPinjaman / jangkaWaktu;
-                const bunga = jumlahPinjaman * (bungaTerkini / 100);
-                const totalAngsuran = pokok + bunga;
-                document.getElementById('perkiraan_angsuran').value = Math.round(totalAngsuran).toLocaleString('id-ID');
-            }
-        }
+            {{end}}
+        });
 
         // Style for printing
         window.addEventListener('beforeprint', function() {
