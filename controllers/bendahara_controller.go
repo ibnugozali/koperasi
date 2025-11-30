@@ -547,6 +547,21 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 
 	detail.IDPengelola = bendaharaID.(int)
 	detail.TglTransaksi = time.Now()
+	detail.Status = "confirmed" // Langsung confirmed karena dicatat bendahara
+
+	// Tentukan id_simpanan berdasarkan jenis_simpanan
+	jenisSimpanan := c.PostForm("jenis_simpanan")
+	switch jenisSimpanan {
+	case "wajib":
+		detail.IDSimpanan = 2
+	case "sukarela":
+		detail.IDSimpanan = 3
+	case "hari_raya":
+		detail.IDSimpanan = 4
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Jenis simpanan tidak valid"})
+		return
+	}
 
 	// Hitung total simpanan (kumulatif)
 	totalSimpanan, _, _, err := repository.GetSaldoAnggota(detail.IDAnggota)
@@ -822,7 +837,8 @@ func BendaharaLihatDetailSimpanan(c *gin.Context) {
 	query := `
 		SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.tgl_transaksi, 
 		       d.jumlah_simpanan, d.total_simpanan, s.jenis_simpanan,
-		       COALESCE(d.status, 'pending') as status
+		       COALESCE(d.status, 'pending') as status,
+		       COALESCE(d.bukti_pembayaran, '') as bukti_pembayaran
 		FROM detail d
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 		WHERE d.id_anggota = $1 AND d.status = 'pending'
@@ -838,20 +854,31 @@ func BendaharaLihatDetailSimpanan(c *gin.Context) {
 
 	var detailSimpanan []models.Detail
 	var totalWajib, totalSukarela, totalHariRaya, grandTotal float64
+	var buktiPembayaran string
 
 	for rows.Next() {
 		var d models.Detail
 		var s models.Simpanan
+		var bukti string
 		err := rows.Scan(&d.IDDetail, &d.IDAnggota, &d.IDSimpanan, &d.TglTransaksi,
-			&d.JumlahSimpanan, &d.TotalSimpanan, &s.JenisSimpanan, &d.Status)
+			&d.JumlahSimpanan, &d.TotalSimpanan, &s.JenisSimpanan, &d.Status, &bukti)
 		if err != nil {
 			continue
 		}
 		d.Simpanan = s
+		d.BuktiPembayaran = bukti // Set bukti pembayaran untuk setiap detail
 		detailSimpanan = append(detailSimpanan, d)
 
+		// Ambil bukti pembayaran pertama yang ada (untuk backward compatibility)
+		if buktiPembayaran == "" && bukti != "" {
+			buktiPembayaran = bukti
+		}
+
 		// Hitung total per jenis
+		// Note: jenis_simpanan from database: 'pokok', 'wajib', 'sukarela', 'hari_raya'
 		switch s.JenisSimpanan {
+		case "pokok":
+			totalWajib += d.JumlahSimpanan // Simpanan pokok masuk ke kategori wajib
 		case "wajib":
 			totalWajib += d.JumlahSimpanan
 		case "sukarela":
@@ -866,14 +893,15 @@ func BendaharaLihatDetailSimpanan(c *gin.Context) {
 	nomorRekening, _ := repository.GetNomorRekening("simpanan")
 
 	c.HTML(http.StatusOK, "bendahara_detail_simpanan.html", gin.H{
-		"Anggota":        anggota,
-		"DetailSimpanan": detailSimpanan,
-		"TotalWajib":     totalWajib,
-		"TotalSukarela":  totalSukarela,
-		"TotalHariRaya":  totalHariRaya,
-		"GrandTotal":     grandTotal,
-		"NomorRekening":  nomorRekening,
-		"Judul":          "Detail Simpanan Pending",
+		"Anggota":         anggota,
+		"DetailSimpanan":  detailSimpanan,
+		"TotalWajib":      totalWajib,
+		"TotalSukarela":   totalSukarela,
+		"TotalHariRaya":   totalHariRaya,
+		"GrandTotal":      grandTotal,
+		"NomorRekening":   nomorRekening,
+		"BuktiPembayaran": buktiPembayaran,
+		"Judul":           "Detail Simpanan Pending",
 	})
 }
 

@@ -13,17 +13,18 @@ type Simpanan struct {
 
 // Detail mewakili detail transaksi simpanan
 type Detail struct {
-	IDDetail       int       `json:"id_detail" db:"id_detail"`
-	IDAnggota      string    `json:"id_anggota" db:"id_anggota"`
-	NamaAnggota    string    `json:"nama_anggota" db:"nama_anggota"`
-	IDSimpanan     int       `json:"id_simpanan" db:"id_simpanan"`
-	Simpanan       Simpanan  `json:"simpanan" db:"simpanan"`
-	IDPengelola    int       `json:"id_pengelola" db:"id_pengelola"`
-	TglTransaksi   time.Time `json:"tgl_transaksi" db:"tgl_transaksi"`
-	JumlahSimpanan float64   `json:"jumlah_simpanan" db:"jumlah_simpanan"`
-	TotalSimpanan  float64   `json:"total_simpanan" db:"total_simpanan"`
-	Status         string    `json:"status" db:"status"`
-	StatusAngsuran string    `json:"status_angsuran" db:"status_angsuran"`
+	IDDetail        int       `json:"id_detail" db:"id_detail"`
+	IDAnggota       string    `json:"id_anggota" db:"id_anggota"`
+	NamaAnggota     string    `json:"nama_anggota" db:"nama_anggota"`
+	IDSimpanan      int       `json:"id_simpanan" db:"id_simpanan"`
+	Simpanan        Simpanan  `json:"simpanan" db:"simpanan"`
+	IDPengelola     int       `json:"id_pengelola" db:"id_pengelola"`
+	TglTransaksi    time.Time `json:"tgl_transaksi" db:"tgl_transaksi"`
+	JumlahSimpanan  float64   `json:"jumlah_simpanan" db:"jumlah_simpanan"`
+	TotalSimpanan   float64   `json:"total_simpanan" db:"total_simpanan"`
+	Status          string    `json:"status" db:"status"`
+	StatusAngsuran  string    `json:"status_angsuran" db:"status_angsuran"`
+	BuktiPembayaran string    `json:"bukti_pembayaran" db:"bukti_pembayaran"`
 }
 
 // Pinjaman mewakili pinjaman

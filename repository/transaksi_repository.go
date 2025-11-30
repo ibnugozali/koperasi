@@ -18,8 +18,8 @@ func CreateSimpanan(detail models.Detail) error {
 		detail.Status = "pending"
 	}
 	query := `
-		INSERT INTO detail (id_anggota, id_simpanan, id_pengelola, tgl_transaksi, jumlah_simpanan, total_simpanan, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO detail (id_anggota, id_simpanan, id_pengelola, tgl_transaksi, jumlah_simpanan, total_simpanan, status, bukti_pembayaran)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 	_, err := db.Exec(query,
 		detail.IDAnggota,
@@ -29,6 +29,7 @@ func CreateSimpanan(detail models.Detail) error {
 		detail.JumlahSimpanan,
 		detail.TotalSimpanan,
 		detail.Status,
+		detail.BuktiPembayaran,
 	)
 	return err
 }

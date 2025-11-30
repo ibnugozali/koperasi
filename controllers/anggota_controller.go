@@ -720,12 +720,13 @@ func AnggotaSimpananPost(c *gin.Context) {
 	var errs []error
 	if wajib > 0 {
 		d := models.Detail{
-			IDAnggota:      userID,
-			IDSimpanan:     2,
-			IDPengelola:    1,
-			TglTransaksi:   tanggalPengajuan,
-			JumlahSimpanan: wajib,
-			TotalSimpanan:  total,
+			IDAnggota:       userID,
+			IDSimpanan:      2,
+			IDPengelola:     1,
+			TglTransaksi:    tanggalPengajuan,
+			JumlahSimpanan:  wajib,
+			TotalSimpanan:   total,
+			BuktiPembayaran: filename,
 		}
 		if e := repository.CreateSimpanan(d); e != nil {
 			errs = append(errs, e)
@@ -733,12 +734,13 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 	if sukarela > 0 {
 		d := models.Detail{
-			IDAnggota:      userID,
-			IDSimpanan:     3,
-			IDPengelola:    1,
-			TglTransaksi:   tanggalPengajuan,
-			JumlahSimpanan: sukarela,
-			TotalSimpanan:  total,
+			IDAnggota:       userID,
+			IDSimpanan:      3,
+			IDPengelola:     1,
+			TglTransaksi:    tanggalPengajuan,
+			JumlahSimpanan:  sukarela,
+			TotalSimpanan:   total,
+			BuktiPembayaran: filename,
 		}
 		if e := repository.CreateSimpanan(d); e != nil {
 			errs = append(errs, e)
@@ -746,12 +748,13 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 	if hariRaya > 0 {
 		d := models.Detail{
-			IDAnggota:      userID,
-			IDSimpanan:     4,
-			IDPengelola:    1,
-			TglTransaksi:   tanggalPengajuan,
-			JumlahSimpanan: hariRaya,
-			TotalSimpanan:  total,
+			IDAnggota:       userID,
+			IDSimpanan:      4,
+			IDPengelola:     1,
+			TglTransaksi:    tanggalPengajuan,
+			JumlahSimpanan:  hariRaya,
+			TotalSimpanan:   total,
+			BuktiPembayaran: filename,
 		}
 		if e := repository.CreateSimpanan(d); e != nil {
 			errs = append(errs, e)

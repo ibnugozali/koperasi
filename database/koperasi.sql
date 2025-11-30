@@ -337,6 +337,7 @@ ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS nomor_rekening VARCHAR(50);
 ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS gaji_bulanan NUMERIC(15,2) DEFAULT 0;
 ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS tujuan_pinjaman TEXT;
 ALTER TABLE detail ADD COLUMN IF NOT EXISTS status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected'));
+ALTER TABLE detail ADD COLUMN IF NOT EXISTS bukti_pembayaran VARCHAR(255);
 
 -- Update angsuran status constraint to support pending workflow
 ALTER TABLE angsuran DROP CONSTRAINT IF EXISTS angsuran_status_check;
