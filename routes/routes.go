@@ -146,6 +146,9 @@ func SetupRouter() *gin.Engine {
 		// Routes for editing bunga (interest)
 		bendaharaRoutes.GET("/edit-bunga", controllers.BendaharaEditBunga)
 		bendaharaRoutes.POST("/edit-bunga", controllers.BendaharaUpdateBunga)
+
+		// Route for login history
+		bendaharaRoutes.GET("/login-history", controllers.BendaharaLoginHistory)
 	}
 
 	return router

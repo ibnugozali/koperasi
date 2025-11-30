@@ -1114,3 +1114,17 @@ func BendaharaUpdateBunga(c *gin.Context) {
 	// Redirect back to edit page after update
 	c.Redirect(http.StatusFound, "/bendahara/edit-bunga")
 }
+
+// BendaharaLoginHistory menampilkan halaman riwayat login
+func BendaharaLoginHistory(c *gin.Context) {
+	// Ambil data riwayat login dari database
+	loginHistory, err := repository.GetLoginHistory()
+	if err != nil {
+		loginHistory = []models.LoginHistory{} // Default kosong jika error
+	}
+
+	c.HTML(http.StatusOK, "bendahara_login_history.html", gin.H{
+		"ActivePage":   "login_history",
+		"LoginHistory": loginHistory,
+	})
+}
