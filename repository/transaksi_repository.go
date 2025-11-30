@@ -64,7 +64,7 @@ func CreateAngsuran(angsuran models.Angsuran) error {
 	db := config.GetDB()
 	// Set waktu bayar ke saat ini (server-side)
 	angsuran.TglBayar = time.Now()
-	// Set status default ke pending untuk menunggu konfirmasi bendahara
+	// Set status default ke 'pending' untuk menunggu konfirmasi bendahara
 	if angsuran.Status == "" {
 		angsuran.Status = "pending"
 	}

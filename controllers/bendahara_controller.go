@@ -639,8 +639,34 @@ func BendaharaCatatPinjaman(c *gin.Context) {
 
 // BendaharaRiwayat menampilkan halaman riwayat transaksi bendahara
 func BendaharaRiwayat(c *gin.Context) {
+	// Ambil semua data riwayat transaksi dari database
+	riwayats, err := repository.GetAllRiwayat()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "bendahara_riwayat_content.html", gin.H{
+			"ActivePage": "riwayat",
+			"Error":      "Gagal mengambil data riwayat: " + err.Error(),
+		})
+		return
+	}
+
+	// Ambil daftar anggota untuk filter
+	db := config.GetDB()
+	var anggotas []models.Anggota
+	rows, err := db.Query("SELECT id_anggota, nama_anggota FROM anggota ORDER BY nama_anggota")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var a models.Anggota
+			if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota); err == nil {
+				anggotas = append(anggotas, a)
+			}
+		}
+	}
+
 	c.HTML(http.StatusOK, "bendahara_riwayat_content.html", gin.H{
 		"ActivePage": "riwayat",
+		"Riwayats":   riwayats,
+		"Anggotas":   anggotas,
 	})
 }
 

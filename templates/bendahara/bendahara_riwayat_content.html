@@ -28,9 +28,9 @@
                 <label for="filterAnggota" class="form-label">Filter Anggota</label>
                 <select class="form-select" id="filterAnggota">
                     <option value="">Semua Anggota</option>
-                    <option value="1">Ahmad Surya - KSPWIR-001</option>
-                    <option value="2">Budi Santoso - KSPWIR-002</option>
-                    <option value="3">Citra Dewi - KSPWIR-003</option>
+                    {{ range .Anggotas }}
+                    <option value="{{ .NamaAnggota }}">{{ .NamaAnggota }} - {{ .IDAnggota }}</option>
+                    {{ end }}
                 </select>
             </div>
             <div class="col-md-4">
@@ -69,66 +69,46 @@
                     </tr>
                 </thead>
                 <tbody id="riwayatTableBody">
+                    {{ if .Error }}
                     <tr>
-                        <td>2024-11-08 10:30</td>
-                        <td>Ahmad Surya (KSPWIR-001)</td>
-                        <td>Simpanan Wajib</td>
-                        <td class="text-success">+Rp 50.000</td>
-                        <td><span class="badge bg-success">Berhasil</span></td>
-                        <td>
-                            <a href="/admin/anggota-register/KSPWIR-001" class="btn btn-sm btn-outline-primary">
-                                <i class="fa-solid fa-eye"></i> Detail
-                            </a>
+                        <td colspan="6" class="text-center text-danger">
+                            <i class="fas fa-exclamation-circle"></i> {{ .Error }}
                         </td>
                     </tr>
+                    {{ else if .Riwayats }}
+                    {{ range .Riwayats }}
                     <tr>
-                        <td>2024-11-07 14:15</td>
-                        <td>Budi Santoso (KSPWIR-002)</td>
-                        <td>Pinjaman</td>
-                        <td class="text-danger">-Rp 5.000.000</td>
-                        <td><span class="badge bg-warning">Pending</span></td>
-                        <td>
-                            <a href="/admin/anggota-register/KSPWIR-002" class="btn btn-sm btn-outline-primary">
-                                <i class="fa-solid fa-eye"></i> Detail
-                            </a>
+                        <td>{{ .Tanggal.Format "2006-01-02 15:04" }}</td>
+                        <td>{{ .NamaAnggota }}</td>
+                        <td>{{ .Jenis }}</td>
+                        <td class="{{ if eq .Jenis "Simpanan" }}text-success{{ else }}text-danger{{ end }}">
+                            {{ if eq .Jenis "Simpanan" }}+{{ else }}-{{ end }}Rp {{ printf "%.0f" .Jumlah }}
                         </td>
-                    </tr>
-                    <tr>
-                        <td>2024-11-06 09:45</td>
-                        <td>Citra Dewi (KSPWIR-003)</td>
-                        <td>Angsuran</td>
-                        <td class="text-danger">-Rp 450.000</td>
-                        <td><span class="badge bg-success">Lunas</span></td>
                         <td>
-                            <a href="/admin/anggota-register/KSPWIR-003" class="btn btn-sm btn-outline-primary">
-                                <i class="fa-solid fa-eye"></i> Detail
-                            </a>
+                            {{ if or (eq .Status "confirmed") (eq .Status "Selesai") (eq .Status "aktif") }}
+                                <span class="badge bg-success">{{ .Status }}</span>
+                            {{ else if or (eq .Status "pending") (eq .Status "Pending") }}
+                                <span class="badge bg-warning">{{ .Status }}</span>
+                            {{ else if or (eq .Status "rejected") (eq .Status "Ditolak") }}
+                                <span class="badge bg-danger">{{ .Status }}</span>
+                            {{ else }}
+                                <span class="badge bg-secondary">{{ .Status }}</span>
+                            {{ end }}
                         </td>
-                    </tr>
-                    <tr>
-                        <td>2024-11-05 16:20</td>
-                        <td>Ahmad Surya (KSPWIR-001)</td>
-                        <td>Simpanan Sukarela</td>
-                        <td class="text-success">+Rp 100.000</td>
-                        <td><span class="badge bg-success">Berhasil</span></td>
                         <td>
-                            <a href="/admin/anggota-register/KSPWIR-001" class="btn btn-sm btn-outline-primary">
-                                <i class="fa-solid fa-eye"></i> Detail
-                            </a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>2024-11-04 11:10</td>
-                        <td>Budi Santoso (KSPWIR-002)</td>
-                        <td>Angsuran</td>
-                        <td class="text-danger">-Rp 450.000</td>
-                        <td><span class="badge bg-success">Lunas</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary" onclick="viewDetail(5)">
+                            <button class="btn btn-sm btn-outline-primary" onclick="alert('Detail ID: {{ .ID }}')">
                                 <i class="fa-solid fa-eye"></i> Detail
                             </button>
                         </td>
                     </tr>
+                    {{ end }}
+                    {{ else }}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            <i class="fas fa-info-circle"></i> Belum ada riwayat transaksi
+                        </td>
+                    </tr>
+                    {{ end }}
                 </tbody>
             </table>
         </div>
@@ -150,3 +130,81 @@
     </div>
 </div>
 
+        </div>
+    </div>
+
+    {{ template "bendahara_footer" . }}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterAnggota = document.getElementById('filterAnggota');
+        const filterJenis = document.getElementById('filterJenis');
+        const searchInput = document.getElementById('searchRiwayat');
+        const tableBody = document.getElementById('riwayatTableBody');
+        const allRows = Array.from(tableBody.getElementsByTagName('tr'));
+
+        function filterTable() {
+            const anggotaValue = filterAnggota.value.toLowerCase();
+            const jenisValue = filterJenis.value.toLowerCase();
+            const searchValue = searchInput.value.toLowerCase();
+
+            let visibleCount = 0;
+
+            allRows.forEach(row => {
+                // Skip jika row adalah pesan error/kosong
+                if (row.cells.length === 1) {
+                    return;
+                }
+
+                const anggota = row.cells[1].textContent.toLowerCase();
+                const jenis = row.cells[2].textContent.toLowerCase();
+                const allText = row.textContent.toLowerCase();
+
+                let showRow = true;
+
+                // Filter anggota
+                if (anggotaValue && !anggota.includes(anggotaValue)) {
+                    showRow = false;
+                }
+
+                // Filter jenis
+                if (jenisValue && !jenis.includes(jenisValue)) {
+                    showRow = false;
+                }
+
+                // Filter search
+                if (searchValue && !allText.includes(searchValue)) {
+                    showRow = false;
+                }
+
+                row.style.display = showRow ? '' : 'none';
+                if (showRow) visibleCount++;
+            });
+
+            // Check if any rows are visible
+            const noResultsRow = document.getElementById('noResultsRow');
+            if (visibleCount === 0 && allRows.length > 0 && allRows[0].cells.length > 1) {
+                if (!noResultsRow) {
+                    const newRow = document.createElement('tr');
+                    newRow.id = 'noResultsRow';
+                    newRow.innerHTML = '<td colspan="6" class="text-center text-muted"><i class="fas fa-search"></i> Tidak ada data yang cocok dengan filter</td>';
+                    tableBody.appendChild(newRow);
+                }
+            } else {
+                if (noResultsRow) {
+                    noResultsRow.remove();
+                }
+            }
+        }
+
+        // Add event listeners
+        if (filterAnggota) filterAnggota.addEventListener('change', filterTable);
+        if (filterJenis) filterJenis.addEventListener('change', filterTable);
+        if (searchInput) searchInput.addEventListener('input', filterTable);
+    });
+    </script>
+</body>
+</html>

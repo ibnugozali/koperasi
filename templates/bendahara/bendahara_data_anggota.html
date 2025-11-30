@@ -249,11 +249,34 @@
 
         .dataTables_wrapper .dataTables_paginate .paginate_button {
             padding: 5px 12px;
+            margin: 2px;
+            border-radius: 5px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            border: 1px solid #667eea;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            border: 1px solid #667eea;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .dataTables_wrapper .dataTables_info {
             padding-top: 15px;
             font-size: 0.875rem;
+        }
+
+        .dataTables_wrapper .dataTables_paginate {
+            padding-top: 15px;
         }
 
         .empty-state {

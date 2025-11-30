@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS angsuran (
   sisa_pinjaman NUMERIC(15,2),
   status_angsuran VARCHAR(25) CHECK (status_angsuran IN ('belum_lunas', 'lunas', 'terlambat')),
   bukti_angsuran VARCHAR(255),
-  status VARCHAR(25) DEFAULT 'valid' CHECK (status IN ('valid', 'invalid'))
+  status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected'))
 );
 
 -- PERBAIKAN: Menambahkan kolom 'kategori' agar mudah memfilter halaman
@@ -341,5 +341,5 @@ ALTER TABLE detail ADD COLUMN IF NOT EXISTS bukti_pembayaran VARCHAR(255);
 
 -- Update angsuran status constraint to support pending workflow
 ALTER TABLE angsuran DROP CONSTRAINT IF EXISTS angsuran_status_check;
-ALTER TABLE angsuran ADD CONSTRAINT angsuran_status_check CHECK (status IN ('pending', 'confirmed', 'rejected', 'valid', 'invalid'));
+ALTER TABLE angsuran ADD CONSTRAINT angsuran_status_check CHECK (status IN ('pending', 'confirmed', 'rejected'));
 ALTER TABLE angsuran ALTER COLUMN status SET DEFAULT 'pending';

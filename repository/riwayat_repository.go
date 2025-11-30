@@ -73,7 +73,7 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 	var angsurans []models.Angsuran
 	query := `
 		SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.bukti_angsuran, 
-		       COALESCE(a.status, 'confirmed') as status, ang.nama_anggota
+		       a.status, ang.nama_anggota
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota

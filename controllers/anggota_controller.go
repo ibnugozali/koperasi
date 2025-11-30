@@ -824,7 +824,7 @@ func AnggotaAngsuran(c *gin.Context) {
 		if err == nil && len(angsurans) > 0 {
 			// Hitung total angsuran yang sudah dibayar
 			for _, a := range angsurans {
-				if a.Status == "valid" {
+				if a.Status == "confirmed" {
 					totalAngsuranTerbayar += a.SisaPinjaman
 				}
 			}
@@ -910,7 +910,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 			angsurans, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
 			if err == nil && len(angsurans) > 0 {
 				for _, a := range angsurans {
-					if a.Status == "valid" {
+					if a.Status == "confirmed" {
 						totalAngsuranTerbayar += a.SisaPinjaman
 					}
 				}
