@@ -18,32 +18,73 @@
           <div class="mt-4">
             <h4 class="text-success mb-3">Jenis-Jenis Simpanan</h4>
             <ul class="list-group">
-              <li class="list-group-item">
-                <i class="bi bi-check-circle-fill text-success me-2"></i>
-                <strong>Simpanan Pokok:</strong> Simpanan wajib yang dibayarkan saat menjadi anggota
-              </li>
-              <li class="list-group-item">
-                <i class="bi bi-check-circle-fill text-success me-2"></i>
-                <strong>Simpanan Wajib:</strong> Simpanan rutin bulanan yang harus dibayarkan anggota
-              </li>
-              <li class="list-group-item">
-                <i class="bi bi-check-circle-fill text-success me-2"></i>
-                <strong>Simpanan Sukarela:</strong> Simpanan tambahan yang dapat dibayarkan kapan saja
-              </li>
-              <li class="list-group-item">
-                <i class="bi bi-check-circle-fill text-success me-2"></i>
-                <strong>Simpanan Hari Raya:</strong> Simpanan yang ditujukan untuk mempersiapkan kebutuhan pada saat hari raya
-              </li>
+              {{ if .Konten }}
+                {{ if index .Konten "jenis_simpanan" }}
+                  {{ range index .Konten "jenis_simpanan" }}
+                  <li class="list-group-item">
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                    <strong>{{ index . "nama" }}:</strong> {{ index . "deskripsi" }}
+                  </li>
+                  {{ end }}
+                {{ else }}
+                  <li class="list-group-item">
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                    <strong>Simpanan Pokok:</strong> Simpanan wajib yang dibayarkan saat menjadi anggota
+                  </li>
+                  <li class="list-group-item">
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                    <strong>Simpanan Wajib:</strong> Simpanan rutin bulanan yang harus dibayarkan anggota
+                  </li>
+                  <li class="list-group-item">
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                    <strong>Simpanan Sukarela:</strong> Simpanan tambahan yang dapat dibayarkan kapan saja
+                  </li>
+                  <li class="list-group-item">
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                    <strong>Simpanan Hari Raya:</strong> Simpanan yang ditujukan untuk mempersiapkan kebutuhan pada saat hari raya
+                  </li>
+                {{ end }}
+              {{ else }}
+                <li class="list-group-item">
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  <strong>Simpanan Pokok:</strong> Simpanan wajib yang dibayarkan saat menjadi anggota
+                </li>
+                <li class="list-group-item">
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  <strong>Simpanan Wajib:</strong> Simpanan rutin bulanan yang harus dibayarkan anggota
+                </li>
+                <li class="list-group-item">
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  <strong>Simpanan Sukarela:</strong> Simpanan tambahan yang dapat dibayarkan kapan saja
+                </li>
+                <li class="list-group-item">
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  <strong>Simpanan Hari Raya:</strong> Simpanan yang ditujukan untuk mempersiapkan kebutuhan pada saat hari raya
+                </li>
+              {{ end }}
             </ul>
           </div>
 
           <div class="mt-4">
             <h5 class="text-primary">Manfaat Simpanan:</h5>
             <ol>
-              <li>Mendapatkan bagi hasil sesuai ketentuan koperasi</li>
-              <li>Dapat digunakan sebagai modal pinjaman</li>
-              <li>Meningkatkan kesejahteraan anggota</li>
-              <li>Investasi yang aman dan terpercaya</li>
+              {{ if .Konten }}
+                {{ if index .Konten "manfaat" }}
+                  {{ range index .Konten "manfaat" }}
+                  <li>{{ . }}</li>
+                  {{ end }}
+                {{ else }}
+                  <li>Mendapatkan bagi hasil sesuai ketentuan koperasi</li>
+                  <li>Dapat digunakan sebagai modal pinjaman</li>
+                  <li>Meningkatkan kesejahteraan anggota</li>
+                  <li>Investasi yang aman dan terpercaya</li>
+                {{ end }}
+              {{ else }}
+                <li>Mendapatkan bagi hasil sesuai ketentuan koperasi</li>
+                <li>Dapat digunakan sebagai modal pinjaman</li>
+                <li>Meningkatkan kesejahteraan anggota</li>
+                <li>Investasi yang aman dan terpercaya</li>
+              {{ end }}
             </ol>
           </div>
 

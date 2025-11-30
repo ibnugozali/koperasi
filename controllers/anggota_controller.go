@@ -625,11 +625,19 @@ func AnggotaSimpanan(c *gin.Context) {
 		nomorRekening = "1234567890 (Bank ABC)" // Default jika belum diset
 	}
 
+	// Ambil konten halaman simpanan dari database
+	halaman, err := repository.GetHalamanBySlug("simpanan")
+	var kontenData map[string]interface{}
+	if err == nil && halaman.Konten != "" {
+		json.Unmarshal([]byte(halaman.Konten), &kontenData)
+	}
+
 	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
 		"Judul":         "Simpanan",
 		"Anggota":       anggota,
 		"Now":           time.Now(),
 		"NomorRekening": nomorRekening,
+		"Konten":        kontenData,
 	})
 }
 

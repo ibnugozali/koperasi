@@ -364,6 +364,36 @@ func BendaharaUpdateHalaman(c *gin.Context) {
 		return
 	}
 
+	if slug == "simpanan" {
+		// Handle special case for simpanan with JSON konten
+		konten := c.PostForm("konten")
+		if konten == "" {
+			c.String(http.StatusBadRequest, "Data konten tidak valid")
+			return
+		}
+
+		// Get existing halaman to keep judul
+		existing, err := repository.GetHalamanBySlug(slug)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal mengambil data halaman")
+			return
+		}
+
+		halaman := models.Halaman{
+			Slug:   slug,
+			Judul:  existing.Judul,
+			Konten: konten,
+		}
+
+		err = repository.UpdateHalaman(halaman)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal memperbarui halaman: "+err.Error())
+			return
+		}
+		c.Redirect(http.StatusFound, "/bendahara/dashboard")
+		return
+	}
+
 	var halaman models.Halaman
 	if err := c.ShouldBind(&halaman); err != nil {
 		c.String(http.StatusBadRequest, "Data tidak valid")
