@@ -43,16 +43,14 @@ func BendaharaDashboard(c *gin.Context) {
 		totalPinjaman = 0
 	}
 
-	// Ambil data aktivitas terbaru untuk grafik
-	aktivitasData, err := repository.GetAktivitasTerbaru(db)
+	totalAngsuran, err := repository.GetTotalAngsuran(db)
 	if err != nil {
-		aktivitasData = []map[string]interface{}{}
+		totalAngsuran = 0
 	}
 
-	// Encode aktivitasData ke JSON untuk template
-	aktivitasJSON, err := json.Marshal(aktivitasData)
+	totalPengambilan, err := repository.GetTotalPengambilan(db)
 	if err != nil {
-		aktivitasJSON = []byte("[]")
+		totalPengambilan = 0
 	}
 
 	// Data untuk template
@@ -61,7 +59,8 @@ func BendaharaDashboard(c *gin.Context) {
 		"MenungguKonfirmasi": menungguKonfirmasi,
 		"TotalSimpanan":      totalSimpanan,
 		"TotalPinjaman":      totalPinjaman,
-		"AktivitasData":      string(aktivitasJSON),
+		"TotalAngsuran":      totalAngsuran,
+		"TotalPengambilan":   totalPengambilan,
 		"ActivePage":         "dashboard",
 	}
 

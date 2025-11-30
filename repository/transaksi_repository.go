@@ -477,18 +477,34 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 	return riwayats, nil
 }
 
-// GetTotalSimpanan mengambil total simpanan semua anggota
+// GetTotalSimpanan mengambil total simpanan semua anggota yang sudah dikonfirmasi
 func GetTotalSimpanan(db *sql.DB) (float64, error) {
 	var total float64
-	query := "SELECT COALESCE(SUM(jumlah_simpanan), 0) FROM detail"
+	query := "SELECT COALESCE(SUM(jumlah_simpanan), 0) FROM detail WHERE COALESCE(status, 'confirmed') = 'confirmed'"
 	err := db.QueryRow(query).Scan(&total)
 	return total, err
 }
 
-// GetTotalPinjaman mengambil total pinjaman semua anggota yang belum lunas
+// GetTotalPinjaman mengambil total pinjaman semua anggota yang aktif
 func GetTotalPinjaman(db *sql.DB) (float64, error) {
 	var total float64
-	query := "SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman WHERE status != 'lunas'"
+	query := "SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman WHERE status = 'aktif'"
+	err := db.QueryRow(query).Scan(&total)
+	return total, err
+}
+
+// GetTotalAngsuran mengambil total angsuran yang sudah dibayarkan
+func GetTotalAngsuran(db *sql.DB) (float64, error) {
+	var total float64
+	query := "SELECT COALESCE(SUM(sisa_pinjaman), 0) FROM angsuran WHERE COALESCE(status, 'confirmed') = 'confirmed'"
+	err := db.QueryRow(query).Scan(&total)
+	return total, err
+}
+
+// GetTotalPengambilan mengambil total pengambilan simpanan yang sudah disetujui
+func GetTotalPengambilan(db *sql.DB) (float64, error) {
+	var total float64
+	query := "SELECT COALESCE(SUM(jumlah), 0) FROM pengambilan_simpanan WHERE status = 'approved'"
 	err := db.QueryRow(query).Scan(&total)
 	return total, err
 }

@@ -23,7 +23,7 @@
 
             <!-- Statistik -->
             <div class="row g-4 mb-5">
-                <div class="col-lg-3 col-md-6">
+                <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-primary"><i class="fa-solid fa-users"></i></div>
                         <div class="stat-number text-primary">{{ .TotalAnggota }}</div>
@@ -31,7 +31,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-3 col-md-6">
+                <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-warning"><i class="fa-solid fa-user-clock"></i></div>
                         <div class="stat-number text-warning">{{ .MenungguKonfirmasi }}</div>
@@ -39,7 +39,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-3 col-md-6">
+                <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-success"><i class="fa-solid fa-wallet"></i></div>
                         <div class="stat-number text-success">Rp {{ printf "%.0f" .TotalSimpanan }}</div>
@@ -47,11 +47,27 @@
                     </div>
                 </div>
 
-                <div class="col-lg-3 col-md-6">
+                <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-danger"><i class="fa-solid fa-money-bill-wave"></i></div>
                         <div class="stat-number text-danger">Rp {{ printf "%.0f" .TotalPinjaman }}</div>
                         <div class="stat-label">Total Pinjaman</div>
+                    </div>
+                </div>
+
+                <div class="col-lg-2 col-md-6 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon text-info"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                        <div class="stat-number text-info">Rp {{ printf "%.0f" .TotalAngsuran }}</div>
+                        <div class="stat-label">Total Angsuran</div>
+                    </div>
+                </div>
+
+                <div class="col-lg-2 col-md-6 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon text-secondary"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+                        <div class="stat-number text-secondary">Rp {{ printf "%.0f" .TotalPengambilan }}</div>
+                        <div class="stat-label">Total Pengambilan</div>
                     </div>
                 </div>
             </div>
@@ -65,7 +81,12 @@
                         </div>
                         <div class="card-body">
                             <div style="position: relative; height: 400px; width: 100%;">
-                                <canvas id="activityChart"></canvas>
+                                <canvas id="activityChart" 
+                                    data-simpanan="{{ .TotalSimpanan }}"
+                                    data-pinjaman="{{ .TotalPinjaman }}"
+                                    data-angsuran="{{ .TotalAngsuran }}"
+                                    data-pengambilan="{{ .TotalPengambilan }}">
+                                </canvas>
                             </div>
                         </div>
                     </div>
@@ -82,6 +103,82 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script src="/static/js/bendahara_dashboard.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const canvas = document.getElementById('activityChart');
+        const totalSimpanan = parseFloat(canvas.dataset.simpanan);
+        const totalPinjaman = parseFloat(canvas.dataset.pinjaman);
+        const totalAngsuran = parseFloat(canvas.dataset.angsuran);
+        const totalPengambilan = parseFloat(canvas.dataset.pengambilan);
+
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Simpanan', 'Pinjaman', 'Angsuran', 'Pengambilan'],
+                datasets: [{
+                    label: 'Total (Rp)',
+                    data: [totalSimpanan, totalPinjaman, totalAngsuran, totalPengambilan],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(220, 53, 69, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(108, 117, 125, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(220, 53, 69, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(108, 117, 125, 1)'
+                    ],
+                    borderColor: [
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(220, 53, 69, 1)',
+                        'rgba(255, 193, 7, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Ringkasan Keuangan Koperasi',
+                        font: {
+                            size: 16
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'Rp ' + value.toLocaleString('id-ID');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+    </script>
 </body>
 </html>
