@@ -149,6 +149,8 @@ func SetupRouter() *gin.Engine {
 
 		// Route for login history
 		bendaharaRoutes.GET("/login-history", controllers.BendaharaLoginHistory)
+		bendaharaRoutes.POST("/login-history/delete/:id", controllers.BendaharaDeleteLoginHistory)
+		bendaharaRoutes.POST("/login-history/delete-all", controllers.BendaharaDeleteAllLoginHistory)
 	}
 
 	return router

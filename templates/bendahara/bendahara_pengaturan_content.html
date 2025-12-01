@@ -14,32 +14,32 @@
                 <i class="fa-solid fa-user-edit"></i> Update Profil
             </div>
             <div class="card-body">
-                <form id="profileForm">
-                    <div class="row">\
+                <form id="profileForm" action="/bendahara/update-profile" method="POST">
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="namaBendahara" class="form-label">Nama Lengkap</label>
-                                <input type="text" class="form-control" id="namaBendahara" value="Siti Aminah" required>
+                                <input type="text" class="form-control" id="namaBendahara" name="nama_pengelola" value="{{.Bendahara.NamaPengelola}}" readonly>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="usernameBendahara" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="usernameBendahara" value="bendahara01" required>
+                                <input type="text" class="form-control" id="usernameBendahara" name="username" value="{{.Bendahara.Username}}" required>
                             </div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="emailBendahara" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="emailBendahara" value="bendahara@kspwirya.com" required>
+                                <label for="emailBendahara" class="form-label">Jabatan</label>
+                                <input type="text" class="form-control" id="emailBendahara" value="{{.Bendahara.JabatanKoperasi}}" readonly>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="teleponBendahara" class="form-label">No. Telepon</label>
-                                <input type="tel" class="form-control" id="teleponBendahara" value="081234567890" required>
+                                <label for="levelBendahara" class="form-label">Level</label>
+                                <input type="text" class="form-control" id="levelBendahara" value="{{.Bendahara.Level}}" readonly>
                             </div>
                         </div>
                     </div>
@@ -58,19 +58,16 @@
                 <i class="fa-solid fa-key"></i> Ganti Password
             </div>
             <div class="card-body">
-                <form id="passwordForm">
-                    <div class="mb-3">
-                        <label for="currentPassword" class="form-label">Password Lama</label>
-                        <input type="password" class="form-control" id="currentPassword" required>
-                    </div>
+                <form id="passwordForm" action="/bendahara/update-profile" method="POST">
+                    <input type="hidden" name="username" value="{{.Bendahara.Username}}">
                     <div class="mb-3">
                         <label for="newPassword" class="form-label">Password Baru</label>
-                        <input type="password" class="form-control" id="newPassword" required>
-                        <div class="form-text">Password minimal 8 karakter</div>
+                        <input type="password" class="form-control" id="newPassword" name="password">
+                        <div class="form-text">Password minimal 6 karakter (kosongkan jika tidak ingin mengubah)</div>
                     </div>
                     <div class="mb-3">
                         <label for="confirmPassword" class="form-label">Konfirmasi Password Baru</label>
-                        <input type="password" class="form-control" id="confirmPassword" required>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password">
                     </div>
                     <div class="text-end">
                         <button type="submit" class="btn btn-warning">
@@ -90,42 +87,16 @@
             </div>
             <div class="card-body">
                 <div class="text-center mb-3">
-                    <img src="/static/images/placeholder.png" alt="Foto Profil" class="rounded-circle" width="80" height="80">
-                    <h6 class="mt-2">Siti Aminah</h6>
-                    <small class="text-muted">Bendahara</small>
+                    <img src="{{if .LogoPath}}{{.LogoPath}}{{else}}/static/images/placeholder.png{{end}}" alt="Logo Koperasi" class="rounded-circle" width="80" height="80">
+                    <h6 class="mt-2">{{.Bendahara.NamaPengelola}}</h6>
+                    <small class="text-muted">{{.Bendahara.JabatanKoperasi}}</small>
                 </div>
                 <hr>
                 <div class="small">
-                    <p><strong>Terdaftar:</strong> 15 Januari 2024</p>
-                    <p><strong>Terakhir Login:</strong> 8 November 2024, 14:30</p>
-                    <p><strong>Status:</strong> <span class="badge bg-success">Aktif</span></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Aktivitas Terbaru -->
-        <div class="card shadow-sm">
-            <div class="card-header bg-secondary text-white">
-                <i class="fa-solid fa-history"></i> Aktivitas Terbaru
-            </div>
-            <div class="card-body">
-                <div class="small">
-                    <div class="mb-2">
-                        <i class="fa-solid fa-plus text-success"></i>
-                        Menambah transaksi simpanan - 2 jam yang lalu
-                    </div>
-                    <div class="mb-2">
-                        <i class="fa-solid fa-file-alt text-primary"></i>
-                        Menggenerate laporan bulan Oktober - 1 hari yang lalu
-                    </div>
-                    <div class="mb-2">
-                        <i class="fa-solid fa-user-edit text-warning"></i>
-                        Update profil - 3 hari yang lalu
-                    </div>
-                    <div class="mb-2">
-                        <i class="fa-solid fa-sign-in text-info"></i>
-                        Login ke sistem - 3 hari yang lalu
-                    </div>
+                    <p><strong>Username:</strong> {{.Bendahara.Username}}</p>
+                    <p><strong>Password:</strong> <span id="password-text">{{.Bendahara.Password}}</span></p>
+                    <p><strong>Level:</strong> {{.Bendahara.Level}}</p>
+                    <p><strong>Status:</strong> <span class="badge bg-success">{{.Bendahara.Status}}</span></p>
                 </div>
             </div>
         </div>

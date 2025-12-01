@@ -671,9 +671,11 @@ func BendaharaRiwayat(c *gin.Context) {
 }
 
 func BendaharaLaporan(c *gin.Context) {
-	// Ambil bulan dan tahun dari query parameter, default bulan ini
-	bulan := 1
-	tahun := 2023
+	// Ambil bulan dan tahun dari query parameter, default bulan dan tahun saat ini
+	currentTime := time.Now()
+	bulan := int(currentTime.Month())
+	tahun := currentTime.Year()
+
 	if b := c.Query("bulan"); b != "" {
 		if parsed, err := strconv.Atoi(b); err == nil {
 			bulan = parsed
@@ -685,11 +687,20 @@ func BendaharaLaporan(c *gin.Context) {
 		}
 	}
 
+	// Get LogoPath from context (set by middleware)
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+
 	report, err := repository.GetLaporanKeuangan(bulan, tahun)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "bendahara_laporan.html", gin.H{
 			"ActivePage": "laporan",
 			"Error":      "Gagal mengambil laporan",
+			"LogoPath":   logoPath,
+			"Bulan":      bulan,
+			"Tahun":      tahun,
 		})
 		return
 	}
@@ -699,6 +710,7 @@ func BendaharaLaporan(c *gin.Context) {
 		"Report":     report,
 		"Bulan":      bulan,
 		"Tahun":      tahun,
+		"LogoPath":   logoPath,
 	})
 }
 
@@ -719,12 +731,19 @@ func BendaharaPengaturan(c *gin.Context) {
 		return
 	}
 
+	// Get LogoPath from context (set by middleware)
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+
 	// Ambil data bendahara
 	bendahara, err := repository.GetPengelolaByID(bendaharaID.(int))
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "bendahara_layout.html", gin.H{
 			"ActivePage": "pengaturan",
 			"Error":      "Gagal mengambil data bendahara: " + err.Error(),
+			"LogoPath":   logoPath,
 		})
 		return
 	}
@@ -732,6 +751,7 @@ func BendaharaPengaturan(c *gin.Context) {
 	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
 		"ActivePage": "pengaturan",
 		"Bendahara":  bendahara,
+		"LogoPath":   logoPath,
 	})
 }
 
@@ -1173,6 +1193,12 @@ func BendaharaUpdateBunga(c *gin.Context) {
 
 // BendaharaLoginHistory menampilkan halaman riwayat login
 func BendaharaLoginHistory(c *gin.Context) {
+	// Get LogoPath from context (set by middleware)
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+
 	// Ambil data riwayat login dari database
 	loginHistory, err := repository.GetLoginHistory()
 	if err != nil {
@@ -1182,5 +1208,35 @@ func BendaharaLoginHistory(c *gin.Context) {
 	c.HTML(http.StatusOK, "bendahara_login_history.html", gin.H{
 		"ActivePage":   "login_history",
 		"LoginHistory": loginHistory,
+		"LogoPath":     logoPath,
 	})
+}
+
+// BendaharaDeleteLoginHistory menghapus riwayat login berdasarkan ID
+func BendaharaDeleteLoginHistory(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	err = repository.DeleteLoginHistory(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus riwayat login"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Riwayat login berhasil dihapus"})
+}
+
+// BendaharaDeleteAllLoginHistory menghapus semua riwayat login
+func BendaharaDeleteAllLoginHistory(c *gin.Context) {
+	err := repository.DeleteAllLoginHistory()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus semua riwayat login"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Semua riwayat login berhasil dihapus"})
 }

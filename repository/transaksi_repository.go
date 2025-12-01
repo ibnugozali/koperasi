@@ -287,8 +287,19 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	}
 	report["total_angsuran"] = totalAngsuran
 
-	// Arus kas = total simpanan - total pinjaman + total angsuran
-	report["arus_kas"] = totalSimpanan - totalPinjaman + totalAngsuran
+	// Total pengambilan simpanan bulan ini
+	queryPengambilan := `
+		SELECT COALESCE(SUM(ps.jumlah), 0)
+		FROM pengambilan_simpanan ps
+		WHERE EXTRACT(MONTH FROM ps.tgl_proses) = $1 AND EXTRACT(YEAR FROM ps.tgl_proses) = $2
+		  AND ps.status = 'approved'
+	`
+	var totalPengambilan float64
+	err = db.QueryRow(queryPengambilan, bulan, tahun).Scan(&totalPengambilan)
+	if err != nil {
+		return nil, err
+	}
+	report["total_pengambilan"] = totalPengambilan
 
 	return report, nil
 }
@@ -417,9 +428,10 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Simpanan
 	querySimpanan := `
-		SELECT d.id_detail, d.tgl_transaksi, 'Simpanan' as jenis, d.jumlah_simpanan, 'Selesai' as status, a.nama_anggota
+		SELECT d.id_detail, d.tgl_transaksi, s.jenis_simpanan as jenis, d.jumlah_simpanan, 'Selesai' as status, a.nama_anggota
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 	`
 	rows, err := db.Query(querySimpanan)
 	if err != nil {

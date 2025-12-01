@@ -9,6 +9,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -67,7 +69,7 @@
                                 <div class="stat-icon text-success">
                                     <i class="fas fa-piggy-bank"></i>
                                 </div>
-                                <div class="stat-number">Rp {{printf "%.0f" .Report.total_simpanan}}</div>
+                                <div class="stat-number">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</div>
                                 <div class="stat-label">Total Simpanan</div>
                             </div>
                         </div>
@@ -76,7 +78,7 @@
                                 <div class="stat-icon text-danger">
                                     <i class="fas fa-hand-holding-usd"></i>
                                 </div>
-                                <div class="stat-number">Rp {{printf "%.0f" .Report.total_pinjaman}}</div>
+                                <div class="stat-number">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</div>
                                 <div class="stat-label">Total Pinjaman</div>
                             </div>
                         </div>
@@ -85,7 +87,7 @@
                                 <div class="stat-icon text-info">
                                     <i class="fas fa-coins"></i>
                                 </div>
-                                <div class="stat-number">Rp {{printf "%.0f" .Report.total_angsuran}}</div>
+                                <div class="stat-number">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</div>
                                 <div class="stat-label">Total Angsuran</div>
                             </div>
                         </div>
@@ -94,8 +96,8 @@
                                 <div class="stat-icon text-warning">
                                     <i class="fas fa-chart-line"></i>
                                 </div>
-                                <div class="stat-number">Rp {{printf "%.0f" .Report.arus_kas}}</div>
-                                <div class="stat-label">Arus Kas</div>
+                                <div class="stat-number">Rp {{if .Report.total_pengambilan}}{{printf "%.0f" .Report.total_pengambilan}}{{else}}0{{end}}</div>
+                                <div class="stat-label">Total Pengambilan</div>
                             </div>
                         </div>
                     </div>
@@ -110,11 +112,11 @@
                                 <ul class="list-group list-group-flush">
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         Total Simpanan
-                                        <span class="badge bg-primary rounded-pill">Rp {{printf "%.0f" .Report.total_simpanan}}</span>
+                                        <span class="badge bg-primary rounded-pill">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
                                     </li>
                                     <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
                                         Total Pemasukan
-                                        <span class="badge bg-success rounded-pill">Rp {{printf "%.0f" .Report.total_simpanan}}</span>
+                                        <span class="badge bg-success rounded-pill">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
                                     </li>
                                 </ul>
                             </div>
@@ -123,15 +125,15 @@
                                 <ul class="list-group list-group-flush">
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         Total Pinjaman
-                                        <span class="badge bg-danger rounded-pill">Rp {{printf "%.0f" .Report.total_pinjaman}}</span>
+                                        <span class="badge bg-danger rounded-pill">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
                                     </li>
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         Total Angsuran
-                                        <span class="badge bg-info rounded-pill">Rp {{printf "%.0f" .Report.total_angsuran}}</span>
+                                        <span class="badge bg-info rounded-pill">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</span>
                                     </li>
                                     <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
                                         Total Pengeluaran
-                                        <span class="badge bg-danger rounded-pill">Rp {{printf "%.0f" .Report.total_pinjaman}}</span>
+                                        <span class="badge bg-danger rounded-pill">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
                                     </li>
                                 </ul>
                             </div>
@@ -141,7 +143,7 @@
 
                         <div class="row">
                             <div class="col-md-12">
-                                <h6>Grafik Arus Kas</h6>
+                                <h6>Grafik Transaksi</h6>
                                 <canvas id="laporanChart" width="400" height="200"></canvas>
                             </div>
                         </div>
@@ -152,30 +154,41 @@
     </div>
 </div>
 
+        </div>
+    </div>
+
+    {{ template "bendahara_footer" . }}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
 <script>
     /* eslint-disable */
-    // Grafik Arus Kas
+    // Grafik Transaksi
     var totalSimpanan = parseFloat('{{if .Report.total_simpanan}}{{.Report.total_simpanan}}{{else}}0{{end}}');
     var totalPinjaman = parseFloat('{{if .Report.total_pinjaman}}{{.Report.total_pinjaman}}{{else}}0{{end}}');
     var totalAngsuran = parseFloat('{{if .Report.total_angsuran}}{{.Report.total_angsuran}}{{else}}0{{end}}');
+    var totalPengambilan = parseFloat('{{if .Report.total_pengambilan}}{{.Report.total_pengambilan}}{{else}}0{{end}}');
 
     const ctx = document.getElementById('laporanChart').getContext('2d');
     const laporanChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Simpanan', 'Pinjaman', 'Angsuran'],
+            labels: ['Simpanan', 'Pinjaman', 'Angsuran', 'Pengambilan'],
             datasets: [{
                 label: 'Jumlah (Rp)',
-                data: [totalSimpanan, totalPinjaman, totalAngsuran],
+                data: [totalSimpanan, totalPinjaman, totalAngsuran, totalPengambilan],
                 backgroundColor: [
                     'rgba(25, 135, 84, 0.8)',
                     'rgba(220, 53, 69, 0.8)',
-                    'rgba(23, 162, 184, 0.8)'
+                    'rgba(23, 162, 184, 0.8)',
+                    'rgba(255, 193, 7, 0.8)'
                 ],
                 borderColor: [
                     'rgba(25, 135, 84, 1)',
                     'rgba(220, 53, 69, 1)',
-                    'rgba(23, 162, 184, 1)'
+                    'rgba(23, 162, 184, 1)',
+                    'rgba(255, 193, 7, 1)'
                 ],
                 borderWidth: 1
             }]
@@ -196,3 +209,7 @@
     });
 </script>
 
+<script src="/static/js/bendahara_navbar.js"></script>
+
+</body>
+</html>

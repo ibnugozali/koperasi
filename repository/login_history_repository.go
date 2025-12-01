@@ -51,3 +51,11 @@ func DeleteLoginHistory(id int) error {
 	_, err := db.Exec(query, id)
 	return err
 }
+
+// DeleteAllLoginHistory menghapus semua riwayat login
+func DeleteAllLoginHistory() error {
+	db := config.GetDB()
+	query := `DELETE FROM login_history`
+	_, err := db.Exec(query)
+	return err
+}
