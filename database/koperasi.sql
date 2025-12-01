@@ -78,7 +78,13 @@ CREATE TABLE pinjaman (
     jumlah_pinjaman NUMERIC(15,2),
     jangka_waktu INT, -- Dalam bulan
     bunga NUMERIC(5,2) DEFAULT 2.0,
-    status VARCHAR(25) CHECK (status IN ('proses', 'aktif', 'lunas', 'gagal'))
+    status VARCHAR(25) CHECK (status IN ('proses', 'aktif', 'lunas', 'gagal')),
+    metode_pencairan VARCHAR(25) DEFAULT 'tunai' CHECK (metode_pencairan IN ('transfer_bank', 'tunai')),
+    nomor_rekening VARCHAR(50),
+    nama_bank VARCHAR(100),
+    nama_pemilik_rekening VARCHAR(100),
+    gaji_bulanan NUMERIC(15,2),
+    tujuan_pinjaman TEXT
 );
 
 CREATE TABLE IF NOT EXISTS angsuran (
@@ -122,6 +128,10 @@ CREATE TABLE pengambilan_simpanan (
     id_simpanan INT REFERENCES simpanan(id_simpanan) ON DELETE CASCADE,
     jumlah NUMERIC(15,2) NOT NULL,
     alasan TEXT,
+    metode_pengambilan VARCHAR(25) DEFAULT 'tunai' CHECK (metode_pengambilan IN ('transfer_bank', 'tunai')),
+    no_rekening VARCHAR(50),
+    nama_bank VARCHAR(100),
+    nama_pemilik VARCHAR(100),
     tgl_pengajuan TIMESTAMPTZ DEFAULT NOW(),
     tgl_proses TIMESTAMPTZ,
     status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),

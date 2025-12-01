@@ -95,6 +95,50 @@ document.addEventListener('DOMContentLoaded', function(){
                 <label for="perkiraan_angsuran" class="form-label">Perkiraan Angsuran per Bulan (Rp)</label>
                 <input type="number" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran" readonly>
             </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Metode Pencairan <span class="text-danger">*</span></label>
+                <select class="form-select" id="metodePencairan" name="metode_pencairan" required>
+                    <option value="">-- Pilih Metode Pencairan --</option>
+                    <option value="transfer_bank">Transfer Bank</option>
+                    <option value="tunai">Tunai</option>
+                </select>
+                <small class="form-text text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Pilih cara Anda ingin menerima dana pinjaman
+                </small>
+            </div>
+
+            <div class="mb-3" id="rekeningSection" style="display: none;">
+                <label for="noRekening" class="form-label">Nomor Rekening <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="noRekening" name="no_rekening" 
+                       placeholder="Masukkan nomor rekening bank">
+                <small class="form-text text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Nomor rekening untuk transfer dana pinjaman
+                </small>
+            </div>
+
+            <div class="mb-3" id="namaBankSection" style="display: none;">
+                <label for="namaBank" class="form-label">Nama Bank <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="namaBank" name="nama_bank" 
+                       placeholder="Contoh: BCA, Mandiri, BNI">
+                <small class="form-text text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Nama bank tujuan transfer
+                </small>
+            </div>
+
+            <div class="mb-3" id="namaPemilikSection" style="display: none;">
+                <label for="namaPemilik" class="form-label">Nama Pemilik Rekening <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="namaPemilik" name="nama_pemilik" 
+                       placeholder="Nama sesuai rekening bank">
+                <small class="form-text text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Nama pemilik rekening bank
+                </small>
+            </div>
+            
             <div class="mb-3">
                 <label class="form-label">Tujuan Penggunaan Pinjaman</label><br>
                 <div class="form-check">
@@ -121,22 +165,6 @@ document.addEventListener('DOMContentLoaded', function(){
                     <label for="tujuan_lain" class="form-label">Lain-lain</label>
                     <input type="text" class="form-control" id="tujuan_lain" name="tujuan_lain">
                 </div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Metode Pencairan</label>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_transfer" value="transfer" checked>
-                    <label class="form-check-label" for="pencairan_transfer">Transfer Bank</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_tunai" value="tunai">
-                    <label class="form-check-label" for="pencairan_tunai">Tunai</label>
-                </div>
-            </div>
-            <div class="mb-3" id="nomor_rekening_container">
-                <label for="nomor_rekening" class="form-label">Nomor Rekening Bank</label>
-                <input type="text" class="form-control" id="nomor_rekening" name="nomor_rekening" placeholder="Masukkan nomor rekening Anda">
-                <small class="form-text text-muted">Masukkan nomor rekening untuk penerimaan pencairan dana pinjaman.</small>
             </div>
         </fieldset>
 
@@ -203,33 +231,42 @@ document.addEventListener('DOMContentLoaded', function() {
         gajiInput.required = true;
     }
 
-    // Initialize metode pencairan display
-    updateMetodePencairanDisplay();
-
-    // Add event listeners for metode pencairan
-    document.querySelectorAll('input[name="metode_pencairan"]').forEach(radio => {
-        radio.addEventListener('change', updateMetodePencairanDisplay);
-    });
+    // Handle perubahan metode pencairan
+    const metodePencairan = document.getElementById('metodePencairan');
+    if (metodePencairan) {
+        metodePencairan.addEventListener('change', function() {
+            const metode = this.value;
+            const rekeningSection = document.getElementById('rekeningSection');
+            const namaBankSection = document.getElementById('namaBankSection');
+            const namaPemilikSection = document.getElementById('namaPemilikSection');
+            const noRekening = document.getElementById('noRekening');
+            const namaBank = document.getElementById('namaBank');
+            const namaPemilik = document.getElementById('namaPemilik');
+            
+            if (metode === 'transfer_bank') {
+                rekeningSection.style.display = 'block';
+                namaBankSection.style.display = 'block';
+                namaPemilikSection.style.display = 'block';
+                noRekening.required = true;
+                namaBank.required = true;
+                namaPemilik.required = true;
+            } else {
+                rekeningSection.style.display = 'none';
+                namaBankSection.style.display = 'none';
+                namaPemilikSection.style.display = 'none';
+                noRekening.required = false;
+                namaBank.required = false;
+                namaPemilik.required = false;
+                noRekening.value = '';
+                namaBank.value = '';
+                namaPemilik.value = '';
+            }
+        });
+    }
 
     // Hitung perkiraan angsuran saat input berubah
     calculateAngsuran();
 });
-
-// Function to show/hide nomor rekening based on metode pencairan
-function updateMetodePencairanDisplay() {
-    const metodePencairan = document.querySelector('input[name="metode_pencairan"]:checked').value;
-    const nomorRekeningContainer = document.getElementById('nomor_rekening_container');
-    const nomorRekeningInput = document.getElementById('nomor_rekening');
-
-    if (metodePencairan === 'transfer') {
-        nomorRekeningContainer.style.display = 'block';
-        nomorRekeningInput.required = true;
-    } else {
-        nomorRekeningContainer.style.display = 'none';
-        nomorRekeningInput.required = false;
-        nomorRekeningInput.value = ''; // Clear the field when hidden
-    }
-}
 
 // Function to calculate perkiraan angsuran
 function calculateAngsuran() {

@@ -552,9 +552,12 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	pinjaman.IDAnggota = userID
 	pinjaman.NamaAnggota = anggota.NamaAnggota
-	// Capture metode pencairan from the form (transfer / tunai)
+	// Capture metode pencairan from the form (transfer_bank / tunai)
 	pinjaman.MetodePencairan = c.PostForm("metode_pencairan")
-	pinjaman.NomorRekening = c.PostForm("nomor_rekening")
+	pinjaman.NomorRekening = c.PostForm("no_rekening")
+	pinjaman.NamaBank = c.PostForm("nama_bank")
+	pinjaman.NamaPemilikRekening = c.PostForm("nama_pemilik")
+
 	// Capture gaji bulanan dari form
 	gajiStr := c.PostForm("gaji_bulanan")
 	if gajiStr != "" {
@@ -573,12 +576,22 @@ func AjukanPinjamanPost(c *gin.Context) {
 		pinjaman.TujuanPinjaman = strings.Join(tujuanList, ", ")
 	}
 
-	// Validasi nomor rekening jika metode transfer bank
-	if pinjaman.MetodePencairan == "transfer" && pinjaman.NomorRekening == "" {
+	// Validasi metode pencairan
+	if pinjaman.MetodePencairan != "transfer_bank" && pinjaman.MetodePencairan != "tunai" {
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Nomor rekening harus diisi jika memilih metode transfer bank."
+		templateData["Error"] = "Metode pencairan harus dipilih."
 		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
 		return
+	}
+
+	// Validasi data rekening jika metode transfer bank
+	if pinjaman.MetodePencairan == "transfer_bank" {
+		if pinjaman.NomorRekening == "" || pinjaman.NamaBank == "" || pinjaman.NamaPemilikRekening == "" {
+			templateData := getAjukanPinjamanTemplateData(userID, anggota)
+			templateData["Error"] = "Data rekening bank harus dilengkapi jika memilih metode transfer bank."
+			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+			return
+		}
 	}
 
 	pinjaman.TglPinjaman = time.Now() // Set tanggal pengajuan otomatis
@@ -1237,6 +1250,12 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 		totalSimpanan = 0
 	}
 
+	// Ambil detail simpanan per jenis
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
+	if err != nil {
+		simpananByJenis = make(map[string]float64)
+	}
+
 	// Ambil daftar jenis simpanan
 	db := config.GetDB()
 	rows, err := db.Query("SELECT id_simpanan, jenis_simpanan FROM simpanan ORDER BY id_simpanan")
@@ -1261,6 +1280,7 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 	c.HTML(http.StatusOK, "anggota_ajukan_pengambilan_simpanan.html", gin.H{
 		"Anggota":           anggota,
 		"TotalSimpanan":     totalSimpanan,
+		"SimpananByJenis":   simpananByJenis,
 		"JenisSimpananList": jenisSimpananList,
 		"LogoPath":          c.GetString("LogoPath"),
 	})
@@ -1279,12 +1299,30 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 	jumlahStr := c.PostForm("jumlah")
 	alasan := c.PostForm("alasan")
 	idSimpananStr := c.PostForm("jenis_simpanan")
+	metodePengambilan := c.PostForm("metode_pengambilan")
+	noRekening := c.PostForm("no_rekening")
+	namaBank := c.PostForm("nama_bank")
+	namaPemilik := c.PostForm("nama_pemilik")
 
 	// Konversi jumlah ke float
 	jumlah, err := strconv.ParseFloat(jumlahStr, 64)
 	if err != nil || jumlah <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Jumlah tidak valid"})
 		return
+	}
+
+	// Validasi metode pengambilan
+	if metodePengambilan != "transfer_bank" && metodePengambilan != "tunai" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Metode pengambilan harus dipilih"})
+		return
+	}
+
+	// Validasi data rekening jika transfer bank
+	if metodePengambilan == "transfer_bank" {
+		if noRekening == "" || namaBank == "" || namaPemilik == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Data rekening bank harus dilengkapi"})
+			return
+		}
 	}
 
 	// Validasi jenis simpanan
@@ -1294,24 +1332,38 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Cek apakah saldo mencukupi
-	totalSimpanan, _, _, err := repository.GetSaldoAnggota(userID)
+	// Ambil nama jenis simpanan
+	db := config.GetDB()
+	var jenisNama string
+	err = db.QueryRow("SELECT jenis_simpanan FROM simpanan WHERE id_simpanan = $1", idSimpanan).Scan(&jenisNama)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Jenis simpanan tidak valid"})
+		return
+	}
+
+	// Cek saldo per jenis simpanan
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil saldo"})
 		return
 	}
 
-	if jumlah > totalSimpanan {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Saldo simpanan tidak mencukupi"})
+	saldoJenis, exists := simpananByJenis[jenisNama]
+	if !exists || saldoJenis <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada saldo untuk jenis simpanan ini"})
+		return
+	}
+
+	if jumlah > saldoJenis {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Jumlah pengambilan melebihi saldo jenis simpanan yang dipilih"})
 		return
 	}
 
 	// Simpan pengajuan pengambilan simpanan ke database
-	db := config.GetDB()
-	query := `INSERT INTO pengambilan_simpanan (id_anggota, id_simpanan, jumlah, alasan, tgl_pengajuan, status) 
-	          VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, 'pending')`
+	query := `INSERT INTO pengambilan_simpanan (id_anggota, id_simpanan, jumlah, alasan, metode_pengambilan, no_rekening, nama_bank, nama_pemilik, tgl_pengajuan, status) 
+	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, 'pending')`
 
-	_, err = db.Exec(query, userID, idSimpanan, jumlah, alasan)
+	_, err = db.Exec(query, userID, idSimpanan, jumlah, alasan, metodePengambilan, noRekening, namaBank, namaPemilik)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pengajuan: " + err.Error()})
 		return

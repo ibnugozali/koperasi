@@ -21,7 +21,40 @@
       <!-- Info Saldo -->
       <div class="alert alert-info">
         <h5 class="alert-heading"><i class="bi bi-piggy-bank me-2"></i>Total Saldo Simpanan Anda</h5>
-        <h2 class="mb-0">Rp {{ printf "%.0f" .TotalSimpanan }}</h2>
+        <h2 class="mb-3">Rp {{ printf "%.0f" .TotalSimpanan }}</h2>
+        
+        <!-- Breakdown per Jenis Simpanan -->
+        <div class="mt-3">
+          <h6 class="mb-2"><i class="bi bi-list-ul me-2"></i>Rincian per Jenis Simpanan:</h6>
+          <div class="row">
+            <div class="col-md-6">
+              <ul class="list-unstyled mb-0">
+                <li class="mb-2">
+                  <strong>Simpanan Pokok:</strong> 
+                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "pokok") }}</span>
+                </li>
+                <li class="mb-2">
+                  <strong>Simpanan Wajib:</strong> 
+                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "wajib") }}</span>
+                </li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <ul class="list-unstyled mb-0">
+                <li class="mb-2">
+                  <strong>Simpanan Sukarela:</strong> 
+                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "sukarela") }}</span>
+                </li>
+                <li class="mb-2">
+                  <strong>Simpanan Hari Raya:</strong> 
+                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "hari_raya") }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <hr class="my-3">
         <small><i class="bi bi-info-circle me-1"></i>Saldo yang dapat Anda ambil</small>
       </div>
 
@@ -76,7 +109,7 @@
               <select class="form-select" id="jenisSimpanan" name="jenis_simpanan" required>
                 <option value="">-- Pilih Jenis Simpanan --</option>
                 {{ range .JenisSimpananList }}
-                <option value="{{ .ID }}">{{ .Jenis }}</option>
+                <option value="{{ .ID }}" data-jenis="{{ .Jenis }}">{{ .Jenis }}</option>
                 {{ end }}
               </select>
               <div class="form-text">
@@ -92,12 +125,63 @@
               <div class="input-group">
                 <span class="input-group-text">Rp</span>
                 <input type="number" class="form-control" id="jumlah" name="jumlah" 
-                       placeholder="Masukkan jumlah yang akan diambil" 
-                       min="1" max="{{ .TotalSimpanan }}" required>
+                       placeholder="Pilih jenis simpanan terlebih dahulu" 
+                       min="1" required disabled>
               </div>
+              <div class="form-text" id="maxJumlahText">
+                <i class="bi bi-info-circle me-1"></i>
+                Pilih jenis simpanan terlebih dahulu
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb-3 align-items-center">
+            <label for="metodePengambilan" class="col-sm-4 col-form-label">Metode Pengambilan <span class="text-danger">*</span></label>
+            <div class="col-sm-8">
+              <select class="form-select" id="metodePengambilan" name="metode_pengambilan" required>
+                <option value="">-- Pilih Metode Pengambilan --</option>
+                <option value="transfer_bank">Transfer Bank</option>
+                <option value="tunai">Tunai</option>
+              </select>
               <div class="form-text">
                 <i class="bi bi-info-circle me-1"></i>
-                Maksimal: Rp {{ printf "%.0f" .TotalSimpanan }}
+                Pilih cara Anda ingin menerima dana
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb-3 align-items-center" id="rekeningSection" style="display: none;">
+            <label for="noRekening" class="col-sm-4 col-form-label">Nomor Rekening <span class="text-danger">*</span></label>
+            <div class="col-sm-8">
+              <input type="text" class="form-control" id="noRekening" name="no_rekening" 
+                     placeholder="Masukkan nomor rekening bank">
+              <div class="form-text">
+                <i class="bi bi-info-circle me-1"></i>
+                Nomor rekening untuk transfer dana
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb-3 align-items-center" id="namaBankSection" style="display: none;">
+            <label for="namaBank" class="col-sm-4 col-form-label">Nama Bank <span class="text-danger">*</span></label>
+            <div class="col-sm-8">
+              <input type="text" class="form-control" id="namaBank" name="nama_bank" 
+                     placeholder="Contoh: BCA, Mandiri, BNI">
+              <div class="form-text">
+                <i class="bi bi-info-circle me-1"></i>
+                Nama bank tujuan transfer
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb-3 align-items-center" id="namaPemilikSection" style="display: none;">
+            <label for="namaPemilik" class="col-sm-4 col-form-label">Nama Pemilik Rekening <span class="text-danger">*</span></label>
+            <div class="col-sm-8">
+              <input type="text" class="form-control" id="namaPemilik" name="nama_pemilik" 
+                     placeholder="Nama sesuai rekening bank">
+              <div class="form-text">
+                <i class="bi bi-info-circle me-1"></i>
+                Nama pemilik rekening bank
               </div>
             </div>
           </div>
@@ -137,14 +221,88 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
     $(document).ready(function() {
-        // Max saldo from server
-        const maxSaldo = parseFloat('{{ printf "%.2f" .TotalSimpanan }}');
+        // Data simpanan per jenis dari server
+        const simpananByJenis = {
+            'pokok': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "pokok") }}'),
+            'wajib': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "wajib") }}'),
+            'sukarela': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "sukarela") }}'),
+            'hari_raya': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "hari_raya") }}')
+        };
+        
+        let currentMaxSaldo = 0;
+        
+        // Handle perubahan metode pengambilan
+        $('#metodePengambilan').on('change', function() {
+            const metode = $(this).val();
+            
+            if (metode === 'transfer_bank') {
+                $('#rekeningSection').show();
+                $('#namaBankSection').show();
+                $('#namaPemilikSection').show();
+                $('#noRekening').prop('required', true);
+                $('#namaBank').prop('required', true);
+                $('#namaPemilik').prop('required', true);
+            } else {
+                $('#rekeningSection').hide();
+                $('#namaBankSection').hide();
+                $('#namaPemilikSection').hide();
+                $('#noRekening').prop('required', false);
+                $('#namaBank').prop('required', false);
+                $('#namaPemilik').prop('required', false);
+                $('#noRekening').val('');
+                $('#namaBank').val('');
+                $('#namaPemilik').val('');
+            }
+        });
+        
+        // Handle perubahan jenis simpanan
+        $('#jenisSimpanan').on('change', function() {
+            const selectedOption = $(this).find('option:selected');
+            const jenisNama = selectedOption.data('jenis');
+            
+            if (!jenisNama) {
+                $('#jumlah').prop('disabled', true);
+                $('#jumlah').attr('max', '');
+                $('#jumlah').val('');
+                $('#jumlah').attr('placeholder', 'Pilih jenis simpanan terlebih dahulu');
+                $('#maxJumlahText').html('<i class="bi bi-info-circle me-1"></i>Pilih jenis simpanan terlebih dahulu');
+                currentMaxSaldo = 0;
+                return;
+            }
+            
+            // Ambil saldo sesuai jenis
+            currentMaxSaldo = simpananByJenis[jenisNama] || 0;
+            
+            // Update input jumlah
+            $('#jumlah').prop('disabled', false);
+            $('#jumlah').attr('max', currentMaxSaldo);
+            $('#jumlah').val('');
+            $('#jumlah').attr('placeholder', 'Masukkan jumlah yang akan diambil');
+            
+            // Update info maksimal
+            const formattedMax = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(currentMaxSaldo);
+            
+            $('#maxJumlahText').html(`<i class="bi bi-info-circle me-1"></i>Maksimal: ${formattedMax}`);
+            
+            // Jika saldo 0, tampilkan peringatan
+            if (currentMaxSaldo <= 0) {
+                $('#jumlah').prop('disabled', true);
+                $('#maxJumlahText').html('<i class="bi bi-exclamation-triangle text-warning me-1"></i>Tidak ada saldo untuk jenis simpanan ini');
+            }
+        });
         
         // Format currency input
         $('#jumlah').on('input', function() {
-            let val = $(this).val();
+            let val = parseFloat($(this).val());
             if (val < 0) {
                 $(this).val(0);
+            }
+            if (val > currentMaxSaldo) {
+                $(this).val(currentMaxSaldo);
             }
         });
 
@@ -155,11 +313,31 @@
             const jumlah = parseFloat($('#jumlah').val());
             const alasan = $('#alasan').val().trim();
             const jenisSimpanan = $('#jenisSimpanan').val();
+            const metodePengambilan = $('#metodePengambilan').val();
+            const noRekening = $('#noRekening').val().trim();
+            const namaBank = $('#namaBank').val().trim();
+            const namaPemilik = $('#namaPemilik').val().trim();
 
             // Validasi
             if (!jenisSimpanan) {
                 showAlert('warning', 'Jenis simpanan harus dipilih!');
                 return;
+            }
+            
+            if (!metodePengambilan) {
+                showAlert('warning', 'Metode pengambilan harus dipilih!');
+                return;
+            }
+            
+            if (metodePengambilan === 'transfer_bank') {
+                if (!noRekening || !namaBank || !namaPemilik) {
+                    showAlert('warning', 'Data rekening bank harus dilengkapi!');
+                    return;
+                }
+                if (noRekening.length < 5) {
+                    showAlert('warning', 'Nomor rekening tidak valid!');
+                    return;
+                }
             }
 
             if (!jumlah || jumlah <= 0) {
@@ -167,8 +345,13 @@
                 return;
             }
 
-            if (jumlah > maxSaldo) {
-                showAlert('danger', 'Jumlah pengambilan melebihi saldo Anda!');
+            if (jumlah > currentMaxSaldo) {
+                showAlert('danger', 'Jumlah pengambilan melebihi saldo jenis simpanan yang dipilih!');
+                return;
+            }
+            
+            if (currentMaxSaldo <= 0) {
+                showAlert('danger', 'Tidak ada saldo untuk jenis simpanan yang dipilih!');
                 return;
             }
 
@@ -182,15 +365,26 @@
             submitBtn.prop('disabled', true);
             submitBtn.html('<span class="spinner-border spinner-border-sm me-2"></span>Memproses...');
 
+            // Prepare data
+            const formData = {
+                jumlah: jumlah,
+                alasan: alasan,
+                jenis_simpanan: jenisSimpanan,
+                metode_pengambilan: metodePengambilan
+            };
+            
+            // Tambahkan data rekening jika transfer bank
+            if (metodePengambilan === 'transfer_bank') {
+                formData.no_rekening = noRekening;
+                formData.nama_bank = namaBank;
+                formData.nama_pemilik = namaPemilik;
+            }
+
             // Submit via AJAX
             $.ajax({
                 url: '/anggota/ajukan-pengambilan-simpanan',
                 method: 'POST',
-                data: {
-                    jumlah: jumlah,
-                    alasan: alasan,
-                    jenis_simpanan: jenisSimpanan
-                },
+                data: formData,
                 success: function(response) {
                     showAlert('success', response.message || 'Pengajuan berhasil disubmit! Menunggu persetujuan bendahara.');
                     
