@@ -22,7 +22,7 @@
     <div class="collapse {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "import_anggota") (eq .ActivePage "login_history") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "import_anggota") (eq .ActivePage "login_history") }}style="display: block;"{{ end }}>
         <a href="/bendahara/konfirmasi" class="ms-3 {{ if eq .ActivePage "konfirmasi_anggota" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
         <a href="/bendahara/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
-        <a href="/bendahara/import-anggota" class="ms-3 {{ if eq .ActivePage "import_anggota" }}active{{ end }}"><i class="fa-solid fa-file-excel me-2"></i> Import Data Anggota (XLSX)</a>
+        <a href="/bendahara/import-anggota" class="ms-3 {{ if eq .ActivePage "import_anggota" }}active{{ end }}"><i class="fa-solid fa-file-excel me-2"></i> Import Data Anggota</a>
         <a href="/bendahara/login-history" class="ms-3 {{ if eq .ActivePage "login_history" }}active{{ end }}"><i class="fa-solid fa-sign-in-alt me-2"></i> Riwayat Login</a>
     </div>
 
