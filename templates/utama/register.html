@@ -77,8 +77,14 @@
                                         <option value="Fakultas Kesehatan Masyarakat (FKM)">Fakultas Kesehatan Masyarakat (FKM)</option>
                                         <option value="Fakultas Pertanian (FAPERTA)">Fakultas Pertanian (FAPERTA)</option>
                                         <option value="Fakultas Teknik (FT)">Fakultas Teknik (FT)</option>
-                                        <option value="Rektorat / Yayasan">Rektorat / Yayasan / Staff</option>
+                                        <option value="Rektorat / Yayasan" id="option_rektorat">Rektorat / Yayasan / Staff</option>
                                     </select>
+                                    </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="gaji_bulanan" class="form-label">Gaji Bulanan</label>
+                                <input type="number" class="form-control" id="gaji_bulanan" name="GajiBulanan" placeholder="Contoh: 5000000" min="0" step="1000" required>
+                                <small class="form-text text-muted">Masukkan gaji bulanan dalam Rupiah (tanpa titik atau koma)</small>
                             </div>
                             <div class="mb-3">
                                 <label for="bukti_transfer" class="form-label">Bukti Transfer Simpanan Pokok Wajib Rp. {{ .NominalSimpanan }},-</label>
@@ -110,5 +116,84 @@
     </div>
 
       <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+      <script>
+        // Fungsi untuk mengatur status kolom Gaji Bulanan dan Fakultas berdasarkan Unit Kerja
+        const statusAnggotaSelect = document.getElementById('status_anggota');
+        const gajiBulananInput = document.getElementById('gaji_bulanan');
+        const fakultasSelect = document.getElementById('fakultas');
+        const optionRektorat = document.getElementById('option_rektorat');
+        
+        function updateGajiBulananStatus() {
+            const selectedValue = statusAnggotaSelect.value;
+            
+            if (selectedValue === 'mahasiswa') {
+                // Jika mahasiswa, disable input gaji dan set value ke 0
+                gajiBulananInput.disabled = true;
+                gajiBulananInput.value = '0';
+                gajiBulananInput.required = false;
+                gajiBulananInput.classList.add('bg-light');
+                
+                // Sembunyikan opsi Rektorat/Yayasan
+                optionRektorat.style.display = 'none';
+                optionRektorat.disabled = true;
+                // Reset fakultas jika sebelumnya Rektorat
+                if (fakultasSelect.value === 'Rektorat / Yayasan') {
+                    fakultasSelect.value = '';
+                }
+                fakultasSelect.disabled = false;
+                fakultasSelect.classList.remove('bg-light');
+            } else if (selectedValue === 'dosen') {
+                // Jika dosen, enable input gaji
+                gajiBulananInput.disabled = false;
+                gajiBulananInput.required = true;
+                gajiBulananInput.classList.remove('bg-light');
+                if (gajiBulananInput.value === '0') {
+                    gajiBulananInput.value = '';
+                }
+                
+                // Sembunyikan opsi Rektorat/Yayasan
+                optionRektorat.style.display = 'none';
+                optionRektorat.disabled = true;
+                // Reset fakultas jika sebelumnya Rektorat
+                if (fakultasSelect.value === 'Rektorat / Yayasan') {
+                    fakultasSelect.value = '';
+                }
+                fakultasSelect.disabled = false;
+                fakultasSelect.classList.remove('bg-light');
+            } else if (selectedValue === 'karyawan') {
+                // Jika karyawan, enable input gaji
+                gajiBulananInput.disabled = false;
+                gajiBulananInput.required = true;
+                gajiBulananInput.classList.remove('bg-light');
+                if (gajiBulananInput.value === '0') {
+                    gajiBulananInput.value = '';
+                }
+                
+                // Tampilkan opsi Rektorat/Yayasan
+                optionRektorat.style.display = 'block';
+                optionRektorat.disabled = false;
+                // Otomatis pilih Rektorat / Yayasan
+                fakultasSelect.value = 'Rektorat / Yayasan';
+                fakultasSelect.disabled = true;
+                fakultasSelect.classList.add('bg-light');
+            } else {
+                // Default state (belum pilih unit kerja)
+                gajiBulananInput.disabled = false;
+                gajiBulananInput.required = true;
+                gajiBulananInput.classList.remove('bg-light');
+                
+                fakultasSelect.disabled = false;
+                fakultasSelect.classList.remove('bg-light');
+                optionRektorat.style.display = 'block';
+                optionRektorat.disabled = false;
+            }
+        }
+        
+        // Event listener saat dropdown berubah
+        statusAnggotaSelect.addEventListener('change', updateGajiBulananStatus);
+        
+        // Jalankan saat halaman dimuat untuk set status awal
+        updateGajiBulananStatus();
+      </script>
 </body>
 </html>

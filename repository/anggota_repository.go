@@ -42,8 +42,8 @@ func UpdateAnggotaStatusWithCode(id string, newStatus string, memberCode string)
 func CreateAnggota(anggota models.Anggota) error {
 	db := config.GetDB()
 	query := `
-		INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer, gaji_bulanan)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 	`
 	_, err := db.Exec(query,
 		anggota.IDAnggota,
@@ -61,6 +61,7 @@ func CreateAnggota(anggota models.Anggota) error {
 		anggota.UnitKerja,
 		anggota.FakultasCode,
 		anggota.BuktiTransfer,
+		anggota.GajiBulanan,
 	)
 	return err
 }

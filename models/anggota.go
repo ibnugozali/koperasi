@@ -25,4 +25,5 @@ type Anggota struct {
 	Tahun         string    `json:"tahun"`
 	NomorUrut     string    `json:"nomor_urut"`
 	BuktiTransfer string    `json:"bukti_transfer"`
+	GajiBulanan   int       `json:"gaji_bulanan" form:"GajiBulanan"`
 }

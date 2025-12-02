@@ -38,7 +38,8 @@ CREATE TABLE anggota (
     fakultas_code VARCHAR(2),  -- 01=FAI, 02=FE, 03=FH, 04=FISIP, 05=FKIP, 06=FKM, 07=FAPERTA, 08=FT, 09=Rektorat/Yayasan/Staff
     tahun VARCHAR(4),  -- Tahun konfirmasi
     nomor_urut VARCHAR(4),  -- Nomor urut 4 digit
-    bukti_transfer VARCHAR(255)
+    bukti_transfer VARCHAR(255),
+    gaji_bulanan INTEGER DEFAULT 0  -- Gaji bulanan anggota dalam Rupiah
 );
 
 CREATE TABLE pengelola (

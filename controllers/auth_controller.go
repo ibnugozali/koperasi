@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -65,6 +66,15 @@ func Register(c *gin.Context) {
 	newAnggota.StatusAnggota = c.PostForm("StatusAnggota")
 	newAnggota.Fakultas = c.PostForm("Fakultas")
 
+	// Parse GajiBulanan
+	gajiBulananStr := c.PostForm("GajiBulanan")
+	if gajiBulananStr != "" {
+		gajiBulanan, err := strconv.Atoi(gajiBulananStr)
+		if err == nil {
+			newAnggota.GajiBulanan = gajiBulanan
+		}
+	}
+
 	// Handle file upload
 	file, err := c.FormFile("BuktiTransfer")
 	if err != nil {
@@ -85,8 +95,8 @@ func Register(c *gin.Context) {
 	if newAnggota.NamaAnggota == "" || newAnggota.Username == "" || newAnggota.Password == "" ||
 		newAnggota.TglLahir == "" || newAnggota.NikKTP == "" || newAnggota.NoTelepon == "" ||
 		newAnggota.Alamat == "" || newAnggota.JenisKelamin == "" || newAnggota.StatusAnggota == "" ||
-		newAnggota.Fakultas == "" {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Semua field wajib diisi"})
+		newAnggota.Fakultas == "" || newAnggota.GajiBulanan <= 0 {
+		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Semua field wajib diisi dengan benar"})
 		return
 	}
 
