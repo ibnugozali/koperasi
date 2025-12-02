@@ -151,6 +151,12 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.GET("/login-history", controllers.BendaharaLoginHistory)
 		bendaharaRoutes.POST("/login-history/delete/:id", controllers.BendaharaDeleteLoginHistory)
 		bendaharaRoutes.POST("/login-history/delete-all", controllers.BendaharaDeleteAllLoginHistory)
+
+		// Route for import anggota from XLSX
+		bendaharaRoutes.GET("/import-anggota", controllers.BendaharaImportAnggotaPage)
+		bendaharaRoutes.POST("/import-anggota/preview", controllers.BendaharaPreviewImportAnggota)
+		bendaharaRoutes.POST("/import-anggota", controllers.BendaharaImportAnggota)
+		bendaharaRoutes.DELETE("/import-anggota/clear", controllers.BendaharaClearImportHistory)
 	}
 
 	return router

@@ -1,4 +1,5 @@
 -- Hapus tabel jika sudah ada untuk memastikan skrip bisa dijalankan ulang
+DROP TABLE IF EXISTS import_history CASCADE;
 DROP TABLE IF EXISTS angsuran CASCADE;
 DROP TABLE IF EXISTS pinjaman CASCADE;
 DROP TABLE IF EXISTS detail CASCADE;
@@ -138,6 +139,25 @@ CREATE TABLE pengambilan_simpanan (
     catatan_bendahara TEXT,
     id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL
 );
+
+-- Tabel riwayat import anggota untuk menyimpan history import data anggota
+DROP TABLE IF EXISTS import_history CASCADE;
+CREATE TABLE import_history (
+    id_import VARCHAR(36) PRIMARY KEY,
+    id_pengelola INT NOT NULL REFERENCES pengelola(id_pengelola) ON DELETE CASCADE,
+    username VARCHAR(100) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    total_data INT NOT NULL DEFAULT 0,
+    success_count INT NOT NULL DEFAULT 0,
+    failed_count INT NOT NULL DEFAULT 0,
+    imported_data TEXT,
+    parse_errors TEXT,
+    tanggal_import TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index untuk performa query pada tabel import_history
+CREATE INDEX IF NOT EXISTS idx_import_history_pengelola ON import_history(id_pengelola);
+CREATE INDEX IF NOT EXISTS idx_import_history_tanggal ON import_history(tanggal_import);
 
 -- =================================================================
 -- BAGIAN 2: PENGISIAN DATA AWAL (SEEDING)

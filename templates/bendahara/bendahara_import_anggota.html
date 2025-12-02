@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Import Data Anggota - Bendahara Koperasi</title>
+
+    <!-- Bootstrap & Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/bendahara_navbar.css" rel="stylesheet">
+    <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+    
+    <style>
+        .main-content {
+            margin-left: 280px;
+            padding: 30px;
+            transition: margin-left 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .page-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .card {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 20px;
+            border: none;
+        }
+
+        .card-header h5 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 50px 30px;
+            text-align: center;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+
+        .upload-area i {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .upload-area h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-area p {
+            color: #666;
+            margin: 0;
+        }
+
+        .file-info {
+            display: none;
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .btn-upload {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 30px;
+            font-weight: 600;
+            border-radius: 10px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .btn-upload:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-upload:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            border: none;
+            padding: 12px 30px;
+            font-weight: 600;
+            border-radius: 10px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(17, 153, 142, 0.4);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 30px;
+            font-weight: 600;
+            border-radius: 10px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-info:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .info-box h5 {
+            color: #856404;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .info-box ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #856404;
+        }
+
+        .info-box li {
+            margin-bottom: 8px;
+        }
+
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .result-box {
+            display: none;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px dashed #dee2e6;
+        }
+
+        .result-box.show {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+
+        .progress {
+            height: 25px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .progress.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Data dari server untuk JavaScript -->
+    <script type="application/json" id="serverData">
+{{if .LatestImport}}
+{
+    "hasLatestImport": true,
+    "latestImport": {
+        "fileName": "{{.LatestImport.FileName}}",
+        "totalData": {{.LatestImport.TotalData}},
+        "success": {{.LatestImport.SuccessCount}},
+        "failed": {{.LatestImport.FailedCount}},
+        "tanggalImport": "{{.LatestImport.TanggalImport.Format "02 Jan 2006 15:04"}}",
+        "importedData": {{json .ImportedData}},
+        "parseErrors": {{json .ParseErrors}},
+        "totalSuccessCount": {{.TotalSuccessCount}},
+        "totalFailedCount": {{.TotalFailedCount}}
+    }
+}
+{{else}}
+{
+    "hasLatestImport": false,
+    "latestImport": null
+}
+{{end}}
+    </script>
+
+    <!-- Include Navbar -->
+    {{template "bendahara_navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1><i class="fa-solid fa-file-excel me-3"></i>Import Data Anggota</h1>
+            <p>Upload file Excel (.xlsx) untuk menambahkan data anggota secara batch</p>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <h5><i class="fa-solid fa-circle-info me-2"></i>Petunjuk Penggunaan:</h5>
+            <ol>
+                <li>Download template dengan klik tombol <strong>"Download Template"</strong></li>
+                <li>Buka file CSV dengan <strong>Microsoft Excel</strong> atau <strong>LibreOffice Calc</strong></li>
+                <li>Isi data anggota sesuai dengan format yang ada di template</li>
+                <li><strong>PENTING:</strong> Setelah mengisi data, pilih <strong>"Save As"</strong> → Pilih format <strong>"Excel Workbook (.xlsx)"</strong></li>
+                <li>Upload file <strong>.xlsx</strong> yang sudah diisi (bukan file .csv)</li>
+                <li><strong>Password default</strong> untuk setiap anggota adalah <strong>NIK</strong> mereka (dapat diubah setelah login pertama)</li>
+                <li>Status anggota akan otomatis diset sebagai <strong>"aktif"</strong></li>
+            </ol>
+        </div>
+
+        <!-- Warning Box -->
+        <div class="alert alert-warning" role="alert">
+            <h6 class="alert-heading"><i class="fa-solid fa-triangle-exclamation me-2"></i>Perhatian!</h6>
+            <ul class="mb-0">
+                <li>Pastikan <strong>Username</strong> bersifat unik dan belum digunakan</li>
+                <li>Format tanggal lahir harus <strong>YYYY-MM-DD</strong> (contoh: 1990-05-15)</li>
+                <li><strong>NIK harus 16 digit</strong> angka</li>
+                <li>Jenis kelamin harus diisi dengan <strong>"Laki-laki"</strong> atau <strong>"Perempuan"</strong></li>
+                <li>Semua data yang duplikat atau tidak valid akan <strong>di-skip</strong> saat import</li>
+            </ul>
+        </div>
+
+        <!-- Download Template Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fa-solid fa-download me-2"></i>Template Excel</h5>
+            </div>
+            <div class="card-body text-center">
+                <p class="mb-3">Download template Excel untuk format import data anggota</p>
+                <button class="btn btn-download" onclick="downloadTemplate()">
+                    <i class="fa-solid fa-file-excel me-2"></i>Download Template
+                </button>
+            </div>
+        </div>
+
+        <!-- Upload Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fa-solid fa-upload me-2"></i>Upload File Excel</h5>
+            </div>
+            <div class="card-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <h4>Klik atau Drag & Drop File Excel di Sini</h4>
+                        <p>Mendukung format .xlsx dan .xls (Maksimal 10MB)</p>
+                    </div>
+                    <input type="file" id="fileInput" name="file" accept=".xlsx,.xls" style="display: none;" onchange="handleFileSelect(event)">
+                    
+                    <div class="file-info" id="fileInfo">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fa-solid fa-file-excel me-2"></i>
+                                <strong id="fileName"></strong>
+                                <span class="ms-2 text-muted" id="fileSize"></span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="removeFile()">
+                                <i class="fa-solid fa-times"></i> Hapus
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="progress mt-3" id="progressBar">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button type="button" class="btn btn-info me-2" id="btnPreview" disabled onclick="previewData()">
+                            <i class="fa-solid fa-eye me-2"></i>Preview Data
+                        </button>
+                        <button type="submit" class="btn btn-upload" id="btnUpload" disabled>
+                            <i class="fa-solid fa-upload me-2"></i>Upload & Import Data
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Preview Box -->
+                <div class="result-box" id="previewBox">
+                    <h5 class="mb-3"><i class="fa-solid fa-eye me-2"></i>Preview Data Excel</h5>
+                    <div id="previewContent"></div>
+                </div>
+
+                <!-- Result Box -->
+                <div class="result-box" id="resultBox">
+                    <h5 class="mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Hasil Import Data</h5>
+                    <div id="resultContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/bendahara_navbar.js"></script>
+    
+    <script>
+        let selectedFile = null;
+        let allImportedData = []; // Array untuk menyimpan semua data yang sudah diimport
+        let totalSuccessCount = 0; // Total data berhasil
+        let totalFailedCount = 0; // Total data gagal
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validasi ukuran file (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Ukuran file terlalu besar! Maksimal 10MB');
+                return;
+            }
+
+            selectedFile = file;
+            
+            // Tampilkan info file
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = `(${formatFileSize(file.size)})`;
+            document.getElementById('fileInfo').classList.add('show');
+            document.getElementById('btnUpload').disabled = false;
+            document.getElementById('btnPreview').disabled = false;
+        }
+
+        function removeFile() {
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileInfo').classList.remove('show');
+            document.getElementById('btnUpload').disabled = true;
+            document.getElementById('btnPreview').disabled = true;
+            document.getElementById('resultBox').classList.remove('show');
+            document.getElementById('previewBox').classList.remove('show');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        async function previewData() {
+            if (!selectedFile) {
+                alert('Pilih file terlebih dahulu!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            // Disable buttons
+            document.getElementById('btnPreview').disabled = true;
+            document.getElementById('btnPreview').innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Loading...';
+
+            try {
+                const response = await fetch('/bendahara/import-anggota/preview', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Sembunyikan resultBox ketika preview
+                    document.getElementById('resultBox').classList.remove('show');
+                    
+                    // Validasi data result dengan fallback
+                    const headers = result.headers || [];
+                    const sampleData = result.sampleData || [];
+                    
+                    if (!Array.isArray(headers)) {
+                        alert('Error: Data header tidak valid dari server');
+                        return;
+                    }
+
+                    if (!Array.isArray(sampleData)) {
+                        alert('Error: Data sample tidak valid dari server');
+                        return;
+                    }
+
+                    // Show preview
+                    const previewBox = document.getElementById('previewBox');
+                    const previewContent = document.getElementById('previewContent');
+
+                    let tableRows = '';
+                    if (result.sampleData && result.sampleData.length > 0) {
+                        result.sampleData.forEach((row, index) => {
+                            tableRows += '<tr>';
+                            tableRows += `<td class="text-center">${index + 1}</td>`;
+                            if (Array.isArray(row)) {
+                                row.forEach(cell => {
+                                    tableRows += `<td>${cell || '<span class="text-muted">-</span>'}</td>`;
+                                });
+                            }
+                            tableRows += '</tr>';
+                        });
+                    }
+
+                    // Format validation status
+                    let formatStatus = '';
+                    if (result.formatValid === true) {
+                        formatStatus = `<div class="alert alert-success mt-3">
+                            <h6><i class="fa-solid fa-check-circle me-2"></i>Format File Valid!</h6>
+                            <p class="mb-0">File Anda siap untuk diimport.</p>
+                        </div>`;
+                    } else if (result.formatValid === false) {
+                        let errorList = '';
+                        if (result.formatErrors && result.formatErrors.length > 0) {
+                            errorList = '<ul class="mb-0 mt-2">' + 
+                                result.formatErrors.map(err => `<li>${err}</li>`).join('') + 
+                                '</ul>';
+                        }
+                        formatStatus = `<div class="alert alert-danger mt-3">
+                            <h6><i class="fa-solid fa-exclamation-circle me-2"></i>Format File Tidak Sesuai!</h6>
+                            <p class="mb-2">File tidak dapat diimport karena format tidak sesuai dengan template:</p>
+                            ${errorList}
+                        </div>`;
+                    }
+
+                    // Preview validation results
+                    let validationPreview = '';
+                    if (result.formatValid && result.previewValidCount !== undefined) {
+                        const totalPreview = result.sampleData ? result.sampleData.length : 0;
+                        const validCount = result.previewValidCount || 0;
+                        const errorCount = result.previewErrorCount || 0;
+                        
+                        let previewErrorList = '';
+                        if (result.previewErrors && result.previewErrors.length > 0) {
+                            previewErrorList = '<div class="mt-3"><strong>Masalah yang ditemukan di preview:</strong><ul class="mb-0 mt-2">' +
+                                result.previewErrors.map(err => `<li class="text-warning">${err}</li>`).join('') +
+                                '</ul></div>';
+                        }
+
+                        const alertClass = errorCount === 0 ? 'alert-success' : (validCount > 0 ? 'alert-warning' : 'alert-danger');
+                        
+                        validationPreview = `<div class="alert ${alertClass} mt-3">
+                            <h6><i class="fa-solid fa-chart-bar me-2"></i>Prediksi Hasil Import (dari ${totalPreview} baris preview):</h6>
+                            <hr>
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <h4 class="mb-0 text-success">${validCount}</h4>
+                                    <small>Akan Berhasil</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <h4 class="mb-0 text-danger">${errorCount}</h4>
+                                    <small>Akan Gagal</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <h4 class="mb-0">${result.totalRows}</h4>
+                                    <small>Total Baris Data</small>
+                                </div>
+                            </div>
+                            ${previewErrorList}
+                            ${errorCount > 0 ? '<p class="mb-0 mt-3"><small><i class="fa-solid fa-info-circle me-1"></i>Perbaiki masalah di atas sebelum upload untuk hasil yang lebih baik.</small></p>' : ''}
+                        </div>`;
+                    }
+
+                    previewContent.innerHTML = `
+                        <div class="alert alert-info">
+                            <h5><i class="fa-solid fa-file-excel me-2"></i>Preview File: ${result.filename}</h5>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Total Baris Data:</strong> ${result.totalRows}
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Jumlah Kolom:</strong> ${result.columnCount}
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Preview:</strong> ${Math.min(5, result.totalRows)} baris pertama
+                                </div>
+                            </div>
+                        </div>
+
+                        ${formatStatus}
+
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0"><i class="fa-solid fa-table me-2"></i>Isi File Excel Anda</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 50px;">No</th>
+                                                ${(result.headers || []).map((header, i) => 
+                                                    `<th><strong>Kolom ${i + 1}:</strong><br>${header}</th>`
+                                                ).join('')}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${tableRows}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${validationPreview}
+                    `;
+
+                    previewBox.classList.add('show');
+                    
+                    // Scroll to preview
+                    previewBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    alert('Error: ' + (result.error || 'Gagal membaca file'));
+                }
+            } catch (error) {
+                alert('Terjadi kesalahan: ' + error.message);
+            } finally {
+                document.getElementById('btnPreview').disabled = false;
+                document.getElementById('btnPreview').innerHTML = '<i class="fa-solid fa-eye me-2"></i>Preview Data';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            console.log('🚀 Upload dimulai - Data saat ini:', allImportedData.length, 'records');
+
+            if (!selectedFile) {
+                alert('Pilih file terlebih dahulu!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            // Sembunyikan previewBox ketika upload
+            document.getElementById('previewBox').classList.remove('show');
+
+            // Show progress bar
+            const progressBar = document.getElementById('progressBar');
+            progressBar.classList.add('show');
+            progressBar.querySelector('.progress-bar').style.width = '30%';
+
+            // Disable button
+            document.getElementById('btnUpload').disabled = true;
+            document.getElementById('btnUpload').innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Mengupload...';
+
+            try {
+                const response = await fetch('/bendahara/import-anggota', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                progressBar.querySelector('.progress-bar').style.width = '100%';
+
+                const result = await response.json();
+
+                // Hide progress bar
+                setTimeout(() => {
+                    progressBar.classList.remove('show');
+                    progressBar.querySelector('.progress-bar').style.width = '0%';
+                }, 500);
+
+                // Show result
+                const resultBox = document.getElementById('resultBox');
+                const resultContent = document.getElementById('resultContent');
+
+                if (response.ok) {
+                    let alertClass = 'alert-success';
+                    if (result.failed > 0) {
+                        alertClass = 'alert-warning';
+                    }
+
+                    // TAMBAHKAN data baru ke array yang sudah ada (jangan replace)
+                    console.log('📊 Sebelum concat - Total data lama:', allImportedData.length);
+                    console.log('📥 Data baru yang akan ditambahkan:', result.importedData ? result.importedData.length : 0);
+                    
+                    if (result.importedData && result.importedData.length > 0) {
+                        allImportedData = allImportedData.concat(result.importedData);
+                    }
+                    
+                    console.log('✅ Setelah concat - Total data sekarang:', allImportedData.length);
+                    console.log('📋 Isi allImportedData:', allImportedData);
+                    
+                    // Update total counters
+                    totalSuccessCount += result.success;
+                    totalFailedCount += result.failed;
+
+                    let errorList = '';
+                    if (result.parseErrors && result.parseErrors.length > 0) {
+                        const maxDisplay = 10; // Maksimal 10 error yang ditampilkan
+                        const totalErrors = result.parseErrors.length;
+                        const displayErrors = result.parseErrors.slice(0, maxDisplay);
+                        
+                        errorList = `<div class="card mt-3 border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0"><i class="fa-solid fa-exclamation-triangle me-2"></i>Detail Error (${totalErrors} masalah ditemukan)</h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="mb-0">`;
+                        
+                        displayErrors.forEach(err => {
+                            errorList += `<li class="text-danger mb-1"><small>${err}</small></li>`;
+                        });
+                        
+                        if (totalErrors > maxDisplay) {
+                            errorList += `<li class="text-muted"><em>... dan ${totalErrors - maxDisplay} error lainnya</em></li>`;
+                        }
+                        
+                        errorList += `</ul>
+                                <div class="alert alert-info mt-3 mb-0">
+                                    <small><i class="fa-solid fa-lightbulb me-1"></i><strong>Tips:</strong> 
+                                    Perbaiki data yang error di file Excel Anda, lalu upload ulang.</small>
+                                </div>
+                            </div>
+                        </div>`;
+                    }
+
+                    let failedMessage = '';
+                    if (result.failed > 0) {
+                        failedMessage = `<div class="alert alert-danger mt-2">
+                            <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                            <strong>${result.failed} data gagal diimport</strong>
+                            <p class="mb-0 mt-1"><small>Penyebab umum: Username duplikat, NIK tidak 16 digit, atau data wajib kosong. Lihat detail error di bawah.</small></p>
+                        </div>`;
+                    }
+
+                    resultContent.innerHTML = `
+                        <div class="alert ${alertClass}">
+                            <h5><i class="fa-solid fa-info-circle me-2"></i>Import Terakhir: ${result.message}</h5>
+                            <hr>
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <h3 class="mb-0">${result.total}</h3>
+                                    <small class="text-muted">Data Import Terakhir</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <h3 class="mb-0 text-success">${result.success}</h3>
+                                    <small class="text-muted">Berhasil Kali Ini</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <h3 class="mb-0 text-danger">${result.failed}</h3>
+                                    <small class="text-muted">Gagal Kali Ini</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info mt-2">
+                            <h6><i class="fa-solid fa-chart-bar me-2"></i>Total Keseluruhan:</h6>
+                            <hr>
+                            <div class="row text-center">
+                                <div class="col-md-6">
+                                    <h4 class="mb-0 text-success">${totalSuccessCount}</h4>
+                                    <small class="text-muted">Total Berhasil</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <h4 class="mb-0 text-danger">${totalFailedCount}</h4>
+                                    <small class="text-muted">Total Gagal</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        
+                        ${failedMessage}
+                        ${errorList}
+                        ${allImportedData.length > 0 ? `
+                            <div class="card mt-3">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="fa-solid fa-table me-2"></i>Data Anggota (${allImportedData.length} data)</h6>
+                                    <small class="d-block mt-1">Debug: Rendering ${allImportedData.length} records</small>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped table-hover mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 50px;">No</th>
+                                                    <th>Nama Anggota</th>
+                                                    <th>Username</th>
+                                                    <th>Tanggal Lahir</th>
+                                                    <th>Jenis Kelamin</th>
+                                                    <th>NIK</th>
+                                                    <th>No. Telepon</th>
+                                                    <th>Unit Kerja</th>
+                                                    <th>Fakultas</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${allImportedData.map((anggota, index) => `
+                                                    <tr>
+                                                        <td class="text-center">${index + 1}</td>
+                                                        <td>${anggota.nama_anggota || '-'}</td>
+                                                        <td><strong>${anggota.username || '-'}</strong></td>
+                                                        <td>${anggota.tgl_lahir || '-'}</td>
+                                                        <td>${anggota.jenis_kelamin || '-'}</td>
+                                                        <td>${anggota.nik_ktp || '-'}</td>
+                                                        <td>${anggota.no_telepon || '-'}</td>
+                                                        <td>${anggota.unit_kerja || '-'}</td>
+                                                        <td>${anggota.fakultas || '-'}</td>
+                                                        <td>
+                                                            <span class="badge bg-success">${anggota.status_anggota || 'Aktif'}</span>
+                                                        </td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${result.success > 0 ? `
+                            <div class="alert alert-success mt-3">
+                                <i class="fa-solid fa-check-circle me-2"></i><strong>Import Berhasil!</strong> 
+                                ${result.success} data baru ditambahkan. Total: ${allImportedData.length} data.
+                            </div>
+                            <div class="text-center mt-3">
+                                <button class="btn btn-upload" onclick="resetForNewImport()">
+                                    <i class="fa-solid fa-rotate-right me-2"></i>Import File Lagi
+                                </button>
+                                <button class="btn btn-danger ms-2" onclick="clearAllData()">
+                                    <i class="fa-solid fa-trash me-2"></i>Hapus Semua Data
+                                </button>
+                            </div>
+                        ` : ''}
+                    `;
+                    
+                    // Show result box dan scroll ke result
+                    resultBox.classList.add('show');
+                    setTimeout(() => {
+                        resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 300);
+                } else {
+                    resultContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5><i class="fa-solid fa-exclamation-circle me-2"></i>Error Format File!</h5>
+                            <p class="mb-0">${result.error || 'Terjadi kesalahan saat upload'}</p>
+                            ${result.details ? `<p class="mb-0 mt-2"><small><strong>Detail:</strong> ${result.details}</small></p>` : ''}
+                        </div>
+                        
+                        ${result.detectedHeaders && result.expectedHeaders ? `
+                            <div class="card mt-3">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0"><i class="fa-solid fa-exclamation-triangle me-2"></i>Perbandingan Format</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="text-danger"><i class="fa-solid fa-times-circle me-2"></i>Format File Anda:</h6>
+                                            <div class="bg-light p-3 rounded">
+                                                <small><strong>Jumlah Kolom:</strong> ${result.detectedHeaders.length}</small><br>
+                                                <code style="font-size: 0.85rem; color: #dc3545;">${result.detectedHeaders.join(' | ')}</code>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-success"><i class="fa-solid fa-check-circle me-2"></i>Format yang Diperlukan:</h6>
+                                            <div class="bg-light p-3 rounded">
+                                                <small><strong>Jumlah Kolom:</strong> ${result.expectedHeaders.length}</small><br>
+                                                <code style="font-size: 0.85rem; color: #28a745;">${result.expectedHeaders.join(' | ')}</code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        ${result.yourFormat && result.requiredFormat ? `
+                            <div class="alert alert-warning mt-3">
+                                <strong><i class="fa-solid fa-info-circle me-2"></i>Format Anda vs Yang Diperlukan:</strong>
+                                <div class="mt-2">
+                                    <small class="text-danger"><strong>❌ ${result.yourFormat}</strong></small><br>
+                                    <small class="text-success"><strong>✅ ${result.requiredFormat}</strong></small>
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        ${result.hint ? `
+                            <div class="alert alert-info mt-3">
+                                <strong><i class="fa-solid fa-lightbulb me-2"></i>Solusi:</strong>
+                                <p class="mb-0 mt-2">${result.hint}</p>
+                            </div>
+                        ` : ''}
+                        
+                        ${result.parseErrors && result.parseErrors.length > 0 ? 
+                            '<div class="alert alert-warning mt-3"><strong>Error detail:</strong><ul class="mb-0 mt-2">' + 
+                            result.parseErrors.slice(0, 10).map(err => `<li class="small">${err}</li>`).join('') + 
+                            (result.parseErrors.length > 10 ? `<li class="text-muted"><em>... dan ${result.parseErrors.length - 10} error lainnya</em></li>` : '') +
+                            '</ul></div>' : ''}
+                        
+                        <div class="alert alert-primary mt-3">
+                            <strong><i class="fa-solid fa-arrow-down me-2"></i>Langkah Selanjutnya:</strong>
+                            <ol class="mb-0 mt-2">
+                                <li>Klik tombol <strong>"Download Template"</strong> di atas</li>
+                                <li>Buka template dengan Excel, isi data sesuai format</li>
+                                <li>Save As → pilih format <strong>.xlsx</strong></li>
+                                <li><strong>JANGAN ubah nama atau urutan kolom</strong></li>
+                                <li>Upload kembali file yang sudah diisi</li>
+                            </ol>
+                        </div>
+                    `;
+                }
+
+                resultBox.classList.add('show');
+                
+                // Scroll to result box
+                setTimeout(() => {
+                    resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 300);
+
+                // Reset form (tapi jangan hapus result box)
+                selectedFile = null;
+                document.getElementById('fileInput').value = '';
+                document.getElementById('fileInfo').classList.remove('show');
+                document.getElementById('btnUpload').disabled = true;
+                document.getElementById('btnPreview').disabled = true;
+                document.getElementById('previewBox').classList.remove('show');
+                // JANGAN hapus resultBox - biarkan tetap ditampilkan
+
+            } catch (error) {
+                progressBar.classList.remove('show');
+                alert('Terjadi kesalahan: ' + error.message);
+            } finally {
+                document.getElementById('btnUpload').disabled = false;
+                document.getElementById('btnUpload').innerHTML = '<i class="fa-solid fa-upload me-2"></i>Upload & Import Data';
+            }
+        });
+
+        function downloadTemplate() {
+            // Create sample data as CSV (Excel can read CSV files)
+            const templateHeaders = [
+                'Nama Anggota', 'Username', 'Tanggal Lahir', 'Jenis Kelamin', 'Alamat', 
+                'NIK', 'No. Telepon', 'Unit Kerja', 'Fakultas', 'Status Anggota'
+            ];
+
+            const csvData = [
+                templateHeaders,
+                ['Ahmad Fauzi', 'ahmadfauzi', '1990-05-15', 'Laki-laki', 'Jl. Merdeka No. 123, Jakarta', '3174051234567890', '081234567890', 'Keuangan', 'Ekonomi', 'Mahasiswa'],
+                ['Siti Nurhaliza', 'sitinur', '1992-08-20', 'Perempuan', 'Jl. Sudirman No. 456, Bandung', '3273081234567890', '081298765432', 'IT', 'Teknik', 'Dosen'],
+                ['Budi Santoso', 'budisantoso', '1995-03-10', 'Laki-laki', 'Jl. Ahmad Yani No. 789, Surabaya', '3578031234567890', '081345678901', 'Marketing', 'Bisnis', 'Staff']
+            ];
+
+            // Convert to CSV with proper encoding
+            let csv = '\uFEFF'; // UTF-8 BOM for Excel
+            csvData.forEach(row => {
+                csv += row.map(cell => {
+                    // Escape quotes and wrap in quotes
+                    const escaped = String(cell).replace(/"/g, '""');
+                    return `"${escaped}"`;
+                }).join(',') + '\r\n';
+            });
+
+            // Create download link
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'template_import_anggota.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            alert('Template berhasil diunduh!\n\nCara menggunakan:\n1. Buka file CSV dengan Microsoft Excel atau LibreOffice\n2. Isi data anggota sesuai format\n3. Save As → pilih format Excel (.xlsx)\n4. Upload file Excel yang sudah diisi');
+        }
+
+        // Drag and drop functionality
+        const uploadArea = document.querySelector('.upload-area');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.style.borderColor = '#764ba2';
+                uploadArea.style.background = '#e8ebff';
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.style.borderColor = '#667eea';
+                uploadArea.style.background = '#f8f9ff';
+            }, false);
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                document.getElementById('fileInput').files = files;
+                handleFileSelect({ target: { files: files } });
+            }
+        }, false);
+
+        // Load data riwayat import saat halaman pertama kali dimuat
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('=== Page loaded, checking for import history ===');
+            
+            // Ambil data dari server yang sudah di-embed di script tag
+            const serverDataElement = document.getElementById('serverData');
+            if (!serverDataElement) {
+                console.error('❌ Server data element not found');
+                return;
+            }
+            
+            console.log('✓ Server data element found');
+            console.log('Raw content:', serverDataElement.textContent);
+            
+            try {
+                const serverData = JSON.parse(serverDataElement.textContent);
+                console.log('✓ Server data parsed successfully:', serverData);
+                
+                if (serverData.hasLatestImport && serverData.latestImport) {
+                    console.log('✓ Has latest import data, displaying...');
+                    console.log('Latest import details:', {
+                        fileName: serverData.latestImport.fileName,
+                        totalData: serverData.latestImport.totalData,
+                        success: serverData.latestImport.success,
+                        failed: serverData.latestImport.failed,
+                        hasImportedData: !!serverData.latestImport.importedData,
+                        importedDataLength: serverData.latestImport.importedData ? serverData.latestImport.importedData.length : 0
+                    });
+                    
+                    // Tampilkan hasil import sebelumnya
+                    displayPreviousImportResult(serverData.latestImport);
+                } else {
+                    console.log('ℹ️ No import history found - displaying empty state');
+                    // Tampilkan tabel kosong dengan header
+                    const resultBox = document.getElementById('resultBox');
+                    const resultContent = document.getElementById('resultContent');
+                    
+                    if (resultBox && resultContent) {
+                        resultContent.innerHTML = `
+                            <div class="alert alert-info">
+                                <i class="fa-solid fa-info-circle me-2"></i>
+                                <strong>Belum ada data import</strong>
+                                <p class="mb-0 mt-2">Silakan upload file Excel untuk memulai import anggota.</p>
+                            </div>
+                            
+                            <div class="card mt-3">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="fa-solid fa-table me-2"></i>Data Anggota (0 data)</h6>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped table-hover mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 50px;">No</th>
+                                                    <th>Nama Anggota</th>
+                                                    <th>Username</th>
+                                                    <th>Tanggal Lahir</th>
+                                                    <th>Jenis Kelamin</th>
+                                                    <th>NIK</th>
+                                                    <th>No. Telepon</th>
+                                                    <th>Unit Kerja</th>
+                                                    <th>Fakultas</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td colspan="10" class="text-center text-muted py-4">
+                                                        <i class="fa-solid fa-inbox fa-3x mb-3 d-block"></i>
+                                                        Tidak ada data
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        resultBox.classList.add('show');
+                    }
+                }
+            } catch (e) {
+                console.error('❌ Error parsing server data:', e);
+                console.error('Content that failed to parse:', serverDataElement.textContent);
+            }
+        });
+
+        function displayPreviousImportResult(result) {
+            console.log('=== displayPreviousImportResult called ===');
+            console.log('Result data:', result);
+            
+            if (!result) {
+                console.error('❌ Result is null or undefined');
+                return;
+            }
+            
+            if (!result.fileName) {
+                console.error('❌ Result has no fileName:', result);
+                return;
+            }
+            
+            // PENTING: Load data dari history ke allImportedData
+            if (result.importedData && Array.isArray(result.importedData) && result.importedData.length > 0) {
+                console.log('📥 Loading accumulated import data:', result.importedData.length, 'records');
+                allImportedData = result.importedData; // Set data gabungan dari SEMUA history
+                totalSuccessCount = result.totalSuccessCount || result.success; // Total dari semua import
+                totalFailedCount = result.totalFailedCount || result.failed; // Total dari semua import
+                console.log('✅ allImportedData loaded:', allImportedData.length, 'records');
+                console.log('📊 Totals - Success:', totalSuccessCount, 'Failed:', totalFailedCount);
+            }
+
+            const resultBox = document.getElementById('resultBox');
+            const resultContent = document.getElementById('resultContent');
+
+            if (!resultBox || !resultContent) {
+                console.error('❌ Result box elements not found');
+                return;
+            }
+
+            console.log('✓ All elements found, building HTML...');
+
+            let alertClass = 'alert-success';
+            if (result.failed > 0) {
+                alertClass = 'alert-warning';
+            }
+
+            let errorList = '';
+            if (result.parseErrors && Array.isArray(result.parseErrors) && result.parseErrors.length > 0) {
+                console.log(`Building error list for ${result.parseErrors.length} errors`);
+                const maxDisplay = 10;
+                const totalErrors = result.parseErrors.length;
+                const displayErrors = result.parseErrors.slice(0, maxDisplay);
+                
+                errorList = `<div class="card mt-3 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="fa-solid fa-exclamation-triangle me-2"></i>Detail Error (${totalErrors} masalah ditemukan)</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">`;
+                
+                displayErrors.forEach(err => {
+                    errorList += `<li class="text-danger mb-1"><small>${err}</small></li>`;
+                });
+                
+                if (totalErrors > maxDisplay) {
+                    errorList += `<li class="text-muted"><em>... dan ${totalErrors - maxDisplay} error lainnya</em></li>`;
+                }
+                
+                errorList += `</ul>
+                    </div>
+                </div>`;
+            }
+
+            let successMessage = '';
+            if (result.success > 0) {
+                successMessage = `<div class="alert alert-success mt-2">
+                    <i class="fa-solid fa-check-circle me-2"></i>
+                    <strong>${result.success} data anggota berhasil diimport!</strong>
+                </div>`;
+            }
+            let failedMessage = '';
+            if (result.failed > 0) {
+                failedMessage = `<div class="alert alert-danger mt-2">
+                    <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                    <strong>${result.failed} data gagal diimport</strong>
+                </div>`;
+            }
+
+            // Build table for imported data
+            let dataTable = '';
+            console.log('Checking allImportedData:', {
+                exists: !!allImportedData,
+                isArray: Array.isArray(allImportedData),
+                length: allImportedData ? allImportedData.length : 0
+            });
+            
+            if (allImportedData.length > 0) {
+                console.log(`✓ Building data table for ${allImportedData.length} records from allImportedData`);
+                dataTable = `
+                    <div class="card mt-3">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="fa-solid fa-table me-2"></i>Data Anggota</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 50px;">No</th>
+                                            <th>Nama Anggota</th>
+                                            <th>Username</th>
+                                            <th>Tanggal Lahir</th>
+                                            <th>Jenis Kelamin</th>
+                                            <th>NIK</th>
+                                            <th>No. Telepon</th>
+                                            <th>Unit Kerja</th>
+                                            <th>Fakultas</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${allImportedData.map((anggota, index) => `
+                                            <tr>
+                                                <td class="text-center">${index + 1}</td>
+                                                <td>${anggota.nama_anggota || '-'}</td>
+                                                <td><strong>${anggota.username || '-'}</strong></td>
+                                                <td>${anggota.tgl_lahir || '-'}</td>
+                                                <td>${anggota.jenis_kelamin || '-'}</td>
+                                                <td>${anggota.nik_ktp || '-'}</td>
+                                                <td>${anggota.no_telepon || '-'}</td>
+                                                <td>${anggota.unit_kerja || '-'}</td>
+                                                <td>${anggota.fakultas || '-'}</td>
+                                                <td>
+                                                    <span class="badge bg-success">${anggota.status_anggota || 'Aktif'}</span>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                console.log('⚠️ No imported data to display');
+            }
+
+            console.log('✓ Building final HTML content...');
+
+            resultContent.innerHTML = `
+                <div class="alert alert-info mb-3">
+                    <i class="fa-solid fa-history me-2"></i><strong>Riwayat Import Terakhir:</strong><br>
+                    <small>File: <strong>${result.fileName}</strong> | Tanggal: <strong>${result.tanggalImport}</strong></small>
+                </div>
+                <div class="alert ${alertClass}">
+                    <h5><i class="fa-solid fa-info-circle me-2"></i>Hasil Import Terakhir</h5>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h3 class="mb-0">${result.totalData}</h3>
+                            <small class="text-muted">Total Data Import Terakhir</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h3 class="mb-0 text-success">${result.success}</h3>
+                            <small class="text-muted">Berhasil Kali Ini</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h3 class="mb-0 text-danger">${result.failed}</h3>
+                            <small class="text-muted">Gagal Kali Ini</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-2">
+                    <h6><i class="fa-solid fa-chart-bar me-2"></i>Total Keseluruhan dari Semua Import:</h6>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h4 class="mb-0">${allImportedData.length}</h4>
+                            <small class="text-muted">Total Data Terakumulasi</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h4 class="mb-0 text-success">${totalSuccessCount}</h4>
+                            <small class="text-muted">Total Berhasil</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h4 class="mb-0 text-danger">${totalFailedCount}</h4>
+                            <small class="text-muted">Total Gagal</small>
+                        </div>
+                    </div>
+                </div>
+                
+                
+                ${failedMessage}
+                ${errorList}
+                ${dataTable}
+                ${allImportedData.length > 0 ? `
+                    <div class="alert alert-success mt-3">
+                        <i class="fa-solid fa-check-circle me-2"></i><strong>Data Tersedia!</strong> 
+                        ${allImportedData.length} data anggota siap untuk diproses.
+                    </div>
+                    <div class="text-center mt-3">
+                        <button class="btn btn-upload" onclick="resetForNewImport()">
+                            <i class="fa-solid fa-rotate-right me-2"></i>Import File Lagi
+                        </button>
+                        <button class="btn btn-danger ms-2" onclick="clearAllData()">
+                            <i class="fa-solid fa-trash me-2"></i>Hapus Semua Data
+                        </button>
+                    </div>
+                ` : ''}
+            `;
+
+            resultBox.classList.add('show');
+            console.log('✓ Previous import result displayed successfully!');
+        }
+
+        function resetForNewImport() {
+            // JANGAN sembunyikan result box - biarkan data tetap tampil
+            // Hanya reset form upload untuk import file baru
+            
+            const previewBox = document.getElementById('previewBox');
+            
+            // Hanya sembunyikan preview box jika ada
+            if (previewBox) {
+                previewBox.classList.remove('show');
+            }
+            
+            // Reset form upload
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileInfo').classList.remove('show');
+            document.getElementById('btnUpload').disabled = true;
+            document.getElementById('btnPreview').disabled = true;
+            
+            // Scroll ke form upload
+            document.querySelector('.upload-area').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Tampilkan notifikasi
+            console.log('✓ Form reset - ready for new import. Previous result still displayed.');
+        }
+
+        // Fungsi baru untuk clear semua data yang sudah diimport
+        async function clearAllData() {
+            if (!confirm('Apakah Anda yakin ingin menghapus semua data yang sudah diimport? Data akan dihapus permanen dari database.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/bendahara/import-anggota/clear', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Clear data di memory
+                    allImportedData = [];
+                    totalSuccessCount = 0;
+                    totalFailedCount = 0;
+                    
+                    // Update tampilan result box dengan tabel kosong (header tetap ada)
+                    const resultBox = document.getElementById('resultBox');
+                    const resultContent = document.getElementById('resultContent');
+                    
+                    resultContent.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fa-solid fa-check-circle me-2"></i>
+                            <strong>Semua data berhasil dihapus!</strong>
+                            <p class="mb-0 mt-2">Tidak ada riwayat import. Silakan upload file Excel untuk memulai import anggota baru.</p>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0"><i class="fa-solid fa-table me-2"></i>Data Anggota (0 data)</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-striped table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 50px;">No</th>
+                                                <th>Nama Anggota</th>
+                                                <th>Username</th>
+                                                <th>Tanggal Lahir</th>
+                                                <th>Jenis Kelamin</th>
+                                                <th>NIK</th>
+                                                <th>No. Telepon</th>
+                                                <th>Unit Kerja</th>
+                                                <th>Fakultas</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="10" class="text-center text-muted py-4">
+                                                    <i class="fa-solid fa-inbox fa-3x mb-3 d-block"></i>
+                                                    Tidak ada data
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <button class="btn btn-upload" onclick="resetForNewImport()">
+                                <i class="fa-solid fa-upload me-2"></i>Import File Baru
+                            </button>
+                        </div>
+                    `;
+                    
+                    // Tampilkan result box dengan tabel kosong
+                    resultBox.classList.add('show');
+                    
+                    console.log('✓ Import history cleared from database');
+                } else {
+                    alert('❌ Gagal menghapus data: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error clearing data:', error);
+                alert('❌ Terjadi kesalahan saat menghapus data');
+            }
+        }
+    </script>
+</body>
+</html>

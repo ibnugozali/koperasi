@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
@@ -283,4 +284,70 @@ func GetMenungguKonfirmasi(db *sql.DB) (int, error) {
 	query := "SELECT COUNT(*) FROM anggota WHERE status = 'pending'"
 	err := db.QueryRow(query).Scan(&count)
 	return count, err
+}
+
+// BatchInsertAnggota melakukan insert batch data anggota dari file XLSX
+func BatchInsertAnggota(db *sql.DB, anggotaList []models.Anggota) (successCount int, failedCount int, detailErrors []string, successfulIDs []string) {
+	successCount = 0
+	failedCount = 0
+	detailErrors = []string{}
+	successfulIDs = []string{}
+
+	for idx, anggota := range anggotaList {
+		rowNum := idx + 2 // +2 karena index 0 adalah header, dan Excel dimulai dari baris 1
+
+		// Cek apakah username sudah ada
+		var existingUsername string
+		var existingNIK string
+		checkQuery := "SELECT COALESCE(username, ''), COALESCE(nik_ktp, '') FROM anggota WHERE username = $1 OR nik_ktp = $2 LIMIT 1"
+		err := db.QueryRow(checkQuery, anggota.Username, anggota.NikKTP).Scan(&existingUsername, &existingNIK)
+
+		if err == nil {
+			// Data ditemukan - ada duplikat
+			if existingUsername == anggota.Username {
+				detailErrors = append(detailErrors, fmt.Sprintf("Baris %d: Username '%s' sudah digunakan oleh anggota lain", rowNum, anggota.Username))
+			}
+			if existingNIK == anggota.NikKTP && anggota.NikKTP != "" {
+				detailErrors = append(detailErrors, fmt.Sprintf("Baris %d: NIK '%s' sudah terdaftar", rowNum, anggota.NikKTP))
+			}
+			failedCount++
+			continue
+		}
+
+		query := `
+			INSERT INTO anggota (
+				id_anggota, nama_anggota, username, password, tgl_lahir, 
+				nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, 
+				fakultas, tgl_gabung, unit_kerja, fakultas_code, status
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		`
+
+		_, err = db.Exec(query,
+			anggota.IDAnggota,
+			anggota.NamaAnggota,
+			anggota.Username,
+			anggota.Password,
+			anggota.TglLahir,
+			anggota.NikKTP,
+			anggota.NoTelepon,
+			anggota.Alamat,
+			anggota.JenisKelamin,
+			anggota.StatusAnggota,
+			anggota.Fakultas,
+			anggota.TglGabung,
+			anggota.UnitKerja,
+			anggota.FakultasCode,
+			anggota.Status,
+		)
+
+		if err != nil {
+			detailErrors = append(detailErrors, fmt.Sprintf("Baris %d: Gagal insert ke database - %s", rowNum, err.Error()))
+			failedCount++
+		} else {
+			successCount++
+			successfulIDs = append(successfulIDs, anggota.IDAnggota)
+		}
+	}
+
+	return successCount, failedCount, detailErrors, successfulIDs
 }

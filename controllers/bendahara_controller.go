@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 
 	"koperasi-simpan-pinjam/config"
@@ -1239,4 +1242,689 @@ func BendaharaDeleteAllLoginHistory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Semua riwayat login berhasil dihapus"})
+}
+
+// BendaharaImportAnggotaPage menampilkan halaman import data anggota
+func BendaharaImportAnggotaPage(c *gin.Context) {
+	// Ambil logo path dari context (sudah di-set oleh middleware)
+	logoPath, exists := c.Get("logoPath")
+	if !exists {
+		logoPath = "/static/images/logo.png"
+	}
+
+	// Ambil session untuk mendapatkan ID pengelola
+	session := sessions.Default(c)
+	idPengelola := session.Get("user_id") // Gunakan "user_id" sesuai dengan key yang diset saat login
+
+	// Ambil riwayat import terbaru
+	db := config.GetDB()
+	var latestImport *models.ImportHistory
+	var allImportedData []map[string]interface{} // Gabungan SEMUA data dari semua import
+	var parseErrors []string
+	var totalSuccessCount int
+	var totalFailedCount int
+
+	fmt.Println("=== BendaharaImportAnggotaPage called ===")
+	fmt.Printf("Session user_id: %v (type: %T)\n", idPengelola, idPengelola)
+
+	if idPengelola != nil {
+		// Convert ke int
+		pengelolaID := 0
+		if id, ok := idPengelola.(int); ok {
+			pengelolaID = id
+		} else if idStr, ok := idPengelola.(string); ok {
+			pengelolaID, _ = strconv.Atoi(idStr)
+		}
+
+		fmt.Printf("=== Loading ALL import history for pengelola ID: %d ===\n", pengelolaID)
+
+		// Ambil SEMUA riwayat import (untuk akumulasi data)
+		allImports, err := repository.GetAllImportHistory(db, pengelolaID, 100) // Ambil max 100 import terakhir
+		if err != nil {
+			fmt.Printf("❌ Error loading import history: %v\n", err)
+		} else if len(allImports) > 0 {
+			fmt.Printf("✓ Found %d import records in database\n", len(allImports))
+
+			// Set latest import untuk info header
+			latestImport = &allImports[0]
+			fmt.Printf("✓ Latest import: %s (Date: %v)\n", latestImport.FileName, latestImport.TanggalImport)
+
+			// Gabungkan SEMUA data dari semua import
+			for idx, imp := range allImports {
+				fmt.Printf("  [%d] Processing import: %s (Success: %d, Failed: %d)\n",
+					idx+1, imp.FileName, imp.SuccessCount, imp.FailedCount)
+
+				totalSuccessCount += imp.SuccessCount
+				totalFailedCount += imp.FailedCount
+
+				// Parse dan gabungkan imported data
+				if imp.ImportedData != "" {
+					var importData []map[string]interface{}
+					if err := json.Unmarshal([]byte(imp.ImportedData), &importData); err != nil {
+						fmt.Printf("    ❌ Error parsing ImportedData: %v\n", err)
+					} else {
+						fmt.Printf("    ✓ Adding %d records from this import\n", len(importData))
+						allImportedData = append(allImportedData, importData...)
+					}
+				} else {
+					fmt.Printf("    ⚠️ No ImportedData for this record\n")
+				}
+
+				// Gabungkan parse errors dari latest import saja
+				if idx == 0 && imp.ParseErrors != "" {
+					if err := json.Unmarshal([]byte(imp.ParseErrors), &parseErrors); err != nil {
+						fmt.Printf("    ❌ Error parsing ParseErrors: %v\n", err)
+					}
+				}
+			}
+
+			fmt.Printf("✓ Total accumulated data: %d records (Success: %d, Failed: %d)\n",
+				len(allImportedData), totalSuccessCount, totalFailedCount)
+		} else {
+			fmt.Printf("ℹ️ No import history found for pengelola ID: %d (database is empty)\n", pengelolaID)
+		}
+	} else {
+		fmt.Println("⚠️ No pengelola ID found in session - user not logged in?")
+	}
+
+	fmt.Printf("=== Rendering template with %d total records ===\n", len(allImportedData))
+
+	c.HTML(http.StatusOK, "bendahara_import_anggota.html", gin.H{
+		"ActivePage":        "import_anggota",
+		"LogoPath":          logoPath,
+		"LatestImport":      latestImport,
+		"ImportedData":      allImportedData, // Kirim gabungan SEMUA data
+		"ParseErrors":       parseErrors,
+		"TotalSuccessCount": totalSuccessCount, // Total success dari semua import
+		"TotalFailedCount":  totalFailedCount,  // Total failed dari semua import
+	})
+}
+
+// BendaharaImportAnggota memproses upload file XLSX dan import data anggota
+func BendaharaImportAnggota(c *gin.Context) {
+	// Ambil file dari form
+	file, err := c.FormFile("file")
+	if err != nil {
+		fmt.Println("Error getting file:", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "File tidak ditemukan. Pastikan Anda telah memilih file.",
+		})
+		return
+	}
+
+	fmt.Printf("File received: %s, Size: %d bytes\n", file.Filename, file.Size)
+
+	// Validasi ekstensi file
+	ext := filepath.Ext(file.Filename)
+	if ext != ".xlsx" && ext != ".xls" {
+		fmt.Printf("Invalid extension: %s\n", ext)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("File harus berformat .xlsx atau .xls (Anda mengupload: %s)", ext),
+		})
+		return
+	}
+
+	// Validasi ukuran file (max 10MB)
+	if file.Size > 10*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Ukuran file terlalu besar: %.2f MB (maksimal 10MB)", float64(file.Size)/(1024*1024)),
+		})
+		return
+	}
+
+	// Simpan file sementara
+	tempPath := "./static/uploads/" + uuid.New().String() + ext
+	if err := c.SaveUploadedFile(file, tempPath); err != nil {
+		fmt.Println("Error saving file:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal menyimpan file: " + err.Error(),
+		})
+		return
+	}
+
+	fmt.Printf("File saved to: %s\n", tempPath)
+
+	// Hapus file temporary setelah selesai
+	defer func() {
+		// Hapus file temporary untuk menghemat space
+		os.Remove(tempPath)
+	}()
+
+	// Buka file Excel
+	f, err := excelize.OpenFile(tempPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuka file Excel: " + err.Error()})
+		return
+	}
+	defer f.Close()
+
+	// Ambil sheet pertama
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak memiliki sheet"})
+		return
+	}
+
+	rows, err := f.GetRows(sheets[0])
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca data dari Excel"})
+		return
+	}
+
+	if len(rows) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak memiliki data (minimal harus ada header dan 1 baris data)"})
+		return
+	}
+
+	fmt.Printf("Total rows: %d, Header columns: %v\n", len(rows), rows[0])
+
+	// Parse data dari Excel (skip header row)
+	var anggotaList []models.Anggota
+	var errors []string
+
+	// Ambil header untuk deteksi otomatis
+	headers := rows[0]
+	fmt.Printf("Detected headers: %v\n", headers)
+	fmt.Printf("File diterima dengan %d kolom\n", len(headers))
+
+	// Helper function untuk mendapatkan value atau default
+	getValue := func(row []string, index int) string {
+		if index < len(row) {
+			return row[index]
+		}
+		return ""
+	}
+
+	// Helper function untuk mapping unit kerja ke kode 2 digit
+	mapUnitKerja := func(unitKerja string) string {
+		if len(unitKerja) <= 2 {
+			return unitKerja
+		}
+		unitKerja = strings.ToLower(strings.TrimSpace(unitKerja))
+		switch {
+		case strings.Contains(unitKerja, "dosen"):
+			return "01"
+		case strings.Contains(unitKerja, "karyawan") || strings.Contains(unitKerja, "staff"):
+			return "02"
+		case strings.Contains(unitKerja, "mahasiswa"):
+			return "03"
+		default:
+			return "" // Kosongkan jika tidak dikenali
+		}
+	}
+
+	// Helper function untuk mapping fakultas ke kode 2 digit
+	mapFakultasCode := func(fakultas string) string {
+		if len(fakultas) <= 2 {
+			return fakultas
+		}
+		fakultas = strings.ToUpper(strings.TrimSpace(fakultas))
+		switch {
+		case strings.Contains(fakultas, "FAI") || strings.Contains(fakultas, "AGAMA"):
+			return "01"
+		case strings.Contains(fakultas, "FE") || strings.Contains(fakultas, "EKONOMI"):
+			return "02"
+		case strings.Contains(fakultas, "FH") || strings.Contains(fakultas, "HUKUM"):
+			return "03"
+		case strings.Contains(fakultas, "FISIP") || strings.Contains(fakultas, "SOSIAL") || strings.Contains(fakultas, "POLITIK"):
+			return "04"
+		case strings.Contains(fakultas, "FKIP") || strings.Contains(fakultas, "KEGURUAN"):
+			return "05"
+		case strings.Contains(fakultas, "FKM") || strings.Contains(fakultas, "KESEHATAN MASYARAKAT"):
+			return "06"
+		case strings.Contains(fakultas, "FAPERTA") || strings.Contains(fakultas, "PERTANIAN"):
+			return "07"
+		case strings.Contains(fakultas, "FT") || strings.Contains(fakultas, "TEKNIK"):
+			return "08"
+		case strings.Contains(fakultas, "REKTORAT") || strings.Contains(fakultas, "YAYASAN"):
+			return "09"
+		default:
+			return "" // Kosongkan jika tidak dikenali
+		}
+	}
+
+	for i, row := range rows {
+		if i == 0 {
+			// Skip header
+			continue
+		}
+
+		// Pastikan row memiliki minimal 3 kolom (Nama, Username, NIK)
+		if len(row) < 3 {
+			errors = append(errors, fmt.Sprintf("Baris %d: Data tidak lengkap - minimal harus ada 3 kolom (Nama, Username, NIK)", i+1))
+			continue
+		}
+
+		// Ambil data dengan aman
+		namaAnggota := getValue(row, 0)
+		username := getValue(row, 1)
+		tglLahir := getValue(row, 2)
+		jenisKelamin := getValue(row, 3)
+		alamat := getValue(row, 4)
+		nikKTP := getValue(row, 5)
+		noTelepon := getValue(row, 6)
+		unitKerja := getValue(row, 7)
+		fakultas := getValue(row, 8)
+		statusAnggota := getValue(row, 9)
+
+		// Validasi data kosong untuk field penting
+		if namaAnggota == "" || username == "" {
+			errors = append(errors, fmt.Sprintf("Baris %d: Nama Anggota dan Username tidak boleh kosong", i+1))
+			continue
+		}
+
+		// Validasi format tanggal lahir jika ada (harus format date, bukan angka)
+		if tglLahir != "" {
+			// Cek jika tanggal lahir berupa angka murni (kemungkinan salah file - data gaji/lainnya)
+			if _, err := strconv.ParseFloat(tglLahir, 64); err == nil && len(tglLahir) > 6 {
+				errors = append(errors, fmt.Sprintf("Baris %d: Format tanggal lahir tidak valid (terdeteksi angka: %s). Gunakan format YYYY-MM-DD (contoh: 1990-05-15)", i+1, tglLahir))
+				continue
+			}
+			// Validasi format tanggal YYYY-MM-DD atau DD/MM/YYYY
+			if !strings.Contains(tglLahir, "-") && !strings.Contains(tglLahir, "/") {
+				errors = append(errors, fmt.Sprintf("Baris %d: Format tanggal lahir harus YYYY-MM-DD atau DD/MM/YYYY (saat ini: %s)", i+1, tglLahir))
+				continue
+			}
+		}
+
+		// Validasi NIK jika ada (harus 16 digit)
+		if nikKTP != "" && len(nikKTP) != 16 {
+			errors = append(errors, fmt.Sprintf("Baris %d: NIK harus 16 digit (saat ini: %d digit)", i+1, len(nikKTP)))
+			continue
+		}
+
+		// Mapping unit_kerja dan fakultas_code ke format 2 digit
+		unitKerjaCode := mapUnitKerja(unitKerja)
+		fakultasCode := mapFakultasCode(fakultas)
+
+		// Hash password default
+		defaultPassword := "12345678" // Password default
+		if nikKTP != "" && len(nikKTP) == 16 {
+			defaultPassword = nikKTP // Gunakan NIK jika valid
+		}
+
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Baris %d: Gagal hash password", i+1))
+			continue
+		}
+
+		// Buat anggota baru
+		anggota := models.Anggota{
+			IDAnggota:     uuid.New().String(),
+			NamaAnggota:   namaAnggota,
+			Username:      username,
+			Password:      string(hashedPassword),
+			TglLahir:      tglLahir,
+			JenisKelamin:  jenisKelamin,
+			Alamat:        alamat,
+			NikKTP:        nikKTP,
+			NoTelepon:     noTelepon,
+			UnitKerja:     unitKerjaCode,
+			Fakultas:      fakultas,
+			StatusAnggota: statusAnggota,
+			Status:        "aktif",
+			TglGabung:     time.Now(),
+			FakultasCode:  fakultasCode,
+		}
+
+		anggotaList = append(anggotaList, anggota)
+	}
+
+	fmt.Printf("Parsed %d valid records from %d total rows\n", len(anggotaList), len(rows)-1)
+	fmt.Printf("Parse errors: %d\n", len(errors))
+
+	// Cek apakah ada data yang valid untuk diimport
+	if len(anggotaList) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":           "Tidak ada data valid untuk diimport. Periksa format data Anda.",
+			"parseErrors":     errors,
+			"hint":            "Minimal harus ada kolom: Nama Anggota | Username. Kolom opsional: Tanggal Lahir | Jenis Kelamin | Alamat | NIK (16 digit) | No. Telepon | Unit Kerja | Fakultas | Status Anggota",
+			"detectedHeaders": rows[0],
+		})
+		return
+	}
+
+	// TIDAK SIMPAN KE DATABASE - Hanya preview saja
+	// Data hanya ditampilkan di halaman import, tidak masuk ke tabel anggota
+	successCount := len(anggotaList)
+	failedCount := len(errors)
+	allErrors := errors
+
+	// Ambil semua data anggota untuk ditampilkan sebagai preview
+	var importedData []gin.H
+	for _, anggota := range anggotaList {
+		importedData = append(importedData, gin.H{
+			"nama_anggota":   anggota.NamaAnggota,
+			"username":       anggota.Username,
+			"tgl_lahir":      anggota.TglLahir,
+			"jenis_kelamin":  anggota.JenisKelamin,
+			"alamat":         anggota.Alamat,
+			"nik_ktp":        anggota.NikKTP,
+			"no_telepon":     anggota.NoTelepon,
+			"unit_kerja":     anggota.UnitKerja,
+			"fakultas":       anggota.Fakultas,
+			"status_anggota": anggota.StatusAnggota,
+		})
+	}
+
+	// Simpan riwayat import ke database
+	session := sessions.Default(c)
+	idPengelola := session.Get("user_id") // Gunakan "user_id" sesuai dengan key yang diset saat login
+	username := session.Get("username")
+
+	db := config.GetDB() // Ambil koneksi database untuk menyimpan history
+
+	if idPengelola != nil {
+		// Convert idPengelola ke int
+		pengelolaID := 0
+		if id, ok := idPengelola.(int); ok {
+			pengelolaID = id
+		} else if idStr, ok := idPengelola.(string); ok {
+			pengelolaID, _ = strconv.Atoi(idStr)
+		}
+
+		fmt.Printf("=== Saving import history for pengelola ID: %d ===\n", pengelolaID)
+
+		// Convert data ke JSON string
+		importedDataJSON, _ := json.Marshal(importedData)
+		parseErrorsJSON, _ := json.Marshal(allErrors)
+
+		// Buat record import history
+		importHistory := models.ImportHistory{
+			IDImport:      uuid.New().String(),
+			IDPengelola:   pengelolaID,
+			Username:      fmt.Sprintf("%v", username),
+			FileName:      file.Filename,
+			TotalData:     len(anggotaList),
+			SuccessCount:  successCount,
+			FailedCount:   failedCount,
+			ImportedData:  string(importedDataJSON),
+			ParseErrors:   string(parseErrorsJSON),
+			TanggalImport: time.Now(),
+		}
+
+		// Simpan ke database
+		if err := repository.SaveImportHistory(db, importHistory); err != nil {
+			fmt.Printf("❌ Error saving import history: %v\n", err)
+		} else {
+			fmt.Printf("✓ Import history saved successfully\n")
+		}
+	} else {
+		fmt.Println("⚠️ Cannot save import history: No pengelola ID in session")
+	}
+
+	// Response
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "Preview import selesai - data TIDAK disimpan ke database anggota",
+		"success":      successCount,
+		"failed":       failedCount,
+		"total":        len(anggotaList),
+		"parseErrors":  allErrors,
+		"importedData": importedData,
+	})
+}
+
+// BendaharaPreviewImportAnggota untuk preview data dari file Excel sebelum import
+func BendaharaPreviewImportAnggota(c *gin.Context) {
+	// Ambil file dari form
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "File tidak ditemukan",
+		})
+		return
+	}
+
+	// Validasi ekstensi file
+	ext := filepath.Ext(file.Filename)
+	if ext != ".xlsx" && ext != ".xls" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "File harus berformat .xlsx atau .xls",
+		})
+		return
+	}
+
+	// Simpan file sementara
+	tempPath := "./static/uploads/" + uuid.New().String() + ext
+	if err := c.SaveUploadedFile(file, tempPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal menyimpan file",
+		})
+		return
+	}
+
+	// Hapus file temporary setelah selesai
+	defer os.Remove(tempPath)
+
+	// Buka file Excel
+	f, err := excelize.OpenFile(tempPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal membuka file Excel: " + err.Error(),
+		})
+		return
+	}
+	defer f.Close()
+
+	// Ambil sheet pertama
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "File Excel tidak memiliki sheet",
+		})
+		return
+	}
+
+	rows, err := f.GetRows(sheets[0])
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal membaca data dari Excel",
+		})
+		return
+	}
+
+	if len(rows) < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "File Excel kosong",
+		})
+		return
+	}
+
+	// Ambil header (baris pertama)
+	headers := rows[0]
+
+	// Ambil sample data (maksimal 5 baris pertama setelah header)
+	sampleData := [][]string{}
+	maxSample := 5
+	if len(rows) > maxSample+1 {
+		sampleData = rows[1 : maxSample+1]
+	} else if len(rows) > 1 {
+		sampleData = rows[1:]
+	}
+
+	// Helper function untuk preview
+	getValuePreview := func(row []string, index int) string {
+		if index < len(row) {
+			return row[index]
+		}
+		return ""
+	}
+
+	// Helper function untuk mapping unit kerja ke kode 2 digit (untuk preview)
+	mapUnitKerjaPreview := func(unitKerja string) string {
+		if len(unitKerja) <= 2 {
+			return unitKerja
+		}
+		unitKerja = strings.ToLower(strings.TrimSpace(unitKerja))
+		switch {
+		case strings.Contains(unitKerja, "dosen"):
+			return "01"
+		case strings.Contains(unitKerja, "karyawan") || strings.Contains(unitKerja, "staff"):
+			return "02"
+		case strings.Contains(unitKerja, "mahasiswa"):
+			return "03"
+		default:
+			return ""
+		}
+	}
+
+	// Helper function untuk mapping fakultas ke kode 2 digit (untuk preview)
+	mapFakultasCodePreview := func(fakultas string) string {
+		if len(fakultas) <= 2 {
+			return fakultas
+		}
+		fakultas = strings.ToUpper(strings.TrimSpace(fakultas))
+		switch {
+		case strings.Contains(fakultas, "FAI") || strings.Contains(fakultas, "AGAMA"):
+			return "01"
+		case strings.Contains(fakultas, "FE") || strings.Contains(fakultas, "EKONOMI"):
+			return "02"
+		case strings.Contains(fakultas, "FH") || strings.Contains(fakultas, "HUKUM"):
+			return "03"
+		case strings.Contains(fakultas, "FISIP") || strings.Contains(fakultas, "SOSIAL") || strings.Contains(fakultas, "POLITIK"):
+			return "04"
+		case strings.Contains(fakultas, "FKIP") || strings.Contains(fakultas, "KEGURUAN"):
+			return "05"
+		case strings.Contains(fakultas, "FKM") || strings.Contains(fakultas, "KESEHATAN MASYARAKAT"):
+			return "06"
+		case strings.Contains(fakultas, "FAPERTA") || strings.Contains(fakultas, "PERTANIAN"):
+			return "07"
+		case strings.Contains(fakultas, "FT") || strings.Contains(fakultas, "TEKNIK"):
+			return "08"
+		case strings.Contains(fakultas, "REKTORAT") || strings.Contains(fakultas, "YAYASAN"):
+			return "09"
+		default:
+			return ""
+		}
+	}
+
+	// Validasi format untuk memberikan feedback
+	formatValid := true
+	formatErrors := []string{}
+
+	// Cek minimal 2 kolom (Nama dan Username)
+	if len(headers) < 2 {
+		formatValid = false
+		formatErrors = append(formatErrors, fmt.Sprintf("File harus memiliki minimal 2 kolom (Nama dan Username), file Anda hanya memiliki %d kolom", len(headers)))
+	}
+
+	// Simulasi parsing untuk preview - cek data yang akan berhasil/gagal
+	var previewValidCount int
+	var previewErrors []string
+
+	if formatValid && len(sampleData) > 0 {
+		for i, row := range sampleData {
+			rowNum := i + 2 // +1 untuk header, +1 untuk index 0
+
+			// Validasi sama seperti import asli
+			if len(row) < 2 {
+				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Data tidak lengkap (minimal 2 kolom)", rowNum))
+				continue
+			}
+
+			namaAnggota := getValuePreview(row, 0)
+			username := getValuePreview(row, 1)
+			tglLahir := getValuePreview(row, 2)
+			nikKTP := getValuePreview(row, 5)
+			unitKerja := getValuePreview(row, 7)
+			fakultas := getValuePreview(row, 8)
+
+			if namaAnggota == "" || username == "" {
+				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Nama Anggota dan Username tidak boleh kosong", rowNum))
+				continue
+			}
+
+			// Validasi format tanggal lahir jika ada
+			if tglLahir != "" {
+				// Cek jika tanggal lahir berupa angka murni (kemungkinan salah file)
+				if _, err := strconv.ParseFloat(tglLahir, 64); err == nil && len(tglLahir) > 6 {
+					previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: ⚠️ PERINGATAN - File ini sepertinya bukan file import anggota (kolom Tanggal Lahir berisi angka: %s). Download template yang benar!", rowNum, tglLahir))
+					continue
+				}
+				if !strings.Contains(tglLahir, "-") && !strings.Contains(tglLahir, "/") {
+					previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Format tanggal lahir harus YYYY-MM-DD atau DD/MM/YYYY (saat ini: %s)", rowNum, tglLahir))
+					continue
+				}
+			}
+
+			// Validasi NIK jika ada
+			if nikKTP != "" && len(nikKTP) != 16 {
+				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: NIK harus 16 digit (saat ini: %d digit) - NIK: %s", rowNum, len(nikKTP), nikKTP))
+				continue
+			}
+
+			// Validasi unit_kerja dan fakultas (harus bisa dimapping atau sudah 2 digit)
+			unitKerjaCode := mapUnitKerjaPreview(unitKerja)
+			fakultasCode := mapFakultasCodePreview(fakultas)
+
+			if unitKerja != "" && len(unitKerja) > 2 && unitKerjaCode == "" {
+				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Unit Kerja '%s' tidak valid. Gunakan: Dosen, Karyawan/Staff, atau Mahasiswa", rowNum, unitKerja))
+				continue
+			}
+
+			if fakultas != "" && len(fakultas) > 2 && fakultasCode == "" {
+				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Fakultas '%s' tidak valid. Gunakan: FAI, FE, FH, FISIP, FKIP, FKM, FAPERTA, FT, atau Rektorat", rowNum, fakultas))
+				continue
+			}
+
+			previewValidCount++
+		}
+	}
+
+	// Return preview data dengan informasi validasi
+	c.JSON(http.StatusOK, gin.H{
+		"headers":           headers,
+		"sampleData":        sampleData,
+		"totalRows":         len(rows) - 1, // exclude header
+		"columnCount":       len(headers),
+		"filename":          file.Filename,
+		"formatValid":       formatValid,
+		"formatErrors":      formatErrors,
+		"previewValidCount": previewValidCount,
+		"previewErrorCount": len(previewErrors),
+		"previewErrors":     previewErrors,
+	})
+}
+
+// BendaharaClearImportHistory menghapus semua riwayat import anggota
+func BendaharaClearImportHistory(c *gin.Context) {
+	db := config.GetDB()
+
+	// Ambil session untuk mendapatkan ID pengelola
+	session := sessions.Default(c)
+	idPengelola := session.Get("user_id")
+
+	if idPengelola == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized - No user session",
+		})
+		return
+	}
+
+	// Convert ke int
+	pengelolaID := 0
+	if id, ok := idPengelola.(int); ok {
+		pengelolaID = id
+	} else if idStr, ok := idPengelola.(string); ok {
+		pengelolaID, _ = strconv.Atoi(idStr)
+	}
+
+	fmt.Printf("=== Clearing all import history for pengelola ID: %d ===\n", pengelolaID)
+
+	// Hapus semua import history untuk user ini
+	err := repository.DeleteAllImportHistoryByPengelola(db, pengelolaID)
+	if err != nil {
+		fmt.Printf("❌ Error deleting import history: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal menghapus riwayat import",
+		})
+		return
+	}
+
+	fmt.Printf("✓ All import history cleared successfully\n")
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Semua riwayat import berhasil dihapus",
+	})
 }
