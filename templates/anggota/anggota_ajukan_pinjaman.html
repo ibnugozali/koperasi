@@ -56,7 +56,11 @@ document.addEventListener('DOMContentLoaded', function(){
             <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
 
             <div class="row"> <div class="col-md-6" id="gaji_bulanan_container"> <div class="mb-3"> <label for="gaji_bulanan" class="form-label">Jumlah Gaji Bulanan (Rp)</label>
-                        <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" required>
+                        <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" value="{{ .GajiBulanan }}" readonly required>
+                        <small class="form-text text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Gaji bulanan otomatis diambil dari data yang terdaftar
+                        </small>
                     </div>
                 </div>
                 <div class="col-md-6">

@@ -267,6 +267,106 @@ func BendaharaConfirmMembership(c *gin.Context) {
 		return
 	}
 
+	// Tambahkan data ke import_history agar muncul di halaman import-anggota
+	session := sessions.Default(c)
+	idPengelola := session.Get("user_id")
+	username := session.Get("username")
+
+	if idPengelola != nil {
+		pengelolaID := 0
+		if id, ok := idPengelola.(int); ok {
+			pengelolaID = id
+		} else if idStr, ok := idPengelola.(string); ok {
+			pengelolaID, _ = strconv.Atoi(idStr)
+		}
+
+		// Ambil data anggota yang sudah dikonfirmasi dengan ID baru
+		confirmedAnggota, err := repository.GetAnggotaByID(newIDAnggota)
+		if err == nil {
+			// Convert unit_kerja code ke nama lengkap
+			unitKerjaName := confirmedAnggota.UnitKerja
+			switch confirmedAnggota.UnitKerja {
+			case "01":
+				unitKerjaName = "Dosen"
+			case "02":
+				unitKerjaName = "Staff"
+			case "03":
+				unitKerjaName = "Mahasiswa"
+			}
+
+			// Ambil latest import history untuk update
+			latestImport, err := repository.GetLatestImportHistory(db, pengelolaID)
+
+			// Siapkan data anggota untuk ditambahkan ke import history
+			newAnggotaData := map[string]interface{}{
+				"id_anggota":     confirmedAnggota.IDAnggota,
+				"nama_anggota":   confirmedAnggota.NamaAnggota,
+				"username":       confirmedAnggota.Username,
+				"nik_ktp":        confirmedAnggota.NikKTP,
+				"no_telepon":     confirmedAnggota.NoTelepon,
+				"alamat":         confirmedAnggota.Alamat,
+				"provinsi":       confirmedAnggota.Provinsi,
+				"jenis_kelamin":  confirmedAnggota.JenisKelamin,
+				"tgl_lahir":      confirmedAnggota.TglLahir,
+				"fakultas":       confirmedAnggota.Fakultas,
+				"unit_kerja":     unitKerjaName, // Gunakan nama lengkap bukan kode
+				"gaji_bulanan":   confirmedAnggota.GajiBulanan,
+				"status":         confirmedAnggota.Status,
+				"status_anggota": confirmedAnggota.StatusAnggota,
+			}
+
+			if latestImport != nil && err == nil {
+				// Ada import history, tambahkan ke data yang sudah ada
+				var existingData []map[string]interface{}
+				if latestImport.ImportedData != "" {
+					json.Unmarshal([]byte(latestImport.ImportedData), &existingData)
+				}
+
+				// Tambahkan data baru ke array
+				existingData = append(existingData, newAnggotaData)
+
+				// Update import history
+				importedDataJSON, _ := json.Marshal(existingData)
+				latestImport.ImportedData = string(importedDataJSON)
+				latestImport.SuccessCount = len(existingData)
+				latestImport.TotalData = len(existingData)
+
+				errUpdate := repository.UpdateImportHistory(db, latestImport)
+				if errUpdate != nil {
+					fmt.Printf("❌ Error updating import history: %v\n", errUpdate)
+				} else {
+					fmt.Printf("✓ Added confirmed member to existing import history (total: %d records)\n", len(existingData))
+				}
+			} else {
+				// Tidak ada import history, buat yang baru
+				importedData := []map[string]interface{}{newAnggotaData}
+				importedDataJSON, _ := json.Marshal(importedData)
+
+				importHistory := models.ImportHistory{
+					IDImport:      uuid.New().String(),
+					IDPengelola:   pengelolaID,
+					Username:      fmt.Sprintf("%v", username),
+					FileName:      "Konfirmasi Pendaftaran Manual",
+					TotalData:     1,
+					SuccessCount:  1,
+					FailedCount:   0,
+					ImportedData:  string(importedDataJSON),
+					ParseErrors:   "",
+					TanggalImport: time.Now(),
+				}
+
+				errSave := repository.SaveImportHistory(db, importHistory)
+				if errSave != nil {
+					fmt.Printf("❌ Error saving new import history: %v\n", errSave)
+				} else {
+					fmt.Printf("✓ Created new import history for confirmed member\n")
+				}
+			}
+		} else {
+			fmt.Printf("❌ Error fetching confirmed anggota: %v\n", err)
+		}
+	}
+
 	// Arahkan kembali ke halaman konfirmasi bendahara
 	c.Redirect(http.StatusFound, "/bendahara/konfirmasi")
 }
@@ -459,11 +559,12 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		potonganBulanIni = make(map[string]float64) // Default ke map kosong jika error
 	}
 
-	// Hitung sisa gaji untuk setiap anggota
-	sisaGaji := make(map[string]int)
+	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
+	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
-		potongan := int(potonganBulanIni[anggota.IDAnggota])
-		sisaGaji[anggota.IDAnggota] = anggota.GajiBulanan - potongan
+		potongan := potonganBulanIni[anggota.IDAnggota]
+		// Sisa gaji = Gaji bulanan dikurangi potongan bulan ini
+		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 	}
 
 	c.HTML(http.StatusOK, "bendahara_data_anggota.html", gin.H{
@@ -2456,6 +2557,7 @@ func BendaharaSettingSimpananWajib(c *gin.Context) {
 
 	config, err := repository.GetKonfigurasiSimpananWajib()
 	if err != nil {
+		log.Printf("⚠️ Error mengambil konfigurasi: %v, menggunakan default", err)
 		config = map[string]interface{}{
 			"TanggalPotong":    1,
 			"PersentasePotong": 5.0,
@@ -2463,6 +2565,9 @@ func BendaharaSettingSimpananWajib(c *gin.Context) {
 			"TipePemotongan":   "persentase",
 			"StatusAktif":      false,
 		}
+	} else {
+		log.Printf("📖 Menampilkan konfigurasi: TanggalPotong=%v, Status=%v, Tipe=%v",
+			config["TanggalPotong"], config["StatusAktif"], config["TipePemotongan"])
 	}
 
 	c.HTML(http.StatusOK, "bendahara_setting_simpanan_wajib.html", gin.H{
@@ -2479,24 +2584,31 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 
 	tanggalPotong, _ := strconv.Atoi(c.PostForm("TanggalPotong"))
 	persentasePotong, _ := strconv.ParseFloat(c.PostForm("PersentasePotong"), 64)
-	nominalTetap, _ := strconv.ParseFloat(c.PostForm("NominalTetap"), 64)
-	tipePemotongan := c.PostForm("TipePemotongan")
+	nominalTetap := 0.0            // Set ke 0 karena tidak digunakan lagi
+	tipePemotongan := "persentase" // Set default karena field dihapus dari form
 	statusAktif := c.PostForm("StatusAktif") == "on"
+
+	// Log data yang akan disimpan
+	log.Printf("💾 Menyimpan konfigurasi simpanan wajib:")
+	log.Printf("   - Tanggal Potong: %d", tanggalPotong)
+	log.Printf("   - Nominal Simpanan Wajib: Rp %.2f", persentasePotong)
+	log.Printf("   - Status Aktif: %v", statusAktif)
 
 	err := repository.SaveKonfigurasiSimpananWajib(tanggalPotong, persentasePotong, nominalTetap, tipePemotongan, statusAktif)
 
-	config, _ := repository.GetKonfigurasiSimpananWajib()
-	if config == nil {
-		config = map[string]interface{}{
-			"TanggalPotong":    tanggalPotong,
-			"PersentasePotong": persentasePotong,
-			"NominalTetap":     nominalTetap,
-			"TipePemotongan":   tipePemotongan,
-			"StatusAktif":      statusAktif,
-		}
-	}
-
 	if err != nil {
+		log.Printf("❌ ERROR menyimpan konfigurasi: %v", err)
+		// Get config untuk ditampilkan di form
+		config, _ := repository.GetKonfigurasiSimpananWajib()
+		if config == nil {
+			config = map[string]interface{}{
+				"TanggalPotong":    tanggalPotong,
+				"PersentasePotong": persentasePotong,
+				"NominalTetap":     nominalTetap,
+				"TipePemotongan":   tipePemotongan,
+				"StatusAktif":      statusAktif,
+			}
+		}
 		c.HTML(http.StatusInternalServerError, "bendahara_setting_simpanan_wajib.html", gin.H{
 			"ActivePage": "setting_simpanan_wajib",
 			"LogoPath":   logoPath,
@@ -2507,12 +2619,43 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 		return
 	}
 
+	// Berhasil simpan, ambil data terbaru dari database
+	log.Printf("✅ Konfigurasi berhasil disimpan ke database")
+	config, err := repository.GetKonfigurasiSimpananWajib()
+	if err != nil {
+		log.Printf("⚠️ Warning: Gagal membaca kembali data: %v", err)
+	} else {
+		log.Printf("📋 Data tersimpan & diverifikasi: TanggalPotong=%v, Status=%v, NominalSimpananWajib=%v",
+			config["TanggalPotong"], config["StatusAktif"], config["PersentasePotong"])
+	}
+
+	// Pastikan config tidak nil
+	if config == nil {
+		config = map[string]interface{}{
+			"TanggalPotong":    tanggalPotong,
+			"PersentasePotong": persentasePotong,
+			"NominalTetap":     nominalTetap,
+			"TipePemotongan":   tipePemotongan,
+			"StatusAktif":      statusAktif,
+		}
+	}
+
+	// Log data yang berhasil disimpan
+	log.Printf("📋 Data yang akan ditampilkan: TanggalPotong=%v, Status=%v", config["TanggalPotong"], config["StatusAktif"])
+
+	var successMsg string
+	if statusAktif {
+		successMsg = fmt.Sprintf("✓ Konfigurasi berhasil disimpan! Pemotongan otomatis AKTIF setiap tanggal %d", tanggalPotong)
+	} else {
+		successMsg = "✓ Konfigurasi berhasil disimpan! Pemotongan otomatis NONAKTIF"
+	}
+
 	c.HTML(http.StatusOK, "bendahara_setting_simpanan_wajib.html", gin.H{
 		"ActivePage": "setting_simpanan_wajib",
 		"LogoPath":   logoPath,
 		"Title":      "Setting Simpanan Wajib",
 		"Config":     config,
-		"success":    "Konfigurasi berhasil disimpan",
+		"success":    successMsg,
 	})
 }
 
@@ -2595,11 +2738,12 @@ func BendaharaCekDanProsesPemotonganOtomatis(c *gin.Context) {
 		return
 	}
 
-	// Jika tanggal tidak cocok
+	// HANYA proses jika tanggal sekarang SAMA DENGAN tanggal pemotongan yang disetting
+	// Ini memastikan pemotongan HANYA terjadi di tanggal yang tepat
 	if tanggalSekarang != tanggalPotong {
 		c.JSON(http.StatusOK, gin.H{
 			"shouldRun":     false,
-			"message":       fmt.Sprintf("Bukan tanggal pemotongan. Pemotongan akan dilakukan pada tanggal %d", tanggalPotong),
+			"message":       fmt.Sprintf("Belum waktunya pemotongan. Pemotongan akan dilakukan pada tanggal %d (sekarang tanggal %d)", tanggalPotong, tanggalSekarang),
 			"tanggal":       tanggalSekarang,
 			"tanggalPotong": tanggalPotong,
 			"statusAktif":   true,
@@ -2607,38 +2751,70 @@ func BendaharaCekDanProsesPemotonganOtomatis(c *gin.Context) {
 		return
 	}
 
-	// Cek apakah sudah pernah diproses hari ini
+	// Cek apakah sudah pernah diproses bulan ini
+	// PERBAIKAN: Jangan hanya cek count, tapi cek apakah SEMUA anggota dengan gaji sudah diproses
 	db := config.GetDB()
-	var count int
-	checkQuery := `SELECT COUNT(*) FROM log_pemotongan_simpanan 
-	               WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil'`
-	err = db.QueryRow(checkQuery, bulan, tahun).Scan(&count)
 
-	if err == nil && count > 0 {
+	// Hitung total anggota dengan gaji > 0
+	var totalAnggotaDenganGaji int
+	countAnggotaQuery := `SELECT COUNT(*) FROM anggota WHERE status = 'aktif' AND gaji_bulanan > 0`
+	db.QueryRow(countAnggotaQuery).Scan(&totalAnggotaDenganGaji)
+
+	// Hitung total anggota yang sudah diproses bulan ini (exclude SYSTEM)
+	var totalSudahDiproses int
+	countProsesQuery := `SELECT COUNT(*) FROM log_pemotongan_simpanan 
+	                     WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil' AND id_anggota != 'SYSTEM'`
+	err = db.QueryRow(countProsesQuery, bulan, tahun).Scan(&totalSudahDiproses)
+
+	// Jika SEMUA anggota dengan gaji sudah diproses, skip
+	if err == nil && totalAnggotaDenganGaji > 0 && totalSudahDiproses >= totalAnggotaDenganGaji {
 		c.JSON(http.StatusOK, gin.H{
 			"shouldRun":        false,
-			"message":          fmt.Sprintf("Pemotongan sudah dijalankan bulan ini (%d transaksi)", count),
+			"message":          fmt.Sprintf("Pemotongan sudah dijalankan untuk semua anggota (%d/%d)", totalSudahDiproses, totalAnggotaDenganGaji),
 			"tanggal":          tanggalSekarang,
 			"tanggalPotong":    tanggalPotong,
 			"statusAktif":      true,
 			"alreadyProcessed": true,
-			"processedCount":   count,
+			"processedCount":   totalSudahDiproses,
 		})
 		return
 	}
 
+	// Jika ada anggota yang belum diproses, jalankan pemotongan
+	if totalSudahDiproses > 0 {
+		fmt.Printf("ℹ️ Ada %d anggota yang belum diproses dari total %d anggota dengan gaji\n",
+			totalAnggotaDenganGaji-totalSudahDiproses, totalAnggotaDenganGaji)
+	}
+
+	// Tanggal sekarang >= tanggal pemotongan DAN belum diproses bulan ini
 	// Jalankan proses pemotongan
+	fmt.Printf("🤖 Menjalankan pemotongan otomatis untuk bulan %d tahun %d (tanggal: %d, setting: %d)\n",
+		bulan, tahun, tanggalSekarang, tanggalPotong)
 	successCount, failedCount, errors := repository.ProsesPemotonganSimpananWajib()
 
 	var errorMessage string
+	var message string
+
 	if len(errors) > 0 {
 		errorMessage = errors[0]
+	}
+
+	// Customize message berdasarkan hasil
+	if successCount == 1 && failedCount == 0 && errorMessage == "" {
+		// Bisa jadi ini hasil dari "tidak ada yang perlu diproses"
+		message = fmt.Sprintf("Pemotongan otomatis selesai dicek. Berhasil: %d, Gagal: %d", successCount, failedCount)
+	} else if successCount > 0 {
+		message = fmt.Sprintf("Pemotongan otomatis berhasil dijalankan! Berhasil: %d, Gagal: %d", successCount, failedCount)
+	} else if failedCount > 0 {
+		message = fmt.Sprintf("Pemotongan otomatis selesai dengan error. Berhasil: %d, Gagal: %d", successCount, failedCount)
+	} else {
+		message = "Pemotongan otomatis dijalankan, tidak ada anggota yang perlu diproses"
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"shouldRun":     true,
 		"processed":     true,
-		"message":       fmt.Sprintf("Pemotongan otomatis berhasil dijalankan! Berhasil: %d, Gagal: %d", successCount, failedCount),
+		"message":       message,
 		"tanggal":       tanggalSekarang,
 		"tanggalPotong": tanggalPotong,
 		"statusAktif":   true,

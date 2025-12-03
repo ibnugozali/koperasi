@@ -115,7 +115,7 @@ func ensureSimpananWajibTables() error {
 	CREATE TABLE IF NOT EXISTS konfigurasi_simpanan_wajib (
 		id SERIAL PRIMARY KEY,
 		tanggal_potong INT NOT NULL CHECK (tanggal_potong >= 1 AND tanggal_potong <= 31),
-		persentase_potong DECIMAL(5,2) NOT NULL DEFAULT 5.00 CHECK (persentase_potong >= 0 AND persentase_potong <= 100),
+		persentase_potong DECIMAL(15,2) NOT NULL DEFAULT 5.00 CHECK (persentase_potong >= 0),
 		nominal_tetap DECIMAL(15,2) DEFAULT 0,
 		tipe_pemotongan VARCHAR(20) DEFAULT 'persentase' CHECK (tipe_pemotongan IN ('persentase', 'nominal_tetap')),
 		status_aktif BOOLEAN DEFAULT true,
@@ -127,6 +127,37 @@ func ensureSimpananWajibTables() error {
 	_, err := db.Exec(configSQL)
 	if err != nil {
 		return fmt.Errorf("gagal membuat tabel konfigurasi_simpanan_wajib: %v", err)
+	}
+
+	// Migrate existing table: Alter persentase_potong column if it exists with wrong type
+	alterSQL := `
+	DO $$
+	BEGIN
+		IF EXISTS (
+			SELECT 1 FROM information_schema.columns 
+			WHERE table_name = 'konfigurasi_simpanan_wajib' 
+			AND column_name = 'persentase_potong'
+			AND numeric_precision = 5
+		) THEN
+			ALTER TABLE konfigurasi_simpanan_wajib 
+			ALTER COLUMN persentase_potong TYPE DECIMAL(15,2);
+			
+			ALTER TABLE konfigurasi_simpanan_wajib 
+			DROP CONSTRAINT IF EXISTS konfigurasi_simpanan_wajib_persentase_potong_check;
+			
+			ALTER TABLE konfigurasi_simpanan_wajib 
+			ADD CONSTRAINT konfigurasi_simpanan_wajib_persentase_potong_check 
+			CHECK (persentase_potong >= 0);
+			
+			RAISE NOTICE 'Kolom persentase_potong berhasil diubah ke DECIMAL(15,2)';
+		END IF;
+	END $$;
+	`
+	_, err = db.Exec(alterSQL)
+	if err != nil {
+		log.Printf("⚠️ Warning: Gagal melakukan migrasi kolom persentase_potong: %v", err)
+	} else {
+		log.Printf("✓ Migrasi kolom persentase_potong berhasil")
 	}
 
 	// Create log_pemotongan_simpanan table

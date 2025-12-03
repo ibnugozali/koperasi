@@ -236,5 +236,20 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Trigger pengecekan pemotongan otomatis setelah konfirmasi anggota
+        // Set flag di localStorage untuk trigger check di halaman data anggota
+        const confirmButtons = document.querySelectorAll('form[action*="/confirm/"]');
+        confirmButtons.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                console.log('✅ Anggota dikonfirmasi! Set trigger untuk pengecekan pemotongan...');
+                // Set flag yang akan dibaca oleh halaman data anggota
+                localStorage.setItem('triggerPemotonganCheck', 'true');
+            });
+        });
+        
+        console.log('✓ Event listener untuk konfirmasi anggota telah diaktifkan');
+    </script>
 </body>
 </html>

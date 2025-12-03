@@ -367,7 +367,7 @@
                                     <td>
                                         {{ if gt $anggota.GajiBulanan 0 }}
                                             {{ $sisaGaji := index $.SisaGaji $anggota.IDAnggota }}
-                                            <span class="sisa-gaji" data-sisa="{{ $sisaGaji }}">Rp {{ printf "%,d" $sisaGaji }}</span>
+                                            <span class="sisa-gaji" data-sisa="{{ $sisaGaji }}">Rp {{ printf "%.0f" $sisaGaji }}</span>
                                         {{ else }}
                                             <span class="text-muted">-</span>
                                         {{ end }}
@@ -550,7 +550,7 @@
             sisaElements.forEach(element => {
                 const sisaValue = element.getAttribute('data-sisa');
                 if (sisaValue && !isNaN(sisaValue)) {
-                    const formatted = new Intl.NumberFormat('id-ID').format(parseInt(sisaValue));
+                    const formatted = new Intl.NumberFormat('id-ID').format(parseFloat(sisaValue));
                     element.textContent = 'Rp ' + formatted;
                 }
             });
@@ -592,6 +592,90 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menghapus...';
         });
+
+        // Auto-refresh ketika ada update pemotongan dari localStorage
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'pemotonganUpdated' && e.newValue === 'true') {
+                console.log('🔄 Detected pemotongan update, refreshing data anggota...');
+                localStorage.removeItem('pemotonganUpdated');
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            }
+        });
+
+        // Check jika baru saja ada pemotongan (untuk tab yang sama)
+        if (localStorage.getItem('justProcessedPemotongan') === 'true') {
+            console.log('📊 Data baru setelah pemotongan otomatis');
+            localStorage.removeItem('justProcessedPemotongan');
+        }
+
+        // ========== AUTO-CHECK PEMOTONGAN HANYA SAAT ADA TRIGGER ==========
+        // Check akan dijalankan HANYA ketika:
+        // 1. Ada localStorage flag 'triggerPemotonganCheck' dari halaman lain
+        // 2. Setelah update/delete anggota di halaman ini
+        
+        async function cekPemotonganOtomatis() {
+            try {
+                console.log('🔍 Melakukan pengecekan pemotongan otomatis...');
+                
+                const response = await fetch('/bendahara/cek-pemotongan-otomatis');
+                const result = await response.json();
+                
+                console.log('📋 Hasil check:', result);
+
+                // Jika pemotongan berhasil dijalankan, reload halaman untuk update data
+                if (result.processed || (result.shouldRun && result.successCount !== undefined && result.successCount > 0)) {
+                    console.log('✅ Pemotongan otomatis berhasil! Reload halaman untuk update data...');
+                    
+                    // Tampilkan notifikasi
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+                    alertDiv.style.zIndex = '9999';
+                    alertDiv.style.minWidth = '400px';
+                    alertDiv.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Pemotongan Simpanan Wajib Otomatis Berhasil!</strong><br>
+                        <small>${result.message}</small>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.body.appendChild(alertDiv);
+                    
+                    // Reload setelah 2 detik
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    console.log('ℹ️ Tidak ada pemotongan yang perlu diproses saat ini');
+                }
+            } catch (error) {
+                console.error('❌ Error saat check pemotongan:', error);
+            }
+        }
+
+        // Check jika ada trigger dari halaman lain (misal: setelah konfirmasi anggota)
+        if (localStorage.getItem('triggerPemotonganCheck') === 'true') {
+            console.log('🚀 Trigger detected! Menjalankan pengecekan pemotongan otomatis...');
+            localStorage.removeItem('triggerPemotonganCheck');
+            
+            // Tunggu 2 detik untuk memastikan data sudah tersimpan di database
+            setTimeout(() => {
+                cekPemotonganOtomatis();
+            }, 2000);
+        }
+
+        // Listen untuk event storage dari tab/window lain
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'triggerPemotonganCheck' && e.newValue === 'true') {
+                console.log('🔄 Trigger dari tab lain! Menjalankan pengecekan...');
+                localStorage.removeItem('triggerPemotonganCheck');
+                setTimeout(() => {
+                    cekPemotonganOtomatis();
+                }, 2000);
+            }
+        });
+        
+        console.log('✓ Event-based auto-check pemotongan telah diaktifkan');
     </script>
 </body>
 </html>

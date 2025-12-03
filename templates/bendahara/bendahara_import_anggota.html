@@ -471,6 +471,16 @@
         let dataTable1 = null; // DataTable instance
         let dataTable2 = null; // DataTable instance
 
+        // Fungsi untuk format tanggal, menghapus T00:00:00Z
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            // Jika format seperti "2000-01-15T00:00:00Z", ambil hanya bagian tanggal
+            if (dateString.includes('T')) {
+                return dateString.split('T')[0];
+            }
+            return dateString;
+        }
+
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -872,7 +882,7 @@
                                                         <td class="text-center">${index + 1}</td>
                                                         <td>${anggota.nama_anggota || '-'}</td>
                                                         <td><strong>${anggota.unit_kerja || '-'}</strong></td>
-                                                        <td>${anggota.tgl_lahir || '-'}</td>
+                                                        <td>${formatDate(anggota.tgl_lahir)}</td>
                                                         <td>${anggota.nik_ktp || '-'}</td>
                                                         <td>${anggota.no_telepon || '-'}</td>
                                                         <td>${anggota.jenis_kelamin || '-'}</td>
@@ -1319,7 +1329,7 @@
                                                 <td class="text-center">${index + 1}</td>
                                                 <td>${anggota.nama_anggota || '-'}</td>
                                                 <td><strong>${anggota.unit_kerja || '-'}</strong></td>
-                                                <td>${anggota.tgl_lahir || '-'}</td>
+                                                <td>${formatDate(anggota.tgl_lahir)}</td>
                                                 <td>${anggota.nik_ktp || '-'}</td>
                                                 <td>${anggota.no_telepon || '-'}</td>
                                                 <td>${anggota.jenis_kelamin || '-'}</td>
@@ -1695,7 +1705,7 @@
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">Tanggal Lahir</label>
-                                            <input type="date" class="form-control" id="edit_tgl_lahir" value="${anggota.tgl_lahir || ''}" required>
+                                            <input type="date" class="form-control" id="edit_tgl_lahir" value="${formatDate(anggota.tgl_lahir)}" required>
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">NIK KTP</label>
@@ -1858,7 +1868,7 @@
                     (index + 1).toString(),
                     anggota.nama_anggota || '-',
                     anggota.unit_kerja || '-',
-                    anggota.tgl_lahir || '-',
+                    formatDate(anggota.tgl_lahir),
                     anggota.nik_ktp || '-',
                     anggota.no_telepon || '-',
                     anggota.jenis_kelamin || '-',

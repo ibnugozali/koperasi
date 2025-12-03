@@ -3,10 +3,12 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
+
 )
 
 // Mengambil semua anggota dengan status pending
@@ -160,19 +162,41 @@ func UpdateAnggotaUsernamePassword(id string, username, password string) error {
 }
 
 // GetSaldoAnggota mengambil total simpanan, total pinjaman, dan saldo bersih anggota
+// Total simpanan termasuk simpanan pokok dari registrasi
 func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float64, err error) {
 	db := config.GetDB()
 
-	// Hitung total simpanan dari detail (hanya yang sudah dikonfirmasi/confirmed)
+	// Ambil simpanan pokok dari nominal registrasi jika anggota aktif
+	var simpananPokok float64
+	var status string
+	var buktiTransfer string
+	err = db.QueryRow("SELECT status, COALESCE(bukti_transfer, '') FROM anggota WHERE id_anggota = $1", id).Scan(&status, &buktiTransfer)
+	if err == nil && status == "aktif" && buktiTransfer != "" {
+		err = db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&simpananPokok)
+		if err != nil {
+			simpananPokok = 100000 // Default
+		}
+	}
+
+	// Hitung total simpanan lainnya dari detail (ambil total_simpanan terbaru untuk setiap jenis, kecuali pokok)
+	var totalSimpananLainnya float64
 	querySimpanan := `
-		SELECT COALESCE(SUM(d.jumlah_simpanan), 0)
-		FROM detail d
-		WHERE d.id_anggota = $1 AND d.status = 'confirmed'
+		SELECT COALESCE(SUM(latest.total_simpanan), 0)
+		FROM (
+			SELECT DISTINCT ON (d.id_simpanan) d.id_simpanan, d.total_simpanan
+			FROM detail d
+			JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+			WHERE d.id_anggota = $1 AND COALESCE(d.status, 'confirmed') = 'confirmed'
+				AND s.jenis_simpanan != 'pokok'
+			ORDER BY d.id_simpanan, d.tgl_transaksi DESC, d.id_detail DESC
+		) as latest
 	`
-	err = db.QueryRow(querySimpanan, id).Scan(&totalSimpanan)
+	err = db.QueryRow(querySimpanan, id).Scan(&totalSimpananLainnya)
 	if err != nil {
 		return 0, 0, 0, err
 	}
+
+	totalSimpanan = simpananPokok + totalSimpananLainnya
 
 	// Hitung total pinjaman yang aktif (status = 'aktif')
 	queryPinjaman := `
@@ -191,36 +215,85 @@ func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float
 	return totalSimpanan, totalPinjaman, saldoBersih, nil
 }
 
-// GetDetailSimpananByJenis mengambil total simpanan per jenis
+// GetDetailSimpananByJenis mengambil total simpanan per jenis (menggunakan total_simpanan terbaru)
+// Simpanan pokok diambil dari nominal registrasi jika anggota sudah aktif
 func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 	db := config.GetDB()
 	simpananByJenis := make(map[string]float64)
 
-	query := `
-		SELECT s.jenis_simpanan, COALESCE(SUM(d.jumlah_simpanan), 0) as total
-		FROM detail d
-		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
-		WHERE d.id_anggota = $1 AND d.status = 'confirmed'
-		GROUP BY s.jenis_simpanan
-	`
-
-	rows, err := db.Query(query, id)
+	// Cek status anggota dan ambil simpanan pokok dari nominal registrasi jika aktif
+	var status string
+	var buktiTransfer string
+	err := db.QueryRow("SELECT status, COALESCE(bukti_transfer, '') FROM anggota WHERE id_anggota = $1", id).Scan(&status, &buktiTransfer)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var jenis string
-		var total float64
-		if err := rows.Scan(&jenis, &total); err != nil {
-			return nil, err
+	// Jika anggota sudah aktif dan punya bukti transfer, simpanan pokok diambil dari pengaturan
+	if status == "aktif" && buktiTransfer != "" {
+		var nominalSimpananPokok float64
+		err = db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok)
+		if err != nil {
+			nominalSimpananPokok = 100000 // Default
 		}
-		simpananByJenis[jenis] = total
+		simpananByJenis["pokok"] = nominalSimpananPokok
+	} else {
+		simpananByJenis["pokok"] = 0
 	}
 
-	// Pastikan semua jenis simpanan ada dengan nilai 0 jika tidak ada data
-	jenisList := []string{"pokok", "wajib", "sukarela", "hari_raya"}
+	// SIMPANAN WAJIB: Ambil dari log_pemotongan_simpanan (pemotongan otomatis) + detail (konfirmasi manual)
+	// 1. Dari log pemotongan otomatis
+	simpananWajibQuery := `SELECT COALESCE(SUM(jumlah_potong), 0) as total_simpanan_wajib
+	                       FROM log_pemotongan_simpanan 
+	                       WHERE status = 'berhasil' AND id_anggota = $1`
+	var totalSimpananWajib float64
+	err = db.QueryRow(simpananWajibQuery, id).Scan(&totalSimpananWajib)
+	if err != nil {
+		totalSimpananWajib = 0
+	}
+
+	// 2. Tambahkan dari detail (konfirmasi manual) - id_simpanan = 2 adalah simpanan wajib
+	var totalSimpananWajibDetail float64
+	detailWajibQuery := `SELECT COALESCE(total_simpanan, 0) 
+	                     FROM detail 
+	                     WHERE id_anggota = $1 AND id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed'
+	                     ORDER BY tgl_transaksi DESC, id_detail DESC 
+	                     LIMIT 1`
+	err = db.QueryRow(detailWajibQuery, id).Scan(&totalSimpananWajibDetail)
+	if err != nil {
+		totalSimpananWajibDetail = 0
+	}
+
+	simpananByJenis["wajib"] = totalSimpananWajib + totalSimpananWajibDetail
+
+	// SIMPANAN SUKARELA DAN HARI RAYA: Ambil dari SUM semua transaksi di detail (sama seperti di anggota_riwayat)
+	// Tidak menggunakan total_simpanan terbaru, tapi SUM dari jumlah_simpanan semua transaksi
+	// id_simpanan: 3 = sukarela, 4 = hari_raya
+	querySukarelaDanHariRaya := `
+		SELECT s.jenis_simpanan, COALESCE(SUM(d.jumlah_simpanan), 0) as total
+		FROM detail d
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+		WHERE d.id_anggota = $1 
+		  AND COALESCE(d.status, 'confirmed') = 'confirmed'
+		  AND s.jenis_simpanan IN ('sukarela', 'hari_raya')
+		GROUP BY s.jenis_simpanan
+	`
+
+	rows, err := db.Query(querySukarelaDanHariRaya, id)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var jenis string
+			var total float64
+			if err := rows.Scan(&jenis, &total); err != nil {
+				continue
+			}
+			simpananByJenis[jenis] = total
+		}
+	}
+
+	// Pastikan semua jenis simpanan ada dengan nilai 0 jika tidak ada data (kecuali wajib yang sudah diset)
+	jenisList := []string{"sukarela", "hari_raya"}
 	for _, jenis := range jenisList {
 		if _, exists := simpananByJenis[jenis]; !exists {
 			simpananByJenis[jenis] = 0
@@ -230,66 +303,133 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 	return simpananByJenis, nil
 }
 
-// GetSimpananWajibAllAnggota mengambil total simpanan wajib untuk semua anggota
+// GetSimpananWajibAllAnggota mengambil total simpanan wajib dari log pemotongan DAN detail manual untuk semua anggota
 func GetSimpananWajibAllAnggota() (map[string]float64, error) {
 	db := config.GetDB()
 	simpananWajib := make(map[string]float64)
 
-	query := `
-		SELECT d.id_anggota, COALESCE(SUM(d.jumlah_simpanan), 0) as total_wajib
-		FROM detail d
-		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
-		WHERE s.jenis_simpanan = 'wajib' AND d.status IN ('approved', 'confirmed')
-		GROUP BY d.id_anggota
-	`
+	// Ambil total simpanan wajib dari log_pemotongan_simpanan (pemotongan otomatis)
+	queryLog := `SELECT id_anggota, COALESCE(SUM(jumlah_potong), 0) as total_simpanan_wajib
+	             FROM log_pemotongan_simpanan 
+	             WHERE status = 'berhasil' AND id_anggota != 'SYSTEM'
+	             GROUP BY id_anggota`
 
-	rows, err := db.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var idAnggota string
-		var totalWajib float64
-		if err := rows.Scan(&idAnggota, &totalWajib); err != nil {
-			return nil, err
+	rows, err := db.Query(queryLog)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var idAnggota string
+			var totalSimpanan float64
+			if err := rows.Scan(&idAnggota, &totalSimpanan); err != nil {
+				continue
+			}
+			simpananWajib[idAnggota] = totalSimpanan
 		}
-		simpananWajib[idAnggota] = totalWajib
+	}
+
+	// Tambahkan simpanan wajib dari detail (konfirmasi manual oleh bendahara)
+	// id_simpanan = 2 adalah simpanan wajib
+	queryDetail := `SELECT d.id_anggota, COALESCE(d.total_simpanan, 0) as total_simpanan_wajib
+	                FROM (
+	                    SELECT DISTINCT ON (id_anggota) id_anggota, total_simpanan
+	                    FROM detail
+	                    WHERE id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed'
+	                    ORDER BY id_anggota, tgl_transaksi DESC, id_detail DESC
+	                ) d`
+
+	rows2, err := db.Query(queryDetail)
+	if err == nil {
+		defer rows2.Close()
+		for rows2.Next() {
+			var idAnggota string
+			var totalSimpananDetail float64
+			if err := rows2.Scan(&idAnggota, &totalSimpananDetail); err != nil {
+				continue
+			}
+			// Tambahkan ke total yang sudah ada dari log
+			simpananWajib[idAnggota] += totalSimpananDetail
+		}
 	}
 
 	return simpananWajib, nil
 }
 
-// GetPotonganBulanIniAllAnggota mengambil total pemotongan bulan ini untuk semua anggota
+// GetPotonganBulanIniAllAnggota mengambil nominal simpanan wajib yang dikonfigurasi untuk semua anggota
 func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 	db := config.GetDB()
 	potonganBulanIni := make(map[string]float64)
 
+	// Ambil konfigurasi simpanan wajib
+	config, err := GetKonfigurasiSimpananWajib()
+	if err != nil {
+		return potonganBulanIni, nil // Return map kosong jika error
+	}
+
+	// Get current month and year
 	now := time.Now()
+	tanggalSekarang := now.Day()
 	bulan := int(now.Month())
 	tahun := now.Year()
 
-	query := `
-		SELECT id_anggota, COALESCE(SUM(jumlah_potong), 0) as total_potong
-		FROM log_pemotongan_simpanan
-		WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil'
-		GROUP BY id_anggota
-	`
-
-	rows, err := db.Query(query, bulan, tahun)
-	if err != nil {
-		return nil, err
+	tanggalPotong, ok := config["TanggalPotong"].(int)
+	if !ok {
+		return potonganBulanIni, nil // Return map kosong jika tanggal tidak valid
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var idAnggota string
-		var totalPotong float64
-		if err := rows.Scan(&idAnggota, &totalPotong); err != nil {
-			return nil, err
+	// Cek apakah status aktif - HANYA untuk pengecekan apakah akan proses baru
+	statusAktif, ok := config["StatusAktif"].(bool)
+	if !ok {
+		statusAktif = false
+	}
+
+	// Ambil data dari log pemotongan bulan ini (jika sudah diproses sebelumnya)
+	// PENTING: Data yang sudah diproses tetap ditampilkan meskipun status dinonaktifkan
+	logQuery := `SELECT id_anggota, jumlah_potong FROM log_pemotongan_simpanan 
+	             WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil' AND id_anggota != 'SYSTEM'`
+	rows, err := db.Query(logQuery, bulan, tahun)
+
+	if err == nil {
+		defer rows.Close()
+
+		// Ambil data dari log yang sudah ada
+		for rows.Next() {
+			var idAnggota string
+			var jumlahPotong float64
+			if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
+				continue
+			}
+			potonganBulanIni[idAnggota] = jumlahPotong
 		}
-		potonganBulanIni[idAnggota] = totalPotong
+	}
+
+	// Jika sudah ada data dari log, return data tersebut (tidak peduli status aktif atau tidak)
+	if len(potonganBulanIni) > 0 {
+		return potonganBulanIni, nil
+	}
+
+	// Jika belum ada log dan status tidak aktif, return map kosong
+	if !statusAktif {
+		return potonganBulanIni, nil
+	}
+
+	// Jika belum ada log, status aktif, DAN tanggal sesuai, tampilkan nominal dari config
+	if tanggalSekarang == tanggalPotong {
+		nominalSimpananWajib := config["PersentasePotong"].(float64)
+
+		queryAnggota := `SELECT id_anggota FROM anggota WHERE status = 'aktif' AND gaji_bulanan > 0`
+		rows, err = db.Query(queryAnggota)
+		if err != nil {
+			return potonganBulanIni, nil
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var idAnggota string
+			if err := rows.Scan(&idAnggota); err != nil {
+				continue
+			}
+			potonganBulanIni[idAnggota] = nominalSimpananWajib
+		}
 	}
 
 	return potonganBulanIni, nil
@@ -338,26 +478,58 @@ func SaveKonfigurasiSimpananWajib(tanggalPotong int, persentasePotong, nominalTe
 
 	// Check if config exists
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM konfigurasi_simpanan_wajib").Scan(&count)
+	var existingID int
+	err := db.QueryRow("SELECT COUNT(*), COALESCE(MAX(id), 0) FROM konfigurasi_simpanan_wajib").Scan(&count, &existingID)
 	if err != nil {
+		log.Printf("❌ Error mengecek konfigurasi existing: %v", err)
 		return err
 	}
 
+	log.Printf("📊 Jumlah record konfigurasi existing: %d", count)
+
 	if count > 0 {
-		// Update existing config
+		// Update existing config dengan WHERE clause untuk memastikan hanya update record yang benar
 		query := `UPDATE konfigurasi_simpanan_wajib 
 		          SET tanggal_potong = $1, persentase_potong = $2, nominal_tetap = $3, 
-		              tipe_pemotongan = $4, status_aktif = $5, updated_at = CURRENT_TIMESTAMP`
-		_, err = db.Exec(query, tanggalPotong, persentasePotong, nominalTetap, tipePemotongan, statusAktif)
+		              tipe_pemotongan = $4, status_aktif = $5, updated_at = CURRENT_TIMESTAMP
+		          WHERE id = $6`
+		log.Printf("🔄 Updating konfigurasi dengan query: %s (ID: %d)", query, existingID)
+		result, err := db.Exec(query, tanggalPotong, persentasePotong, nominalTetap, tipePemotongan, statusAktif, existingID)
+		if err != nil {
+			log.Printf("❌ Error UPDATE: %v", err)
+			return err
+		}
+		rowsAffected, _ := result.RowsAffected()
+		log.Printf("✅ UPDATE berhasil, rows affected: %d", rowsAffected)
+
+		// Hapus duplikat jika ada (safety measure)
+		if count > 1 {
+			log.Printf("⚠️ Ditemukan %d record, menghapus duplikat...", count)
+			deleteQuery := `DELETE FROM konfigurasi_simpanan_wajib WHERE id != $1`
+			deleteResult, deleteErr := db.Exec(deleteQuery, existingID)
+			if deleteErr != nil {
+				log.Printf("⚠️ Warning: Gagal menghapus duplikat: %v", deleteErr)
+			} else {
+				deletedRows, _ := deleteResult.RowsAffected()
+				log.Printf("✅ Berhasil menghapus %d record duplikat", deletedRows)
+			}
+		}
 	} else {
 		// Insert new config
 		query := `INSERT INTO konfigurasi_simpanan_wajib 
 		          (tanggal_potong, persentase_potong, nominal_tetap, tipe_pemotongan, status_aktif) 
 		          VALUES ($1, $2, $3, $4, $5)`
-		_, err = db.Exec(query, tanggalPotong, persentasePotong, nominalTetap, tipePemotongan, statusAktif)
+		log.Printf("➕ Inserting konfigurasi baru dengan query: %s", query)
+		result, err := db.Exec(query, tanggalPotong, persentasePotong, nominalTetap, tipePemotongan, statusAktif)
+		if err != nil {
+			log.Printf("❌ Error INSERT: %v", err)
+			return err
+		}
+		rowsAffected, _ := result.RowsAffected()
+		log.Printf("✅ INSERT berhasil, rows affected: %d", rowsAffected)
 	}
 
-	return err
+	return nil
 }
 
 // ProsesPemotonganSimpananWajib melakukan pemotongan otomatis untuk semua anggota
@@ -391,9 +563,13 @@ func ProsesPemotonganSimpananWajib() (successCount, failedCount int, errors []st
 
 	tipePemotongan := configData["TipePemotongan"].(string)
 	persentasePotong := configData["PersentasePotong"].(float64)
-	nominalTetap := configData["NominalTetap"].(float64)
+	// nominalTetap := configData["NominalTetap"].(float64) // Tidak digunakan lagi
 
-	fmt.Printf("Tipe pemotongan: %s, Persentase: %.2f%%, Nominal: Rp %.0f\n", tipePemotongan, persentasePotong, nominalTetap)
+	// PENTING: Field PersentasePotong sebenarnya menyimpan Nominal Simpanan Wajib (bukan persentase)
+	// Jadi kita gunakan PersentasePotong sebagai nominal tetap
+	nominalSimpananWajib := persentasePotong
+
+	fmt.Printf("Tipe pemotongan: %s, Nominal Simpanan Wajib: Rp %.0f\n", tipePemotongan, nominalSimpananWajib)
 
 	// Get current month and year
 	now := time.Now()
@@ -402,7 +578,12 @@ func ProsesPemotonganSimpananWajib() (successCount, failedCount int, errors []st
 
 	fmt.Printf("Bulan: %d, Tahun: %d\n", bulan, tahun)
 
-	var skippedNoGaji, skippedAlreadyProcessed int
+	// Hapus record SYSTEM jika ada (untuk memungkinkan proses ulang jika ada data baru)
+	deleteSystemQuery := `DELETE FROM log_pemotongan_simpanan 
+	                      WHERE bulan = $1 AND tahun = $2 AND id_anggota = 'SYSTEM'`
+	db.Exec(deleteSystemQuery, bulan, tahun)
+
+	var skippedNoGaji, skippedAlreadyProcessed, skippedHasSimpananWajib int
 
 	for _, anggota := range anggotas {
 		// Skip mahasiswa atau yang tidak punya gaji
@@ -412,9 +593,9 @@ func ProsesPemotonganSimpananWajib() (successCount, failedCount int, errors []st
 			continue
 		}
 
-		// Check if already processed this month
+		// Check if already processed this month (hanya check anggota real, bukan SYSTEM)
 		var exists bool
-		checkQuery := "SELECT EXISTS(SELECT 1 FROM log_pemotongan_simpanan WHERE id_anggota = $1 AND bulan = $2 AND tahun = $3)"
+		checkQuery := "SELECT EXISTS(SELECT 1 FROM log_pemotongan_simpanan WHERE id_anggota = $1 AND bulan = $2 AND tahun = $3 AND status = 'berhasil')"
 		db.QueryRow(checkQuery, anggota.IDAnggota, bulan, tahun).Scan(&exists)
 
 		if exists {
@@ -423,13 +604,23 @@ func ProsesPemotonganSimpananWajib() (successCount, failedCount int, errors []st
 			continue
 		}
 
-		// Calculate potongan
-		var jumlahPotong float64
-		if tipePemotongan == "persentase" {
-			jumlahPotong = float64(anggota.GajiBulanan) * (persentasePotong / 100)
-		} else {
-			jumlahPotong = nominalTetap
+		// PENTING: Check apakah anggota sudah memiliki simpanan wajib dari konfirmasi manual (detail)
+		// Jika sudah ada, skip untuk tidak memotong gaji lagi
+		var hasSimpananWajib bool
+		checkSimpananWajibQuery := `SELECT EXISTS(
+			SELECT 1 FROM detail 
+			WHERE id_anggota = $1 AND id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed'
+		)`
+		db.QueryRow(checkSimpananWajibQuery, anggota.IDAnggota).Scan(&hasSimpananWajib)
+
+		if hasSimpananWajib {
+			skippedHasSimpananWajib++
+			fmt.Printf("  Skip %s (ID: %s): Sudah ada simpanan wajib dari konfirmasi manual\n", anggota.NamaAnggota, anggota.IDAnggota)
+			continue
 		}
+
+		// Calculate potongan - gunakan nominalSimpananWajib (dari field PersentasePotong)
+		jumlahPotong := nominalSimpananWajib
 
 		fmt.Printf("  Processing %s (ID: %s): Gaji Rp %d, Potong Rp %.0f\n", anggota.NamaAnggota, anggota.IDAnggota, anggota.GajiBulanan, jumlahPotong)
 
@@ -485,7 +676,24 @@ func ProsesPemotonganSimpananWajib() (successCount, failedCount int, errors []st
 
 	fmt.Printf("\n=== Ringkasan ===\n")
 	fmt.Printf("Berhasil: %d, Gagal: %d\n", successCount, failedCount)
-	fmt.Printf("Dilewati (no gaji): %d, Dilewati (sudah dipotong): %d\n", skippedNoGaji, skippedAlreadyProcessed)
+	fmt.Printf("Dilewati (no gaji): %d, Dilewati (sudah dipotong): %d, Dilewati (sudah ada simpanan wajib): %d\n", skippedNoGaji, skippedAlreadyProcessed, skippedHasSimpananWajib)
+
+	// Jika tidak ada yang diproses karena TIDAK ADA ANGGOTA DENGAN GAJI (bukan karena sudah dipotong),
+	// catat sebagai SYSTEM agar tidak terus-menerus dicoba
+	// PENTING: Jika ada anggota dengan gaji tapi sudah dipotong atau sudah ada simpanan wajib, jangan insert SYSTEM!
+	if successCount == 0 && failedCount == 0 && skippedNoGaji > 0 && skippedAlreadyProcessed == 0 && skippedHasSimpananWajib == 0 {
+		fmt.Printf("ℹ️ Tidak ada anggota dengan gaji yang perlu diproses. Menandai sebagai selesai.\n")
+
+		// Insert log untuk menandai bulan ini sudah dicek
+		logQuery := `INSERT INTO log_pemotongan_simpanan (id_anggota, bulan, tahun, gaji_bulanan, jumlah_potong, status, keterangan)
+		             VALUES ('SYSTEM', $1, $2, 0, 0, 'berhasil', $3)`
+		_, err := db.Exec(logQuery, bulan, tahun, fmt.Sprintf("Tidak ada anggota dengan gaji. Total anggota: %d, Skip (no gaji): %d", len(anggotas), skippedNoGaji))
+
+		if err == nil {
+			// Return successCount = 1 untuk menandai bahwa proses "berhasil" (walaupun tidak ada yang diproses)
+			successCount = 1
+		}
+	}
 
 	return successCount, failedCount, errors
 }

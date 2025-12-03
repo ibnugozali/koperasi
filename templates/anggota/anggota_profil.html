@@ -160,60 +160,60 @@
         <div class="col-md-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Saldo</h5>
+                    <h5 class="card-title mb-0">Saldo Simpanan & Pinjaman</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-sm-6">
+                    <div class="row mb-2">
+                        <div class="col-6">
                             <strong>Simpanan Pokok:</strong>
                         </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .SimpananPokok }}
+                        <div class="col-6 text-end">
+                            <span class="saldo-value" data-value="{{ .SimpananPokok }}">Rp {{ printf "%.0f" .SimpananPokok }}</span>
                         </div>
                     </div>
                     <hr>
-                    <div class="row">
-                        <div class="col-sm-6">
+                    <div class="row mb-2">
+                        <div class="col-6">
                             <strong>Simpanan Wajib:</strong>
                         </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .SimpananWajib }}
+                        <div class="col-6 text-end">
+                            <span class="saldo-value" data-value="{{ .SimpananWajib }}">Rp {{ printf "%.0f" .SimpananWajib }}</span>
                         </div>
                     </div>
                     <hr>
-                    <div class="row">
-                        <div class="col-sm-6">
+                    <div class="row mb-2">
+                        <div class="col-6">
                             <strong>Simpanan Sukarela:</strong>
                         </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .SimpananSukarela }}
+                        <div class="col-6 text-end">
+                            <span class="saldo-value" data-value="{{ .SimpananSukarela }}">Rp {{ printf "%.0f" .SimpananSukarela }}</span>
                         </div>
                     </div>
                     <hr>
-                    <div class="row">
-                        <div class="col-sm-6">
+                    <div class="row mb-2">
+                        <div class="col-6">
                             <strong>Simpanan Hari Raya:</strong>
                         </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .SimpananHariRaya }}
+                        <div class="col-6 text-end">
+                            <span class="saldo-value" data-value="{{ .SimpananHariRaya }}">Rp {{ printf "%.0f" .SimpananHariRaya }}</span>
                         </div>
                     </div>
                     <hr>
-                    <div class="row">
-                        <div class="col-sm-6">
+                    <div class="row mb-2">
+                        <div class="col-6">
                             <strong>Total Simpanan:</strong>
                         </div>
-                        <div class="col-sm-6">
-                            <strong>Rp {{ printf "%.0f" .TotalSimpanan }}</strong>
+                        <div class="col-6 text-end">
+                            <strong><span class="saldo-value text-success" data-value="{{ .TotalSimpanan }}">Rp {{ printf "%.0f" .TotalSimpanan }}</span></strong>
                         </div>
                     </div>
                     <hr>
-                    <div class="row">
-                        <div class="col-sm-6">
+                    <div class="row mb-2">
+                        <div class="col-6">
                             <strong>Total Pinjaman:</strong>
                         </div>
-                        <div class="col-sm-6">
-                            Rp {{ printf "%.0f" .TotalPinjaman }}
+                        <div class="col-6 text-end">
+                            <span class="saldo-value text-danger" data-value="{{ .TotalPinjaman }}">Rp {{ printf "%.0f" .TotalPinjaman }}</span>
                         </div>
                     </div>
                   
@@ -236,7 +236,31 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+// Format rupiah dengan pemisah ribuan
+function formatRupiah(angka) {
+    if (isNaN(angka) || angka === null || angka === undefined) return 'Rp 0';
+    const numberString = angka.toString();
+    const split = numberString.split('.');
+    const sisa = split[0].length % 3;
+    let rupiah = split[0].substr(0, sisa);
+    const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+    
+    if (ribuan) {
+        const separator = sisa ? '.' : '';
+        rupiah += separator + ribuan.join('.');
+    }
+    
+    return 'Rp ' + rupiah;
+}
+
 document.addEventListener("DOMContentLoaded", function(){
+  // Format semua nilai saldo dengan pemisah ribuan
+  document.querySelectorAll('.saldo-value').forEach(function(element) {
+    const value = parseFloat(element.getAttribute('data-value')) || 0;
+    element.textContent = formatRupiah(value);
+  });
+
+  // Dropdown submenu handling
   document.querySelectorAll('.dropdown-submenu > a.dropdown-toggle').forEach(function(element){
     element.addEventListener('click', function (e) {
       e.preventDefault();

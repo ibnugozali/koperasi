@@ -26,7 +26,7 @@
                 <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-primary"><i class="fa-solid fa-users"></i></div>
-                        <div class="stat-number text-primary">{{ .TotalAnggota }}</div>
+                        <div class="stat-number text-primary" data-value="{{ .TotalAnggota }}">{{ .TotalAnggota }}</div>
                         <div class="stat-label">Total Anggota</div>
                     </div>
                 </div>
@@ -34,7 +34,7 @@
                 <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-warning"><i class="fa-solid fa-user-clock"></i></div>
-                        <div class="stat-number text-warning">{{ .MenungguKonfirmasi }}</div>
+                        <div class="stat-number text-warning" data-value="{{ .MenungguKonfirmasi }}">{{ .MenungguKonfirmasi }}</div>
                         <div class="stat-label">Menunggu Konfirmasi</div>
                     </div>
                 </div>
@@ -42,7 +42,7 @@
                 <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-success"><i class="fa-solid fa-wallet"></i></div>
-                        <div class="stat-number text-success">Rp {{ printf "%.0f" .TotalSimpanan }}</div>
+                        <div class="stat-number text-success" data-value="{{ .TotalSimpanan }}">{{ printf "%.0f" .TotalSimpanan }}</div>
                         <div class="stat-label">Total Simpanan</div>
                     </div>
                 </div>
@@ -50,34 +50,34 @@
                 <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-danger"><i class="fa-solid fa-money-bill-wave"></i></div>
-                        <div class="stat-number text-danger">Rp {{ printf "%.0f" .TotalPinjaman }}</div>
-                        <div class="stat-label">Total Pinjaman</div>
+                        <div class="stat-number text-danger" data-value="{{ .TotalPinjaman }}">{{ printf "%.0f" .TotalPinjaman }}</div>
+                        <div class="stat-label">Total Pinjaman Aktif</div>
                     </div>
                 </div>
 
                 <div class="col-lg-2 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-info"><i class="fa-solid fa-hand-holding-dollar"></i></div>
-                        <div class="stat-number text-info">Rp {{ printf "%.0f" .TotalAngsuran }}</div>
-                        <div class="stat-label">Total Angsuran</div>
+                        <div class="stat-number text-info" data-value="{{ .TotalAngsuran }}">{{ printf "%.0f" .TotalAngsuran }}</div>
+                        <div class="stat-label">Total Angsuran Terbayar</div>
                     </div>
                 </div>
 
                 <div class="col-lg-2 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-secondary"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
-                        <div class="stat-number text-secondary">Rp {{ printf "%.0f" .TotalPengambilan }}</div>
-                        <div class="stat-label">Total Pengambilan</div>
+                        <div class="stat-number text-secondary" data-value="{{ .TotalPengambilan }}">{{ printf "%.0f" .TotalPengambilan }}</div>
+                        <div class="stat-label">Total Pengambilan Simpanan</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Aktivitas Terbaru - Grafik -->
+            <!-- Ringkasan Keuangan - Grafik -->
             <div class="row">
                 <div class="col-12">
                     <div class="card shadow-sm">
                         <div class="card-header bg-primary text-white">
-                            <i class="fa-solid fa-chart-line me-2"></i> Aktivitas Terbaru
+                            <i class="fa-solid fa-chart-bar me-2"></i> Ringkasan Keuangan Koperasi
                         </div>
                         <div class="card-body">
                             <div style="position: relative; height: 400px; width: 100%;">
@@ -104,37 +104,58 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+    // Helper function untuk format rupiah
+    function formatRupiah(angka) {
+        if (isNaN(angka) || angka === null || angka === undefined) return 'Rp 0';
+        const numberString = angka.toString();
+        const split = numberString.split('.');
+        const sisa = split[0].length % 3;
+        let rupiah = split[0].substr(0, sisa);
+        const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+        
+        if (ribuan) {
+            const separator = sisa ? '.' : '';
+            rupiah += separator + ribuan.join('.');
+        }
+        
+        return 'Rp ' + rupiah;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const canvas = document.getElementById('activityChart');
-        const totalSimpanan = parseFloat(canvas.dataset.simpanan);
-        const totalPinjaman = parseFloat(canvas.dataset.pinjaman);
-        const totalAngsuran = parseFloat(canvas.dataset.angsuran);
-        const totalPengambilan = parseFloat(canvas.dataset.pengambilan);
+        const totalSimpanan = parseFloat(canvas.dataset.simpanan) || 0;
+        const totalPinjaman = parseFloat(canvas.dataset.pinjaman) || 0;
+        const totalAngsuran = parseFloat(canvas.dataset.angsuran) || 0;
+        const totalPengambilan = parseFloat(canvas.dataset.pengambilan) || 0;
+
+        // Update display dengan format rupiah untuk card yang menampilkan angka rupiah
+        document.querySelectorAll('.stat-number[data-value]').forEach((el) => {
+            const value = parseFloat(el.getAttribute('data-value')) || 0;
+            // Jika value > 1000, kemungkinan besar ini adalah nilai rupiah
+            if (value >= 1000) {
+                el.textContent = formatRupiah(value);
+            }
+        });
 
         const ctx = canvas.getContext('2d');
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Simpanan', 'Pinjaman', 'Angsuran', 'Pengambilan'],
+                labels: ['Total Simpanan', 'Pinjaman Aktif', 'Angsuran Terbayar', 'Pengambilan Simpanan'],
                 datasets: [{
-                    label: 'Total (Rp)',
+                    label: 'Jumlah (Rp)',
                     data: [totalSimpanan, totalPinjaman, totalAngsuran, totalPengambilan],
                     backgroundColor: [
                         'rgba(40, 167, 69, 0.8)',
                         'rgba(220, 53, 69, 0.8)',
-                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(23, 162, 184, 0.8)',
                         'rgba(108, 117, 125, 0.8)'
                     ],
                     borderColor: [
                         'rgba(40, 167, 69, 1)',
                         'rgba(220, 53, 69, 1)',
-                        'rgba(255, 193, 7, 1)',
+                        'rgba(23, 162, 184, 1)',
                         'rgba(108, 117, 125, 1)'
-                    ],
-                    borderColor: [
-                        'rgba(40, 167, 69, 1)',
-                        'rgba(220, 53, 69, 1)',
-                        'rgba(255, 193, 7, 1)'
                     ],
                     borderWidth: 2
                 }]
@@ -150,7 +171,12 @@
                         display: true,
                         text: 'Ringkasan Keuangan Koperasi',
                         font: {
-                            size: 16
+                            size: 16,
+                            weight: 'bold'
+                        },
+                        padding: {
+                            top: 10,
+                            bottom: 30
                         }
                     },
                     tooltip: {
@@ -160,7 +186,7 @@
                                 if (label) {
                                     label += ': ';
                                 }
-                                label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                label += formatRupiah(context.parsed.y);
                                 return label;
                             }
                         }
@@ -171,7 +197,7 @@
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return 'Rp ' + value.toLocaleString('id-ID');
+                                return formatRupiah(value);
                             }
                         }
                     }
@@ -183,13 +209,25 @@
     // Auto-check untuk pemotongan otomatis (silent background check)
     async function cekPemotonganOtomatisSilent() {
         try {
-            const response = await fetch('/bendahara/cek-pemotongan-otomatis');
+            const response = await fetch('/bendahara/cek-pemotongan-otomatis', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const result = await response.json();
             
             console.log('🔍 Background check pemotongan otomatis:', result);
 
             // Jika pemotongan berhasil dijalankan, tampilkan notifikasi
-            if (result.processed && result.shouldRun) {
+            if (result.processed || (result.shouldRun && result.successCount !== undefined)) {
+                console.log('✅ Pemotongan berhasil dijalankan dari dashboard!');
+                
                 // Tampilkan notifikasi sukses
                 const alertDiv = document.createElement('div');
                 alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
@@ -198,26 +236,49 @@
                 alertDiv.innerHTML = `
                     <i class="fas fa-check-circle me-2"></i>
                     <strong>Pemotongan Simpanan Wajib Otomatis Berhasil!</strong><br>
-                    <small>${result.message}</small>
+                    <small>${result.message || 'Proses berhasil dilakukan'}</small>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 `;
                 document.body.appendChild(alertDiv);
                 
-                // Auto close setelah 5 detik
+                // Auto close setelah 8 detik
                 setTimeout(() => {
                     alertDiv.remove();
-                }, 5000);
+                }, 8000);
+                
+                // Reload halaman setelah 9 detik untuk update statistik
+                setTimeout(() => {
+                    window.location.reload();
+                }, 9000);
+            } else {
+                console.log('ℹ️ Background check:', result.message || 'Belum waktunya atau sudah diproses');
             }
         } catch (error) {
             console.error('Error saat background check pemotongan:', error);
+            // Silent fail - tidak mengganggu user experience
         }
     }
 
-    // Jalankan pengecekan saat halaman dimuat
-    cekPemotonganOtomatisSilent();
+    // Event-based check untuk pemotongan otomatis (BUKAN interval)
+    // Hanya check jika ada trigger dari halaman lain
+    
+    // Check jika ada trigger dari localStorage
+    if (localStorage.getItem('triggerPemotonganCheck') === 'true') {
+        console.log('🚀 Trigger detected di dashboard! Menjalankan pengecekan...');
+        localStorage.removeItem('triggerPemotonganCheck');
+        setTimeout(cekPemotonganOtomatisSilent, 2000);
+    }
 
-    // Jalankan pengecekan setiap 2 jam untuk dashboard
-    setInterval(cekPemotonganOtomatisSilent, 7200000);
+    // Listen untuk trigger dari tab lain
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'triggerPemotonganCheck' && e.newValue === 'true') {
+            console.log('🔄 Trigger dari tab lain di dashboard!');
+            localStorage.removeItem('triggerPemotonganCheck');
+            setTimeout(cekPemotonganOtomatisSilent, 2000);
+        }
+    });
+    
+    console.log('✓ Event-based check pemotongan aktif di dashboard');
     </script>
 </body>
 </html>

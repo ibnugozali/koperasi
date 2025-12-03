@@ -93,13 +93,6 @@ func AnggotaProfil(c *gin.Context) {
 		return
 	}
 
-	// Ambil data saldo
-	totalSimpanan, totalPinjaman, _, err := repository.GetSaldoAnggota(userID)
-	if err != nil {
-		// Jika gagal ambil saldo, tetap tampilkan halaman dengan saldo 0
-		totalSimpanan, totalPinjaman = 0, 0
-	}
-
 	// Ambil detail simpanan per jenis
 	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
 	if err != nil {
@@ -110,6 +103,17 @@ func AnggotaProfil(c *gin.Context) {
 			"sukarela":  0,
 			"hari_raya": 0,
 		}
+	}
+
+	// Hitung Total Simpanan dari semua simpanan yang ada di anggota_profil
+	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
+		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"]
+
+	// Ambil total pinjaman
+	_, totalPinjaman, _, err := repository.GetSaldoAnggota(userID)
+	if err != nil {
+		// Jika gagal ambil pinjaman, set ke 0
+		totalPinjaman = 0
 	}
 
 	// Render halaman profil dan kirim data anggota dan saldo ke sana
@@ -358,6 +362,7 @@ func AjukanPinjaman(c *gin.Context) {
 		"LimitPinjaman": limitPinjaman,
 		"JenisAnggota":  jenisAnggota,
 		"Bunga":         bungaTerkini,
+		"GajiBulanan":   anggota.GajiBulanan, // Tambahkan gaji bulanan
 	})
 }
 
@@ -399,6 +404,7 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 		"LimitPinjaman": limitPinjaman,
 		"JenisAnggota":  jenisAnggota,
 		"Bunga":         bungaTerkini,
+		"GajiBulanan":   anggota.GajiBulanan, // Tambahkan gaji bulanan
 	}
 }
 
@@ -638,6 +644,20 @@ func AnggotaSimpanan(c *gin.Context) {
 		nomorRekening = "1234567890 (Bank ABC)" // Default jika belum diset
 	}
 
+	// Ambil detail simpanan per jenis untuk cek apakah sudah ada data
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
+	if err != nil {
+		simpananByJenis = map[string]float64{
+			"pokok":     0,
+			"wajib":     0,
+			"sukarela":  0,
+			"hari_raya": 0,
+		}
+	}
+
+	// Cek apakah simpanan wajib sudah ada (lebih dari 0)
+	hasSimpananWajib := simpananByJenis["wajib"] > 0
+
 	// Ambil konten halaman simpanan dari database
 	halaman, err := repository.GetHalamanBySlug("simpanan")
 	var kontenData map[string]interface{}
@@ -646,11 +666,13 @@ func AnggotaSimpanan(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
-		"Judul":         "Simpanan",
-		"Anggota":       anggota,
-		"Now":           time.Now(),
-		"NomorRekening": nomorRekening,
-		"Konten":        kontenData,
+		"Judul":            "Simpanan",
+		"Anggota":          anggota,
+		"Now":              time.Now(),
+		"NomorRekening":    nomorRekening,
+		"Konten":           kontenData,
+		"HasSimpananWajib": hasSimpananWajib,
+		"SimpananWajib":    simpananByJenis["wajib"],
 	})
 }
 
