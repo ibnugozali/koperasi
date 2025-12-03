@@ -35,7 +35,7 @@ CREATE TABLE anggota (
     status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('aktif', 'nonaktif', 'pending')),
     status_anggota VARCHAR(50),
     fakultas VARCHAR(100),
-    unit_kerja VARCHAR(2),  -- 01=Dosen, 02=Karyawan/Staff, 03=Mahasiswa
+    unit_kerja VARCHAR(50),  -- Dosen, Staff, Mahasiswa (nama lengkap)
     fakultas_code VARCHAR(2),  -- 01=FAI, 02=FE, 03=FH, 04=FISIP, 05=FKIP, 06=FKM, 07=FAPERTA, 08=FT, 09=Rektorat/Yayasan/Staff
     tahun VARCHAR(4),  -- Tahun konfirmasi
     nomor_urut VARCHAR(4),  -- Nomor urut 4 digit

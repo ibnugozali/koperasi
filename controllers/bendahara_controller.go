@@ -1288,10 +1288,11 @@ func BendaharaImportAnggotaPage(c *gin.Context) {
 	// Ambil riwayat import terbaru
 	db := config.GetDB()
 	var latestImport *models.ImportHistory
-	var allImportedData []map[string]interface{} // Gabungan SEMUA data dari semua import
+	var allImportedData []map[string]interface{} // Data dari latest import
 	var parseErrors []string
 	var totalSuccessCount int
 	var totalFailedCount int
+	var err error
 
 	fmt.Println("=== BendaharaImportAnggotaPage called ===")
 	fmt.Printf("Session user_id: %v (type: %T)\n", idPengelola, idPengelola)
@@ -1305,49 +1306,37 @@ func BendaharaImportAnggotaPage(c *gin.Context) {
 			pengelolaID, _ = strconv.Atoi(idStr)
 		}
 
-		fmt.Printf("=== Loading ALL import history for pengelola ID: %d ===\n", pengelolaID)
+		fmt.Printf("=== Loading latest import history for pengelola ID: %d ===\n", pengelolaID)
 
-		// Ambil SEMUA riwayat import (untuk akumulasi data)
-		allImports, err := repository.GetAllImportHistory(db, pengelolaID, 100) // Ambil max 100 import terakhir
+		// Ambil HANYA riwayat import terbaru (bukan semua)
+		latestImport, err = repository.GetLatestImportHistory(db, pengelolaID)
 		if err != nil {
 			fmt.Printf("❌ Error loading import history: %v\n", err)
-		} else if len(allImports) > 0 {
-			fmt.Printf("✓ Found %d import records in database\n", len(allImports))
+		} else if latestImport != nil {
+			fmt.Printf("✓ Found latest import: %s (Date: %v)\n", latestImport.FileName, latestImport.TanggalImport)
 
-			// Set latest import untuk info header
-			latestImport = &allImports[0]
-			fmt.Printf("✓ Latest import: %s (Date: %v)\n", latestImport.FileName, latestImport.TanggalImport)
+			totalSuccessCount = latestImport.SuccessCount
+			totalFailedCount = latestImport.FailedCount
 
-			// Gabungkan SEMUA data dari semua import
-			for idx, imp := range allImports {
-				fmt.Printf("  [%d] Processing import: %s (Success: %d, Failed: %d)\n",
-					idx+1, imp.FileName, imp.SuccessCount, imp.FailedCount)
-
-				totalSuccessCount += imp.SuccessCount
-				totalFailedCount += imp.FailedCount
-
-				// Parse dan gabungkan imported data
-				if imp.ImportedData != "" {
-					var importData []map[string]interface{}
-					if err := json.Unmarshal([]byte(imp.ImportedData), &importData); err != nil {
-						fmt.Printf("    ❌ Error parsing ImportedData: %v\n", err)
-					} else {
-						fmt.Printf("    ✓ Adding %d records from this import\n", len(importData))
-						allImportedData = append(allImportedData, importData...)
-					}
+			// Parse imported data dari latest import
+			if latestImport.ImportedData != "" {
+				if err := json.Unmarshal([]byte(latestImport.ImportedData), &allImportedData); err != nil {
+					fmt.Printf("❌ Error parsing ImportedData: %v\n", err)
 				} else {
-					fmt.Printf("    ⚠️ No ImportedData for this record\n")
+					fmt.Printf("✓ Loaded %d records from latest import\n", len(allImportedData))
 				}
+			} else {
+				fmt.Printf("⚠️ No ImportedData in latest import\n")
+			}
 
-				// Gabungkan parse errors dari latest import saja
-				if idx == 0 && imp.ParseErrors != "" {
-					if err := json.Unmarshal([]byte(imp.ParseErrors), &parseErrors); err != nil {
-						fmt.Printf("    ❌ Error parsing ParseErrors: %v\n", err)
-					}
+			// Parse errors dari latest import
+			if latestImport.ParseErrors != "" {
+				if err := json.Unmarshal([]byte(latestImport.ParseErrors), &parseErrors); err != nil {
+					fmt.Printf("❌ Error parsing ParseErrors: %v\n", err)
 				}
 			}
 
-			fmt.Printf("✓ Total accumulated data: %d records (Success: %d, Failed: %d)\n",
+			fmt.Printf("✓ Total data: %d records (Success: %d, Failed: %d)\n",
 				len(allImportedData), totalSuccessCount, totalFailedCount)
 		} else {
 			fmt.Printf("ℹ️ No import history found for pengelola ID: %d (database is empty)\n", pengelolaID)
@@ -1356,55 +1345,13 @@ func BendaharaImportAnggotaPage(c *gin.Context) {
 		fmt.Println("⚠️ No pengelola ID found in session - user not logged in?")
 	}
 
-	// Ambil data anggota real-time dari database untuk menampilkan gaji terbaru
-	anggotas, err := repository.GetAllAnggota()
-	if err != nil {
-		fmt.Printf("❌ Error loading anggota data: %v\n", err)
-		anggotas = []models.Anggota{}
-	}
-
-	// Ambil data potongan bulan ini untuk menghitung sisa gaji
-	potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
-	if err != nil {
-		fmt.Printf("❌ Error loading potongan data: %v\n", err)
-		potonganBulanIni = make(map[string]float64)
-	}
-
-	// Convert anggota ke format map untuk template dengan sisa gaji yang sudah dikurangi potongan
-	var realTimeData []map[string]interface{}
-	for _, anggota := range anggotas {
-		// Hitung sisa gaji = gaji_bulanan - potongan_bulan_ini
-		potongan := potonganBulanIni[anggota.IDAnggota]
-		sisaGaji := float64(anggota.GajiBulanan) - potongan
-		if sisaGaji < 0 {
-			sisaGaji = 0
-		}
-
-		realTimeData = append(realTimeData, map[string]interface{}{
-			"id_anggota":     anggota.IDAnggota,
-			"nama_anggota":   anggota.NamaAnggota,
-			"username":       anggota.Username,
-			"nik_ktp":        anggota.NikKTP,
-			"no_telepon":     anggota.NoTelepon,
-			"alamat":         anggota.Alamat,
-			"provinsi":       anggota.Provinsi,
-			"jenis_kelamin":  anggota.JenisKelamin,
-			"tgl_lahir":      anggota.TglLahir,
-			"fakultas":       anggota.Fakultas,
-			"unit_kerja":     anggota.UnitKerja,
-			"gaji_bulanan":   int(sisaGaji), // Kirim sisa gaji (gaji - potongan)
-			"status":         anggota.Status,
-			"status_anggota": anggota.StatusAnggota,
-		})
-	}
-
-	fmt.Printf("=== Rendering template with %d total records (real-time from database) ===\n", len(realTimeData))
+	fmt.Printf("=== Rendering template with %d total records from import history ===\n", len(allImportedData))
 
 	c.HTML(http.StatusOK, "bendahara_import_anggota.html", gin.H{
 		"ActivePage":        "import_anggota",
 		"LogoPath":          logoPath,
 		"LatestImport":      latestImport,
-		"ImportedData":      realTimeData, // Kirim data real-time dari database
+		"ImportedData":      allImportedData, // Kirim data dari import history, bukan dari database anggota
 		"ParseErrors":       parseErrors,
 		"TotalSuccessCount": totalSuccessCount, // Total success dari semua import
 		"TotalFailedCount":  totalFailedCount,  // Total failed dari semua import
@@ -1504,24 +1451,6 @@ func BendaharaImportAnggota(c *gin.Context) {
 			return row[index]
 		}
 		return ""
-	}
-
-	// Helper function untuk mapping unit kerja ke kode 2 digit
-	mapUnitKerja := func(unitKerja string) string {
-		if len(unitKerja) <= 2 {
-			return unitKerja
-		}
-		unitKerja = strings.ToLower(strings.TrimSpace(unitKerja))
-		switch {
-		case strings.Contains(unitKerja, "dosen"):
-			return "01"
-		case strings.Contains(unitKerja, "karyawan") || strings.Contains(unitKerja, "staff"):
-			return "02"
-		case strings.Contains(unitKerja, "mahasiswa"):
-			return "03"
-		default:
-			return "" // Kosongkan jika tidak dikenali
-		}
 	}
 
 	// Helper function untuk mapping fakultas ke kode 2 digit
@@ -1634,8 +1563,7 @@ func BendaharaImportAnggota(c *gin.Context) {
 			continue
 		}
 
-		// Mapping unit_kerja dan fakultas_code ke format 2 digit
-		unitKerjaCode := mapUnitKerja(unitKerja)
+		// Mapping fakultas_code ke format 2 digit (unit_kerja tetap gunakan nama lengkap)
 		fakultasCode := mapFakultasCode(fakultas)
 
 		// Hash password default
@@ -1661,7 +1589,7 @@ func BendaharaImportAnggota(c *gin.Context) {
 			Alamat:        alamat,
 			NikKTP:        nikKTP,
 			NoTelepon:     noTelepon,
-			UnitKerja:     unitKerjaCode,
+			UnitKerja:     unitKerja,
 			Fakultas:      fakultas,
 			StatusAnggota: statusAnggota,
 			Status:        "aktif",
@@ -1943,24 +1871,6 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 		return ""
 	}
 
-	// Helper function untuk mapping unit kerja ke kode 2 digit (untuk preview)
-	mapUnitKerjaPreview := func(unitKerja string) string {
-		if len(unitKerja) <= 2 {
-			return unitKerja
-		}
-		unitKerja = strings.ToLower(strings.TrimSpace(unitKerja))
-		switch {
-		case strings.Contains(unitKerja, "dosen"):
-			return "01"
-		case strings.Contains(unitKerja, "karyawan") || strings.Contains(unitKerja, "staff"):
-			return "02"
-		case strings.Contains(unitKerja, "mahasiswa"):
-			return "03"
-		default:
-			return ""
-		}
-	}
-
 	// Helper function untuk mapping fakultas ke kode 2 digit (untuk preview)
 	mapFakultasCodePreview := func(fakultas string) string {
 		if len(fakultas) <= 2 {
@@ -2017,7 +1927,7 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 
 			// Urutan sesuai template: Nama Anggota, Unit Kerja, Tanggal Lahir, NIK KTP, No Telepon, Jenis Kelamin, Fakultas, Gaji Bulanan, Alamat
 			namaAnggota := getValuePreview(row, 0)
-			unitKerja := getValuePreview(row, 1)
+			_ = getValuePreview(row, 1) // unitKerja - tidak divalidasi di preview
 			tglLahir := getValuePreview(row, 2)
 			nikKTP := getValuePreview(row, 3)
 			_ = getValuePreview(row, 4) // noTelepon - tidak divalidasi di preview
@@ -2049,15 +1959,10 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 				continue
 			}
 
-			// Validasi unit_kerja dan fakultas (harus bisa dimapping atau sudah 2 digit)
-			unitKerjaCode := mapUnitKerjaPreview(unitKerja)
+			// Mapping fakultas_code (unit_kerja tetap gunakan nama lengkap)
 			fakultasCode := mapFakultasCodePreview(fakultas)
 
-			if unitKerja != "" && len(unitKerja) > 2 && unitKerjaCode == "" {
-				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Unit Kerja '%s' tidak valid. Gunakan: Dosen, Karyawan/Staff, atau Mahasiswa", rowNum, unitKerja))
-				continue
-			}
-
+			// Validasi fakultas (harus bisa dimapping atau sudah 2 digit)
 			if fakultas != "" && len(fakultas) > 2 && fakultasCode == "" {
 				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Fakultas '%s' tidak valid. Gunakan: FAI, FE, FH, FISIP, FKIP, FKM, FAPERTA, FT, atau Rektorat", rowNum, fakultas))
 				continue
@@ -2121,6 +2026,77 @@ func BendaharaClearImportHistory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Semua riwayat import berhasil dihapus",
+	})
+}
+
+// BendaharaUpdateImportData memperbarui data import history
+func BendaharaUpdateImportData(c *gin.Context) {
+	db := config.GetDB()
+
+	// Ambil session untuk mendapatkan ID pengelola
+	session := sessions.Default(c)
+	idPengelola := session.Get("user_id")
+
+	if idPengelola == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized - No user session",
+		})
+		return
+	}
+
+	// Convert ke int
+	pengelolaID := 0
+	if id, ok := idPengelola.(int); ok {
+		pengelolaID = id
+	} else if idStr, ok := idPengelola.(string); ok {
+		pengelolaID, _ = strconv.Atoi(idStr)
+	}
+
+	// Parse request body
+	var requestData struct {
+		AllImportedData []map[string]interface{} `json:"allImportedData"`
+	}
+
+	if err := c.ShouldBindJSON(&requestData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request data",
+		})
+		return
+	}
+
+	fmt.Printf("=== Updating import data for pengelola ID: %d ===\n", pengelolaID)
+	fmt.Printf("Received %d records to update\n", len(requestData.AllImportedData))
+
+	// Ambil latest import history
+	latestImport, err := repository.GetLatestImportHistory(db, pengelolaID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal mengambil riwayat import",
+		})
+		return
+	}
+
+	// Update imported_data field dengan data baru
+	importedDataJSON, _ := json.Marshal(requestData.AllImportedData)
+	latestImport.ImportedData = string(importedDataJSON)
+	latestImport.SuccessCount = len(requestData.AllImportedData)
+	latestImport.TotalData = len(requestData.AllImportedData)
+
+	// Save ke database
+	err = repository.UpdateImportHistory(db, latestImport)
+	if err != nil {
+		fmt.Printf("❌ Error updating import history: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal memperbarui data import",
+		})
+		return
+	}
+
+	fmt.Printf("✓ Import data updated successfully\n")
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Data berhasil diperbarui",
+		"count":   len(requestData.AllImportedData),
 	})
 }
 

@@ -1753,7 +1753,7 @@
         }
 
         // Fungsi untuk menyimpan hasil edit
-        function saveEdit(index) {
+        async function saveEdit(index) {
             const updatedData = {
                 nama_anggota: document.getElementById('edit_nama').value,
                 unit_kerja: document.getElementById('edit_unit_kerja').value,
@@ -1767,19 +1767,60 @@
                 status_anggota: allImportedData[index].status_anggota || 'Aktif'
             };
 
-            // Update data
+            // Update data di array
             allImportedData[index] = updatedData;
 
             // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
             modal.hide();
 
-            // Refresh display
-            if (window.lastImportResult) {
-                displayPreviousImportResult(window.lastImportResult);
-            }
+            // Simpan ke database
+            try {
+                const response = await fetch('/bendahara/import-anggota/update', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        allImportedData: allImportedData
+                    })
+                });
 
-            alert('✓ Data berhasil diperbarui!');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    console.log('✓ Data updated in database:', result);
+                    
+                    // Update window.lastImportResult dengan data terbaru
+                    if (window.lastImportResult) {
+                        window.lastImportResult.success = allImportedData.length;
+                        window.lastImportResult.totalData = allImportedData.length;
+                    }
+                    
+                    // Refresh display
+                    if (window.lastImportResult) {
+                        displayPreviousImportResult(window.lastImportResult);
+                    }
+
+                    // Show success message
+                    const tempAlert = document.createElement('div');
+                    tempAlert.className = 'alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3';
+                    tempAlert.style.zIndex = '9999';
+                    tempAlert.innerHTML = '<i class="fa-solid fa-check-circle me-2"></i>Data berhasil diperbarui dan disimpan!';
+                    document.body.appendChild(tempAlert);
+                    
+                    setTimeout(() => {
+                        tempAlert.remove();
+                    }, 3000);
+                } else {
+                    throw new Error(result.error || 'Gagal menyimpan data');
+                }
+            } catch (error) {
+                console.error('Error saving edit:', error);
+                alert('❌ Gagal menyimpan perubahan: ' + error.message);
+                // Rollback jika gagal
+                location.reload();
+            }
         }
 
         // Fungsi untuk download PDF
@@ -1917,7 +1958,7 @@
         }
 
         // Fungsi untuk menghapus data anggota
-        function deleteAnggota(index) {
+        async function deleteAnggota(index) {
             const anggota = allImportedData[index];
             if (!anggota) {
                 alert('Data tidak ditemukan!');
@@ -1931,12 +1972,53 @@
                 // Update counter
                 totalSuccessCount = Math.max(0, totalSuccessCount - 1);
 
-                // Refresh display
-                if (window.lastImportResult) {
-                    displayPreviousImportResult(window.lastImportResult);
-                }
+                // Simpan ke database
+                try {
+                    const response = await fetch('/bendahara/import-anggota/update', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            allImportedData: allImportedData
+                        })
+                    });
 
-                alert('✓ Data berhasil dihapus!');
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        console.log('✓ Data deleted from database:', result);
+                        
+                        // Update window.lastImportResult dengan data terbaru
+                        if (window.lastImportResult) {
+                            window.lastImportResult.success = allImportedData.length;
+                            window.lastImportResult.totalData = allImportedData.length;
+                        }
+                        
+                        // Refresh display
+                        if (window.lastImportResult) {
+                            displayPreviousImportResult(window.lastImportResult);
+                        }
+
+                        // Show success message
+                        const tempAlert = document.createElement('div');
+                        tempAlert.className = 'alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3';
+                        tempAlert.style.zIndex = '9999';
+                        tempAlert.innerHTML = '<i class="fa-solid fa-check-circle me-2"></i>Data berhasil dihapus!';
+                        document.body.appendChild(tempAlert);
+                        
+                        setTimeout(() => {
+                            tempAlert.remove();
+                        }, 3000);
+                    } else {
+                        throw new Error(result.error || 'Gagal menghapus data');
+                    }
+                } catch (error) {
+                    console.error('Error deleting data:', error);
+                    alert('❌ Gagal menghapus data: ' + error.message);
+                    // Rollback jika gagal
+                    location.reload();
+                }
             }
         }
     </script>

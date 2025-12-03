@@ -12,7 +12,6 @@ import (
 
 	"koperasi-simpan-pinjam/controllers"
 	"koperasi-simpan-pinjam/middleware"
-
 )
 
 func SetupRouter() *gin.Engine {
@@ -165,6 +164,7 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.GET("/import-anggota", controllers.BendaharaImportAnggotaPage)
 		bendaharaRoutes.POST("/import-anggota/preview", controllers.BendaharaPreviewImportAnggota)
 		bendaharaRoutes.POST("/import-anggota", controllers.BendaharaImportAnggota)
+		bendaharaRoutes.PUT("/import-anggota/update", controllers.BendaharaUpdateImportData)
 		bendaharaRoutes.DELETE("/import-anggota/clear", controllers.BendaharaClearImportHistory)
 
 		// Route for setting simpanan wajib otomatis

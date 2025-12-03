@@ -118,3 +118,23 @@ func DeleteAllImportHistoryByPengelola(db *sql.DB, idPengelola int) error {
 	_, err := db.Exec(query, idPengelola)
 	return err
 }
+
+// UpdateImportHistory memperbarui data import history
+func UpdateImportHistory(db *sql.DB, history *models.ImportHistory) error {
+	query := `
+		UPDATE import_history 
+		SET imported_data = $1, 
+		    success_count = $2, 
+		    failed_count = $3,
+		    total_data = $4
+		WHERE id_import = $5
+	`
+	_, err := db.Exec(query,
+		history.ImportedData,
+		history.SuccessCount,
+		history.FailedCount,
+		history.TotalData,
+		history.IDImport,
+	)
+	return err
+}
