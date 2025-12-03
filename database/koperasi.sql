@@ -1,3 +1,4 @@
+-- SQLBook: Code
 -- Hapus tabel jika sudah ada untuk memastikan skrip bisa dijalankan ulang
 DROP TABLE IF EXISTS import_history CASCADE;
 DROP TABLE IF EXISTS angsuran CASCADE;
@@ -154,6 +155,34 @@ CREATE TABLE import_history (
     imported_data TEXT,
     parse_errors TEXT,
     tanggal_import TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabel konfigurasi pemotongan simpanan wajib otomatis
+DROP TABLE IF EXISTS konfigurasi_simpanan_wajib CASCADE;
+CREATE TABLE konfigurasi_simpanan_wajib (
+    id SERIAL PRIMARY KEY,
+    tanggal_potong INT NOT NULL CHECK (tanggal_potong >= 1 AND tanggal_potong <= 31),
+    persentase_potong DECIMAL(5,2) NOT NULL DEFAULT 5.00 CHECK (persentase_potong >= 0 AND persentase_potong <= 100),
+    nominal_tetap DECIMAL(15,2) DEFAULT 0,
+    tipe_pemotongan VARCHAR(20) DEFAULT 'persentase' CHECK (tipe_pemotongan IN ('persentase', 'nominal_tetap')),
+    status_aktif BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabel log pemotongan simpanan wajib otomatis
+DROP TABLE IF EXISTS log_pemotongan_simpanan CASCADE;
+CREATE TABLE log_pemotongan_simpanan (
+    id_log SERIAL PRIMARY KEY,
+    id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    bulan INT NOT NULL,
+    tahun INT NOT NULL,
+    gaji_bulanan DECIMAL(15,2) NOT NULL,
+    jumlah_potong DECIMAL(15,2) NOT NULL,
+    tgl_proses TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'berhasil' CHECK (status IN ('berhasil', 'gagal')),
+    keterangan TEXT,
+    UNIQUE(id_anggota, bulan, tahun)
 );
 
 -- Index untuk performa query pada tabel import_history

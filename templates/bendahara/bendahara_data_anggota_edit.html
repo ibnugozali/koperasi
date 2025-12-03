@@ -150,6 +150,10 @@
                         <div class="card-body">
                             <form action="/bendahara/anggota/update/{{ .Anggota.IDAnggota }}" method="POST">
                                 
+                                <!-- Hidden Fields untuk data yang tidak diedit tapi dibutuhkan backend -->
+                                <input type="hidden" name="Username" value="{{ .Anggota.Username }}">
+                                <input type="hidden" name="StatusAnggota" value="{{ .Anggota.StatusAnggota }}">
+                                
                                 <!-- Data Pribadi -->
                                 <h5 class="section-title"><i class="fas fa-user-circle me-2"></i>Data Pribadi</h5>
                                 
@@ -173,11 +177,17 @@
 
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label for="TglLahir" class="form-label">
+                                        <label for="TglLahirDisplay" class="form-label">
                                             <i class="fas fa-birthday-cake me-2"></i>Tanggal Lahir <span class="text-danger">*</span>
                                         </label>
-                                        <input type="date" class="form-control" id="TglLahir" name="TglLahir" 
-                                               value="{{ .Anggota.TglLahir }}" required>
+                                        <input type="text" class="form-control" id="TglLahirDisplay" 
+                                               placeholder="dd/mm/yyyy" required
+                                               pattern="\d{2}/\d{2}/\d{4}"
+                                               title="Format: dd/mm/yyyy"
+                                               value="{{ if .Anggota.TglLahir }}{{ .Anggota.TglLahir }}{{ end }}">
+                                        <input type="hidden" id="TglLahir" name="TglLahir" 
+                                               value="{{ if .Anggota.TglLahir }}{{ .Anggota.TglLahir }}{{ end }}">
+                                        <small class="form-text text-muted">Format: dd/mm/yyyy (contoh: 15/08/1990)</small>
                                     </div>
 
                                     <div class="col-md-6 mb-3">
@@ -185,6 +195,8 @@
                                             <i class="fas fa-venus-mars me-2"></i>Jenis Kelamin <span class="text-danger">*</span>
                                         </label>
                                         <select class="form-select" id="JenisKelamin" name="JenisKelamin" required>
+                                            <option value="Laki-laki" {{ if eq .Anggota.JenisKelamin "Laki-laki" }}selected{{ end }}>Laki-laki</option>
+                                            <option value="Perempuan" {{ if eq .Anggota.JenisKelamin "Perempuan" }}selected{{ end }}>Perempuan</option>
                                             <option value="L" {{ if eq .Anggota.JenisKelamin "L" }}selected{{ end }}>Laki-laki</option>
                                             <option value="P" {{ if eq .Anggota.JenisKelamin "P" }}selected{{ end }}>Perempuan</option>
                                         </select>
@@ -224,11 +236,16 @@
                                     </div>
 
                                     <div class="col-md-6 mb-3">
-                                        <label for="StatusAnggota" class="form-label">
-                                            <i class="fas fa-info-circle me-2"></i>Status Anggota <span class="text-danger">*</span>
+                                        <label for="GajiBulanan" class="form-label">
+                                            <i class="fas fa-money-bill-wave me-2"></i>Gaji Bulanan <span class="text-danger" id="gaji-required">*</span>
                                         </label>
-                                        <input type="text" class="form-control" id="StatusAnggota" name="StatusAnggota" 
-                                               value="{{ .Anggota.StatusAnggota }}" required>
+                                        <input type="number" class="form-control" id="GajiBulanan" name="GajiBulanan" 
+                                               value="{{if gt .Anggota.GajiBulanan 0}}{{ .Anggota.GajiBulanan }}{{end}}" 
+                                               placeholder="Contoh: 5000000" min="0" step="1000" required
+                                               data-unit-kerja="{{ .Anggota.UnitKerja }}" 
+                                               data-status-anggota="{{ .Anggota.StatusAnggota }}">
+                                        <small class="form-text text-muted">Masukkan gaji bulanan dalam Rupiah (tanpa titik atau koma)</small>
+                                        <small class="form-text text-info" id="gaji-info" style="display: none;">Mahasiswa tidak perlu mengisi gaji bulanan</small>
                                     </div>
                                 </div>
 
@@ -251,5 +268,125 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Konversi format tanggal dari YYYY-MM-DD ke dd/mm/yyyy untuk ditampilkan
+        document.addEventListener('DOMContentLoaded', function() {
+            const tglLahirDisplay = document.getElementById('TglLahirDisplay');
+            const tglLahirHidden = document.getElementById('TglLahir');
+            const form = tglLahirDisplay.closest('form');
+            const gajiBulananInput = document.getElementById('GajiBulanan');
+            const gajiRequired = document.getElementById('gaji-required');
+            const gajiInfo = document.getElementById('gaji-info');
+            
+            // Fungsi untuk mengatur status field gaji bulanan
+            function updateGajiBulananStatus() {
+                const unitKerja = gajiBulananInput.getAttribute('data-unit-kerja');
+                const statusAnggota = gajiBulananInput.getAttribute('data-status-anggota');
+                
+                // Cek apakah mahasiswa (unit_kerja = "03" atau status_anggota = "mahasiswa")
+                if (unitKerja === '03' || statusAnggota === 'mahasiswa' || statusAnggota === 'Mahasiswa') {
+                    gajiBulananInput.readOnly = true;
+                    gajiBulananInput.value = '0';
+                    gajiBulananInput.required = false;
+                    gajiBulananInput.classList.add('bg-light');
+                    if (gajiRequired) gajiRequired.style.display = 'none';
+                    if (gajiInfo) gajiInfo.style.display = 'block';
+                } else {
+                    gajiBulananInput.readOnly = false;
+                    gajiBulananInput.required = true;
+                    gajiBulananInput.classList.remove('bg-light');
+                    if (gajiRequired) gajiRequired.style.display = 'inline';
+                    if (gajiInfo) gajiInfo.style.display = 'none';
+                }
+            }
+            
+            // Jalankan saat halaman dimuat
+            updateGajiBulananStatus();
+            
+            // Konversi tanggal dari YYYY-MM-DD ke dd/mm/yyyy untuk ditampilkan
+            if (tglLahirHidden && tglLahirHidden.value) {
+                let dateValue = tglLahirHidden.value.trim();
+                
+                // Hapus T00:00:00Z atau timestamp lainnya jika ada
+                if (dateValue.includes('T')) {
+                    dateValue = dateValue.split('T')[0];
+                }
+                
+                // Jika format YYYY-MM-DD, konversi ke dd/mm/yyyy
+                if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    const parts = dateValue.split('-');
+                    const year = parts[0];
+                    const month = parts[1];
+                    const day = parts[2];
+                    tglLahirDisplay.value = `${day}/${month}/${year}`;
+                } else {
+                    // Jika sudah format lain, tampilkan apa adanya
+                    tglLahirDisplay.value = dateValue;
+                }
+            }
+            
+            // Update hidden field saat user mengedit tanggal
+            tglLahirDisplay.addEventListener('input', function() {
+                const displayValue = this.value.trim();
+                
+                // Jika format dd/mm/yyyy, konversi ke YYYY-MM-DD untuk disimpan
+                if (displayValue.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                    const parts = displayValue.split('/');
+                    const day = parts[0];
+                    const month = parts[1];
+                    const year = parts[2];
+                    tglLahirHidden.value = `${year}-${month}-${day}`;
+                } else {
+                    // Jika belum lengkap atau format salah, kosongkan hidden field
+                    tglLahirHidden.value = '';
+                }
+            });
+            
+            // Validasi sebelum submit
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const displayValue = tglLahirDisplay.value.trim();
+                    
+                    if (!displayValue.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                        e.preventDefault();
+                        alert('Format tanggal lahir harus dd/mm/yyyy (contoh: 15/08/1990)');
+                        tglLahirDisplay.focus();
+                        return false;
+                    }
+                    
+                    // Validasi tanggal valid
+                    const parts = displayValue.split('/');
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10);
+                    const year = parseInt(parts[2], 10);
+                    
+                    if (month < 1 || month > 12) {
+                        e.preventDefault();
+                        alert('Bulan tidak valid! Harus antara 01-12');
+                        tglLahirDisplay.focus();
+                        return false;
+                    }
+                    
+                    if (day < 1 || day > 31) {
+                        e.preventDefault();
+                        alert('Tanggal tidak valid! Harus antara 01-31');
+                        tglLahirDisplay.focus();
+                        return false;
+                    }
+                    
+                    // Pastikan hidden field terisi dengan format yang benar
+                    tglLahirHidden.value = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                    
+                    // Pastikan gaji bulanan mahasiswa tetap 0 sebelum submit
+                    const unitKerja = gajiBulananInput.getAttribute('data-unit-kerja');
+                    const statusAnggota = gajiBulananInput.getAttribute('data-status-anggota');
+                    if (unitKerja === '03' || statusAnggota === 'mahasiswa' || statusAnggota === 'Mahasiswa') {
+                        gajiBulananInput.value = '0';
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

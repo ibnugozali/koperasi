@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -445,11 +446,34 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
 		return
 	}
+
+	// Ambil data simpanan wajib untuk semua anggota
+	simpananWajib, err := repository.GetSimpananWajibAllAnggota()
+	if err != nil {
+		simpananWajib = make(map[string]float64) // Default ke map kosong jika error
+	}
+
+	// Ambil data pemotongan bulan ini untuk semua anggota
+	potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+	if err != nil {
+		potonganBulanIni = make(map[string]float64) // Default ke map kosong jika error
+	}
+
+	// Hitung sisa gaji untuk setiap anggota
+	sisaGaji := make(map[string]int)
+	for _, anggota := range anggotas {
+		potongan := int(potonganBulanIni[anggota.IDAnggota])
+		sisaGaji[anggota.IDAnggota] = anggota.GajiBulanan - potongan
+	}
+
 	c.HTML(http.StatusOK, "bendahara_data_anggota.html", gin.H{
-		"Anggotas":   anggotas,
-		"ActivePage": "anggota",
-		"LogoPath":   logoPath,
-		"Title":      "Data Anggota",
+		"Anggotas":         anggotas,
+		"SimpananWajib":    simpananWajib,
+		"PotonganBulanIni": potonganBulanIni,
+		"SisaGaji":         sisaGaji,
+		"ActivePage":       "anggota",
+		"LogoPath":         logoPath,
+		"Title":            "Data Anggota",
 	})
 }
 
@@ -502,21 +526,26 @@ func BendaharaUpdateAnggota(c *gin.Context) {
 
 	var anggota models.Anggota
 	if err := c.ShouldBind(&anggota); err != nil {
+		log.Printf("Error binding data: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
 		return
 	}
+
+	log.Printf("Data anggota yang diterima: NamaAnggota=%s, TglLahir=%s, GajiBulanan=%d",
+		anggota.NamaAnggota, anggota.TglLahir, anggota.GajiBulanan)
 
 	// Update query (assuming we update all fields except password for simplicity)
 	db := config.GetDB()
 	query := `
 		UPDATE anggota SET
 			nama_anggota = $1, username = $2, tgl_lahir = $3, nik_ktp = $4,
-			no_telepon = $5, alamat = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9
-		WHERE id_anggota = $10`
+			no_telepon = $5, alamat = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9, gaji_bulanan = $10
+		WHERE id_anggota = $11`
 	_, err := db.Exec(query,
 		anggota.NamaAnggota, anggota.Username, anggota.TglLahir, anggota.NikKTP,
-		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, idStr)
+		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, anggota.GajiBulanan, idStr)
 	if err != nil {
+		log.Printf("Error updating anggota %s: %v", idStr, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui anggota"})
 		return
 	}
@@ -1327,13 +1356,55 @@ func BendaharaImportAnggotaPage(c *gin.Context) {
 		fmt.Println("⚠️ No pengelola ID found in session - user not logged in?")
 	}
 
-	fmt.Printf("=== Rendering template with %d total records ===\n", len(allImportedData))
+	// Ambil data anggota real-time dari database untuk menampilkan gaji terbaru
+	anggotas, err := repository.GetAllAnggota()
+	if err != nil {
+		fmt.Printf("❌ Error loading anggota data: %v\n", err)
+		anggotas = []models.Anggota{}
+	}
+
+	// Ambil data potongan bulan ini untuk menghitung sisa gaji
+	potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+	if err != nil {
+		fmt.Printf("❌ Error loading potongan data: %v\n", err)
+		potonganBulanIni = make(map[string]float64)
+	}
+
+	// Convert anggota ke format map untuk template dengan sisa gaji yang sudah dikurangi potongan
+	var realTimeData []map[string]interface{}
+	for _, anggota := range anggotas {
+		// Hitung sisa gaji = gaji_bulanan - potongan_bulan_ini
+		potongan := potonganBulanIni[anggota.IDAnggota]
+		sisaGaji := float64(anggota.GajiBulanan) - potongan
+		if sisaGaji < 0 {
+			sisaGaji = 0
+		}
+
+		realTimeData = append(realTimeData, map[string]interface{}{
+			"id_anggota":     anggota.IDAnggota,
+			"nama_anggota":   anggota.NamaAnggota,
+			"username":       anggota.Username,
+			"nik_ktp":        anggota.NikKTP,
+			"no_telepon":     anggota.NoTelepon,
+			"alamat":         anggota.Alamat,
+			"provinsi":       anggota.Provinsi,
+			"jenis_kelamin":  anggota.JenisKelamin,
+			"tgl_lahir":      anggota.TglLahir,
+			"fakultas":       anggota.Fakultas,
+			"unit_kerja":     anggota.UnitKerja,
+			"gaji_bulanan":   int(sisaGaji), // Kirim sisa gaji (gaji - potongan)
+			"status":         anggota.Status,
+			"status_anggota": anggota.StatusAnggota,
+		})
+	}
+
+	fmt.Printf("=== Rendering template with %d total records (real-time from database) ===\n", len(realTimeData))
 
 	c.HTML(http.StatusOK, "bendahara_import_anggota.html", gin.H{
 		"ActivePage":        "import_anggota",
 		"LogoPath":          logoPath,
 		"LatestImport":      latestImport,
-		"ImportedData":      allImportedData, // Kirim gabungan SEMUA data
+		"ImportedData":      realTimeData, // Kirim data real-time dari database
 		"ParseErrors":       parseErrors,
 		"TotalSuccessCount": totalSuccessCount, // Total success dari semua import
 		"TotalFailedCount":  totalFailedCount,  // Total failed dari semua import
@@ -1489,29 +1560,59 @@ func BendaharaImportAnggota(c *gin.Context) {
 			continue
 		}
 
-		// Pastikan row memiliki minimal 3 kolom (Nama, Username, NIK)
+		// Pastikan row memiliki minimal 3 kolom (Nama, Unit Kerja, Tanggal Lahir)
 		if len(row) < 3 {
-			errors = append(errors, fmt.Sprintf("Baris %d: Data tidak lengkap - minimal harus ada 3 kolom (Nama, Username, NIK)", i+1))
+			errors = append(errors, fmt.Sprintf("Baris %d: Data tidak lengkap - minimal harus ada 3 kolom (Nama, Unit Kerja, Tanggal Lahir)", i+1))
 			continue
 		}
 
-		// Ambil data dengan aman
+		// Ambil data dengan aman sesuai urutan template:
+		// Nama Anggota, Unit Kerja, Tanggal Lahir, NIK KTP, No Telepon, Jenis Kelamin, Fakultas, Gaji Bulanan, Alamat
 		namaAnggota := getValue(row, 0)
-		username := getValue(row, 1)
+		unitKerja := getValue(row, 1)
 		tglLahir := getValue(row, 2)
-		jenisKelamin := getValue(row, 3)
-		alamat := getValue(row, 4)
-		nikKTP := getValue(row, 5)
-		noTelepon := getValue(row, 6)
-		unitKerja := getValue(row, 7)
-		fakultas := getValue(row, 8)
-		statusAnggota := getValue(row, 9)
+		nikKTP := getValue(row, 3)
+		noTelepon := getValue(row, 4)
+		jenisKelamin := getValue(row, 5)
+		fakultas := getValue(row, 6)
+		gajiBulananStr := getValue(row, 7)
+		alamat := getValue(row, 8)
+
+		// Generate username otomatis dari nama (lowercase, tanpa spasi)
+		username := strings.ToLower(strings.ReplaceAll(namaAnggota, " ", ""))
+
+		// Status anggota default aktif
+		statusAnggota := "Aktif"
 
 		// Validasi data kosong untuk field penting
-		if namaAnggota == "" || username == "" {
-			errors = append(errors, fmt.Sprintf("Baris %d: Nama Anggota dan Username tidak boleh kosong", i+1))
+		if namaAnggota == "" {
+			errors = append(errors, fmt.Sprintf("Baris %d: Nama Anggota tidak boleh kosong", i+1))
 			continue
 		}
+
+		// Parse gaji bulanan dari Excel sebagai default
+		var gajiBulanan int
+		if gajiBulananStr != "" {
+			gajiBulanan, _ = strconv.Atoi(strings.ReplaceAll(gajiBulananStr, ",", ""))
+		}
+
+		// PENTING: Cek apakah anggota sudah ada di database (berdasarkan NIK)
+		// Jika sudah ada, SELALU gunakan sisa gaji dari database, BUKAN dari Excel
+		if nikKTP != "" {
+			var existingGaji int
+			checkGajiQuery := "SELECT COALESCE(gaji_bulanan, 0) FROM anggota WHERE nik_ktp = $1 LIMIT 1"
+			err := config.GetDB().QueryRow(checkGajiQuery, nikKTP).Scan(&existingGaji)
+			if err == nil {
+				// Anggota sudah ada - gunakan gaji dari database (ini adalah sisa gaji setelah pemotongan)
+				gajiBulanan = existingGaji
+				fmt.Printf("  Baris %d: Anggota sudah ada (NIK: %s), menggunakan sisa gaji dari database: Rp %d (mengabaikan Excel: %s)\n", i+1, nikKTP, gajiBulanan, gajiBulananStr)
+			} else {
+				// Anggota baru - gunakan gaji dari Excel
+				fmt.Printf("  Baris %d: Anggota baru, menggunakan gaji dari Excel: Rp %d\n", i+1, gajiBulanan)
+			}
+		}
+
+		fmt.Printf("  Baris %d: Nama=%s, Gaji Final=%d\n", i+1, namaAnggota, gajiBulanan)
 
 		// Validasi format tanggal lahir jika ada (harus format date, bukan angka)
 		if tglLahir != "" {
@@ -1566,6 +1667,7 @@ func BendaharaImportAnggota(c *gin.Context) {
 			Status:        "aktif",
 			TglGabung:     time.Now(),
 			FakultasCode:  fakultasCode,
+			GajiBulanan:   gajiBulanan,
 		}
 
 		anggotaList = append(anggotaList, anggota)
@@ -1585,25 +1687,117 @@ func BendaharaImportAnggota(c *gin.Context) {
 		return
 	}
 
-	// TIDAK SIMPAN KE DATABASE - Hanya preview saja
-	// Data hanya ditampilkan di halaman import, tidak masuk ke tabel anggota
-	successCount := len(anggotaList)
-	failedCount := len(errors)
-	allErrors := errors
+	// SIMPAN KE DATABASE - Data anggota akan disimpan ke tabel anggota
+	db := config.GetDB()
+	successCount := 0
+	failedCount := 0
+	var allErrors []string
+	allErrors = append(allErrors, errors...)
+
+	// Simpan setiap anggota ke database
+	for _, anggota := range anggotaList {
+		// Cek apakah NIK sudah ada (untuk update atau insert)
+		var existingID string
+		checkQuery := "SELECT id_anggota FROM anggota WHERE nik_ktp = $1 LIMIT 1"
+		err := db.QueryRow(checkQuery, anggota.NikKTP).Scan(&existingID)
+
+		if err == nil && existingID != "" {
+			// Anggota sudah ada, lakukan UPDATE
+			// PENTING: gaji_bulanan di anggota.GajiBulanan sudah berisi sisa gaji dari database
+			// (diambil saat parsing Excel di atas)
+			updateQuery := `
+				UPDATE anggota SET
+					nama_anggota = $1,
+					tgl_lahir = $2,
+					jenis_kelamin = $3,
+					alamat = $4,
+					no_telepon = $5,
+					unit_kerja = $6,
+					fakultas = $7,
+					fakultas_code = $8,
+					gaji_bulanan = $9,
+					status_anggota = $10
+				WHERE id_anggota = $11
+			`
+
+			_, err = db.Exec(
+				updateQuery,
+				anggota.NamaAnggota,
+				anggota.TglLahir,
+				anggota.JenisKelamin,
+				anggota.Alamat,
+				anggota.NoTelepon,
+				anggota.UnitKerja,
+				anggota.Fakultas,
+				anggota.FakultasCode,
+				anggota.GajiBulanan, // Sudah berisi sisa gaji dari database (diambil saat parsing)
+				anggota.StatusAnggota,
+				existingID,
+			)
+
+			if err != nil {
+				allErrors = append(allErrors, fmt.Sprintf("Gagal update %s (NIK: %s): %v", anggota.NamaAnggota, anggota.NikKTP, err))
+				failedCount++
+			} else {
+				successCount++
+				fmt.Printf("✓ Updated anggota: %s (mempertahankan sisa gaji: Rp %d)\n", anggota.NamaAnggota, anggota.GajiBulanan)
+			}
+			continue
+		}
+
+		// Insert anggota baru ke database
+		insertQuery := `
+			INSERT INTO anggota (
+				id_anggota, nama_anggota, username, password, tgl_lahir, 
+				jenis_kelamin, alamat, nik_ktp, no_telepon, unit_kerja, 
+				fakultas, fakultas_code, gaji_bulanan, status_anggota, status, tgl_gabung
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+		`
+
+		_, err = db.Exec(
+			insertQuery,
+			anggota.IDAnggota,
+			anggota.NamaAnggota,
+			anggota.Username,
+			anggota.Password,
+			anggota.TglLahir,
+			anggota.JenisKelamin,
+			anggota.Alamat,
+			anggota.NikKTP,
+			anggota.NoTelepon,
+			anggota.UnitKerja,
+			anggota.Fakultas,
+			anggota.FakultasCode,
+			anggota.GajiBulanan,
+			anggota.StatusAnggota,
+			"aktif", // Status langsung aktif untuk import agar bisa diproses pemotongan
+			anggota.TglGabung,
+		)
+
+		if err != nil {
+			allErrors = append(allErrors, fmt.Sprintf("Gagal menyimpan %s: %v", anggota.NamaAnggota, err))
+			failedCount++
+		} else {
+			successCount++
+			fmt.Printf("✓ Inserted anggota baru: %s (gaji: Rp %d)\n", anggota.NamaAnggota, anggota.GajiBulanan)
+		}
+	}
+
+	fmt.Printf("✓ Data saved to database: %d success, %d failed\n", successCount, failedCount)
 
 	// Ambil semua data anggota untuk ditampilkan sebagai preview
 	var importedData []gin.H
 	for _, anggota := range anggotaList {
 		importedData = append(importedData, gin.H{
 			"nama_anggota":   anggota.NamaAnggota,
-			"username":       anggota.Username,
+			"unit_kerja":     anggota.UnitKerja,
 			"tgl_lahir":      anggota.TglLahir,
 			"jenis_kelamin":  anggota.JenisKelamin,
 			"alamat":         anggota.Alamat,
 			"nik_ktp":        anggota.NikKTP,
 			"no_telepon":     anggota.NoTelepon,
-			"unit_kerja":     anggota.UnitKerja,
 			"fakultas":       anggota.Fakultas,
+			"gaji_bulanan":   anggota.GajiBulanan,
 			"status_anggota": anggota.StatusAnggota,
 		})
 	}
@@ -1612,8 +1806,6 @@ func BendaharaImportAnggota(c *gin.Context) {
 	session := sessions.Default(c)
 	idPengelola := session.Get("user_id") // Gunakan "user_id" sesuai dengan key yang diset saat login
 	username := session.Get("username")
-
-	db := config.GetDB() // Ambil koneksi database untuk menyimpan history
 
 	if idPengelola != nil {
 		// Convert idPengelola ke int
@@ -1803,10 +1995,10 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 	formatValid := true
 	formatErrors := []string{}
 
-	// Cek minimal 2 kolom (Nama dan Username)
+	// Cek minimal 2 kolom (Nama dan Unit Kerja)
 	if len(headers) < 2 {
 		formatValid = false
-		formatErrors = append(formatErrors, fmt.Sprintf("File harus memiliki minimal 2 kolom (Nama dan Username), file Anda hanya memiliki %d kolom", len(headers)))
+		formatErrors = append(formatErrors, fmt.Sprintf("File harus memiliki minimal 2 kolom (Nama dan Unit Kerja), file Anda hanya memiliki %d kolom", len(headers)))
 	}
 
 	// Simulasi parsing untuk preview - cek data yang akan berhasil/gagal
@@ -1823,15 +2015,18 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 				continue
 			}
 
+			// Urutan sesuai template: Nama Anggota, Unit Kerja, Tanggal Lahir, NIK KTP, No Telepon, Jenis Kelamin, Fakultas, Gaji Bulanan, Alamat
 			namaAnggota := getValuePreview(row, 0)
-			username := getValuePreview(row, 1)
+			unitKerja := getValuePreview(row, 1)
 			tglLahir := getValuePreview(row, 2)
-			nikKTP := getValuePreview(row, 5)
-			unitKerja := getValuePreview(row, 7)
-			fakultas := getValuePreview(row, 8)
+			nikKTP := getValuePreview(row, 3)
+			_ = getValuePreview(row, 4) // noTelepon - tidak divalidasi di preview
+			_ = getValuePreview(row, 5) // jenisKelamin - tidak divalidasi di preview
+			fakultas := getValuePreview(row, 6)
+			_ = getValuePreview(row, 7) // gajiBulanan - tidak divalidasi di preview
 
-			if namaAnggota == "" || username == "" {
-				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Nama Anggota dan Username tidak boleh kosong", rowNum))
+			if namaAnggota == "" {
+				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Nama Anggota tidak boleh kosong", rowNum))
 				continue
 			}
 
@@ -1926,5 +2121,456 @@ func BendaharaClearImportHistory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Semua riwayat import berhasil dihapus",
+	})
+}
+
+// BendaharaTransaksiDataAnggota menampilkan semua jenis transaksi anggota
+func BendaharaTransaksiDataAnggota(c *gin.Context) {
+	db := config.GetDB()
+
+	// Get filter parameters
+	idAnggota := c.Query("id_anggota")
+	tanggalMulai := c.Query("tanggal_mulai")
+	tanggalAkhir := c.Query("tanggal_akhir")
+
+	// Get LogoPath from context
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+
+	// Fetch all members for filter dropdown
+	var anggotas []models.Anggota
+	queryAnggota := "SELECT id_anggota, nama_anggota, gaji_bulanan FROM anggota WHERE status = 'aktif' ORDER BY nama_anggota"
+	rows, err := db.Query(queryAnggota)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var anggota models.Anggota
+			if err := rows.Scan(&anggota.IDAnggota, &anggota.NamaAnggota, &anggota.GajiBulanan); err == nil {
+				anggotas = append(anggotas, anggota)
+			}
+		}
+	}
+
+	// Ambil data simpanan wajib untuk semua anggota
+	simpananWajib, err := repository.GetSimpananWajibAllAnggota()
+	if err != nil {
+		simpananWajib = make(map[string]float64) // Default ke map kosong jika error
+	}
+
+	// Ambil data pemotongan bulan ini untuk semua anggota
+	potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+	if err != nil {
+		potonganBulanIni = make(map[string]float64) // Default ke map kosong jika error
+	}
+
+	// Hitung sisa gaji untuk setiap anggota
+	sisaGaji := make(map[string]int)
+	for _, anggota := range anggotas {
+		potongan := int(potonganBulanIni[anggota.IDAnggota])
+		sisaGaji[anggota.IDAnggota] = anggota.GajiBulanan - potongan
+	}
+
+	// Build query conditions
+	whereConditions := []string{}
+	queryParams := []interface{}{}
+	paramIndex := 1
+
+	if idAnggota != "" {
+		whereConditions = append(whereConditions, fmt.Sprintf("id_anggota = $%d", paramIndex))
+		queryParams = append(queryParams, idAnggota)
+		paramIndex++
+	}
+
+	whereClause := ""
+	if len(whereConditions) > 0 {
+		whereClause = " WHERE " + strings.Join(whereConditions, " AND ")
+	}
+
+	// Fetch Simpanan data
+	var simpanans []models.Detail
+	querySimpanan := `
+		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan,
+			   d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, d.status
+		FROM detail d
+		JOIN anggota a ON d.id_anggota = a.id_anggota
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan` + whereClause
+
+	if tanggalMulai != "" {
+		if len(whereConditions) > 0 {
+			querySimpanan += fmt.Sprintf(" AND d.tgl_transaksi >= $%d", paramIndex)
+		} else {
+			querySimpanan += fmt.Sprintf(" WHERE d.tgl_transaksi >= $%d", paramIndex)
+		}
+		queryParams = append(queryParams, tanggalMulai)
+		paramIndex++
+	}
+	if tanggalAkhir != "" {
+		if len(whereConditions) > 0 || tanggalMulai != "" {
+			querySimpanan += fmt.Sprintf(" AND d.tgl_transaksi <= $%d", paramIndex)
+		} else {
+			querySimpanan += fmt.Sprintf(" WHERE d.tgl_transaksi <= $%d", paramIndex)
+		}
+		queryParams = append(queryParams, tanggalAkhir+" 23:59:59")
+		paramIndex++
+	}
+	querySimpanan += " ORDER BY d.tgl_transaksi DESC"
+
+	rowsSimpanan, err := db.Query(querySimpanan, queryParams...)
+	if err == nil {
+		defer rowsSimpanan.Close()
+		for rowsSimpanan.Next() {
+			var detail models.Detail
+			err := rowsSimpanan.Scan(
+				&detail.IDDetail, &detail.IDAnggota, &detail.NamaAnggota,
+				&detail.IDSimpanan, &detail.Simpanan.JenisSimpanan,
+				&detail.TglTransaksi, &detail.JumlahSimpanan, &detail.TotalSimpanan,
+				&detail.Status,
+			)
+			if err == nil {
+				simpanans = append(simpanans, detail)
+			}
+		}
+	}
+
+	// Reset query params for pinjaman
+	queryParams = []interface{}{}
+	paramIndex = 1
+	if idAnggota != "" {
+		queryParams = append(queryParams, idAnggota)
+		paramIndex++
+	}
+
+	// Fetch Pinjaman data
+	var pinjamans []models.Pinjaman
+	queryPinjaman := `
+		SELECT p.id_pinjaman, p.id_anggota, a.nama_anggota, p.tgl_pinjaman,
+			   p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.metode_pencairan,
+			   p.nomor_rekening, p.nama_bank, p.status
+		FROM pinjaman p
+		JOIN anggota a ON p.id_anggota = a.id_anggota` + whereClause
+
+	if tanggalMulai != "" {
+		if len(whereConditions) > 0 {
+			queryPinjaman += fmt.Sprintf(" AND p.tgl_pinjaman >= $%d", paramIndex)
+		} else {
+			queryPinjaman += fmt.Sprintf(" WHERE p.tgl_pinjaman >= $%d", paramIndex)
+		}
+		queryParams = append(queryParams, tanggalMulai)
+		paramIndex++
+	}
+	if tanggalAkhir != "" {
+		if len(whereConditions) > 0 || tanggalMulai != "" {
+			queryPinjaman += fmt.Sprintf(" AND p.tgl_pinjaman <= $%d", paramIndex)
+		} else {
+			queryPinjaman += fmt.Sprintf(" WHERE p.tgl_pinjaman <= $%d", paramIndex)
+		}
+		queryParams = append(queryParams, tanggalAkhir+" 23:59:59")
+		paramIndex++
+	}
+	queryPinjaman += " ORDER BY p.tgl_pinjaman DESC"
+
+	rowsPinjaman, err := db.Query(queryPinjaman, queryParams...)
+	if err == nil {
+		defer rowsPinjaman.Close()
+		for rowsPinjaman.Next() {
+			var pinjaman models.Pinjaman
+			err := rowsPinjaman.Scan(
+				&pinjaman.IDPinjaman, &pinjaman.IDAnggota, &pinjaman.NamaAnggota,
+				&pinjaman.TglPinjaman, &pinjaman.JumlahPinjaman, &pinjaman.JangkaWaktu,
+				&pinjaman.Bunga, &pinjaman.MetodePencairan, &pinjaman.NomorRekening,
+				&pinjaman.NamaBank, &pinjaman.Status,
+			)
+			if err == nil {
+				pinjamans = append(pinjamans, pinjaman)
+			}
+		}
+	}
+
+	// Reset query params for angsuran
+	queryParams = []interface{}{}
+	paramIndex = 1
+	if idAnggota != "" {
+		queryParams = append(queryParams, idAnggota)
+		paramIndex++
+	}
+
+	// Fetch Angsuran data
+	var angsurans []models.Angsuran
+	queryAngsuran := `
+		SELECT ang.id_angsuran, ang.id_pinjaman, ang.id_anggota, a.nama_anggota,
+			   ang.tgl_bayar, ang.sisa_pinjaman, ang.status
+		FROM angsuran ang
+		JOIN anggota a ON ang.id_anggota = a.id_anggota` + whereClause
+
+	if tanggalMulai != "" {
+		if len(whereConditions) > 0 {
+			queryAngsuran += fmt.Sprintf(" AND ang.tgl_bayar >= $%d", paramIndex)
+		} else {
+			queryAngsuran += fmt.Sprintf(" WHERE ang.tgl_bayar >= $%d", paramIndex)
+		}
+		queryParams = append(queryParams, tanggalMulai)
+		paramIndex++
+	}
+	if tanggalAkhir != "" {
+		if len(whereConditions) > 0 || tanggalMulai != "" {
+			queryAngsuran += fmt.Sprintf(" AND ang.tgl_bayar <= $%d", paramIndex)
+		} else {
+			queryAngsuran += fmt.Sprintf(" WHERE ang.tgl_bayar <= $%d", paramIndex)
+		}
+		queryParams = append(queryParams, tanggalAkhir+" 23:59:59")
+		paramIndex++
+	}
+	queryAngsuran += " ORDER BY ang.tgl_bayar DESC"
+
+	rowsAngsuran, err := db.Query(queryAngsuran, queryParams...)
+	if err == nil {
+		defer rowsAngsuran.Close()
+		for rowsAngsuran.Next() {
+			var angsuran models.Angsuran
+			err := rowsAngsuran.Scan(
+				&angsuran.IDAngsuran, &angsuran.IDPinjaman, &angsuran.IDAnggota,
+				&angsuran.NamaAnggota, &angsuran.TglBayar, &angsuran.SisaPinjaman,
+				&angsuran.Status,
+			)
+			if err == nil {
+				angsurans = append(angsurans, angsuran)
+			}
+		}
+	}
+
+	// Reset query params for pengambilan
+	queryParams = []interface{}{}
+	paramIndex = 1
+	if idAnggota != "" {
+		queryParams = append(queryParams, idAnggota)
+		paramIndex++
+	}
+
+	// Fetch Pengambilan Simpanan data
+	var pengambilans []models.PengambilanSimpanan
+	queryPengambilan := `
+		SELECT ps.id_pengambilan, ps.id_anggota, a.nama_anggota, s.jenis_simpanan,
+			   ps.tgl_pengajuan, ps.jumlah, ps.alasan, ps.status
+		FROM pengambilan_simpanan ps
+		JOIN anggota a ON ps.id_anggota = a.id_anggota
+		JOIN simpanan s ON ps.id_simpanan = s.id_simpanan` + whereClause
+
+	if tanggalMulai != "" {
+		if len(whereConditions) > 0 {
+			queryPengambilan += fmt.Sprintf(" AND ps.tgl_pengajuan >= $%d", paramIndex)
+		} else {
+			queryPengambilan += fmt.Sprintf(" WHERE ps.tgl_pengajuan >= $%d", paramIndex)
+		}
+		queryParams = append(queryParams, tanggalMulai)
+		paramIndex++
+	}
+	if tanggalAkhir != "" {
+		if len(whereConditions) > 0 || tanggalMulai != "" {
+			queryPengambilan += fmt.Sprintf(" AND ps.tgl_pengajuan <= $%d", paramIndex)
+		} else {
+			queryPengambilan += fmt.Sprintf(" WHERE ps.tgl_pengajuan <= $%d", paramIndex)
+		}
+		queryParams = append(queryParams, tanggalAkhir+" 23:59:59")
+		paramIndex++
+	}
+	queryPengambilan += " ORDER BY ps.tgl_pengajuan DESC"
+
+	rowsPengambilan, err := db.Query(queryPengambilan, queryParams...)
+	if err == nil {
+		defer rowsPengambilan.Close()
+		for rowsPengambilan.Next() {
+			var pengambilan models.PengambilanSimpanan
+			err := rowsPengambilan.Scan(
+				&pengambilan.IDPengambilan, &pengambilan.IDAnggota, &pengambilan.NamaAnggota,
+				&pengambilan.JenisSimpanan, &pengambilan.TglPengajuan, &pengambilan.Jumlah,
+				&pengambilan.Alasan, &pengambilan.Status,
+			)
+			if err == nil {
+				pengambilans = append(pengambilans, pengambilan)
+			}
+		}
+	}
+
+	// Create combined transactions list
+	type Transaction struct {
+		ID          int
+		IDAnggota   string
+		NamaAnggota string
+		Jenis       string
+		Tanggal     time.Time
+		Jumlah      float64
+		Status      string
+	}
+
+	var allTransactions []Transaction
+
+	// Add Simpanan to all transactions
+	for _, s := range simpanans {
+		allTransactions = append(allTransactions, Transaction{
+			ID:          s.IDDetail,
+			IDAnggota:   s.IDAnggota,
+			NamaAnggota: s.NamaAnggota,
+			Jenis:       "simpanan",
+			Tanggal:     s.TglTransaksi,
+			Jumlah:      s.JumlahSimpanan,
+			Status:      s.Status,
+		})
+	}
+
+	// Add Pinjaman to all transactions
+	for _, p := range pinjamans {
+		allTransactions = append(allTransactions, Transaction{
+			ID:          p.IDPinjaman,
+			IDAnggota:   p.IDAnggota,
+			NamaAnggota: p.NamaAnggota,
+			Jenis:       "pinjaman",
+			Tanggal:     p.TglPinjaman,
+			Jumlah:      p.JumlahPinjaman,
+			Status:      p.Status,
+		})
+	}
+
+	// Add Angsuran to all transactions
+	for _, a := range angsurans {
+		allTransactions = append(allTransactions, Transaction{
+			ID:          a.IDAngsuran,
+			IDAnggota:   a.IDAnggota,
+			NamaAnggota: a.NamaAnggota,
+			Jenis:       "angsuran",
+			Tanggal:     a.TglBayar,
+			Jumlah:      a.SisaPinjaman,
+			Status:      a.Status,
+		})
+	}
+
+	// Add Pengambilan to all transactions
+	for _, p := range pengambilans {
+		allTransactions = append(allTransactions, Transaction{
+			ID:          p.IDPengambilan,
+			IDAnggota:   p.IDAnggota,
+			NamaAnggota: p.NamaAnggota,
+			Jenis:       "pengambilan",
+			Tanggal:     p.TglPengajuan,
+			Jumlah:      p.Jumlah,
+			Status:      p.Status,
+		})
+	}
+
+	c.HTML(http.StatusOK, "bendahara_transaksi_data_anggota.html", gin.H{
+		"ActivePage":       "transaksi-anggota",
+		"LogoPath":         logoPath,
+		"Title":            "Transaksi Data Anggota",
+		"Anggotas":         anggotas,
+		"Simpanans":        simpanans,
+		"Pinjamans":        pinjamans,
+		"Angsurans":        angsurans,
+		"Pengambilans":     pengambilans,
+		"AllTransactions":  allTransactions,
+		"SimpananWajib":    simpananWajib,
+		"PotonganBulanIni": potonganBulanIni,
+		"SisaGaji":         sisaGaji,
+	})
+}
+
+// BendaharaSettingSimpananWajib menampilkan halaman setting pemotongan simpanan wajib
+func BendaharaSettingSimpananWajib(c *gin.Context) {
+	logoPath, _ := c.Get("LogoPath")
+
+	config, err := repository.GetKonfigurasiSimpananWajib()
+	if err != nil {
+		config = map[string]interface{}{
+			"TanggalPotong":    1,
+			"PersentasePotong": 5.0,
+			"NominalTetap":     0.0,
+			"TipePemotongan":   "persentase",
+			"StatusAktif":      false,
+		}
+	}
+
+	c.HTML(http.StatusOK, "bendahara_setting_simpanan_wajib.html", gin.H{
+		"ActivePage": "setting_simpanan_wajib",
+		"LogoPath":   logoPath,
+		"Title":      "Setting Simpanan Wajib",
+		"Config":     config,
+	})
+}
+
+// BendaharaSaveSettingSimpananWajib menyimpan konfigurasi pemotongan simpanan wajib
+func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
+	logoPath, _ := c.Get("LogoPath")
+
+	tanggalPotong, _ := strconv.Atoi(c.PostForm("TanggalPotong"))
+	persentasePotong, _ := strconv.ParseFloat(c.PostForm("PersentasePotong"), 64)
+	nominalTetap, _ := strconv.ParseFloat(c.PostForm("NominalTetap"), 64)
+	tipePemotongan := c.PostForm("TipePemotongan")
+	statusAktif := c.PostForm("StatusAktif") == "on"
+
+	err := repository.SaveKonfigurasiSimpananWajib(tanggalPotong, persentasePotong, nominalTetap, tipePemotongan, statusAktif)
+
+	config, _ := repository.GetKonfigurasiSimpananWajib()
+	if config == nil {
+		config = map[string]interface{}{
+			"TanggalPotong":    tanggalPotong,
+			"PersentasePotong": persentasePotong,
+			"NominalTetap":     nominalTetap,
+			"TipePemotongan":   tipePemotongan,
+			"StatusAktif":      statusAktif,
+		}
+	}
+
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "bendahara_setting_simpanan_wajib.html", gin.H{
+			"ActivePage": "setting_simpanan_wajib",
+			"LogoPath":   logoPath,
+			"Title":      "Setting Simpanan Wajib",
+			"Config":     config,
+			"error":      "Gagal menyimpan konfigurasi: " + err.Error(),
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "bendahara_setting_simpanan_wajib.html", gin.H{
+		"ActivePage": "setting_simpanan_wajib",
+		"LogoPath":   logoPath,
+		"Title":      "Setting Simpanan Wajib",
+		"Config":     config,
+		"success":    "Konfigurasi berhasil disimpan",
+	})
+}
+
+// BendaharaProsesSimpananWajib melakukan proses pemotongan simpanan wajib manual
+func BendaharaProsesSimpananWajib(c *gin.Context) {
+	logoPath, _ := c.Get("LogoPath")
+
+	successCount, failedCount, errors := repository.ProsesPemotonganSimpananWajib()
+
+	config, _ := repository.GetKonfigurasiSimpananWajib()
+	if config == nil {
+		config = map[string]interface{}{
+			"TanggalPotong":    1,
+			"PersentasePotong": 5.0,
+			"NominalTetap":     0.0,
+			"TipePemotongan":   "persentase",
+			"StatusAktif":      false,
+		}
+	}
+
+	message := fmt.Sprintf("✓ Proses pemotongan selesai! Berhasil memotong %d anggota", successCount)
+	if failedCount > 0 {
+		message += fmt.Sprintf(", Gagal: %d anggota", failedCount)
+	}
+
+	if len(errors) > 0 {
+		message += "<br><small>Error: " + errors[0] + "</small>"
+	}
+
+	c.HTML(http.StatusOK, "bendahara_setting_simpanan_wajib.html", gin.H{
+		"ActivePage": "setting_simpanan_wajib",
+		"LogoPath":   logoPath,
+		"Title":      "Setting Simpanan Wajib",
+		"Config":     config,
+		"success":    message,
 	})
 }

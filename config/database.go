@@ -6,7 +6,6 @@ import (
 	"log"
 
 	_ "github.com/lib/pq" // Driver PostgreSQL
-
 )
 
 var db *sql.DB
@@ -33,6 +32,16 @@ func InitDB() {
 		// Jangan fatal; cukup beri peringatan agar pengembang tahu ada masalah migrasi ringan
 		log.Printf("Peringatan: gagal memastikan tabel angsuran ada: %v", err)
 	}
+
+	// Pastikan tabel import_history ada untuk fitur import anggota
+	if err := ensureImportHistoryTable(); err != nil {
+		log.Printf("Peringatan: gagal memastikan tabel import_history ada: %v", err)
+	}
+
+	// Pastikan tabel konfigurasi simpanan wajib ada untuk fitur pemotongan otomatis
+	if err := ensureSimpananWajibTables(); err != nil {
+		log.Printf("Peringatan: gagal memastikan tabel simpanan wajib ada: %v", err)
+	}
 }
 
 // ensureAngsuranTable membuat tabel angsuran jika belum ada.
@@ -58,6 +67,113 @@ func ensureAngsuranTable() error {
 
 	_, err := db.Exec(angsuranSQL)
 	return err
+}
+
+// ensureImportHistoryTable membuat tabel import_history jika belum ada.
+// Tabel ini digunakan untuk menyimpan riwayat import data anggota.
+func ensureImportHistoryTable() error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+
+	importHistorySQL := `
+	CREATE TABLE IF NOT EXISTS import_history (
+		id_import VARCHAR(36) PRIMARY KEY,
+		id_pengelola INT NOT NULL REFERENCES pengelola(id_pengelola) ON DELETE CASCADE,
+		username VARCHAR(100) NOT NULL,
+		file_name VARCHAR(255) NOT NULL,
+		total_data INT NOT NULL DEFAULT 0,
+		success_count INT NOT NULL DEFAULT 0,
+		failed_count INT NOT NULL DEFAULT 0,
+		imported_data TEXT,
+		parse_errors TEXT,
+		tanggal_import TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	
+	CREATE INDEX IF NOT EXISTS idx_import_history_pengelola ON import_history(id_pengelola);
+	CREATE INDEX IF NOT EXISTS idx_import_history_tanggal ON import_history(tanggal_import);
+	`
+
+	_, err := db.Exec(importHistorySQL)
+	if err != nil {
+		return fmt.Errorf("gagal membuat tabel import_history: %v", err)
+	}
+
+	log.Println("✓ Tabel import_history siap digunakan")
+	return nil
+}
+
+// ensureSimpananWajibTables membuat tabel konfigurasi dan log simpanan wajib jika belum ada.
+// Tabel ini digunakan untuk fitur pemotongan simpanan wajib otomatis.
+func ensureSimpananWajibTables() error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+
+	// Create konfigurasi_simpanan_wajib table
+	configSQL := `
+	CREATE TABLE IF NOT EXISTS konfigurasi_simpanan_wajib (
+		id SERIAL PRIMARY KEY,
+		tanggal_potong INT NOT NULL CHECK (tanggal_potong >= 1 AND tanggal_potong <= 31),
+		persentase_potong DECIMAL(5,2) NOT NULL DEFAULT 5.00 CHECK (persentase_potong >= 0 AND persentase_potong <= 100),
+		nominal_tetap DECIMAL(15,2) DEFAULT 0,
+		tipe_pemotongan VARCHAR(20) DEFAULT 'persentase' CHECK (tipe_pemotongan IN ('persentase', 'nominal_tetap')),
+		status_aktif BOOLEAN DEFAULT true,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+	`
+
+	_, err := db.Exec(configSQL)
+	if err != nil {
+		return fmt.Errorf("gagal membuat tabel konfigurasi_simpanan_wajib: %v", err)
+	}
+
+	// Create log_pemotongan_simpanan table
+	logSQL := `
+	CREATE TABLE IF NOT EXISTS log_pemotongan_simpanan (
+		id_log SERIAL PRIMARY KEY,
+		id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+		bulan INT NOT NULL,
+		tahun INT NOT NULL,
+		gaji_bulanan DECIMAL(15,2) NOT NULL,
+		jumlah_potong DECIMAL(15,2) NOT NULL,
+		tgl_proses TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		status VARCHAR(20) DEFAULT 'berhasil' CHECK (status IN ('berhasil', 'gagal')),
+		keterangan TEXT,
+		UNIQUE(id_anggota, bulan, tahun)
+	);
+	
+	CREATE INDEX IF NOT EXISTS idx_log_pemotongan_anggota ON log_pemotongan_simpanan(id_anggota);
+	CREATE INDEX IF NOT EXISTS idx_log_pemotongan_periode ON log_pemotongan_simpanan(bulan, tahun);
+	`
+
+	_, err = db.Exec(logSQL)
+	if err != nil {
+		return fmt.Errorf("gagal membuat tabel log_pemotongan_simpanan: %v", err)
+	}
+
+	// Insert default configuration if table is empty
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM konfigurasi_simpanan_wajib").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("gagal memeriksa data konfigurasi: %v", err)
+	}
+
+	if count == 0 {
+		defaultSQL := `
+		INSERT INTO konfigurasi_simpanan_wajib (tanggal_potong, persentase_potong, nominal_tetap, tipe_pemotongan, status_aktif)
+		VALUES (1, 5.00, 0, 'persentase', false)
+		`
+		_, err = db.Exec(defaultSQL)
+		if err != nil {
+			return fmt.Errorf("gagal menambahkan data default konfigurasi: %v", err)
+		}
+		log.Println("✓ Data default konfigurasi simpanan wajib ditambahkan")
+	}
+
+	log.Println("✓ Tabel simpanan wajib siap digunakan")
+	return nil
 }
 
 // GetDB mengembalikan instance koneksi database yang sudah ada

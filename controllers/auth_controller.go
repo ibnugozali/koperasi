@@ -12,6 +12,7 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
+
 )
 
 // ShowLoginPage menampilkan halaman login utama.
@@ -95,8 +96,14 @@ func Register(c *gin.Context) {
 	if newAnggota.NamaAnggota == "" || newAnggota.Username == "" || newAnggota.Password == "" ||
 		newAnggota.TglLahir == "" || newAnggota.NikKTP == "" || newAnggota.NoTelepon == "" ||
 		newAnggota.Alamat == "" || newAnggota.JenisKelamin == "" || newAnggota.StatusAnggota == "" ||
-		newAnggota.Fakultas == "" || newAnggota.GajiBulanan <= 0 {
+		newAnggota.Fakultas == "" {
 		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Semua field wajib diisi dengan benar"})
+		return
+	}
+
+	// Validasi gaji hanya untuk non-mahasiswa
+	if newAnggota.StatusAnggota != "mahasiswa" && newAnggota.GajiBulanan <= 0 {
+		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Gaji bulanan wajib diisi untuk dosen dan karyawan"})
 		return
 	}
 

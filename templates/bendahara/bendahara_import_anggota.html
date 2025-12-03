@@ -8,6 +8,8 @@
     <!-- Bootstrap & Font Awesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <link href="/static/css/bendahara_navbar.css" rel="stylesheet">
     <link href="/static/css/admin_dashboard.css" rel="stylesheet">
     
@@ -234,6 +236,88 @@
         .progress.show {
             display: block;
         }
+
+        /* DataTables Custom Styling */
+        #searchContainer label,
+        #searchContainer2 label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+
+        #searchContainer input,
+        #searchContainer2 input {
+            margin: 0 !important;
+            max-width: 200px;
+        }
+
+        #lengthMenuContainer label,
+        #lengthMenuContainer2 label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+
+        #lengthMenuContainer select,
+        #lengthMenuContainer2 select {
+            width: auto !important;
+            display: inline-block !important;
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+
+        .dataTables_wrapper .dataTables_paginate {
+            margin-top: 15px;
+        }
+
+        .dataTables_wrapper .dataTables_info {
+            padding-top: 15px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .card-header .d-flex {
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .table-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            #searchContainer,
+            #searchContainer2 {
+                width: 100%;
+            }
+
+            #searchContainer input,
+            #searchContainer2 input {
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -291,7 +375,7 @@
         <div class="alert alert-warning" role="alert">
             <h6 class="alert-heading"><i class="fa-solid fa-triangle-exclamation me-2"></i>Perhatian!</h6>
             <ul class="mb-0">
-                <li>Pastikan <strong>Username</strong> bersifat unik dan belum digunakan</li>
+                <li>Pastikan <strong>Unit Kerja</strong> sudah sesuai (contoh: Dosen, Staff, Mahasiswa)</li>
                 <li>Format tanggal lahir harus <strong>YYYY-MM-DD</strong> (contoh: 1990-05-15)</li>
                 <li><strong>NIK harus 16 digit</strong> angka</li>
                 <li>Jenis kelamin harus diisi dengan <strong>"Laki-laki"</strong> atau <strong>"Perempuan"</strong></li>
@@ -369,7 +453,14 @@
     </div>
 
     <!-- Scripts -->
+    <!-- jQuery & DataTables -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="/static/js/bendahara_navbar.js"></script>
     
     <script>
@@ -377,6 +468,8 @@
         let allImportedData = []; // Array untuk menyimpan semua data yang sudah diimport
         let totalSuccessCount = 0; // Total data berhasil
         let totalFailedCount = 0; // Total data gagal
+        let dataTable1 = null; // DataTable instance
+        let dataTable2 = null; // DataTable instance
 
         function handleFileSelect(event) {
             const file = event.target.files[0];
@@ -701,7 +794,7 @@
                         failedMessage = `<div class="alert alert-danger mt-2">
                             <i class="fa-solid fa-exclamation-triangle me-2"></i>
                             <strong>${result.failed} data gagal diimport</strong>
-                            <p class="mb-0 mt-1"><small>Penyebab umum: Username duplikat, NIK tidak 16 digit, atau data wajib kosong. Lihat detail error di bawah.</small></p>
+                            <p class="mb-0 mt-1"><small>Penyebab umum: NIK duplikat, NIK tidak 16 digit, atau data wajib kosong. Lihat detail error di bawah.</small></p>
                         </div>`;
                     }
 
@@ -746,24 +839,31 @@
                         ${allImportedData.length > 0 ? `
                             <div class="card mt-3">
                                 <div class="card-header bg-success text-white">
-                                    <h6 class="mb-0"><i class="fa-solid fa-table me-2"></i>Data Anggota (${allImportedData.length} data)</h6>
-                                    <small class="d-block mt-1">Debug: Rendering ${allImportedData.length} records</small>
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                        <h6 class="mb-0"><i class="fa-solid fa-table me-2"></i>Data Anggota (${allImportedData.length} data)</h6>
+                                        <div id="searchContainer"></div>
+                                    </div>
                                 </div>
-                                <div class="card-body p-0">
+                                <div class="card-body">
+                                    <div class="table-controls">
+                                        <div id="lengthMenuContainer"></div>
+                                        <div id="dataTableInfo"></div>
+                                    </div>
                                     <div class="table-responsive">
-                                        <table class="table table-bordered table-striped table-hover mb-0">
+                                        <table id="importedDataTable" class="table table-bordered table-striped table-hover mb-0">
                                             <thead class="table-light">
                                                 <tr>
                                                     <th style="width: 50px;">No</th>
                                                     <th>Nama Anggota</th>
-                                                    <th>Username</th>
-                                                    <th>Tanggal Lahir</th>
-                                                    <th>Jenis Kelamin</th>
-                                                    <th>NIK</th>
-                                                    <th>No. Telepon</th>
                                                     <th>Unit Kerja</th>
+                                                    <th>Tanggal Lahir</th>
+                                                    <th>NIK KTP</th>
+                                                    <th>No Telepon</th>
+                                                    <th>Jenis Kelamin</th>
                                                     <th>Fakultas</th>
-                                                    <th>Status</th>
+                                                    <th>Gaji Bulanan</th>
+                                                    <th>Alamat</th>
+                                                    <th style="width: 100px;">Aksi</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -771,15 +871,21 @@
                                                     <tr>
                                                         <td class="text-center">${index + 1}</td>
                                                         <td>${anggota.nama_anggota || '-'}</td>
-                                                        <td><strong>${anggota.username || '-'}</strong></td>
+                                                        <td><strong>${anggota.unit_kerja || '-'}</strong></td>
                                                         <td>${anggota.tgl_lahir || '-'}</td>
-                                                        <td>${anggota.jenis_kelamin || '-'}</td>
                                                         <td>${anggota.nik_ktp || '-'}</td>
                                                         <td>${anggota.no_telepon || '-'}</td>
-                                                        <td>${anggota.unit_kerja || '-'}</td>
+                                                        <td>${anggota.jenis_kelamin || '-'}</td>
                                                         <td>${anggota.fakultas || '-'}</td>
-                                                        <td>
-                                                            <span class="badge bg-success">${anggota.status_anggota || 'Aktif'}</span>
+                                                        <td>${anggota.gaji_bulanan ? 'Rp ' + parseInt(anggota.gaji_bulanan).toLocaleString('id-ID') : '-'}</td>
+                                                        <td>${anggota.alamat || '-'}</td>
+                                                        <td class="text-center">
+                                                            <button class="btn btn-sm btn-warning me-1" onclick="editAnggota(${index})" title="Edit">
+                                                                <i class="fa-solid fa-edit"></i>
+                                                            </button>
+                                                            <button class="btn btn-sm btn-danger" onclick="deleteAnggota(${index})" title="Hapus">
+                                                                <i class="fa-solid fa-trash"></i>
+                                                            </button>
                                                         </td>
                                                     </tr>
                                                 `).join('')}
@@ -798,6 +904,9 @@
                                 <button class="btn btn-upload" onclick="resetForNewImport()">
                                     <i class="fa-solid fa-rotate-right me-2"></i>Import File Lagi
                                 </button>
+                                <button class="btn btn-download ms-2" onclick="downloadPDF()">
+                                    <i class="fa-solid fa-file-pdf me-2"></i>Download PDF
+                                </button>
                                 <button class="btn btn-danger ms-2" onclick="clearAllData()">
                                     <i class="fa-solid fa-trash me-2"></i>Hapus Semua Data
                                 </button>
@@ -809,6 +918,8 @@
                     resultBox.classList.add('show');
                     setTimeout(() => {
                         resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        // Initialize DataTables for the new table
+                        initializeDataTablesForUpload();
                     }, 300);
                 } else {
                     resultContent.innerHTML = `
@@ -908,15 +1019,15 @@
         function downloadTemplate() {
             // Create sample data as CSV (Excel can read CSV files)
             const templateHeaders = [
-                'Nama Anggota', 'Username', 'Tanggal Lahir', 'Jenis Kelamin', 'Alamat', 
-                'NIK', 'No. Telepon', 'Unit Kerja', 'Fakultas', 'Status Anggota'
+                'Nama Anggota', 'Unit Kerja', 'Tanggal Lahir', 'NIK KTP', 'No Telepon', 
+                'Jenis Kelamin', 'Fakultas', 'Gaji Bulanan', 'Alamat'
             ];
 
             const csvData = [
                 templateHeaders,
-                ['Ahmad Fauzi', 'ahmadfauzi', '1990-05-15', 'Laki-laki', 'Jl. Merdeka No. 123, Jakarta', '3174051234567890', '081234567890', 'Keuangan', 'Ekonomi', 'Mahasiswa'],
-                ['Siti Nurhaliza', 'sitinur', '1992-08-20', 'Perempuan', 'Jl. Sudirman No. 456, Bandung', '3273081234567890', '081298765432', 'IT', 'Teknik', 'Dosen'],
-                ['Budi Santoso', 'budisantoso', '1995-03-10', 'Laki-laki', 'Jl. Ahmad Yani No. 789, Surabaya', '3578031234567890', '081345678901', 'Marketing', 'Bisnis', 'Staff']
+                ['Ahmad Fauzi', 'Dosen', '1990-05-15', '3174051234567890', '081234567890', 'Laki-laki', 'Ekonomi', '5000000', 'Jl. Merdeka No. 123, Jakarta'],
+                ['Siti Nurhaliza', 'Staff', '1992-08-20', '3273081234567890', '081298765432', 'Perempuan', 'Teknik', '7500000', 'Jl. Sudirman No. 456, Bandung'],
+                ['Budi Santoso', 'Mahasiswa', '1995-03-10', '3578031234567890', '081345678901', 'Laki-laki', 'Bisnis', '0', 'Jl. Ahmad Yani No. 789, Surabaya']
             ];
 
             // Convert to CSV with proper encoding
@@ -1006,8 +1117,22 @@
                         success: serverData.latestImport.success,
                         failed: serverData.latestImport.failed,
                         hasImportedData: !!serverData.latestImport.importedData,
-                        importedDataLength: serverData.latestImport.importedData ? serverData.latestImport.importedData.length : 0
+                        importedDataLength: serverData.latestImport.importedData ? serverData.latestImport.importedData.length : 0,
+                        totalSuccessCount: serverData.latestImport.totalSuccessCount,
+                        totalFailedCount: serverData.latestImport.totalFailedCount
                     });
+                    
+                    // PENTING: Load data dari history
+                    if (serverData.latestImport.importedData && Array.isArray(serverData.latestImport.importedData)) {
+                        allImportedData = serverData.latestImport.importedData;
+                        totalSuccessCount = serverData.latestImport.totalSuccessCount || serverData.latestImport.success;
+                        totalFailedCount = serverData.latestImport.totalFailedCount || serverData.latestImport.failed;
+                        
+                        console.log('✅ Data loaded from server:');
+                        console.log('  - Total records:', allImportedData.length);
+                        console.log('  - Total success:', totalSuccessCount);
+                        console.log('  - Total failed:', totalFailedCount);
+                    }
                     
                     // Tampilkan hasil import sebelumnya
                     displayPreviousImportResult(serverData.latestImport);
@@ -1036,19 +1161,20 @@
                                                 <tr>
                                                     <th style="width: 50px;">No</th>
                                                     <th>Nama Anggota</th>
-                                                    <th>Username</th>
-                                                    <th>Tanggal Lahir</th>
-                                                    <th>Jenis Kelamin</th>
-                                                    <th>NIK</th>
-                                                    <th>No. Telepon</th>
                                                     <th>Unit Kerja</th>
+                                                    <th>Tanggal Lahir</th>
+                                                    <th>NIK KTP</th>
+                                                    <th>No Telepon</th>
+                                                    <th>Jenis Kelamin</th>
                                                     <th>Fakultas</th>
-                                                    <th>Status</th>
+                                                    <th>Gaji Bulanan</th>
+                                                    <th>Alamat</th>
+                                                    <th style="width: 100px;">Aksi</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                    <td colspan="10" class="text-center text-muted py-4">
+                                                    <td colspan="11" class="text-center text-muted py-4">
                                                         <i class="fa-solid fa-inbox fa-3x mb-3 d-block"></i>
                                                         Tidak ada data
                                                     </td>
@@ -1081,16 +1207,14 @@
                 console.error('❌ Result has no fileName:', result);
                 return;
             }
+
+            // Simpan result untuk digunakan di fungsi edit/delete
+            window.lastImportResult = result;
             
-            // PENTING: Load data dari history ke allImportedData
-            if (result.importedData && Array.isArray(result.importedData) && result.importedData.length > 0) {
-                console.log('📥 Loading accumulated import data:', result.importedData.length, 'records');
-                allImportedData = result.importedData; // Set data gabungan dari SEMUA history
-                totalSuccessCount = result.totalSuccessCount || result.success; // Total dari semua import
-                totalFailedCount = result.totalFailedCount || result.failed; // Total dari semua import
-                console.log('✅ allImportedData loaded:', allImportedData.length, 'records');
-                console.log('📊 Totals - Success:', totalSuccessCount, 'Failed:', totalFailedCount);
-            }
+            // Data sudah di-load di event listener DOMContentLoaded
+            // Tidak perlu load lagi di sini, cukup gunakan data yang sudah ada
+            console.log('📊 Using allImportedData:', allImportedData.length, 'records');
+            console.log('📊 Totals - Success:', totalSuccessCount, 'Failed:', totalFailedCount);
 
             const resultBox = document.getElementById('resultBox');
             const resultContent = document.getElementById('resultContent');
@@ -1135,17 +1259,17 @@
             }
 
             let successMessage = '';
-            if (result.success > 0) {
+            if (totalSuccessCount > 0) {
                 successMessage = `<div class="alert alert-success mt-2">
                     <i class="fa-solid fa-check-circle me-2"></i>
-                    <strong>${result.success} data anggota berhasil diimport!</strong>
+                    <strong>${totalSuccessCount} data anggota berhasil diimport!</strong>
                 </div>`;
             }
             let failedMessage = '';
-            if (result.failed > 0) {
+            if (totalFailedCount > 0) {
                 failedMessage = `<div class="alert alert-danger mt-2">
                     <i class="fa-solid fa-exclamation-triangle me-2"></i>
-                    <strong>${result.failed} data gagal diimport</strong>
+                    <strong>${totalFailedCount} data gagal diimport</strong>
                 </div>`;
             }
 
@@ -1162,23 +1286,31 @@
                 dataTable = `
                     <div class="card mt-3">
                         <div class="card-header bg-success text-white">
-                            <h6 class="mb-0"><i class="fa-solid fa-table me-2"></i>Data Anggota</h6>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                <h6 class="mb-0"><i class="fa-solid fa-table me-2"></i>Data Anggota</h6>
+                                <div id="searchContainer2"></div>
+                            </div>
                         </div>
-                        <div class="card-body p-0">
+                        <div class="card-body">
+                            <div class="table-controls">
+                                <div id="lengthMenuContainer2"></div>
+                                <div id="dataTableInfo2"></div>
+                            </div>
                             <div class="table-responsive">
-                                <table class="table table-bordered table-striped table-hover mb-0">
+                                <table id="importedDataTable2" class="table table-bordered table-striped table-hover mb-0">
                                     <thead class="table-light">
                                         <tr>
                                             <th style="width: 50px;">No</th>
                                             <th>Nama Anggota</th>
-                                            <th>Username</th>
-                                            <th>Tanggal Lahir</th>
-                                            <th>Jenis Kelamin</th>
-                                            <th>NIK</th>
-                                            <th>No. Telepon</th>
                                             <th>Unit Kerja</th>
+                                            <th>Tanggal Lahir</th>
+                                            <th>NIK KTP</th>
+                                            <th>No Telepon</th>
+                                            <th>Jenis Kelamin</th>
                                             <th>Fakultas</th>
-                                            <th>Status</th>
+                                            <th>Gaji Bulanan</th>
+                                            <th>Alamat</th>
+                                            <th style="width: 100px;">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1186,15 +1318,21 @@
                                             <tr>
                                                 <td class="text-center">${index + 1}</td>
                                                 <td>${anggota.nama_anggota || '-'}</td>
-                                                <td><strong>${anggota.username || '-'}</strong></td>
+                                                <td><strong>${anggota.unit_kerja || '-'}</strong></td>
                                                 <td>${anggota.tgl_lahir || '-'}</td>
-                                                <td>${anggota.jenis_kelamin || '-'}</td>
                                                 <td>${anggota.nik_ktp || '-'}</td>
                                                 <td>${anggota.no_telepon || '-'}</td>
-                                                <td>${anggota.unit_kerja || '-'}</td>
+                                                <td>${anggota.jenis_kelamin || '-'}</td>
                                                 <td>${anggota.fakultas || '-'}</td>
-                                                <td>
-                                                    <span class="badge bg-success">${anggota.status_anggota || 'Aktif'}</span>
+                                                <td>${anggota.gaji_bulanan ? 'Rp ' + parseInt(anggota.gaji_bulanan).toLocaleString('id-ID') : '-'}</td>
+                                                <td>${anggota.alamat || '-'}</td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-warning me-1" onclick="editAnggota(${index})" title="Edit">
+                                                        <i class="fa-solid fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger" onclick="deleteAnggota(${index})" title="Hapus">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         `).join('')}
@@ -1216,39 +1354,45 @@
                     <small>File: <strong>${result.fileName}</strong> | Tanggal: <strong>${result.tanggalImport}</strong></small>
                 </div>
                 <div class="alert ${alertClass}">
-                    <h5><i class="fa-solid fa-info-circle me-2"></i>Hasil Import Terakhir</h5>
-                    <hr>
-                    <div class="row text-center">
-                        <div class="col-md-4">
-                            <h3 class="mb-0">${result.totalData}</h3>
-                            <small class="text-muted">Total Data Import Terakhir</small>
+                    <h5 class="mb-3"><i class="fa-solid fa-chart-bar me-2"></i>Hasil Import & Total Keseluruhan</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light">
+                                <h6 class="text-muted mb-3"><i class="fa-solid fa-file-import me-2"></i>Import Terakhir:</h6>
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <h4 class="mb-0">${result.totalData}</h4>
+                                        <small class="text-muted">Total Data</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h4 class="mb-0 text-success">${result.success}</h4>
+                                        <small class="text-muted">Berhasil</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h4 class="mb-0 text-danger">${result.failed}</h4>
+                                        <small class="text-muted">Gagal</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <h3 class="mb-0 text-success">${result.success}</h3>
-                            <small class="text-muted">Berhasil Kali Ini</small>
-                        </div>
-                        <div class="col-md-4">
-                            <h3 class="mb-0 text-danger">${result.failed}</h3>
-                            <small class="text-muted">Gagal Kali Ini</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="alert alert-info mt-2">
-                    <h6><i class="fa-solid fa-chart-bar me-2"></i>Total Keseluruhan dari Semua Import:</h6>
-                    <hr>
-                    <div class="row text-center">
-                        <div class="col-md-4">
-                            <h4 class="mb-0">${allImportedData.length}</h4>
-                            <small class="text-muted">Total Data Terakumulasi</small>
-                        </div>
-                        <div class="col-md-4">
-                            <h4 class="mb-0 text-success">${totalSuccessCount}</h4>
-                            <small class="text-muted">Total Berhasil</small>
-                        </div>
-                        <div class="col-md-4">
-                            <h4 class="mb-0 text-danger">${totalFailedCount}</h4>
-                            <small class="text-muted">Total Gagal</small>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light">
+                                <h6 class="text-muted mb-3"><i class="fa-solid fa-database me-2"></i>Total Keseluruhan:</h6>
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <h4 class="mb-0 text-primary">${allImportedData.length}</h4>
+                                        <small class="text-muted">Akumulasi</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h4 class="mb-0 text-success">${totalSuccessCount}</h4>
+                                        <small class="text-muted">Berhasil</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h4 class="mb-0 text-danger">${totalFailedCount}</h4>
+                                        <small class="text-muted">Gagal</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1266,6 +1410,9 @@
                         <button class="btn btn-upload" onclick="resetForNewImport()">
                             <i class="fa-solid fa-rotate-right me-2"></i>Import File Lagi
                         </button>
+                        <button class="btn btn-download ms-2" onclick="downloadPDF()">
+                            <i class="fa-solid fa-file-pdf me-2"></i>Download PDF
+                        </button>
                         <button class="btn btn-danger ms-2" onclick="clearAllData()">
                             <i class="fa-solid fa-trash me-2"></i>Hapus Semua Data
                         </button>
@@ -1275,6 +1422,129 @@
 
             resultBox.classList.add('show');
             console.log('✓ Previous import result displayed successfully!');
+            
+            // Initialize DataTables after table is rendered
+            setTimeout(() => {
+                initializeDataTables();
+            }, 100);
+        }
+
+        function initializeDataTables() {
+            // Destroy existing DataTables if they exist
+            if (dataTable2 && $.fn.DataTable.isDataTable('#importedDataTable2')) {
+                dataTable2.destroy();
+            }
+
+            // Initialize DataTable for imported data table
+            if ($('#importedDataTable2').length) {
+                dataTable2 = $('#importedDataTable2').DataTable({
+                    "pageLength": 10,
+                    "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
+                    "order": [[1, "asc"]], // Sort by nama anggota ascending
+                    "columnDefs": [
+                        {
+                            "searchable": false,
+                            "orderable": false,
+                            "targets": 0 // No column
+                        },
+                        {
+                            "searchable": false,
+                            "orderable": false,
+                            "targets": -1 // Aksi column
+                        }
+                    ],
+                    "language": {
+                        "lengthMenu": "Tampilkan _MENU_ data per halaman",
+                        "zeroRecords": "Data tidak ditemukan",
+                        "info": "Menampilkan halaman _PAGE_ dari _PAGES_",
+                        "infoEmpty": "Tidak ada data tersedia",
+                        "infoFiltered": "(difilter dari _MAX_ total data)",
+                        "search": "Cari:",
+                        "paginate": {
+                            "first": "Pertama",
+                            "last": "Terakhir",
+                            "next": "Selanjutnya",
+                            "previous": "Sebelumnya"
+                        }
+                    }
+                });
+
+                // Move search box to custom container
+                $('#importedDataTable2_filter').appendTo('#searchContainer2');
+                
+                // Move length menu to custom container
+                $('#importedDataTable2_length').appendTo('#lengthMenuContainer2');
+                
+                // Move info to custom container
+                $('#importedDataTable2_info').appendTo('#dataTableInfo2');
+
+                // Auto-numbering that resets on each page
+                dataTable2.on('order.dt search.dt', function () {
+                    let i = 1;
+                    dataTable2.cells(null, 0, { search: 'applied', order: 'applied' }).every(function (cell) {
+                        this.data(i++);
+                    });
+                }).draw();
+            }
+        }
+
+        function initializeDataTablesForUpload() {
+            // Destroy existing DataTables if they exist
+            if (dataTable1 && $.fn.DataTable.isDataTable('#importedDataTable')) {
+                dataTable1.destroy();
+            }
+
+            // Initialize DataTable for uploaded data table
+            if ($('#importedDataTable').length) {
+                dataTable1 = $('#importedDataTable').DataTable({
+                    "pageLength": 10,
+                    "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
+                    "order": [[1, "asc"]], // Sort by nama anggota ascending
+                    "columnDefs": [
+                        {
+                            "searchable": false,
+                            "orderable": false,
+                            "targets": 0 // No column
+                        },
+                        {
+                            "searchable": false,
+                            "orderable": false,
+                            "targets": -1 // Aksi column
+                        }
+                    ],
+                    "language": {
+                        "lengthMenu": "Tampilkan _MENU_ data per halaman",
+                        "zeroRecords": "Data tidak ditemukan",
+                        "info": "Menampilkan halaman _PAGE_ dari _PAGES_",
+                        "infoEmpty": "Tidak ada data tersedia",
+                        "infoFiltered": "(difilter dari _MAX_ total data)",
+                        "search": "Cari:",
+                        "paginate": {
+                            "first": "Pertama",
+                            "last": "Terakhir",
+                            "next": "Selanjutnya",
+                            "previous": "Sebelumnya"
+                        }
+                    }
+                });
+
+                // Move search box to custom container
+                $('#importedDataTable_filter').appendTo('#searchContainer');
+                
+                // Move length menu to custom container
+                $('#importedDataTable_length').appendTo('#lengthMenuContainer');
+                
+                // Move info to custom container
+                $('#importedDataTable_info').appendTo('#dataTableInfo');
+
+                // Auto-numbering that resets on each page
+                dataTable1.on('order.dt search.dt', function () {
+                    let i = 1;
+                    dataTable1.cells(null, 0, { search: 'applied', order: 'applied' }).every(function (cell) {
+                        this.data(i++);
+                    });
+                }).draw();
+            }
         }
 
         function resetForNewImport() {
@@ -1346,19 +1616,20 @@
                                             <tr>
                                                 <th style="width: 50px;">No</th>
                                                 <th>Nama Anggota</th>
-                                                <th>Username</th>
-                                                <th>Tanggal Lahir</th>
-                                                <th>Jenis Kelamin</th>
-                                                <th>NIK</th>
-                                                <th>No. Telepon</th>
                                                 <th>Unit Kerja</th>
+                                                <th>Tanggal Lahir</th>
+                                                <th>NIK KTP</th>
+                                                <th>No Telepon</th>
+                                                <th>Jenis Kelamin</th>
                                                 <th>Fakultas</th>
-                                                <th>Status</th>
+                                                <th>Gaji Bulanan</th>
+                                                <th>Alamat</th>
+                                                <th style="width: 100px;">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td colspan="10" class="text-center text-muted py-4">
+                                                <td colspan="11" class="text-center text-muted py-4">
                                                     <i class="fa-solid fa-inbox fa-3x mb-3 d-block"></i>
                                                     Tidak ada data
                                                 </td>
@@ -1386,6 +1657,286 @@
             } catch (error) {
                 console.error('Error clearing data:', error);
                 alert('❌ Terjadi kesalahan saat menghapus data');
+            }
+        }
+
+        // Fungsi untuk edit data anggota
+        function editAnggota(index) {
+            const anggota = allImportedData[index];
+            if (!anggota) {
+                alert('Data tidak ditemukan!');
+                return;
+            }
+
+            // Buat form modal untuk edit
+            const modalHtml = `
+                <div class="modal fade" id="editModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title"><i class="fa-solid fa-edit me-2"></i>Edit Data Anggota</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="editForm">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Nama Anggota</label>
+                                            <input type="text" class="form-control" id="edit_nama" value="${anggota.nama_anggota || ''}" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Unit Kerja</label>
+                                            <select class="form-select" id="edit_unit_kerja" required>
+                                                <option value="">-- Pilih Unit Kerja --</option>
+                                                <option value="Dosen" ${anggota.unit_kerja === 'Dosen' ? 'selected' : ''}>Dosen</option>
+                                                <option value="Staff" ${anggota.unit_kerja === 'Staff' ? 'selected' : ''}>Staff</option>
+                                                <option value="Mahasiswa" ${anggota.unit_kerja === 'Mahasiswa' ? 'selected' : ''}>Mahasiswa</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Tanggal Lahir</label>
+                                            <input type="date" class="form-control" id="edit_tgl_lahir" value="${anggota.tgl_lahir || ''}" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">NIK KTP</label>
+                                            <input type="text" class="form-control" id="edit_nik_ktp" value="${anggota.nik_ktp || ''}" required maxlength="16">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">No Telepon</label>
+                                            <input type="text" class="form-control" id="edit_no_telepon" value="${anggota.no_telepon || ''}" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Jenis Kelamin</label>
+                                            <select class="form-select" id="edit_jenis_kelamin" required>
+                                                <option value="Laki-laki" ${anggota.jenis_kelamin === 'Laki-laki' ? 'selected' : ''}>Laki-laki</option>
+                                                <option value="Perempuan" ${anggota.jenis_kelamin === 'Perempuan' ? 'selected' : ''}>Perempuan</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Fakultas</label>
+                                            <input type="text" class="form-control" id="edit_fakultas" value="${anggota.fakultas || ''}" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Gaji Bulanan</label>
+                                            <input type="number" class="form-control" id="edit_gaji_bulanan" value="${anggota.gaji_bulanan || ''}" required>
+                                        </div>
+                                        <div class="col-12 mb-3">
+                                            <label class="form-label">Alamat</label>
+                                            <textarea class="form-control" id="edit_alamat" rows="3" required>${anggota.alamat || ''}</textarea>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                <button type="button" class="btn btn-primary" onclick="saveEdit(${index})">
+                                    <i class="fa-solid fa-save me-2"></i>Simpan Perubahan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Remove existing modal if any
+            const existingModal = document.getElementById('editModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editModal'));
+            modal.show();
+        }
+
+        // Fungsi untuk menyimpan hasil edit
+        function saveEdit(index) {
+            const updatedData = {
+                nama_anggota: document.getElementById('edit_nama').value,
+                unit_kerja: document.getElementById('edit_unit_kerja').value,
+                tgl_lahir: document.getElementById('edit_tgl_lahir').value,
+                nik_ktp: document.getElementById('edit_nik_ktp').value,
+                no_telepon: document.getElementById('edit_no_telepon').value,
+                jenis_kelamin: document.getElementById('edit_jenis_kelamin').value,
+                fakultas: document.getElementById('edit_fakultas').value,
+                gaji_bulanan: document.getElementById('edit_gaji_bulanan').value,
+                alamat: document.getElementById('edit_alamat').value,
+                status_anggota: allImportedData[index].status_anggota || 'Aktif'
+            };
+
+            // Update data
+            allImportedData[index] = updatedData;
+
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+            modal.hide();
+
+            // Refresh display
+            if (window.lastImportResult) {
+                displayPreviousImportResult(window.lastImportResult);
+            }
+
+            alert('✓ Data berhasil diperbarui!');
+        }
+
+        // Fungsi untuk download PDF
+        function downloadPDF() {
+            if (!allImportedData || allImportedData.length === 0) {
+                alert('Tidak ada data untuk di-export ke PDF!');
+                return;
+            }
+
+            try {
+                // Import jsPDF
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('l', 'mm', 'a4'); // landscape orientation
+
+                // Title
+                doc.setFontSize(18);
+                doc.setFont('helvetica', 'bold');
+                doc.text('DATA ANGGOTA KOPERASI', doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+                
+                // Subtitle with date
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                const currentDate = new Date().toLocaleDateString('id-ID', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                doc.text(`Dicetak pada: ${currentDate}`, doc.internal.pageSize.getWidth() / 2, 22, { align: 'center' });
+                doc.text(`Total Data: ${allImportedData.length} anggota`, doc.internal.pageSize.getWidth() / 2, 27, { align: 'center' });
+
+                // Prepare table data
+                const tableData = allImportedData.map((anggota, index) => [
+                    (index + 1).toString(),
+                    anggota.nama_anggota || '-',
+                    anggota.unit_kerja || '-',
+                    anggota.tgl_lahir || '-',
+                    anggota.nik_ktp || '-',
+                    anggota.no_telepon || '-',
+                    anggota.jenis_kelamin || '-',
+                    anggota.fakultas || '-',
+                    anggota.gaji_bulanan ? 'Rp ' + parseInt(anggota.gaji_bulanan).toLocaleString('id-ID') : '-',
+                    anggota.alamat || '-'
+                ]);
+
+                // Add table using autoTable plugin
+                doc.autoTable({
+                    startY: 32,
+                    head: [[
+                        'No',
+                        'Nama Anggota',
+                        'Unit Kerja',
+                        'Tanggal Lahir',
+                        'NIK KTP',
+                        'No Telepon',
+                        'Jenis Kelamin',
+                        'Fakultas',
+                        'Gaji Bulanan',
+                        'Alamat'
+                    ]],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: [102, 126, 234],
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        halign: 'center',
+                        fontSize: 8
+                    },
+                    bodyStyles: {
+                        fontSize: 7,
+                        cellPadding: 2
+                    },
+                    columnStyles: {
+                        0: { halign: 'center', cellWidth: 10 },
+                        1: { cellWidth: 35 },
+                        2: { cellWidth: 20 },
+                        3: { cellWidth: 22 },
+                        4: { cellWidth: 30 },
+                        5: { cellWidth: 25 },
+                        6: { cellWidth: 20 },
+                        7: { cellWidth: 25 },
+                        8: { cellWidth: 25 },
+                        9: { cellWidth: 40 }
+                    },
+                    alternateRowStyles: {
+                        fillColor: [245, 247, 250]
+                    },
+                    margin: { top: 32, left: 10, right: 10 },
+                    didDrawPage: function(data) {
+                        // Footer
+                        const pageCount = doc.internal.getNumberOfPages();
+                        const pageSize = doc.internal.pageSize;
+                        const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+                        const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
+                        
+                        doc.setFontSize(8);
+                        doc.setTextColor(128);
+                        doc.text(
+                            'Halaman ' + data.pageNumber + ' dari ' + pageCount,
+                            pageWidth / 2,
+                            pageHeight - 10,
+                            { align: 'center' }
+                        );
+                        doc.text(
+                            'Koperasi Simpan Pinjam - Data Anggota',
+                            10,
+                            pageHeight - 10
+                        );
+                    }
+                });
+
+                // Save the PDF
+                const fileName = `Data_Anggota_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(fileName);
+                
+                console.log('✓ PDF berhasil di-generate:', fileName);
+                
+                // Show success message
+                const tempAlert = document.createElement('div');
+                tempAlert.className = 'alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3';
+                tempAlert.style.zIndex = '9999';
+                tempAlert.innerHTML = '<i class="fa-solid fa-check-circle me-2"></i>PDF berhasil diunduh!';
+                document.body.appendChild(tempAlert);
+                
+                setTimeout(() => {
+                    tempAlert.remove();
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Error generating PDF:', error);
+                alert('Terjadi kesalahan saat membuat PDF: ' + error.message);
+            }
+        }
+
+        // Fungsi untuk menghapus data anggota
+        function deleteAnggota(index) {
+            const anggota = allImportedData[index];
+            if (!anggota) {
+                alert('Data tidak ditemukan!');
+                return;
+            }
+
+            if (confirm(`Apakah Anda yakin ingin menghapus data anggota "${anggota.nama_anggota}"?\n\nData yang dihapus tidak dapat dikembalikan.`)) {
+                // Hapus dari array
+                allImportedData.splice(index, 1);
+                
+                // Update counter
+                totalSuccessCount = Math.max(0, totalSuccessCount - 1);
+
+                // Refresh display
+                if (window.lastImportResult) {
+                    displayPreviousImportResult(window.lastImportResult);
+                }
+
+                alert('✓ Data berhasil dihapus!');
             }
         }
     </script>

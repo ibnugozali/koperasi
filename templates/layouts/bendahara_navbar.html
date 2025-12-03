@@ -19,10 +19,11 @@
     
     <!-- Manajemen Anggota -->
     <a href="#" onclick="toggleSubmenu(this, 'manajemenAnggota'); return false;" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
-    <div class="collapse {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "import_anggota") (eq .ActivePage "login_history") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "import_anggota") (eq .ActivePage "login_history") }}style="display: block;"{{ end }}>
+    <div class="collapse {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "import_anggota") (eq .ActivePage "login_history") (eq .ActivePage "setting_simpanan_wajib") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "import_anggota") (eq .ActivePage "login_history") (eq .ActivePage "setting_simpanan_wajib") }}style="display: block;"{{ end }}>
         <a href="/bendahara/konfirmasi" class="ms-3 {{ if eq .ActivePage "konfirmasi_anggota" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
         <a href="/bendahara/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
         <a href="/bendahara/import-anggota" class="ms-3 {{ if eq .ActivePage "import_anggota" }}active{{ end }}"><i class="fa-solid fa-file-excel me-2"></i> Import Data Anggota</a>
+        <a href="/bendahara/setting-simpanan-wajib" class="ms-3 {{ if eq .ActivePage "setting_simpanan_wajib" }}active{{ end }}"><i class="fa-solid fa-cog me-2"></i> Setting Simpanan Wajib</a>
         <a href="/bendahara/login-history" class="ms-3 {{ if eq .ActivePage "login_history" }}active{{ end }}"><i class="fa-solid fa-sign-in-alt me-2"></i> Riwayat Login</a>
     </div>
 
@@ -34,9 +35,15 @@
 
     <!-- Transaksi & Laporan -->
     <a href="#" onclick="toggleSubmenu(this, 'transaksiLaporan'); return false;" class="dropdown-toggle"><i class="fa-solid fa-chart-bar me-2"></i> Transaksi & Laporan</a>
-    <div class="collapse {{ if or (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "riwayat") (eq .ActivePage "laporan") }}show{{ end }}" id="transaksiLaporan" {{ if or (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "riwayat") (eq .ActivePage "laporan") }}style="display: block;"{{ end }}>
+    <div class="collapse {{ if or (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "riwayat") (eq .ActivePage "laporan") (eq .ActivePage "transaksi-anggota") (eq .ActivePage "transaksi-pinjaman") (eq .ActivePage "transaksi-simpanan") (eq .ActivePage "transaksi-angsuran") }}show{{ end }}" id="transaksiLaporan" {{ if or (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "riwayat") (eq .ActivePage "laporan") (eq .ActivePage "transaksi-anggota") (eq .ActivePage "transaksi-pinjaman") (eq .ActivePage "transaksi-simpanan") (eq .ActivePage "transaksi-angsuran") }}style="display: block;"{{ end }}>
         <a href="/bendahara/konfirmasi-transaksi" class="ms-3 {{ if eq .ActivePage "konfirmasi-transaksi" }}active{{ end }}"><i class="fa-solid fa-check-circle me-2"></i> Konfirmasi Transaksi</a>
         <a href="/bendahara/riwayat" class="ms-3 {{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Riwayat Transaksi</a>
+        
+        <!-- Submenu Transaksi Data Anggota -->
+        <a href="/bendahara/transaksi-anggota" class="ms-3 {{ if eq .ActivePage "transaksi-anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Transaksi Data Anggota</a>
+        
+        
+        
         <a href="/bendahara/laporan" class="ms-3 {{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
     </div>
 
@@ -152,7 +159,7 @@
         }
     }
 
-    if (currentURL.includes('/bendahara/konfirmasi-transaksi') || currentURL.includes('/bendahara/riwayat') || currentURL.includes('/bendahara/laporan')) {
+    if (currentURL.includes('/bendahara/konfirmasi-transaksi') || currentURL.includes('/bendahara/riwayat') || currentURL.includes('/bendahara/laporan') || currentURL.includes('/bendahara/transaksi-anggota') || currentURL.includes('/bendahara/transaksi-pinjaman') || currentURL.includes('/bendahara/transaksi-simpanan') || currentURL.includes('/bendahara/transaksi-angsuran')) {
         var transaksiLaporan = document.getElementById('transaksiLaporan');
         if (transaksiLaporan && !transaksiLaporan.classList.contains('show')) {
             transaksiLaporan.style.display = 'block';

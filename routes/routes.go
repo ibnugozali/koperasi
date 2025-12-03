@@ -38,6 +38,13 @@ func SetupRouter() *gin.Engine {
 		},
 		"now":       func() time.Time { return time.Now() },
 		"hasPrefix": func(s, prefix string) bool { return len(s) >= len(prefix) && s[:len(prefix)] == prefix },
+		"iterate": func(count int) []int {
+			var items []int
+			for i := 0; i < count; i++ {
+				items = append(items, i)
+			}
+			return items
+		},
 	})
 	router.LoadHTMLGlob("templates/**/*.html")
 
@@ -132,6 +139,7 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.POST("/transaksi/pinjaman", controllers.BendaharaCatatPinjaman)
 		bendaharaRoutes.GET("/riwayat", controllers.BendaharaRiwayat)
 		bendaharaRoutes.GET("/laporan", controllers.BendaharaLaporan)
+		bendaharaRoutes.GET("/transaksi-anggota", controllers.BendaharaTransaksiDataAnggota)
 		bendaharaRoutes.GET("/tentang", controllers.BendaharaTentang)
 		bendaharaRoutes.GET("/pengaturan", controllers.BendaharaPengaturan)
 		bendaharaRoutes.GET("/anggota", controllers.BendaharaListAllAnggota)
@@ -157,6 +165,11 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.POST("/import-anggota/preview", controllers.BendaharaPreviewImportAnggota)
 		bendaharaRoutes.POST("/import-anggota", controllers.BendaharaImportAnggota)
 		bendaharaRoutes.DELETE("/import-anggota/clear", controllers.BendaharaClearImportHistory)
+
+		// Route for setting simpanan wajib otomatis
+		bendaharaRoutes.GET("/setting-simpanan-wajib", controllers.BendaharaSettingSimpananWajib)
+		bendaharaRoutes.POST("/setting-simpanan-wajib", controllers.BendaharaSaveSettingSimpananWajib)
+		bendaharaRoutes.POST("/proses-simpanan-wajib", controllers.BendaharaProsesSimpananWajib)
 	}
 
 	return router
