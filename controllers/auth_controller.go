@@ -12,7 +12,6 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
-
 )
 
 // ShowLoginPage menampilkan halaman login utama.
@@ -53,6 +52,22 @@ func ShowRegisterPage(c *gin.Context) {
 
 // Register memproses data registrasi anggota baru.
 func Register(c *gin.Context) {
+	db := config.GetDB()
+
+	// Ambil nomor rekening dari database
+	var nomorRekening string
+	err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nomor_rekening'").Scan(&nomorRekening)
+	if err != nil {
+		nomorRekening = "1234567890 (Bank ABC)" // Default jika belum diset
+	}
+
+	// Ambil nominal simpanan dari database
+	var nominalSimpanan string
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpanan)
+	if err != nil {
+		nominalSimpanan = "100000" // Default jika belum diset
+	}
+
 	var newAnggota models.Anggota
 
 	// Bind form data manually for multipart/form-data
@@ -79,7 +94,11 @@ func Register(c *gin.Context) {
 	// Handle file upload
 	file, err := c.FormFile("BuktiTransfer")
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Bukti transfer wajib diupload"})
+		c.HTML(http.StatusBadRequest, "register.html", gin.H{
+			"error":           "Bukti transfer wajib diupload",
+			"NomorRekening":   nomorRekening,
+			"NominalSimpanan": nominalSimpanan,
+		})
 		return
 	}
 
@@ -87,7 +106,11 @@ func Register(c *gin.Context) {
 	filename := time.Now().Format("20060102150405") + "_" + file.Filename
 	dst := "./static/uploads/" + filename
 	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Gagal menyimpan file"})
+		c.HTML(http.StatusInternalServerError, "register.html", gin.H{
+			"error":           "Gagal menyimpan file",
+			"NomorRekening":   nomorRekening,
+			"NominalSimpanan": nominalSimpanan,
+		})
 		return
 	}
 	newAnggota.BuktiTransfer = filename
@@ -97,13 +120,21 @@ func Register(c *gin.Context) {
 		newAnggota.TglLahir == "" || newAnggota.NikKTP == "" || newAnggota.NoTelepon == "" ||
 		newAnggota.Alamat == "" || newAnggota.JenisKelamin == "" || newAnggota.StatusAnggota == "" ||
 		newAnggota.Fakultas == "" {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Semua field wajib diisi dengan benar"})
+		c.HTML(http.StatusBadRequest, "register.html", gin.H{
+			"error":           "Semua field wajib diisi dengan benar",
+			"NomorRekening":   nomorRekening,
+			"NominalSimpanan": nominalSimpanan,
+		})
 		return
 	}
 
 	// Validasi gaji hanya untuk non-mahasiswa
 	if newAnggota.StatusAnggota != "mahasiswa" && newAnggota.GajiBulanan <= 0 {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{"error": "Gaji bulanan wajib diisi untuk dosen dan karyawan"})
+		c.HTML(http.StatusBadRequest, "register.html", gin.H{
+			"error":           "Gaji bulanan wajib diisi untuk dosen dan karyawan",
+			"NomorRekening":   nomorRekening,
+			"NominalSimpanan": nominalSimpanan,
+		})
 		return
 	}
 
@@ -135,7 +166,7 @@ func Register(c *gin.Context) {
 		newAnggota.FakultasCode = "07"
 	case "Fakultas Teknik (FT)":
 		newAnggota.FakultasCode = "08"
-	case "Rektorat / Yayasan / Staff":
+	case "Rektorat / Yayasan", "Rektorat / Yayasan / Staff":
 		newAnggota.FakultasCode = "09"
 	}
 

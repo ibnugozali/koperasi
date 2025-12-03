@@ -67,7 +67,7 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="fakultas" class="form-label">Fakultas</label>
-                                    <select class="form-select" id="fakultas" name="Fakultas" required>
+                                    <select class="form-select" id="fakultas" required>
                                         <option value="">Pilih Fakultas</option>
                                         <option value="Fakultas Agama Islam (FAI)">Fakultas Agama Islam (FAI)</option>
                                         <option value="Fakultas Ekonomi (FE)">Fakultas Ekonomi (FE)</option>
@@ -79,7 +79,8 @@
                                         <option value="Fakultas Teknik (FT)">Fakultas Teknik (FT)</option>
                                         <option value="Rektorat / Yayasan" id="option_rektorat">Rektorat / Yayasan / Staff</option>
                                     </select>
-                                    </select>
+                                    <input type="hidden" id="fakultas_hidden" name="Fakultas">
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="gaji_bulanan" class="form-label">Gaji Bulanan</label>
@@ -121,7 +122,27 @@
         const statusAnggotaSelect = document.getElementById('status_anggota');
         const gajiBulananInput = document.getElementById('gaji_bulanan');
         const fakultasSelect = document.getElementById('fakultas');
+        const fakultasHidden = document.getElementById('fakultas_hidden');
         const optionRektorat = document.getElementById('option_rektorat');
+        const registerForm = document.querySelector('form');
+        
+        // Update hidden input setiap kali fakultas berubah
+        fakultasSelect.addEventListener('change', function() {
+            fakultasHidden.value = fakultasSelect.value;
+        });
+        
+        // Pastikan hidden input terisi saat form submit
+        registerForm.addEventListener('submit', function(e) {
+            // Update hidden input dengan nilai terkini dari select
+            fakultasHidden.value = fakultasSelect.value;
+            
+            // Validasi fakultas tidak boleh kosong
+            if (!fakultasHidden.value) {
+                e.preventDefault();
+                alert('Silakan pilih fakultas terlebih dahulu');
+                return false;
+            }
+        });
         
         function updateGajiBulananStatus() {
             const selectedValue = statusAnggotaSelect.value;
@@ -142,6 +163,7 @@
                 }
                 fakultasSelect.disabled = false;
                 fakultasSelect.classList.remove('bg-light');
+                fakultasHidden.value = fakultasSelect.value;
             } else if (selectedValue === 'dosen') {
                 // Jika dosen, enable input gaji
                 gajiBulananInput.disabled = false;
@@ -160,6 +182,7 @@
                 }
                 fakultasSelect.disabled = false;
                 fakultasSelect.classList.remove('bg-light');
+                fakultasHidden.value = fakultasSelect.value;
             } else if (selectedValue === 'karyawan') {
                 // Jika karyawan, enable input gaji
                 gajiBulananInput.disabled = false;
@@ -176,6 +199,8 @@
                 fakultasSelect.value = 'Rektorat / Yayasan';
                 fakultasSelect.disabled = true;
                 fakultasSelect.classList.add('bg-light');
+                // Set hidden input
+                fakultasHidden.value = 'Rektorat / Yayasan';
             } else {
                 // Default state (belum pilih unit kerja)
                 gajiBulananInput.disabled = false;
@@ -186,6 +211,7 @@
                 fakultasSelect.classList.remove('bg-light');
                 optionRektorat.style.display = 'block';
                 optionRektorat.disabled = false;
+                fakultasHidden.value = fakultasSelect.value;
             }
         }
         
