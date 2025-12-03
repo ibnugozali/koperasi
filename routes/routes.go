@@ -12,6 +12,7 @@ import (
 
 	"koperasi-simpan-pinjam/controllers"
 	"koperasi-simpan-pinjam/middleware"
+
 )
 
 func SetupRouter() *gin.Engine {
@@ -170,6 +171,7 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.GET("/setting-simpanan-wajib", controllers.BendaharaSettingSimpananWajib)
 		bendaharaRoutes.POST("/setting-simpanan-wajib", controllers.BendaharaSaveSettingSimpananWajib)
 		bendaharaRoutes.POST("/proses-simpanan-wajib", controllers.BendaharaProsesSimpananWajib)
+		bendaharaRoutes.GET("/cek-pemotongan-otomatis", controllers.BendaharaCekDanProsesPemotonganOtomatis)
 	}
 
 	return router

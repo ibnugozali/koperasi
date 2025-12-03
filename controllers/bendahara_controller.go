@@ -2574,3 +2574,100 @@ func BendaharaProsesSimpananWajib(c *gin.Context) {
 		"success":    message,
 	})
 }
+
+// BendaharaCekDanProsesPemotonganOtomatis endpoint untuk mengecek dan menjalankan pemotongan otomatis
+func BendaharaCekDanProsesPemotonganOtomatis(c *gin.Context) {
+	now := time.Now()
+	tanggalSekarang := now.Day()
+	bulan := int(now.Month())
+	tahun := now.Year()
+
+	// Ambil konfigurasi
+	configData, err := repository.GetKonfigurasiSimpananWajib()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"shouldRun":   false,
+			"message":     "Gagal mengambil konfigurasi",
+			"tanggal":     tanggalSekarang,
+			"statusAktif": false,
+		})
+		return
+	}
+
+	// Cek apakah status aktif
+	statusAktif, ok := configData["StatusAktif"].(bool)
+	if !ok || !statusAktif {
+		c.JSON(http.StatusOK, gin.H{
+			"shouldRun":   false,
+			"message":     "Pemotongan otomatis tidak aktif",
+			"tanggal":     tanggalSekarang,
+			"statusAktif": false,
+		})
+		return
+	}
+
+	// Cek tanggal pemotongan
+	tanggalPotong, ok := configData["TanggalPotong"].(int)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"shouldRun":     false,
+			"message":       "Tanggal pemotongan tidak valid",
+			"tanggal":       tanggalSekarang,
+			"tanggalPotong": 0,
+			"statusAktif":   true,
+		})
+		return
+	}
+
+	// Jika tanggal tidak cocok
+	if tanggalSekarang != tanggalPotong {
+		c.JSON(http.StatusOK, gin.H{
+			"shouldRun":     false,
+			"message":       fmt.Sprintf("Bukan tanggal pemotongan. Pemotongan akan dilakukan pada tanggal %d", tanggalPotong),
+			"tanggal":       tanggalSekarang,
+			"tanggalPotong": tanggalPotong,
+			"statusAktif":   true,
+		})
+		return
+	}
+
+	// Cek apakah sudah pernah diproses hari ini
+	db := config.GetDB()
+	var count int
+	checkQuery := `SELECT COUNT(*) FROM log_pemotongan_simpanan 
+	               WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil'`
+	err = db.QueryRow(checkQuery, bulan, tahun).Scan(&count)
+
+	if err == nil && count > 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"shouldRun":        false,
+			"message":          fmt.Sprintf("Pemotongan sudah dijalankan bulan ini (%d transaksi)", count),
+			"tanggal":          tanggalSekarang,
+			"tanggalPotong":    tanggalPotong,
+			"statusAktif":      true,
+			"alreadyProcessed": true,
+			"processedCount":   count,
+		})
+		return
+	}
+
+	// Jalankan proses pemotongan
+	successCount, failedCount, errors := repository.ProsesPemotonganSimpananWajib()
+
+	var errorMessage string
+	if len(errors) > 0 {
+		errorMessage = errors[0]
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"shouldRun":     true,
+		"processed":     true,
+		"message":       fmt.Sprintf("Pemotongan otomatis berhasil dijalankan! Berhasil: %d, Gagal: %d", successCount, failedCount),
+		"tanggal":       tanggalSekarang,
+		"tanggalPotong": tanggalPotong,
+		"statusAktif":   true,
+		"successCount":  successCount,
+		"failedCount":   failedCount,
+		"errorMessage":  errorMessage,
+	})
+}
