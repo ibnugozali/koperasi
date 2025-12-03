@@ -267,103 +267,82 @@ func BendaharaConfirmMembership(c *gin.Context) {
 		return
 	}
 
-	// Tambahkan data ke import_history agar muncul di halaman import-anggota
-	session := sessions.Default(c)
-	idPengelola := session.Get("user_id")
-	username := session.Get("username")
+	// Anggota berhasil dikonfirmasi dan akan muncul di halaman data anggota
+	// Tidak ditambahkan ke import_history agar tidak muncul di halaman import anggota
+	fmt.Printf("✓ Anggota dengan ID %s berhasil dikonfirmasi dan aktif\n", newIDAnggota)
 
-	if idPengelola != nil {
-		pengelolaID := 0
-		if id, ok := idPengelola.(int); ok {
-			pengelolaID = id
-		} else if idStr, ok := idPengelola.(string); ok {
-			pengelolaID, _ = strconv.Atoi(idStr)
-		}
+	// FITUR BARU: Jika pemotongan otomatis aktif dan anggota punya gaji, proses simpanan wajib
+	// PENTING: Hanya proses jika tanggal sekarang >= tanggal pemotongan yang disetting
+	configData, err := repository.GetKonfigurasiSimpananWajib()
+	if err == nil && configData != nil {
+		statusAktif, ok := configData["StatusAktif"].(bool)
+		if ok && statusAktif && anggota.GajiBulanan > 0 {
+			// Cek apakah tanggal sekarang sudah melewati atau sama dengan tanggal pemotongan
+			now := time.Now()
+			tanggalSekarang := now.Day()
+			tanggalPotong, _ := configData["TanggalPotong"].(int)
 
-		// Ambil data anggota yang sudah dikonfirmasi dengan ID baru
-		confirmedAnggota, err := repository.GetAnggotaByID(newIDAnggota)
-		if err == nil {
-			// Convert unit_kerja code ke nama lengkap
-			unitKerjaName := confirmedAnggota.UnitKerja
-			switch confirmedAnggota.UnitKerja {
-			case "01":
-				unitKerjaName = "Dosen"
-			case "02":
-				unitKerjaName = "Staff"
-			case "03":
-				unitKerjaName = "Mahasiswa"
-			}
+			// Hanya proses jika tanggal sekarang >= tanggal pemotongan
+			if tanggalSekarang >= tanggalPotong {
+				// Ambil data anggota yang sudah dikonfirmasi dengan ID baru
+				confirmedAnggota, err := repository.GetAnggotaByID(newIDAnggota)
+				if err == nil && confirmedAnggota.GajiBulanan > 0 {
+					// Get nominal simpanan wajib dari konfigurasi
+					nominalSimpananWajib := configData["PersentasePotong"].(float64)
 
-			// Ambil latest import history untuk update
-			latestImport, err := repository.GetLatestImportHistory(db, pengelolaID)
+					bulan := int(now.Month())
+					tahun := now.Year()
 
-			// Siapkan data anggota untuk ditambahkan ke import history
-			newAnggotaData := map[string]interface{}{
-				"id_anggota":     confirmedAnggota.IDAnggota,
-				"nama_anggota":   confirmedAnggota.NamaAnggota,
-				"username":       confirmedAnggota.Username,
-				"nik_ktp":        confirmedAnggota.NikKTP,
-				"no_telepon":     confirmedAnggota.NoTelepon,
-				"alamat":         confirmedAnggota.Alamat,
-				"provinsi":       confirmedAnggota.Provinsi,
-				"jenis_kelamin":  confirmedAnggota.JenisKelamin,
-				"tgl_lahir":      confirmedAnggota.TglLahir,
-				"fakultas":       confirmedAnggota.Fakultas,
-				"unit_kerja":     unitKerjaName, // Gunakan nama lengkap bukan kode
-				"gaji_bulanan":   confirmedAnggota.GajiBulanan,
-				"status":         confirmedAnggota.Status,
-				"status_anggota": confirmedAnggota.StatusAnggota,
-			}
+					// Cek apakah anggota sudah punya log pemotongan bulan ini
+					var exists bool
+					checkQuery := "SELECT EXISTS(SELECT 1 FROM log_pemotongan_simpanan WHERE id_anggota = $1 AND bulan = $2 AND tahun = $3 AND status = 'berhasil')"
+					db.QueryRow(checkQuery, newIDAnggota, bulan, tahun).Scan(&exists)
 
-			if latestImport != nil && err == nil {
-				// Ada import history, tambahkan ke data yang sudah ada
-				var existingData []map[string]interface{}
-				if latestImport.ImportedData != "" {
-					json.Unmarshal([]byte(latestImport.ImportedData), &existingData)
-				}
+					// Cek apakah sudah ada simpanan wajib manual
+					var hasSimpananWajib bool
+					checkSimpananQuery := `SELECT EXISTS(SELECT 1 FROM detail WHERE id_anggota = $1 AND id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed')`
+					db.QueryRow(checkSimpananQuery, newIDAnggota).Scan(&hasSimpananWajib)
 
-				// Tambahkan data baru ke array
-				existingData = append(existingData, newAnggotaData)
+					// Jika belum ada log dan belum ada simpanan wajib, proses otomatis
+					if !exists && !hasSimpananWajib {
+						// Begin transaction
+						tx, err := db.Begin()
+						if err == nil {
+							// Insert detail simpanan wajib
+							detailQuery := `INSERT INTO detail (id_anggota, id_simpanan, id_pengelola, tgl_transaksi, jumlah_simpanan, status)
+							                VALUES ($1, 2, 1, CURRENT_TIMESTAMP, $2, 'confirmed')`
+							_, err = tx.Exec(detailQuery, newIDAnggota, nominalSimpananWajib)
 
-				// Update import history
-				importedDataJSON, _ := json.Marshal(existingData)
-				latestImport.ImportedData = string(importedDataJSON)
-				latestImport.SuccessCount = len(existingData)
-				latestImport.TotalData = len(existingData)
+							if err == nil {
+								// Commit transaction
+								err = tx.Commit()
+								if err == nil {
+									// Log success
+									logQuery := `INSERT INTO log_pemotongan_simpanan (id_anggota, bulan, tahun, gaji_bulanan, jumlah_potong, status, keterangan)
+									             VALUES ($1, $2, $3, $4, $5, 'berhasil', $6)`
+									db.Exec(logQuery, newIDAnggota, bulan, tahun, float64(confirmedAnggota.GajiBulanan), nominalSimpananWajib,
+										fmt.Sprintf("Pemotongan otomatis saat konfirmasi anggota sebesar Rp %.0f", nominalSimpananWajib))
 
-				errUpdate := repository.UpdateImportHistory(db, latestImport)
-				if errUpdate != nil {
-					fmt.Printf("❌ Error updating import history: %v\n", errUpdate)
-				} else {
-					fmt.Printf("✓ Added confirmed member to existing import history (total: %d records)\n", len(existingData))
+									fmt.Printf("✓ Simpanan wajib otomatis berhasil diproses untuk anggota %s (Rp %.0f)\n", newIDAnggota, nominalSimpananWajib)
+								} else {
+									fmt.Printf("⚠️ Gagal commit simpanan wajib otomatis: %v\n", err)
+								}
+							} else {
+								tx.Rollback()
+								fmt.Printf("⚠️ Gagal insert simpanan wajib otomatis: %v\n", err)
+							}
+						} else {
+							fmt.Printf("⚠️ Gagal memulai transaksi simpanan wajib otomatis: %v\n", err)
+						}
+					} else if hasSimpananWajib {
+						fmt.Printf("ℹ️ Anggota %s sudah memiliki simpanan wajib manual\n", newIDAnggota)
+					} else if exists {
+						fmt.Printf("ℹ️ Anggota %s sudah diproses pemotongan simpanan wajib bulan ini\n", newIDAnggota)
+					}
 				}
 			} else {
-				// Tidak ada import history, buat yang baru
-				importedData := []map[string]interface{}{newAnggotaData}
-				importedDataJSON, _ := json.Marshal(importedData)
-
-				importHistory := models.ImportHistory{
-					IDImport:      uuid.New().String(),
-					IDPengelola:   pengelolaID,
-					Username:      fmt.Sprintf("%v", username),
-					FileName:      "Konfirmasi Pendaftaran Manual",
-					TotalData:     1,
-					SuccessCount:  1,
-					FailedCount:   0,
-					ImportedData:  string(importedDataJSON),
-					ParseErrors:   "",
-					TanggalImport: time.Now(),
-				}
-
-				errSave := repository.SaveImportHistory(db, importHistory)
-				if errSave != nil {
-					fmt.Printf("❌ Error saving new import history: %v\n", errSave)
-				} else {
-					fmt.Printf("✓ Created new import history for confirmed member\n")
-				}
+				fmt.Printf("ℹ️ Pemotongan otomatis belum waktunya. Tanggal sekarang: %d, Tanggal pemotongan: %d\n", tanggalSekarang, tanggalPotong)
 			}
-		} else {
-			fmt.Printf("❌ Error fetching confirmed anggota: %v\n", err)
 		}
 	}
 
@@ -1627,15 +1606,29 @@ func BendaharaImportAnggota(c *gin.Context) {
 		}
 
 		// PENTING: Cek apakah anggota sudah ada di database (berdasarkan NIK)
-		// Jika sudah ada, SELALU gunakan sisa gaji dari database, BUKAN dari Excel
+		// Jika sudah ada, SELALU gunakan sisa gaji dari database (Gaji Bulanan - Potongan Bulan Ini)
 		if nikKTP != "" {
-			var existingGaji int
-			checkGajiQuery := "SELECT COALESCE(gaji_bulanan, 0) FROM anggota WHERE nik_ktp = $1 LIMIT 1"
-			err := config.GetDB().QueryRow(checkGajiQuery, nikKTP).Scan(&existingGaji)
+			var idAnggotaExisting string
+			var gajiBulananDB int
+
+			// Ambil ID anggota dan gaji bulanan dari database
+			checkAnggotaQuery := "SELECT id_anggota, COALESCE(gaji_bulanan, 0) FROM anggota WHERE nik_ktp = $1 LIMIT 1"
+			err := config.GetDB().QueryRow(checkAnggotaQuery, nikKTP).Scan(&idAnggotaExisting, &gajiBulananDB)
+
 			if err == nil {
-				// Anggota sudah ada - gunakan gaji dari database (ini adalah sisa gaji setelah pemotongan)
-				gajiBulanan = existingGaji
-				fmt.Printf("  Baris %d: Anggota sudah ada (NIK: %s), menggunakan sisa gaji dari database: Rp %d (mengabaikan Excel: %s)\n", i+1, nikKTP, gajiBulanan, gajiBulananStr)
+				// Anggota sudah ada - hitung sisa gaji (Gaji Bulanan - Potongan Bulan Ini)
+				potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+				if err != nil {
+					potonganBulanIni = make(map[string]float64)
+				}
+
+				potongan := int(potonganBulanIni[idAnggotaExisting])
+				sisaGaji := gajiBulananDB - potongan
+
+				// Gunakan sisa gaji sebagai gaji bulanan yang akan di-update
+				gajiBulanan = sisaGaji
+				fmt.Printf("  Baris %d: Anggota sudah ada (NIK: %s), Gaji DB: Rp %d, Potongan: Rp %d, Sisa Gaji: Rp %d (mengabaikan Excel: %s)\n",
+					i+1, nikKTP, gajiBulananDB, potongan, sisaGaji, gajiBulananStr)
 			} else {
 				// Anggota baru - gunakan gaji dari Excel
 				fmt.Printf("  Baris %d: Anggota baru, menggunakan gaji dari Excel: Rp %d\n", i+1, gajiBulanan)
@@ -2751,26 +2744,43 @@ func BendaharaCekDanProsesPemotonganOtomatis(c *gin.Context) {
 		return
 	}
 
-	// Cek apakah sudah pernah diproses bulan ini
-	// PERBAIKAN: Jangan hanya cek count, tapi cek apakah SEMUA anggota dengan gaji sudah diproses
+	// Cek apakah ada anggota yang belum diproses bulan ini
+	// PERBAIKAN: Cek apakah ada anggota aktif dengan gaji > 0 yang belum diproses DAN belum punya simpanan wajib
 	db := config.GetDB()
 
-	// Hitung total anggota dengan gaji > 0
-	var totalAnggotaDenganGaji int
-	countAnggotaQuery := `SELECT COUNT(*) FROM anggota WHERE status = 'aktif' AND gaji_bulanan > 0`
-	db.QueryRow(countAnggotaQuery).Scan(&totalAnggotaDenganGaji)
+	// Hitung anggota yang perlu diproses (punya gaji, belum diproses, dan belum punya simpanan wajib)
+	var anggotaBelumDiproses int
+	countBelumProsesQuery := `
+		SELECT COUNT(*) 
+		FROM anggota a
+		WHERE a.status = 'aktif' 
+		  AND a.gaji_bulanan > 0
+		  AND NOT EXISTS (
+		      SELECT 1 FROM log_pemotongan_simpanan l 
+		      WHERE l.id_anggota = a.id_anggota 
+		        AND l.bulan = $1 
+		        AND l.tahun = $2 
+		        AND l.status = 'berhasil'
+		  )
+		  AND NOT EXISTS (
+		      SELECT 1 FROM detail d
+		      WHERE d.id_anggota = a.id_anggota
+		        AND d.id_simpanan = 2
+		        AND COALESCE(d.status, 'confirmed') = 'confirmed'
+		  )`
+	err = db.QueryRow(countBelumProsesQuery, bulan, tahun).Scan(&anggotaBelumDiproses)
 
-	// Hitung total anggota yang sudah diproses bulan ini (exclude SYSTEM)
-	var totalSudahDiproses int
-	countProsesQuery := `SELECT COUNT(*) FROM log_pemotongan_simpanan 
-	                     WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil' AND id_anggota != 'SYSTEM'`
-	err = db.QueryRow(countProsesQuery, bulan, tahun).Scan(&totalSudahDiproses)
+	// Jika tidak ada anggota yang perlu diproses, skip
+	if err == nil && anggotaBelumDiproses == 0 {
+		// Hitung total yang sudah diproses untuk info
+		var totalSudahDiproses int
+		db.QueryRow(`SELECT COUNT(*) FROM log_pemotongan_simpanan 
+		             WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil' AND id_anggota != 'SYSTEM'`,
+			bulan, tahun).Scan(&totalSudahDiproses)
 
-	// Jika SEMUA anggota dengan gaji sudah diproses, skip
-	if err == nil && totalAnggotaDenganGaji > 0 && totalSudahDiproses >= totalAnggotaDenganGaji {
 		c.JSON(http.StatusOK, gin.H{
 			"shouldRun":        false,
-			"message":          fmt.Sprintf("Pemotongan sudah dijalankan untuk semua anggota (%d/%d)", totalSudahDiproses, totalAnggotaDenganGaji),
+			"message":          fmt.Sprintf("Semua anggota sudah diproses atau tidak ada yang perlu diproses (%d anggota)", totalSudahDiproses),
 			"tanggal":          tanggalSekarang,
 			"tanggalPotong":    tanggalPotong,
 			"statusAktif":      true,
@@ -2780,13 +2790,10 @@ func BendaharaCekDanProsesPemotonganOtomatis(c *gin.Context) {
 		return
 	}
 
-	// Jika ada anggota yang belum diproses, jalankan pemotongan
-	if totalSudahDiproses > 0 {
-		fmt.Printf("ℹ️ Ada %d anggota yang belum diproses dari total %d anggota dengan gaji\n",
-			totalAnggotaDenganGaji-totalSudahDiproses, totalAnggotaDenganGaji)
-	}
+	// Log jumlah anggota yang akan diproses
+	fmt.Printf("🔍 Ditemukan %d anggota yang perlu diproses simpanan wajib\n", anggotaBelumDiproses)
 
-	// Tanggal sekarang >= tanggal pemotongan DAN belum diproses bulan ini
+	// Tanggal sekarang = tanggal pemotongan DAN ada anggota yang belum diproses
 	// Jalankan proses pemotongan
 	fmt.Printf("🤖 Menjalankan pemotongan otomatis untuk bulan %d tahun %d (tanggal: %d, setting: %d)\n",
 		bulan, tahun, tanggalSekarang, tanggalPotong)
