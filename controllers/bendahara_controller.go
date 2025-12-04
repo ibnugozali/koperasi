@@ -1335,6 +1335,56 @@ func BendaharaUpdateBunga(c *gin.Context) {
 }
 
 // BendaharaLoginHistory menampilkan halaman riwayat login
+// BendaharaDownloadLaporan mengunduh laporan dalam format Excel atau PDF
+func BendaharaDownloadLaporan(c *gin.Context) {
+	format := c.DefaultQuery("format", "excel")
+	bulan := c.Query("bulan")
+	tahun := c.Query("tahun")
+
+	switch format {
+	case "excel":
+		// Ambil data laporan keuangan
+		bulanInt, _ := strconv.Atoi(bulan)
+		tahunInt, _ := strconv.Atoi(tahun)
+		report, err := repository.GetLaporanKeuangan(bulanInt, tahunInt)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal mengambil data laporan")
+			return
+		}
+
+		f := excelize.NewFile()
+		sheet := "Sheet1"
+		f.SetCellValue(sheet, "A1", "Laporan Keuangan Koperasi")
+		f.SetCellValue(sheet, "A2", fmt.Sprintf("Periode: %02d/%d", bulanInt, tahunInt))
+		f.SetCellValue(sheet, "A4", "Ringkasan")
+		f.SetCellValue(sheet, "A5", "Total Simpanan")
+		f.SetCellValue(sheet, "B5", report["total_simpanan"])
+		f.SetCellValue(sheet, "A6", "Total Pinjaman")
+		f.SetCellValue(sheet, "B6", report["total_pinjaman"])
+		f.SetCellValue(sheet, "A7", "Total Angsuran")
+		f.SetCellValue(sheet, "B7", report["total_angsuran"])
+		f.SetCellValue(sheet, "A8", "Arus Kas")
+		f.SetCellValue(sheet, "B8", report["arus_kas"])
+
+		// Set header untuk download
+		c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.xlsx")
+		c.Header("Content-Transfer-Encoding", "binary")
+		if err := f.Write(c.Writer); err != nil {
+			c.String(http.StatusInternalServerError, "Gagal membuat file Excel")
+		}
+		return
+	case "pdf":
+		// Placeholder PDF (implementasi PDF perlu library tambahan seperti gofpdf)
+		c.Header("Content-Type", "application/pdf")
+		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.pdf")
+		c.String(http.StatusNotImplemented, "Fitur download PDF belum diimplementasikan")
+		return
+	default:
+		c.String(http.StatusBadRequest, "Format file tidak didukung")
+		return
+	}
+}
 func BendaharaLoginHistory(c *gin.Context) {
 	// Get LogoPath from context (set by middleware)
 	logoPath, exists := c.Get("LogoPath")
