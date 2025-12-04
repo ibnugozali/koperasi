@@ -14,6 +14,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jung-kurt/gofpdf"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 
@@ -1375,10 +1376,44 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 		}
 		return
 	case "pdf":
-		// Placeholder PDF (implementasi PDF perlu library tambahan seperti gofpdf)
+		bulanInt, _ := strconv.Atoi(bulan)
+		tahunInt, _ := strconv.Atoi(tahun)
+		report, err := repository.GetLaporanKeuangan(bulanInt, tahunInt)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal mengambil data laporan")
+			return
+		}
+
+		pdf := gofpdf.New("P", "mm", "A4", "")
+		pdf.AddPage()
+		pdf.SetFont("Arial", "B", 16)
+		pdf.Cell(40, 10, "Laporan Keuangan Koperasi")
+		pdf.Ln(12)
+		pdf.SetFont("Arial", "", 12)
+		pdf.Cell(40, 10, fmt.Sprintf("Periode: %02d/%d", bulanInt, tahunInt))
+		pdf.Ln(12)
+		pdf.SetFont("Arial", "B", 12)
+		pdf.Cell(40, 10, "Ringkasan")
+		pdf.Ln(10)
+		pdf.SetFont("Arial", "", 12)
+		pdf.Cell(60, 10, "Total Simpanan")
+		pdf.Cell(40, 10, fmt.Sprintf("%v", report["total_simpanan"]))
+		pdf.Ln(8)
+		pdf.Cell(60, 10, "Total Pinjaman")
+		pdf.Cell(40, 10, fmt.Sprintf("%v", report["total_pinjaman"]))
+		pdf.Ln(8)
+		pdf.Cell(60, 10, "Total Angsuran")
+		pdf.Cell(40, 10, fmt.Sprintf("%v", report["total_angsuran"]))
+		pdf.Ln(8)
+		pdf.Cell(60, 10, "Arus Kas")
+		pdf.Cell(40, 10, fmt.Sprintf("%v", report["arus_kas"]))
+
 		c.Header("Content-Type", "application/pdf")
 		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.pdf")
-		c.String(http.StatusNotImplemented, "Fitur download PDF belum diimplementasikan")
+		err = pdf.Output(c.Writer)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal membuat file PDF")
+		}
 		return
 	default:
 		c.String(http.StatusBadRequest, "Format file tidak didukung")
