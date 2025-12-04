@@ -428,7 +428,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Simpanan
 	querySimpanan := `
-		SELECT d.id_detail, d.tgl_transaksi, s.jenis_simpanan as jenis, d.jumlah_simpanan, 'Selesai' as status, a.nama_anggota
+		SELECT d.id_detail, d.tgl_transaksi, s.jenis_simpanan as jenis, d.jumlah_simpanan, 'Selesai' as status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
@@ -441,7 +441,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	for rows.Next() {
 		var r models.Riwayat
-		if err := rows.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota); err != nil {
+		if err := rows.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.GajiBulanan); err != nil {
 			return nil, err
 		}
 		riwayats = append(riwayats, r)
@@ -449,7 +449,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Pinjaman
 	queryPinjaman := `
-		SELECT p.id_pinjaman, p.tgl_pinjaman, 'Pinjaman' as jenis, p.jumlah_pinjaman, p.status, a.nama_anggota
+		SELECT p.id_pinjaman, p.tgl_pinjaman, 'Pinjaman' as jenis, p.jumlah_pinjaman, p.status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
 		FROM pinjaman p
 		JOIN anggota a ON p.id_anggota = a.id_anggota
 	`
@@ -461,7 +461,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	for rows2.Next() {
 		var r models.Riwayat
-		if err := rows2.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota); err != nil {
+		if err := rows2.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.GajiBulanan); err != nil {
 			return nil, err
 		}
 		riwayats = append(riwayats, r)
@@ -469,7 +469,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Angsuran
 	queryAngsuran := `
-		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, a.sisa_pinjaman, a.status, ang.nama_anggota
+		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, a.sisa_pinjaman, a.status, ang.nama_anggota, ang.id_anggota, ang.no_telepon, ang.gaji_bulanan
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
@@ -482,7 +482,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	for rows3.Next() {
 		var r models.Riwayat
-		if err := rows3.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota); err != nil {
+		if err := rows3.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.GajiBulanan); err != nil {
 			return nil, err
 		}
 		riwayats = append(riwayats, r)

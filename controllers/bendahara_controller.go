@@ -817,12 +817,43 @@ func BendaharaLaporan(c *gin.Context) {
 		return
 	}
 
+	// Ambil data riwayat transaksi (bisa difilter sesuai bulan/tahun jika ada fungsi)
+	riwayats, err := repository.GetAllRiwayat()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "bendahara_laporan.html", gin.H{
+			"ActivePage": "laporan",
+			"Error":      "Gagal mengambil data riwayat",
+			"LogoPath":   logoPath,
+			"Bulan":      bulan,
+			"Tahun":      tahun,
+			"Report":     report,
+		})
+		return
+	}
+
+	// Filter agar hanya satu data per IDAnggota dan NoTelepon
+	uniqueMap := make(map[string]models.Riwayat)
+	for _, r := range riwayats {
+		key := r.IDAnggota + "-" + r.NoTelepon
+		if key == "-" || r.IDAnggota == "" || r.NoTelepon == "" {
+			continue // skip jika data tidak valid
+		}
+		if _, exists := uniqueMap[key]; !exists {
+			uniqueMap[key] = r
+		}
+	}
+	uniqueRiwayats := make([]models.Riwayat, 0, len(uniqueMap))
+	for _, v := range uniqueMap {
+		uniqueRiwayats = append(uniqueRiwayats, v)
+	}
+
 	c.HTML(http.StatusOK, "bendahara_laporan.html", gin.H{
 		"ActivePage": "laporan",
 		"Report":     report,
 		"Bulan":      bulan,
 		"Tahun":      tahun,
 		"LogoPath":   logoPath,
+		"Riwayats":   uniqueRiwayats,
 	})
 }
 
