@@ -140,7 +140,6 @@
                                             <th>Username</th>
                                             <th>Role</th>
                                             <th>Status</th>
-                                            <th>IP Address</th>
                                             <th>Waktu Login</th>
                                             <th>Aksi</th>
                                         </tr>
@@ -172,7 +171,6 @@
                                                     </span>
                                                 {{ end }}
                                             </td>
-                                            <td>{{ $history.IPAddress }}</td>
                                             <td>{{ $history.LoginTime.Format "02 Jan 2006 15:04:05" }}</td>
                                             <td>
                                                 <button class="btn btn-danger btn-sm btn-delete" data-id="{{ $history.ID }}">
