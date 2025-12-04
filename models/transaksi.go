@@ -68,6 +68,9 @@ type Riwayat struct {
 	Jumlah      float64   `json:"jumlah" db:"jumlah"`
 	Status      string    `json:"status" db:"status"`
 	NamaAnggota string    `json:"nama_anggota" db:"nama_anggota"`
+	IDAnggota   string    `json:"id_anggota" db:"id_anggota"`
+	NoTelepon   string    `json:"no_telepon" db:"no_telepon"`
+	GajiBulanan int       `json:"gaji_bulanan" db:"gaji_bulanan"`
 }
 
 // PengambilanSimpanan mewakili pengajuan pengambilan simpanan

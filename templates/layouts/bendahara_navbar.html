@@ -12,17 +12,16 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="text-center mb-3">
-        <img id="navbarLogo" src="{{.LogoPath}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;">
+        <img id="navbarLogo" src="{{if .LogoPath}}{{.LogoPath}}{{else}}/static/images/placeholder.png{{end}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;" onerror="this.src='/static/images/placeholder.png'">
         <h5 class="mt-2">KOPMA</h5>
     </div>
     <a href="/bendahara/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
     
     <!-- Manajemen Anggota -->
     <a href="#" onclick="toggleSubmenu(this, 'manajemenAnggota'); return false;" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
-    <div class="collapse {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "import_anggota") (eq .ActivePage "login_history") (eq .ActivePage "setting_simpanan_wajib") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "import_anggota") (eq .ActivePage "login_history") (eq .ActivePage "setting_simpanan_wajib") }}style="display: block;"{{ end }}>
+    <div class="collapse {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "login_history") (eq .ActivePage "setting_simpanan_wajib") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "login_history") (eq .ActivePage "setting_simpanan_wajib") }}style="display: block;"{{ end }}>
         <a href="/bendahara/konfirmasi" class="ms-3 {{ if eq .ActivePage "konfirmasi_anggota" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
         <a href="/bendahara/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
-        <a href="/bendahara/import-anggota" class="ms-3 {{ if eq .ActivePage "import_anggota" }}active{{ end }}"><i class="fa-solid fa-file-excel me-2"></i> Import Data Anggota</a>
         <a href="/bendahara/setting-simpanan-wajib" class="ms-3 {{ if eq .ActivePage "setting_simpanan_wajib" }}active{{ end }}"><i class="fa-solid fa-cog me-2"></i> Setting Simpanan Wajib</a>
         <a href="/bendahara/login-history" class="ms-3 {{ if eq .ActivePage "login_history" }}active{{ end }}"><i class="fa-solid fa-sign-in-alt me-2"></i> Riwayat Login</a>
     </div>
@@ -113,7 +112,7 @@
 
     // Pastikan submenu tetap terbuka berdasarkan URL saat ini dengan animasi
     var currentURL = window.location.pathname;
-    if (currentURL === '/bendahara/konfirmasi' || currentURL.includes('/bendahara/anggota') || currentURL.includes('/bendahara/import-anggota') || currentURL.includes('/bendahara/login-history')) {
+    if (currentURL === '/bendahara/konfirmasi' || currentURL.includes('/bendahara/anggota') || currentURL.includes('/bendahara/login-history')) {
         var manajemenAnggota = document.getElementById('manajemenAnggota');
         if (manajemenAnggota && !manajemenAnggota.classList.contains('show')) {
             manajemenAnggota.style.display = 'block';

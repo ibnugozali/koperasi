@@ -9,12 +9,12 @@ func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, e
 	db := config.GetDB()
 	var details []models.Detail
 	query := `
-		SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan,
-		       s.jenis_simpanan, COALESCE(d.status, 'confirmed') as status
-		FROM detail d
-		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
-		WHERE d.id_anggota = $1
-	`
+        SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, COALESCE(d.total_simpanan, 0),
+               s.jenis_simpanan, COALESCE(d.status, 'confirmed') as status
+        FROM detail d
+        JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+        WHERE d.id_anggota = $1
+    `
 	args := []interface{}{id}
 	if search != "" {
 		query += ` AND (s.jenis_simpanan ILIKE $2 OR CAST(d.jumlah_simpanan AS TEXT) ILIKE $2 OR CAST(d.total_simpanan AS TEXT) ILIKE $2)`

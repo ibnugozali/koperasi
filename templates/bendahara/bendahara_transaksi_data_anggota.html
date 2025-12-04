@@ -339,7 +339,6 @@
                                             <th>Jenis Transaksi</th>
                                             <th>Tanggal</th>
                                             <th>Jumlah</th>
-                                            <th>Simpanan Wajib</th>
                                             <th>Status</th>
                                             <th>Aksi</th>
                                         </tr>
@@ -369,14 +368,6 @@
                                                 Rp {{ printf "%.0f" $transaksi.Jumlah }}
                                             </td>
                                             <td>
-                                                {{ $simpananWajib := index $.SimpananWajib $transaksi.IDAnggota }}
-                                                {{ if gt $simpananWajib 0.0 }}
-                                                    <span class="simpanan-wajib">Rp {{ printf "%.0f" $simpananWajib }}</span>
-                                                {{ else }}
-                                                    <span class="text-muted">Rp 0</span>
-                                                {{ end }}
-                                            </td>
-                                            <td>
                                                 {{ if eq $transaksi.Status "pending" }}
                                                     <span class="badge bg-warning">Pending</span>
                                                 {{ else if eq $transaksi.Status "approved" }}
@@ -398,7 +389,7 @@
                                         {{ end }}
                                         {{ else }}
                                         <tr>
-                                            <td colspan="9" class="text-center text-muted">
+                                            <td colspan="8" class="text-center text-muted">
                                                 <i class="fas fa-info-circle me-2"></i>Tidak ada data transaksi
                                             </td>
                                         </tr>
@@ -428,7 +419,6 @@
                                             <th>Tanggal</th>
                                             <th>Jumlah</th>
                                             <th>Total Simpanan</th>
-                                            <th>Simpanan Wajib</th>
                                             <th>Status</th>
                                             <th>Aksi</th>
                                         </tr>
@@ -444,14 +434,6 @@
                                             <td>{{ $simpanan.TglTransaksi.Format "02-01-2006" }}</td>
                                             <td class="text-income">Rp {{ printf "%.0f" $simpanan.JumlahSimpanan }}</td>
                                             <td class="fw-bold">Rp {{ printf "%.0f" $simpanan.TotalSimpanan }}</td>
-                                            <td>
-                                                {{ $simpananWajib := index $.SimpananWajib $simpanan.IDAnggota }}
-                                                {{ if gt $simpananWajib 0.0 }}
-                                                    <span class="simpanan-wajib">Rp {{ printf "%.0f" $simpananWajib }}</span>
-                                                {{ else }}
-                                                    <span class="text-muted">Rp 0</span>
-                                                {{ end }}
-                                            </td>
                                             <td>
                                                 {{ if eq $simpanan.Status "pending" }}
                                                     <span class="badge bg-warning">Pending</span>
@@ -474,7 +456,7 @@
                                         {{ end }}
                                         {{ else }}
                                         <tr>
-                                            <td colspan="10" class="text-center text-muted">
+                                            <td colspan="9" class="text-center text-muted">
                                                 <i class="fas fa-info-circle me-2"></i>Tidak ada data simpanan
                                             </td>
                                         </tr>
@@ -758,59 +740,130 @@
         /* eslint-enable */
 
         $(document).ready(function() {
-            // Initialize DataTables for all tables
-            $('#semuaTable').DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
-                },
-                "pageLength": 10,
-                "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-                "order": [[4, 'desc']],
-                "responsive": true
-            });
+            // Wait for DOM to be fully ready
+            setTimeout(function() {
+                // Destroy existing DataTables if any
+                if ($.fn.DataTable.isDataTable('#semuaTable')) {
+                    $('#semuaTable').DataTable().destroy();
+                }
+                if ($.fn.DataTable.isDataTable('#simpananTable')) {
+                    $('#simpananTable').DataTable().destroy();
+                }
+                if ($.fn.DataTable.isDataTable('#pinjamanTable')) {
+                    $('#pinjamanTable').DataTable().destroy();
+                }
+                if ($.fn.DataTable.isDataTable('#angsuranTable')) {
+                    $('#angsuranTable').DataTable().destroy();
+                }
+                if ($.fn.DataTable.isDataTable('#pengambilanTable')) {
+                    $('#pengambilanTable').DataTable().destroy();
+                }
 
-            $('#simpananTable').DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
-                },
-                "pageLength": 10,
-                "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-                "order": [[4, 'desc']],
-                "responsive": true
-            });
+                // Initialize DataTables for all tables
+                try {
+                    $('#semuaTable').DataTable({
+                        "language": {
+                            "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
+                        },
+                        "pageLength": 10,
+                        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+                        "order": [[4, 'desc']],
+                        "autoWidth": false,
+                        "columnDefs": [
+                            { "orderable": false, "targets": [7] }
+                        ]
+                    });
+                } catch(e) {
+                    console.error('Error initializing semuaTable:', e);
+                }
 
-            $('#pinjamanTable').DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
-                },
-                "pageLength": 10,
-                "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-                "order": [[3, 'desc']],
-                "responsive": true
-            });
+                } catch(e) {
+                    console.error('Error initializing semuaTable:', e);
+                }
 
-            $('#angsuranTable').DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
-                },
-                "pageLength": 10,
-                "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-                "order": [[4, 'desc']],
-                "responsive": true
-            });
+                try {
+                    $('#simpananTable').DataTable({
+                        "language": {
+                            "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
+                        },
+                        "pageLength": 10,
+                        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+                        "order": [[4, 'desc']],
+                        "autoWidth": false,
+                        "columnDefs": [
+                            { "orderable": false, "targets": [8] }
+                        ]
+                    });
+                } catch(e) {
+                    console.error('Error initializing simpananTable:', e);
+                }
 
-            $('#pengambilanTable').DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
-                },
-                "pageLength": 10,
-                "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-                "order": [[4, 'desc']],
-                "responsive": true
-            });
+                } catch(e) {
+                    console.error('Error initializing simpananTable:', e);
+                }
 
-            // Calculate and display summary
-            calculateSummary();
+                try {
+                    $('#pinjamanTable').DataTable({
+                        "language": {
+                            "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
+                        },
+                        "pageLength": 10,
+                        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+                        "order": [[3, 'desc']],
+                        "autoWidth": false,
+                        "columnDefs": [
+                            { "orderable": false, "targets": [9] }
+                        ]
+                    });
+                } catch(e) {
+                    console.error('Error initializing pinjamanTable:', e);
+                }
+
+                } catch(e) {
+                    console.error('Error initializing pinjamanTable:', e);
+                }
+
+                try {
+                    $('#angsuranTable').DataTable({
+                        "language": {
+                            "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
+                        },
+                        "pageLength": 10,
+                        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+                        "order": [[4, 'desc']],
+                        "autoWidth": false,
+                        "columnDefs": [
+                            { "orderable": false, "targets": [8] }
+                        ]
+                    });
+                } catch(e) {
+                    console.error('Error initializing angsuranTable:', e);
+                }
+
+                } catch(e) {
+                    console.error('Error initializing angsuranTable:', e);
+                }
+
+                try {
+                    $('#pengambilanTable').DataTable({
+                        "language": {
+                            "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
+                        },
+                        "pageLength": 10,
+                        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+                        "order": [[4, 'desc']],
+                        "autoWidth": false,
+                        "columnDefs": [
+                            { "orderable": false, "targets": [8] }
+                        ]
+                    });
+                } catch(e) {
+                    console.error('Error initializing pengambilanTable:', e);
+                }
+
+                // Calculate and display summary
+                calculateSummary();
+            }, 100);
         });
 
         function calculateSummary() {

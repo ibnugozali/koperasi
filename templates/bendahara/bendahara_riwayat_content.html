@@ -33,7 +33,9 @@
                 <thead class="table-dark">
                     <tr>
                         <th>Tanggal</th>
+                        <th>ID Anggota</th>
                         <th>Anggota</th>
+                        <th>No. HP</th>
                         <th>Jenis Transaksi</th>
                         <th>Jumlah</th>
                         <th>Status</th>
@@ -42,7 +44,7 @@
                 <tbody id="riwayatTableBody">
                     {{ if .Error }}
                     <tr>
-                        <td colspan="5" class="text-center text-danger">
+                        <td colspan="7" class="text-center text-danger">
                             <i class="fas fa-exclamation-circle"></i> {{ .Error }}
                         </td>
                     </tr>
@@ -50,7 +52,9 @@
                     {{ range .Riwayats }}
                     <tr>
                         <td>{{ .Tanggal.Format "2006-01-02 15:04" }}</td>
+                        <td>{{ .IDAnggota }}</td>
                         <td>{{ .NamaAnggota }}</td>
+                        <td>{{ .NoTelepon }}</td>
                         <td>{{ .Jenis }}</td>
                         <td class="{{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}text-success{{ else }}text-danger{{ end }}">
                             {{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}+{{ else }}-{{ end }}Rp {{ printf "%.0f" .Jumlah }}
@@ -62,7 +66,7 @@
                     {{ end }}
                     {{ else }}
                     <tr>
-                        <td colspan="5" class="text-center text-muted">
+                        <td colspan="7" class="text-center text-muted">
                             <i class="fas fa-info-circle"></i> Belum ada riwayat transaksi
                         </td>
                     </tr>
