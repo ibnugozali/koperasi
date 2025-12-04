@@ -29,6 +29,12 @@
                     <small class="text-white-50">Ringkasan laporan keuangan koperasi</small>
                 </div>
                 <div class="card-body">
+                                        <!-- Button Download Laporan -->
+                                        <div class="mb-3 text-end">
+                                            <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}" class="btn btn-success">
+                                                <i class="fa-solid fa-download me-2"></i> Download Laporan
+                                            </a>
+                                        </div>
                     <!-- Form untuk memilih bulan dan tahun -->
                     <div class="stat-card mb-4">
                         <h5>Pilih Periode Laporan</h5>

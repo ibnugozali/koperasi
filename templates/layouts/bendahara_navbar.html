@@ -19,17 +19,19 @@
     
     <!-- Manajemen Anggota -->
     <a href="#" onclick="toggleSubmenu(this, 'manajemenAnggota'); return false;" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
-    <div class="collapse {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "login_history") (eq .ActivePage "setting_simpanan_wajib") }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "login_history") (eq .ActivePage "setting_simpanan_wajib") }}style="display: block;"{{ end }}>
+    <div class="collapse {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "login_history")  }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "konfirmasi_anggota") (eq .ActivePage "anggota") (eq .ActivePage "login_history") (eq .ActivePage "setting_simpanan_wajib") }}style="display: block;"{{ end }}>
         <a href="/bendahara/konfirmasi" class="ms-3 {{ if eq .ActivePage "konfirmasi_anggota" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
         <a href="/bendahara/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
-        <a href="/bendahara/setting-simpanan-wajib" class="ms-3 {{ if eq .ActivePage "setting_simpanan_wajib" }}active{{ end }}"><i class="fa-solid fa-cog me-2"></i> Setting Simpanan Wajib</a>
         <a href="/bendahara/login-history" class="ms-3 {{ if eq .ActivePage "login_history" }}active{{ end }}"><i class="fa-solid fa-sign-in-alt me-2"></i> Riwayat Login</a>
     </div>
 
     <!-- Konten Website -->
     <a href="#" onclick="toggleSubmenu(this, 'kontenWebsite'); return false;" class="dropdown-toggle"><i class="fa-solid fa-globe me-2"></i> Konten Website</a>
-    <div class="collapse {{ if eq .ActivePage "edit_simpanan" }}show{{ end }}" id="kontenWebsite" {{ if eq .ActivePage "edit_simpanan" }}style="display: block;"{{ end }}>
+    <div class="collapse {{ if or (eq .ActivePage "edit_simpanan") (eq .ActivePage "setting_simpanan_wajib") (eq .ActivePage "edit-rekening-register") (eq .ActivePage "edit-bunga") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "edit_simpanan") (eq .ActivePage "setting_simpanan_wajib") (eq .ActivePage "edit-rekening-register") (eq .ActivePage "edit-bunga") }}style="display: block;"{{ end }}>
         <a href="/bendahara/halaman/edit/simpanan" class="ms-3 {{ if eq .ActivePage "edit_simpanan" }}active{{ end }}"><i class="fa-solid fa-piggy-bank me-2"></i> Edit Halaman Simpanan</a>
+        <a href="/bendahara/setting-simpanan-wajib" class="ms-3 {{ if eq .ActivePage "setting_simpanan_wajib" }}active{{ end }}"><i class="fa-solid fa-cog me-2"></i> Edit Simpanan Wajib</a>
+        <a href="/bendahara/edit-rekening-register" class="ms-3 {{ if eq .ActivePage "edit-rekening-register" }}active{{ end }}"><i class="fa-solid fa-edit me-2"></i> Edit Nomor Rekening</a>
+        <a href="/bendahara/edit-bunga" class="ms-3 {{ if eq .ActivePage "edit-bunga" }}active{{ end }}"><i class="fa-solid fa-percent me-2"></i> Edit Bunga</a>
     </div>
 
     <!-- Transaksi & Laporan -->
@@ -40,8 +42,6 @@
         <a href="/bendahara/laporan" class="ms-3 {{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
     </div>
 
-    <a href="/bendahara/edit-rekening-register" class="{{ if eq .ActivePage "edit-rekening-register" }}active{{ end }}"><i class="fa-solid fa-edit me-2"></i> Edit Nomor Rekening </a>
-    <a href="/bendahara/edit-bunga" class="{{ if eq .ActivePage "edit-bunga" }}active{{ end }}"><i class="fa-solid fa-percent me-2"></i> Edit Bunga</a>
     <a href="/bendahara/pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
     <a href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
 </div>
