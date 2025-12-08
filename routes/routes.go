@@ -12,6 +12,7 @@ import (
 
 	"koperasi-simpan-pinjam/controllers"
 	"koperasi-simpan-pinjam/middleware"
+
 )
 
 func SetupRouter() *gin.Engine {
@@ -100,7 +101,7 @@ func SetupRouter() *gin.Engine {
 
 	// --- Rute Admin (Dilindungi Middleware) ---
 	adminRoutes := router.Group("/admin")
-	adminRoutes.Use(middleware.AuthRequired(), middleware.AdminOnly(), middleware.AdminLogoMiddleware())
+	adminRoutes.Use(middleware.AuthRequired(), middleware.AdminOnly())
 	{
 		adminRoutes.GET("/dashboard", controllers.AdminDashboard)
 		adminRoutes.GET("/halaman/edit/:slug", controllers.ShowEditHalamanForm)
@@ -187,5 +188,20 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.POST("/pesan", controllers.BendaharaPesan)
 	}
 
+	// --- Rute Ketua (Dilindungi Middleware) ---
+	ketuaRoutes := router.Group("/ketua")
+	ketuaRoutes.Use(middleware.AuthRequired(), middleware.KetuaOnly())
+	{
+		ketuaRoutes.GET("/dashboard", controllers.KetuaDashboard)
+		ketuaRoutes.GET("/konfirmasi", controllers.KetuaKonfirmasi)
+		ketuaRoutes.GET("/halaman", controllers.KetuaListHalaman)
+		ketuaRoutes.GET("/anggota", controllers.KetuaListAllAnggota)
+		ketuaRoutes.GET("/anggota/:id", controllers.KetuaViewAnggota)
+		ketuaRoutes.GET("/transaksi", controllers.KetuaTransaksi)
+		ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
+		ketuaRoutes.GET("/tentang", controllers.KetuaTentang)
+		ketuaRoutes.GET("/pengaturan", controllers.KetuaPengaturan)
+		ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
+	}
 	return router
 }
