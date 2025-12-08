@@ -26,14 +26,6 @@
         <a href="/admin/halaman/edit/struktur" class="ms-3 {{ if eq .ActivePage "struktur" }}active{{ end }}"><i class="fa-solid fa-sitemap me-2"></i> Edit Struktur Organisasi</a>
     </div>
 
-    <!-- Transaksi & Laporan -->
-    <a href="#" onclick="toggleSubmenu(this, 'transaksiLaporan'); return false;" class="dropdown-toggle"><i class="fa-solid fa-chart-bar me-2"></i> Transaksi & Laporan</a>
-    <div class="collapse {{ if or (eq .ActivePage "riwayat") (eq .ActivePage "laporan") (eq .ActivePage "transaksi") }}show{{ end }}" id="transaksiLaporan" {{ if or (eq .ActivePage "riwayat") (eq .ActivePage "laporan") (eq .ActivePage "transaksi") }}style="display: block;"{{ end }}>
-        <a href="/admin/transaksi" class="ms-3 {{ if eq .ActivePage "transaksi" }}active{{ end }}"><i class="fa-solid fa-exchange-alt me-2"></i> Transaksi</a>
-        <a href="/admin/riwayat" class="ms-3 {{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Riwayat Transaksi</a>
-        <a href="/admin/laporan" class="ms-3 {{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
-    </div>
-
     <!-- Menu Pesan dihapus sesuai permintaan -->
     <a href="/admin/pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
     <a href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
