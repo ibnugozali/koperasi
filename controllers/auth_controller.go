@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"net/http"
+	"os"
 	"strconv"
 	"time"
-	"os"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -17,42 +17,42 @@ import (
 
 // ShowLoginPage menampilkan halaman login utama.
 func ShowLoginPage(c *gin.Context) {
-		   status := c.Query("status")
-		   logoPath, _ := c.Get("LogoPath")
-		   // Cari logo terbaru di static/images
-		   dirFiles, err := os.ReadDir("static/images")
-		   var latestLogo string
-		   var latestTime int64
-		   if err == nil {
-			   for _, file := range dirFiles {
-				   name := file.Name()
-				   if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-					   info, err := file.Info()
-					   if err == nil {
-						   modTime := info.ModTime().Unix()
-						   if modTime > latestTime {
-							   latestTime = modTime
-							   latestLogo = "/static/images/" + name
-						   }
-					   }
-				   }
-			   }
-		   }
-		   if latestLogo == "" {
-			   latestLogo = "/static/images/placeholder.png"
-		   }
-		   if status == "success_register" {
-				   c.HTML(http.StatusOK, "login.html", gin.H{
-						   "success": "Pendaftaran berhasil! Silakan tunggu konfirmasi dari admin sebelum login.",
-						   "LogoPath": logoPath,
-						   "CurrentLogo": latestLogo,
-				   })
-				   return
-		   }
-		   c.HTML(http.StatusOK, "login.html", gin.H{
-				   "LogoPath": logoPath,
-				   "CurrentLogo": latestLogo,
-		   })
+	status := c.Query("status")
+	logoPath, _ := c.Get("LogoPath")
+	// Cari logo terbaru di static/images
+	dirFiles, err := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if err == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+	if status == "success_register" {
+		c.HTML(http.StatusOK, "login.html", gin.H{
+			"success":     "Pendaftaran berhasil! Silakan tunggu konfirmasi dari admin sebelum login.",
+			"LogoPath":    logoPath,
+			"CurrentLogo": latestLogo,
+		})
+		return
+	}
+	c.HTML(http.StatusOK, "login.html", gin.H{
+		"LogoPath":    logoPath,
+		"CurrentLogo": latestLogo,
+	})
 }
 
 // ShowRegisterPage menampilkan halaman registrasi.
