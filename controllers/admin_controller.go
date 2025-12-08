@@ -484,9 +484,15 @@ func AdminPengaturan(c *gin.Context) {
 		}
 	}
 
+	// Ambil LogoPath dari context (set by middleware)
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
 	c.HTML(http.StatusOK, "admin_pengaturan.html", gin.H{
 		"AllHalaman": filteredHalaman,
 		"ActivePage": "pengaturan",
+		"LogoPath":   logoPath,
 	})
 }
 

@@ -100,7 +100,7 @@ func SetupRouter() *gin.Engine {
 
 	// --- Rute Admin (Dilindungi Middleware) ---
 	adminRoutes := router.Group("/admin")
-	adminRoutes.Use(middleware.AuthRequired(), middleware.AdminOnly())
+	adminRoutes.Use(middleware.AuthRequired(), middleware.AdminOnly(), middleware.AdminLogoMiddleware())
 	{
 		adminRoutes.GET("/dashboard", controllers.AdminDashboard)
 		adminRoutes.GET("/halaman/edit/:slug", controllers.ShowEditHalamanForm)
