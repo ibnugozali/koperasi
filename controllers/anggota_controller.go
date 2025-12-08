@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -68,10 +69,34 @@ func AnggotaDashboard(c *gin.Context) {
 		}
 	}
 
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	// Render halaman dashboard dan kirim data anggota dan konten ke sana
 	c.HTML(http.StatusOK, "anggota_dashboard.html", gin.H{
 		"Anggota":      anggota,
 		"KontenParsed": kontenParsed,
+		"CurrentLogo":  latestLogo,
 	})
 }
 
@@ -356,13 +381,35 @@ func AjukanPinjaman(c *gin.Context) {
 		bungaTerkini = 2.0
 	}
 
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
 	c.HTML(http.StatusOK, "anggota_ajukan_pinjaman.html", gin.H{
 		"Anggota":       anggota,
 		"TotalSimpanan": totalSimpanan,
-		"LimitPinjaman": limitPinjaman,
 		"JenisAnggota":  jenisAnggota,
-		"Bunga":         bungaTerkini,
-		"GajiBulanan":   anggota.GajiBulanan, // Tambahkan gaji bulanan
+		"LimitPinjaman": limitPinjaman,
+		"BungaTerkini":  bungaTerkini,
+		"CurrentLogo":   latestLogo,
 	})
 }
 
@@ -665,6 +712,29 @@ func AnggotaSimpanan(c *gin.Context) {
 		json.Unmarshal([]byte(halaman.Konten), &kontenData)
 	}
 
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
 		"Judul":            "Simpanan",
 		"Anggota":          anggota,
@@ -673,6 +743,7 @@ func AnggotaSimpanan(c *gin.Context) {
 		"Konten":           kontenData,
 		"HasSimpananWajib": hasSimpananWajib,
 		"SimpananWajib":    simpananByJenis["wajib"],
+		"CurrentLogo":      latestLogo,
 	})
 }
 
@@ -891,6 +962,29 @@ func AnggotaAngsuran(c *gin.Context) {
 		nomorRekening = "1234567890 (Bank ABC)" // Default jika belum diset
 	}
 
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
 		"Judul":          "Angsuran",
 		"Anggota":        anggota,
@@ -900,6 +994,7 @@ func AnggotaAngsuran(c *gin.Context) {
 		"Pinjamans":      pinjamans,
 		"TotalPinjaman":  totalPinjaman,
 		"NomorRekening":  nomorRekening,
+		"CurrentLogo":    latestLogo,
 	})
 }
 
@@ -1299,12 +1394,35 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 		}
 	}
 
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	c.HTML(http.StatusOK, "anggota_ajukan_pengambilan_simpanan.html", gin.H{
 		"Anggota":           anggota,
 		"TotalSimpanan":     totalSimpanan,
 		"SimpananByJenis":   simpananByJenis,
 		"JenisSimpananList": jenisSimpananList,
-		"LogoPath":          c.GetString("LogoPath"),
+		"CurrentLogo":       latestLogo,
 	})
 }
 

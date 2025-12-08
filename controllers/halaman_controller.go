@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -92,10 +93,33 @@ func ShowTentang(c *gin.Context) {
 			konten = map[string]interface{}{}
 		}
 
+		// Cari logo terbaru di static/images
+		dirFiles, errLogo := os.ReadDir("static/images")
+		var latestLogo string
+		var latestTime int64
+		if errLogo == nil {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
+					}
+				}
+			}
+		}
+		if latestLogo == "" {
+			latestLogo = "/static/images/placeholder.png"
+		}
 		c.HTML(http.StatusOK, "anggota_sejarah.html", gin.H{
-			"Judul":   halaman.Judul,
-			"Konten":  konten,
-			"Anggota": anggota,
+			"Judul":       halaman.Judul,
+			"Konten":      konten,
+			"Anggota":     anggota,
+			"CurrentLogo": latestLogo,
 		})
 	case "visi-misi":
 		// Ambil data dari database
@@ -111,10 +135,33 @@ func ShowTentang(c *gin.Context) {
 			konten = map[string]interface{}{}
 		}
 
+		// Cari logo terbaru di static/images
+		dirFiles, errLogo := os.ReadDir("static/images")
+		var latestLogo string
+		var latestTime int64
+		if errLogo == nil {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
+					}
+				}
+			}
+		}
+		if latestLogo == "" {
+			latestLogo = "/static/images/placeholder.png"
+		}
 		c.HTML(http.StatusOK, "anggota_visi_misi.html", gin.H{
-			"Judul":   halaman.Judul,
-			"Konten":  konten,
-			"Anggota": anggota,
+			"Judul":       halaman.Judul,
+			"Konten":      konten,
+			"Anggota":     anggota,
+			"CurrentLogo": latestLogo,
 		})
 	case "struktur":
 		// Ambil data dari database
@@ -130,10 +177,33 @@ func ShowTentang(c *gin.Context) {
 			konten = map[string]interface{}{}
 		}
 
+		// Cari logo terbaru di static/images
+		dirFiles, errLogo := os.ReadDir("static/images")
+		var latestLogo string
+		var latestTime int64
+		if errLogo == nil {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
+					}
+				}
+			}
+		}
+		if latestLogo == "" {
+			latestLogo = "/static/images/placeholder.png"
+		}
 		c.HTML(http.StatusOK, "anggota_struktur.html", gin.H{
-			"Judul":   halaman.Judul,
-			"Konten":  konten,
-			"Anggota": anggota,
+			"Judul":       halaman.Judul,
+			"Konten":      konten,
+			"Anggota":     anggota,
+			"CurrentLogo": latestLogo,
 		})
 	default:
 		c.String(http.StatusNotFound, "Halaman tidak ditemukan")
