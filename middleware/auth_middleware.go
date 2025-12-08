@@ -7,37 +7,43 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-
 )
 
 // AdminLogoMiddleware adalah middleware untuk mengatur path logo terbaru untuk admin.
 func AdminLogoMiddleware() gin.HandlerFunc {
-       return func(c *gin.Context) {
-	       logoPath := "/static/images/placeholder.png"
-	       // Cari logo utama (logo.png) atau logo terbaru (logo_*.png)
-	       files, err := os.ReadDir("static/images")
-	       if err == nil {
-		       var latestLogo string
-		       var latestTime int64
-		       for _, file := range files {
-			       if (file.Name() == "logo.png") || (strings.HasPrefix(file.Name(), "logo_") && (strings.HasSuffix(file.Name(), ".png") || strings.HasSuffix(file.Name(), ".jpg"))) {
-				       info, err := file.Info()
-				       if err == nil {
-					       modTime := info.ModTime().Unix()
-					       if modTime > latestTime {
-						       latestTime = modTime
-						       latestLogo = "/static/images/" + file.Name()
-					       }
-				       }
-			       }
-		       }
-		       if latestLogo != "" {
-			       logoPath = latestLogo
-		       }
-	       }
-	       c.Set("LogoPath", logoPath)
-	       c.Next()
-       }
+	return func(c *gin.Context) {
+		logoPath := "/static/images/placeholder.png"
+		files, err := os.ReadDir("static/images")
+		if err == nil {
+			var latestLogo string
+			var latestTime int64
+			for _, file := range files {
+				if (file.Name() == "logo.png") || (strings.HasPrefix(file.Name(), "logo_") && (strings.HasSuffix(file.Name(), ".png") || strings.HasSuffix(file.Name(), ".jpg"))) {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = file.Name()
+						}
+					}
+				}
+			}
+			// Cek apakah file logo benar-benar ada
+			if latestLogo != "" {
+				logoFullPath := "static/images/" + latestLogo
+				if _, err := os.Stat(logoFullPath); err == nil {
+					logoPath = "/static/images/" + latestLogo
+				} else if _, err := os.Stat("static/images/logo.png"); err == nil {
+					logoPath = "/static/images/logo.png"
+				}
+			} else if _, err := os.Stat("static/images/logo.png"); err == nil {
+				logoPath = "/static/images/logo.png"
+			}
+		}
+		c.Set("LogoPath", logoPath)
+		c.Next()
+	}
 }
 
 // AuthRequired adalah middleware untuk memeriksa apakah pengguna sudah login.

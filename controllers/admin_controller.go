@@ -19,6 +19,7 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
+
 )
 
 // Menampilkan dashboard admin dengan data statistik
@@ -58,6 +59,7 @@ func AdminDashboard(c *gin.Context) {
 		"TotalSimpanan":      totalSimpanan,
 		"TotalPinjaman":      totalPinjaman,
 		"AktivitasData":      aktivitasData,
+		"LogoPath":           c.MustGet("LogoPath"),
 	}
 
 	c.HTML(http.StatusOK, "admin_dashboard.html", data)
@@ -263,14 +265,14 @@ func UploadFile(c *gin.Context) {
 	newFileName := uuid.New().String() + extension
 
 	// Simpan file ke folder static/uploads
-	err = c.SaveUploadedFile(file, "static/uploads/"+newFileName)
+	err = c.SaveUploadedFile(file, "static/images/"+newFileName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file"})
 		return
 	}
 
 	// Kembalikan path file yang bisa diakses publik
-	filePath := "/static/uploads/" + newFileName
+	filePath := "/static/images/" + newFileName
 	c.JSON(http.StatusOK, gin.H{"filePath": filePath})
 }
 
@@ -669,35 +671,30 @@ func AdminLogo(c *gin.Context) {
 		return
 	}
 
-	// Cari file logo terbaru (berdasarkan timestamp dalam nama file)
-	var latestLogo string
-	var latestTime int64
-
-	for _, file := range files {
-		if strings.HasPrefix(file.Name(), "logo_") && strings.HasSuffix(file.Name(), ".png") {
-			// Ekstrak timestamp dari nama file
-			parts := strings.Split(file.Name(), "_")
-			if len(parts) >= 2 {
-				timestampStr := strings.TrimSuffix(parts[1], ".png")
-				if timestamp, err := strconv.ParseInt(timestampStr, 10, 64); err == nil {
-					if timestamp > latestTime {
-						latestTime = timestamp
-						latestLogo = "/static/images/" + file.Name()
-					}
-				}
-			}
-		}
-	}
-
-	// Jika tidak ada logo yang ditemukan, gunakan placeholder
-	if latestLogo == "" {
-		latestLogo = "/static/images/placeholder.png"
-	}
-
-	c.HTML(http.StatusOK, "admin_logo.html", gin.H{
-		"ActivePage":  "edit_logo",
-		"CurrentLogo": latestLogo,
-	})
+	       // Cari file logo terbaru (berdasarkan waktu modifikasi file)
+	       var latestLogo string
+	       var latestTime int64
+	       for _, file := range files {
+		       if strings.HasPrefix(file.Name(), "logo_") && (strings.HasSuffix(file.Name(), ".png") || strings.HasSuffix(file.Name(), ".jpg")) {
+			       info, err := file.Info()
+			       if err == nil {
+				       modTime := info.ModTime().Unix()
+				       if modTime > latestTime {
+					       latestTime = modTime
+					       latestLogo = "/static/images/" + file.Name()
+				       }
+			       }
+		       }
+	       }
+	       // Jika tidak ada logo yang ditemukan, gunakan placeholder
+	       if latestLogo == "" {
+		       latestLogo = "/static/images/placeholder.png"
+	       }
+	       c.HTML(http.StatusOK, "admin_logo.html", gin.H{
+		       "ActivePage":  "edit_logo",
+		       "CurrentLogo": latestLogo,
+		       "LogoPath": latestLogo,
+	       })
 }
 
 // UploadLogo memproses upload logo baru

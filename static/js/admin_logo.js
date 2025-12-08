@@ -146,9 +146,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             console.log('Response data:', data); // Debug log
             if (data.success) {
-                // Update logo saat ini
-                currentLogo.src = data.logoPath;
-                previewLogo.src = data.logoPath;
+                // Update logo saat ini dan preview
+                currentLogo.src = previewLogo.src = data.logoPath;
 
                 // Reset form
                 logoFileInput.value = '';
@@ -160,9 +159,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Update logo di navbar jika ada
                 updateNavbarLogo(data.logoPath);
-
-                // Simpan logo ke localStorage untuk persistensi
-                localStorage.setItem('currentLogo', data.logoPath);
             } else {
                 throw new Error(data.message || 'Gagal upload logo');
             }

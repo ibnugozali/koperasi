@@ -34,7 +34,7 @@
                                 <div class="col-md-6">
                                     <h6>Logo Saat Ini</h6>
                                     <div class="border p-3 text-center" style="background-color: #f8f9fa;">
-                                        <img id="currentLogo" src="{{.LogoPath}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 200px; max-height: 200px; background-color: transparent;">
+                                        <img id="currentLogo" src="{{.CurrentLogo}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 200px; max-height: 200px; background-color: transparent;">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -73,22 +73,18 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Load logo saat halaman dimuat
+        // Reset preview logo ke kosong saat halaman dimuat
         document.addEventListener('DOMContentLoaded', function() {
-            const savedLogo = localStorage.getItem('currentLogo');
-            if (savedLogo) {
-                const currentLogo = document.getElementById('currentLogo');
-                if (currentLogo) {
-                    currentLogo.src = savedLogo;
-                }
-            }
-
-            // Reset preview logo ke kosong saat halaman dimuat
             const previewLogo = document.getElementById('previewLogo');
             if (previewLogo) {
                 previewLogo.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // 1x1 transparent pixel
                 previewLogo.style.backgroundColor = '#f8f9fa';
                 delete previewLogo.dataset.canvasData;
+            }
+            // Pastikan logo saat ini selalu dari backend
+            const currentLogo = document.getElementById('currentLogo');
+            if (currentLogo && !currentLogo.src) {
+                currentLogo.src = '{{.LogoPath}}';
             }
         });
     </script>
