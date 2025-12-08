@@ -183,9 +183,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fungsi untuk update logo di navbar
     function updateNavbarLogo(logoPath) {
         const navbarLogos = document.querySelectorAll('.sidebar img[alt="Logo Koperasi"]');
-        const newSrc = logoPath + '?t=' + Date.now();
         navbarLogos.forEach(img => {
-            img.src = newSrc;
+            img.src = logoPath;
         });
     }
 });
