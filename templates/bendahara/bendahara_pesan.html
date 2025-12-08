@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dashboard Bendahara - Koperasi Simpan Pinjam</title>
+
+    <!-- Bootstrap & Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+</head>
+<body>
+
+{{template "bendahara_navbar.html" .}}
+<div class="container mt-5 pt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fa-solid fa-envelope me-2"></i> Pesan Bendahara</h4>
+                </div>
+                <div class="card-body">
+                    <p>Selamat datang di halaman pesan bendahara. Di sini Anda dapat mengirim pesan ke anggota dan melihat pesan yang berkaitan dengan aktivitas bendahara.</p>
+                    <!-- Form kirim pesan ke anggota -->
+                    <form method="POST" action="/bendahara/pesan">
+                        <div class="mb-3">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-6">
+                                    <label for="pesan-anggota" class="form-label">Kirim ke Anggota</label>
+                                    <select class="form-select" id="pesan-anggota" name="anggota_id" required>
+                                        <option value="">-- Pilih Anggota --</option>
+                                        {{range .AnggotaList}}
+                                            <option value="{{.ID}}">{{.Nama}}</option>
+                                        {{end}}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="pesan-searchAnggota" class="form-label">Cari Anggota</label>
+                                    <input type="text" class="form-control" id="pesan-searchAnggota" placeholder="Cari nama anggota...">
+                                </div>
+                            </div>
+                        </div>
+                        </script>
+                        <script>
+                        // Fitur pencarian anggota pada dropdown dan auto-select jika hanya satu hasil
+                        document.addEventListener('DOMContentLoaded', function() {
+                            var searchInput = document.getElementById('pesan-searchAnggota');
+                            var anggotaSelect = document.getElementById('pesan-anggota');
+                            if (searchInput && anggotaSelect) {
+                                searchInput.addEventListener('input', function() {
+                                    var filter = searchInput.value.toLowerCase();
+                                    var visibleOptions = [];
+                                    for (var i = 0; i < anggotaSelect.options.length; i++) {
+                                        var option = anggotaSelect.options[i];
+                                        if (option.value === "") continue;
+                                        var text = option.text.toLowerCase();
+                                        var match = text.includes(filter);
+                                        option.style.display = match ? '' : 'none';
+                                        if (match) visibleOptions.push(option);
+                                    }
+                                    // Auto-select jika hanya satu hasil
+                                    if (visibleOptions.length === 1) {
+                                        anggotaSelect.value = visibleOptions[0].value;
+                                    } else {
+                                        anggotaSelect.value = "";
+                                    }
+                                });
+                            }
+                        });
+                        </script>
+                        <div class="mb-3">
+                            <label for="pesan-judul" class="form-label">Judul Pesan</label>
+                            <input type="text" class="form-control" id="pesan-judul" name="judul" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pesan-isi" class="form-label">Isi Pesan</label>
+                            <textarea class="form-control" id="pesan-isi" name="isi" rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane me-2"></i>Kirim Pesan</button>
+                    </form>
+                </div>
+            </div>
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-inbox me-2"></i> Daftar Pesan Terkirim</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Daftar pesan -->
+                    {{if .PesanList}}
+                        <ul class="list-group mb-3">
+                        {{range .PesanList}}
+                            <li class="list-group-item">
+                                <strong>{{.Judul}}</strong><br>
+                                <span>{{.Isi}}</span>
+                                <div class="text-muted small">Untuk: {{.NamaAnggota}} | {{.Tanggal}}</div>
+                            </li>
+                        {{end}}
+                        </ul>
+                    {{else}}
+                        <div class="alert alert-info">
+                            Belum ada pesan baru.
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

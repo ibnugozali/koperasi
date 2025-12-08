@@ -38,8 +38,8 @@ func GetPesanByAnggotaID(idAnggota string) ([]models.Pesan, error) {
 func CreatePesan(pesan models.Pesan) error {
 	db := config.GetDB()
 	query := `
-		INSERT INTO pesan (id_anggota, judul, isi, status)
-		VALUES ($1, $2, $3, $4)`
+		INSERT INTO pesan (id_anggota, judul, isi, status, tgl_kirim)
+		VALUES ($1, $2, $3, $4, NOW())`
 	_, err := db.Exec(query, pesan.IDAnggota, pesan.Judul, pesan.Isi, pesan.Status)
 	return err
 }

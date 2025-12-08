@@ -17,6 +17,14 @@ import (
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
 
+	// Endpoint Chrome DevTools JSON dengan CORS
+	router.GET("/.well-known/appspecific/com.chrome.devtools.json", func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.JSON(200, gin.H{
+			"status": "ok",
+		})
+	})
+
 	// Set trusted proxies to avoid security warning
 	router.SetTrustedProxies([]string{"127.0.0.1", "::1"})
 
@@ -173,6 +181,10 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.POST("/setting-simpanan-wajib", controllers.BendaharaSaveSettingSimpananWajib)
 		bendaharaRoutes.POST("/proses-simpanan-wajib", controllers.BendaharaProsesSimpananWajib)
 		bendaharaRoutes.GET("/cek-pemotongan-otomatis", controllers.BendaharaCekDanProsesPemotonganOtomatis)
+
+		// Route for pesan
+		bendaharaRoutes.GET("/pesan", controllers.BendaharaPesan)
+		bendaharaRoutes.POST("/pesan", controllers.BendaharaPesan)
 	}
 
 	return router

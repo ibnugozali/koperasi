@@ -351,6 +351,67 @@ func BendaharaConfirmMembership(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/bendahara/konfirmasi")
 }
 
+// Menampilkan halaman pesan untuk bendahara
+func BendaharaPesan(c *gin.Context) {
+	db := config.GetDB()
+
+	// Handle POST (kirim pesan)
+	if c.Request.Method == http.MethodPost {
+		anggotaID := c.PostForm("anggota_id")
+		judul := c.PostForm("judul")
+		isi := c.PostForm("isi")
+		if anggotaID != "" && judul != "" && isi != "" {
+			pesan := models.Pesan{
+				IDAnggota: anggotaID,
+				Judul:     judul,
+				Isi:       isi,
+				Status:    "unread",
+			}
+			err := repository.CreatePesan(pesan)
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Gagal mengirim pesan")
+				return
+			}
+			c.Redirect(http.StatusFound, "/bendahara/pesan")
+			return
+		}
+	}
+
+	// Ambil daftar anggota untuk dropdown
+	anggotaRows, _ := db.Query("SELECT id_anggota, nama_anggota FROM anggota WHERE status = 'aktif'")
+	var anggotaList []struct{ ID, Nama string }
+	for anggotaRows.Next() {
+		var id, nama string
+		anggotaRows.Scan(&id, &nama)
+		anggotaList = append(anggotaList, struct{ ID, Nama string }{id, nama})
+	}
+
+	// Ambil daftar pesan terkirim (join nama anggota)
+	pesanRows, _ := db.Query(`
+		SELECT p.judul, p.isi, p.tgl_kirim, a.nama_anggota
+		FROM pesan p
+		JOIN anggota a ON p.id_anggota = a.id_anggota
+		ORDER BY p.tgl_kirim DESC
+	`)
+	var pesanList []struct {
+		Judul, Isi, NamaAnggota, Tanggal string
+	}
+	for pesanRows.Next() {
+		var judul, isi, tanggal, nama string
+		pesanRows.Scan(&judul, &isi, &tanggal, &nama)
+		pesanList = append(pesanList, struct {
+			Judul, Isi, NamaAnggota, Tanggal string
+		}{judul, isi, nama, tanggal})
+	}
+
+	c.HTML(http.StatusOK, "bendahara_pesan.html", gin.H{
+		"AnggotaList": anggotaList,
+		"PesanList":   pesanList,
+		"Title":       "Pesan Bendahara",
+		"ActivePage":  "pesan",
+	})
+}
+
 // BendaharaRejectMembership menolak pendaftaran anggota
 func BendaharaRejectMembership(c *gin.Context) {
 	// Ambil id anggota dari URL (ini masih TEMP id)
@@ -1721,7 +1782,7 @@ func BendaharaImportAnggota(c *gin.Context) {
 			gajiBulanan, _ = strconv.Atoi(strings.ReplaceAll(gajiBulananStr, ",", ""))
 		}
 
-		// PENTING: Cek apakah anggota sudah ada di database (berdasarkan NIK)
+		// PENTING: C
 		// Jika sudah ada, SELALU gunakan sisa gaji dari database (Gaji Bulanan - Potongan Bulan Ini)
 		if nikKTP != "" {
 			var idAnggotaExisting string
