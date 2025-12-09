@@ -58,20 +58,31 @@ func BendaharaDashboard(c *gin.Context) {
 		totalPengambilan = 0
 	}
 
-	// Cari logo terbaru di static/images
+	// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
 	var latestTime int64
+	foundLogoPNG := false
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-				info, err := file.Info()
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogo = "/static/images/" + name
+			if name == "logo.png" {
+				latestLogo = "/static/images/logo.png"
+				foundLogoPNG = true
+				break
+			}
+		}
+		if !foundLogoPNG {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
 					}
 				}
 			}
@@ -113,7 +124,7 @@ func BendaharaKonfirmasi(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
 				if err == nil {
 					modTime := info.ModTime().Unix()
@@ -177,7 +188,7 @@ func BendaharaEditRekeningRegister(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
 				if err == nil {
 					modTime := info.ModTime().Unix()
@@ -220,7 +231,7 @@ func BendaharaUpdateRekeningRegister(c *gin.Context) {
 			if errLogo == nil {
 				for _, file := range dirFiles {
 					name := file.Name()
-					if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+					if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 						info, err := file.Info()
 						if err == nil {
 							modTime := info.ModTime().Unix()
@@ -269,7 +280,7 @@ func BendaharaUpdateRekeningRegister(c *gin.Context) {
 			if errLogo == nil {
 				for _, file := range dirFiles {
 					name := file.Name()
-					if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+					if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 						info, err := file.Info()
 						if err == nil {
 							modTime := info.ModTime().Unix()
@@ -494,7 +505,7 @@ func BendaharaPesan(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
 				if err == nil {
 					modTime := info.ModTime().Unix()
@@ -587,8 +598,9 @@ func BendaharaShowEditHalamanForm(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
+
 				if err == nil {
 					modTime := info.ModTime().Unix()
 					if modTime > latestTime {
@@ -738,7 +750,7 @@ func BendaharaListAllAnggota(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
 				if err == nil {
 					modTime := info.ModTime().Unix()
@@ -1016,8 +1028,9 @@ func BendaharaRiwayat(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
+
 				if err == nil {
 					modTime := info.ModTime().Unix()
 					if modTime > latestTime {
@@ -1063,8 +1076,9 @@ func BendaharaLaporan(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
+
 				if err == nil {
 					modTime := info.ModTime().Unix()
 					if modTime > latestTime {
@@ -1155,8 +1169,9 @@ func BendaharaPengaturan(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
+
 				if err == nil {
 					modTime := info.ModTime().Unix()
 					if modTime > latestTime {
@@ -1183,14 +1198,16 @@ func BendaharaPengaturan(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
-		"ActivePage": "pengaturan",
-		"Bendahara":  bendahara,
-		"LogoPath":   latestLogo,
+		"ActivePage":  "pengaturan",
+		"Bendahara":   bendahara,
+		"LogoPath":    latestLogo,
+		"CurrentLogo": latestLogo,
 	})
 }
 
 // UpdateBendaharaProfile memproses update username dan password bendahara
 func UpdateBendaharaProfile(c *gin.Context) {
+
 	// Ambil ID bendahara dari session
 	session := sessions.Default(c)
 	bendaharaID := session.Get("user_id")
@@ -1317,7 +1334,29 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 	}
 
 	// Get LogoPath from context
-	logoPath, _ := c.Get("LogoPath")
+	// logoPath, _ := c.Get("LogoPath")
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
 
 	c.HTML(http.StatusOK, "bendahara_konfirmasi_transaksi.html", gin.H{
 		"PendingSimpanan":    numberedSimpanan,
@@ -1325,8 +1364,9 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 		"PendingAngsuran":    numberedAngsurans,
 		"PendingPengambilan": numberedPengambilans,
 		"ActivePage":         "konfirmasi-transaksi",
-		"LogoPath":           logoPath,
-		"Title":              "Konfirmasi Transaksi",
+		"CurrentLogo":        latestLogo,
+		// "CurrentLogo":        latestLogo,
+		"Title": "Konfirmasi Transaksi",
 	})
 }
 
@@ -1575,10 +1615,35 @@ func GetCurrentBunga() float64 {
 }
 
 func BendaharaEditBunga(c *gin.Context) {
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	bunga := GetCurrentBunga()
 	c.HTML(http.StatusOK, "bendahara_edit_bunga.html", gin.H{
 		"CurrentBunga": fmt.Sprintf("%.2f", bunga),
 		"ActivePage":   "edit-bunga",
+
+		"CurrentLogo": latestLogo,
 	})
 }
 
@@ -1592,8 +1657,9 @@ func BendaharaUpdateBunga(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
+
 				if err == nil {
 					modTime := info.ModTime().Unix()
 					if modTime > latestTime {
@@ -1745,7 +1811,7 @@ func BendaharaLoginHistory(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
 				if err == nil {
 					modTime := info.ModTime().Unix()
@@ -3003,7 +3069,7 @@ func BendaharaSettingSimpananWajib(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
 				if err == nil {
 					modTime := info.ModTime().Unix()
@@ -3250,7 +3316,8 @@ func BendaharaCekDanProsesPemotonganOtomatis(c *gin.Context) {
 			bulan, tahun).Scan(&totalSudahDiproses)
 
 		c.JSON(http.StatusOK, gin.H{
-			"shouldRun":        false,
+			"shouldRun": false,
+
 			"message":          fmt.Sprintf("Semua anggota sudah diproses atau tidak ada yang perlu diproses (%d anggota)", totalSudahDiproses),
 			"tanggal":          tanggalSekarang,
 			"tanggalPotong":    tanggalPotong,

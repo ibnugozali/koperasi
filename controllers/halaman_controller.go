@@ -93,20 +93,31 @@ func ShowTentang(c *gin.Context) {
 			konten = map[string]interface{}{}
 		}
 
-		// Cari logo terbaru di static/images
+		// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 		dirFiles, errLogo := os.ReadDir("static/images")
 		var latestLogo string
 		var latestTime int64
+		foundLogoPNG := false
 		if errLogo == nil {
 			for _, file := range dirFiles {
 				name := file.Name()
-				if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-					info, err := file.Info()
-					if err == nil {
-						modTime := info.ModTime().Unix()
-						if modTime > latestTime {
-							latestTime = modTime
-							latestLogo = "/static/images/" + name
+				if name == "logo.png" {
+					latestLogo = "/static/images/logo.png"
+					foundLogoPNG = true
+					break
+				}
+			}
+			if !foundLogoPNG {
+				for _, file := range dirFiles {
+					name := file.Name()
+					if len(name) > 5 && name[:5] == "logo_" && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg")) {
+						info, err := file.Info()
+						if err == nil {
+							modTime := info.ModTime().Unix()
+							if modTime > latestTime {
+								latestTime = modTime
+								latestLogo = "/static/images/" + name
+							}
 						}
 					}
 				}
@@ -135,20 +146,31 @@ func ShowTentang(c *gin.Context) {
 			konten = map[string]interface{}{}
 		}
 
-		// Cari logo terbaru di static/images
+		// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 		dirFiles, errLogo := os.ReadDir("static/images")
 		var latestLogo string
 		var latestTime int64
+		foundLogoPNG := false
 		if errLogo == nil {
 			for _, file := range dirFiles {
 				name := file.Name()
-				if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-					info, err := file.Info()
-					if err == nil {
-						modTime := info.ModTime().Unix()
-						if modTime > latestTime {
-							latestTime = modTime
-							latestLogo = "/static/images/" + name
+				if name == "logo.png" {
+					latestLogo = "/static/images/logo.png"
+					foundLogoPNG = true
+					break
+				}
+			}
+			if !foundLogoPNG {
+				for _, file := range dirFiles {
+					name := file.Name()
+					if len(name) > 5 && name[:5] == "logo_" && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg")) {
+						info, err := file.Info()
+						if err == nil {
+							modTime := info.ModTime().Unix()
+							if modTime > latestTime {
+								latestTime = modTime
+								latestLogo = "/static/images/" + name
+							}
 						}
 					}
 				}
@@ -177,20 +199,31 @@ func ShowTentang(c *gin.Context) {
 			konten = map[string]interface{}{}
 		}
 
-		// Cari logo terbaru di static/images
+		// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 		dirFiles, errLogo := os.ReadDir("static/images")
 		var latestLogo string
 		var latestTime int64
+		foundLogoPNG := false
 		if errLogo == nil {
 			for _, file := range dirFiles {
 				name := file.Name()
-				if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-					info, err := file.Info()
-					if err == nil {
-						modTime := info.ModTime().Unix()
-						if modTime > latestTime {
-							latestTime = modTime
-							latestLogo = "/static/images/" + name
+				if name == "logo.png" {
+					latestLogo = "/static/images/logo.png"
+					foundLogoPNG = true
+					break
+				}
+			}
+			if !foundLogoPNG {
+				for _, file := range dirFiles {
+					name := file.Name()
+					if len(name) > 5 && name[:5] == "logo_" && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg")) {
+						info, err := file.Info()
+						if err == nil {
+							modTime := info.ModTime().Unix()
+							if modTime > latestTime {
+								latestTime = modTime
+								latestLogo = "/static/images/" + name
+							}
 						}
 					}
 				}

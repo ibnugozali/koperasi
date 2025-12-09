@@ -677,22 +677,31 @@ func AdminLogo(c *gin.Context) {
 		return
 	}
 
-	// Cari file logo terbaru (berdasarkan waktu modifikasi file)
+	// Prioritaskan logo.png jika ada, jika tidak ambil logo_ terbaru
 	var latestLogo string
 	var latestTime int64
+	foundLogoPNG := false
 	for _, file := range files {
-		if strings.HasPrefix(file.Name(), "logo_") && (strings.HasSuffix(file.Name(), ".png") || strings.HasSuffix(file.Name(), ".jpg")) {
-			info, err := file.Info()
-			if err == nil {
-				modTime := info.ModTime().Unix()
-				if modTime > latestTime {
-					latestTime = modTime
-					latestLogo = "/static/images/" + file.Name()
+		if file.Name() == "logo.png" {
+			latestLogo = "/static/images/logo.png"
+			foundLogoPNG = true
+			break
+		}
+	}
+	if !foundLogoPNG {
+		for _, file := range files {
+			if strings.HasPrefix(file.Name(), "logo_") && (strings.HasSuffix(file.Name(), ".png") || strings.HasSuffix(file.Name(), ".jpg")) {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + file.Name()
+					}
 				}
 			}
 		}
 	}
-	// Jika tidak ada logo yang ditemukan, gunakan placeholder
 	if latestLogo == "" {
 		latestLogo = "/static/images/placeholder.png"
 	}

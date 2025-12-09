@@ -453,20 +453,31 @@ func AjukanPinjaman(c *gin.Context) {
 		bungaTerkini = 2.0
 	}
 
-	// Cari logo terbaru di static/images
+	// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
 	var latestTime int64
+	foundLogoPNG := false
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-				info, err := file.Info()
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogo = "/static/images/" + name
+			if name == "logo.png" {
+				latestLogo = "/static/images/logo.png"
+				foundLogoPNG = true
+				break
+			}
+		}
+		if !foundLogoPNG {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if len(name) > 5 && name[:5] == "logo_" && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg")) {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
 					}
 				}
 			}
@@ -784,20 +795,31 @@ func AnggotaSimpanan(c *gin.Context) {
 		json.Unmarshal([]byte(halaman.Konten), &kontenData)
 	}
 
-	// Cari logo terbaru di static/images
+	// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
 	var latestTime int64
+	foundLogoPNG := false
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-				info, err := file.Info()
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogo = "/static/images/" + name
+			if name == "logo.png" {
+				latestLogo = "/static/images/logo.png"
+				foundLogoPNG = true
+				break
+			}
+		}
+		if !foundLogoPNG {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if len(name) > 5 && name[:5] == "logo_" && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg")) {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
 					}
 				}
 			}
@@ -1034,20 +1056,31 @@ func AnggotaAngsuran(c *gin.Context) {
 		nomorRekening = "1234567890 (Bank ABC)" // Default jika belum diset
 	}
 
-	// Cari logo terbaru di static/images
+	// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
 	var latestTime int64
+	foundLogoPNG := false
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-				info, err := file.Info()
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogo = "/static/images/" + name
+			if name == "logo.png" {
+				latestLogo = "/static/images/logo.png"
+				foundLogoPNG = true
+				break
+			}
+		}
+		if !foundLogoPNG {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if len(name) > 5 && name[:5] == "logo_" && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg")) {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
 					}
 				}
 			}
@@ -1466,20 +1499,31 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 		}
 	}
 
-	// Cari logo terbaru di static/images
+	// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
 	var latestTime int64
+	foundLogoPNG := false
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-				info, err := file.Info()
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogo = "/static/images/" + name
+			if name == "logo.png" {
+				latestLogo = "/static/images/logo.png"
+				foundLogoPNG = true
+				break
+			}
+		}
+		if !foundLogoPNG {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if len(name) > 5 && name[:5] == "logo_" && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg")) {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
 					}
 				}
 			}
@@ -1606,20 +1650,31 @@ func AnggotaRiwayatPage(c *gin.Context) {
 		riwayat = []models.Riwayat{}
 	}
 
-	// Cari logo terbaru di static/images
+	// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
 	var latestTime int64
+	foundLogoPNG := false
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-				info, err := file.Info()
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogo = "/static/images/" + name
+			if name == "logo.png" {
+				latestLogo = "/static/images/logo.png"
+				foundLogoPNG = true
+				break
+			}
+		}
+		if !foundLogoPNG {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if len(name) > 5 && name[:5] == "logo_" && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg")) {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
 					}
 				}
 			}

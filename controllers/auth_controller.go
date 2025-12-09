@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -19,20 +20,31 @@ import (
 func ShowLoginPage(c *gin.Context) {
 	status := c.Query("status")
 	logoPath, _ := c.Get("LogoPath")
-	// Cari logo terbaru di static/images
+	// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 	dirFiles, err := os.ReadDir("static/images")
 	var latestLogo string
 	var latestTime int64
+	foundLogoPNG := false
 	if err == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
-				info, err := file.Info()
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogo = "/static/images/" + name
+			if name == "logo.png" {
+				latestLogo = "/static/images/logo.png"
+				foundLogoPNG = true
+				break
+			}
+		}
+		if !foundLogoPNG {
+			for _, file := range dirFiles {
+				name := file.Name()
+				if len(name) > 5 && name[:5] == "logo_" && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg")) {
+					info, err := file.Info()
+					if err == nil {
+						modTime := info.ModTime().Unix()
+						if modTime > latestTime {
+							latestTime = modTime
+							latestLogo = "/static/images/" + name
+						}
 					}
 				}
 			}
