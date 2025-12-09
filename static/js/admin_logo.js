@@ -146,8 +146,10 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             console.log('Response data:', data); // Debug log
             if (data.success) {
-                // Update logo saat ini dan preview
-                currentLogo.src = previewLogo.src = data.logoPath;
+                // Tambahkan query string unik agar browser tidak cache logo lama
+                const logoUrl = data.logoPath + '?t=' + new Date().getTime();
+                currentLogo.src = logoUrl;
+                previewLogo.src = logoUrl;
 
                 // Reset form
                 logoFileInput.value = '';
@@ -158,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Logo berhasil diupload!');
 
                 // Update logo di navbar jika ada
-                updateNavbarLogo(data.logoPath);
+                updateNavbarLogo(logoUrl);
             } else {
                 throw new Error(data.message || 'Gagal upload logo');
             }
