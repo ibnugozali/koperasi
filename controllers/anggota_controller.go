@@ -76,7 +76,7 @@ func AnggotaDashboard(c *gin.Context) {
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
 				if err == nil {
 					modTime := info.ModTime().Unix()
@@ -141,7 +141,30 @@ func AnggotaProfil(c *gin.Context) {
 		totalPinjaman = 0
 	}
 
-	// Render halaman profil dan kirim data anggota dan saldo ke sana
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	// Render halaman profil dan kirim data anggota, saldo, dan logo ke sana
 	c.HTML(http.StatusOK, "anggota_profil.html", gin.H{
 		"Anggota":          anggota,
 		"TotalSimpanan":    totalSimpanan,
@@ -150,6 +173,7 @@ func AnggotaProfil(c *gin.Context) {
 		"SimpananWajib":    simpananByJenis["wajib"],
 		"SimpananSukarela": simpananByJenis["sukarela"],
 		"SimpananHariRaya": simpananByJenis["hari_raya"],
+		"CurrentLogo":      latestLogo,
 	})
 }
 
@@ -178,11 +202,35 @@ func AnggotaPesan(c *gin.Context) {
 		pesans = []models.Pesan{}
 	}
 
-	// Render halaman pesan dengan daftar pesan
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	// Render halaman pesan dengan daftar pesan dan logo dinamis
 	c.HTML(http.StatusOK, "anggota_pesan.html", gin.H{
-		"Title":   "Pesan Saya",
-		"Anggota": anggota,
-		"Pesans":  pesans,
+		"Title":       "Pesan Saya",
+		"Anggota":     anggota,
+		"Pesans":      pesans,
+		"CurrentLogo": latestLogo,
 	})
 }
 
@@ -204,10 +252,34 @@ func GantiPassword(c *gin.Context) {
 		return
 	}
 
-	// Render halaman ganti password dengan form
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	// Render halaman ganti password dengan form dan logo dinamis
 	c.HTML(http.StatusOK, "anggota_ganti_password.html", gin.H{
-		"Title":   "Ganti Password",
-		"Anggota": anggota,
+		"Title":       "Ganti Password",
+		"Anggota":     anggota,
+		"CurrentLogo": latestLogo,
 	})
 }
 
@@ -1511,4 +1583,56 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 
 	// Berhasil, kirim response sukses (frontend akan redirect ke riwayat)
 	c.JSON(http.StatusOK, gin.H{"message": "Pengajuan pengambilan simpanan berhasil disubmit. Menunggu persetujuan bendahara."})
+}
+
+// AnggotaRiwayatPage menampilkan halaman riwayat anggota dengan logo terbaru dan data riwayat gabungan
+func AnggotaRiwayatPage(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
+		return
+	}
+
+	// Ambil riwayat transaksi anggota
+	riwayat, err := repository.GetRiwayatTransaksiByAnggotaID(userID)
+	if err != nil {
+		riwayat = []models.Riwayat{}
+	}
+
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "anggota_riwayat.html", gin.H{
+		"Judul":       "Riwayat Transaksi",
+		"Anggota":     anggota,
+		"Riwayat":     riwayat,
+		"CurrentLogo": latestLogo,
+	})
 }

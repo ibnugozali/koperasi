@@ -100,3 +100,34 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 	}
 	return angsurans, nil
 }
+
+// GetRiwayatTransaksiByAnggotaID mengambil riwayat transaksi gabungan (simpanan & pinjaman) untuk anggota tertentu
+func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
+	db := config.GetDB()
+	var riwayats []models.Riwayat
+	query := `
+        SELECT d.id_detail AS id, d.tgl_transaksi AS tanggal, 'Simpanan' AS jenis, d.jumlah_simpanan AS jumlah, d.status AS status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
+        FROM detail d
+        JOIN anggota a ON d.id_anggota = a.id_anggota
+        WHERE d.id_anggota = $1
+        UNION ALL
+        SELECT p.id_pinjaman AS id, p.tgl_pinjaman AS tanggal, 'Pinjaman' AS jenis, p.jumlah_pinjaman AS jumlah, p.status AS status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
+        FROM pinjaman p
+        JOIN anggota a ON p.id_anggota = a.id_anggota
+        WHERE p.id_anggota = $1
+        ORDER BY tanggal DESC, id DESC
+    `
+	rows, err := db.Query(query, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var r models.Riwayat
+		if err := rows.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.GajiBulanan); err != nil {
+			return nil, err
+		}
+		riwayats = append(riwayats, r)
+	}
+	return riwayats, nil
+}

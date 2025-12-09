@@ -104,8 +104,9 @@ func ShowEditHalamanForm(c *gin.Context) {
 	templateName := "admin_halaman_edit_" + templateSlug + ".html"
 
 	c.HTML(http.StatusOK, templateName, gin.H{
-		"Halaman": halaman,
-		"Konten":  konten,
+		"Halaman":  halaman,
+		"Konten":   konten,
+		"LogoPath": c.MustGet("LogoPath"),
 	})
 }
 
@@ -356,6 +357,7 @@ func AdminTransaksi(c *gin.Context) {
 		"ActivePage": "transaksi",
 		"Details":    details,
 		"Pinjamans":  pinjamans,
+		"LogoPath":   c.MustGet("LogoPath"),
 	})
 }
 
@@ -432,6 +434,7 @@ func AdminRiwayat(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin_riwayat.html", gin.H{
 		"ActivePage": "riwayat",
 		"Riwayats":   riwayats,
+		"LogoPath":   c.MustGet("LogoPath"),
 	})
 }
 
@@ -446,6 +449,7 @@ func AdminLaporan(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin_laporan.html", gin.H{
 		"ActivePage": "laporan",
 		"Riwayats":   riwayats,
+		"LogoPath":   c.MustGet("LogoPath"),
 	})
 }
 
@@ -453,6 +457,7 @@ func AdminLaporan(c *gin.Context) {
 func AdminTentang(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin_layout.html", gin.H{
 		"ActivePage": "tentang",
+		"LogoPath":   c.MustGet("LogoPath"),
 	})
 }
 
@@ -588,6 +593,7 @@ func DeleteLoginHistory(c *gin.Context) {
 func AdminKeamananSimpanan(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin_keamanan_simpanan.html", gin.H{
 		"ActivePage": "pengaturan",
+		"LogoPath":   c.MustGet("LogoPath"),
 	})
 }
 
@@ -656,6 +662,7 @@ func AdminPesan(c *gin.Context) {
 		"ActivePage": "pesan",
 		"Admin":      admin,
 		"Anggotas":   anggotas,
+		"LogoPath":   c.MustGet("LogoPath"),
 	})
 }
 

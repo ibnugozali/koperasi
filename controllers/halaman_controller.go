@@ -220,9 +220,33 @@ func ShowHubungiKami(c *gin.Context) {
 		anggota, _ = repository.GetAnggotaByID(userID.(string))
 	}
 
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	c.HTML(http.StatusOK, "hubungi_kami.html", gin.H{
-		"Judul":   "Hubungi Kami",
-		"Anggota": anggota,
+		"Judul":       "Hubungi Kami",
+		"Anggota":     anggota,
+		"CurrentLogo": latestLogo,
 	})
 }
 
@@ -437,15 +461,38 @@ func ShowRiwayatPage(c *gin.Context) {
 
 	judulHalaman := "Riwayat Transaksi"
 
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	// =========================================================================
 	// KIRIM OBJEK ANGGOTA KE TEMPLATE (sama seperti di ShowHalaman)
 	// =========================================================================
 	c.HTML(http.StatusOK, "anggota_riwayat.html", gin.H{
-		"Title": judulHalaman,
-
-		"Judul":   judulHalaman,
-		"Riwayat": allTransactions,
-		"Anggota": anggota,
-		"Search":  search,
+		"Title":       judulHalaman,
+		"Judul":       judulHalaman,
+		"Riwayat":     allTransactions,
+		"Anggota":     anggota,
+		"Search":      search,
+		"CurrentLogo": latestLogo,
 	})
 }

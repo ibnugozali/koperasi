@@ -487,6 +487,29 @@ func BendaharaPesan(c *gin.Context) {
 		}
 	}
 
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	// Ambil daftar anggota untuk dropdown
 	anggotaRows, _ := db.Query("SELECT id_anggota, nama_anggota FROM anggota WHERE status = 'aktif'")
 	var anggotaList []struct{ ID, Nama string }
@@ -519,6 +542,7 @@ func BendaharaPesan(c *gin.Context) {
 		"PesanList":   pesanList,
 		"Title":       "Pesan Bendahara",
 		"ActivePage":  "pesan",
+		"CurrentLogo": latestLogo,
 	})
 }
 
@@ -1124,10 +1148,27 @@ func BendaharaPengaturan(c *gin.Context) {
 		return
 	}
 
-	// Get LogoPath from context (set by middleware)
-	logoPath, exists := c.Get("LogoPath")
-	if !exists {
-		logoPath = "/static/images/placeholder.png"
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
 	}
 
 	// Ambil data bendahara
@@ -1136,7 +1177,7 @@ func BendaharaPengaturan(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "bendahara_layout.html", gin.H{
 			"ActivePage": "pengaturan",
 			"Error":      "Gagal mengambil data bendahara: " + err.Error(),
-			"LogoPath":   logoPath,
+			"LogoPath":   latestLogo,
 		})
 		return
 	}
@@ -1144,7 +1185,7 @@ func BendaharaPengaturan(c *gin.Context) {
 	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
 		"ActivePage": "pengaturan",
 		"Bendahara":  bendahara,
-		"LogoPath":   logoPath,
+		"LogoPath":   latestLogo,
 	})
 }
 
@@ -1543,11 +1584,36 @@ func BendaharaEditBunga(c *gin.Context) {
 
 func BendaharaUpdateBunga(c *gin.Context) {
 	bungaStr := c.PostForm("bunga")
+
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg") {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
 	if bungaStr == "" {
 		c.HTML(http.StatusBadRequest, "bendahara_edit_bunga.html", gin.H{
 			"Error":        "Nilai bunga harus diisi",
 			"CurrentBunga": "",
 			"ActivePage":   "edit-bunga",
+			"CurrentLogo":  latestLogo,
 		})
 		return
 	}
@@ -1558,6 +1624,7 @@ func BendaharaUpdateBunga(c *gin.Context) {
 			"Error":        "Nilai bunga tidak valid",
 			"CurrentBunga": bungaStr,
 			"ActivePage":   "edit-bunga",
+			"CurrentLogo":  latestLogo,
 		})
 		return
 	}
@@ -1576,6 +1643,7 @@ func BendaharaUpdateBunga(c *gin.Context) {
 			"Error":        "Gagal menyimpan bunga ke database",
 			"CurrentBunga": bungaStr,
 			"ActivePage":   "edit-bunga",
+			"CurrentLogo":  latestLogo,
 		})
 		return
 	}
