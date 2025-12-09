@@ -151,6 +151,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentLogo.src = logoUrl;
                 previewLogo.src = logoUrl;
 
+                // Simpan logo baru ke localStorage untuk update otomatis di tab lain
+                localStorage.setItem('currentLogo', data.logoPath);
+
                 // Reset form
                 logoFileInput.value = '';
                 delete previewLogo.dataset.canvasData;

@@ -58,31 +58,20 @@ func BendaharaDashboard(c *gin.Context) {
 		totalPengambilan = 0
 	}
 
-	// Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
-	dirFiles, errLogo := os.ReadDir("static/images")
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("./static/images")
 	var latestLogo string
 	var latestTime int64
-	foundLogoPNG := false
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if name == "logo.png" {
-				latestLogo = "/static/images/logo.png"
-				foundLogoPNG = true
-				break
-			}
-		}
-		if !foundLogoPNG {
-			for _, file := range dirFiles {
-				name := file.Name()
-				if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
-					info, err := file.Info()
-					if err == nil {
-						modTime := info.ModTime().Unix()
-						if modTime > latestTime {
-							latestTime = modTime
-							latestLogo = "/static/images/" + name
-						}
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
 					}
 				}
 			}
@@ -1804,6 +1793,12 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 	}
 }
 func BendaharaLoginHistory(c *gin.Context) {
+	// Ambil data riwayat login dari database
+	loginHistory, err := repository.GetLoginHistory()
+	if err != nil {
+		loginHistory = []models.LoginHistory{} // Default kosong jika error
+	}
+
 	// Cari logo terbaru di static/images
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
@@ -1825,12 +1820,6 @@ func BendaharaLoginHistory(c *gin.Context) {
 	}
 	if latestLogo == "" {
 		latestLogo = "/static/images/placeholder.png"
-	}
-
-	// Ambil data riwayat login dari database
-	loginHistory, err := repository.GetLoginHistory()
-	if err != nil {
-		loginHistory = []models.LoginHistory{} // Default kosong jika error
 	}
 
 	c.HTML(http.StatusOK, "bendahara_login_history.html", gin.H{

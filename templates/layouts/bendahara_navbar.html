@@ -50,20 +50,11 @@
 <script>
     // Inisialisasi - pastikan submenu yang tidak aktif tertutup, yang aktif tetap terbuka
     document.addEventListener('DOMContentLoaded', function() {
-        // Load logo terbaru dari localStorage jika ada
-        const savedLogo = localStorage.getItem('currentLogo');
-        if (savedLogo) {
-            const navbarLogo = document.getElementById('navbarLogo');
-            if (navbarLogo) {
-                navbarLogo.src = savedLogo;
-            }
-        }
-
         // Listener untuk update logo otomatis saat diubah di tab lain
         window.addEventListener('storage', function(e) {
-            if (e.key === 'currentLogo') {
+            if (e.key === 'currentLogo' && e.newValue) {
                 const navbarLogo = document.getElementById('navbarLogo');
-                if (navbarLogo) {
+                if (navbarLogo && e.newValue !== '/static/images/placeholder.png') {
                     navbarLogo.src = e.newValue;
                 }
             }
