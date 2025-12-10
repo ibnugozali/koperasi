@@ -592,6 +592,91 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
+	// Cek apakah anggota sudah punya pinjaman aktif
+	pinjamanAktif, err := repository.GetPinjamanAktifByAnggotaID(userID)
+	if err != nil {
+		templateData := getAjukanPinjamanTemplateData(userID, anggota)
+		templateData["Error"] = "Gagal memeriksa status pinjaman aktif."
+		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
+		return
+	}
+
+	if len(pinjamanAktif) > 0 {
+		// Ambil pinjaman aktif pertama
+		p := pinjamanAktif[0]
+
+		// Ambil semua angsuran
+		angsurans, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+		if err != nil {
+			templateData := getAjukanPinjamanTemplateData(userID, anggota)
+			templateData["Error"] = "Gagal memeriksa status angsuran pinjaman aktif."
+			c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
+			return
+		}
+
+		// Hitung jumlah angsuran lunas
+		angsuranLunas := 0
+		for _, a := range angsurans {
+			if a.Status == "lunas" || a.Status == "diterima" {
+				angsuranLunas++
+			}
+		}
+
+		totalAngsuran := p.JangkaWaktu
+
+		// ——— RUMUS OB (Outstanding Balance) ———
+		pokokPerBulan := p.JumlahPinjaman / float64(totalAngsuran)
+		pokokLunas := float64(angsuranLunas) * pokokPerBulan
+		persentasePokok := (pokokLunas / p.JumlahPinjaman) * 100
+
+		// Syarat: minimal 60% pokok harus lunas
+		if persentasePokok < 60 {
+			templateData := getAjukanPinjamanTemplateData(userID, anggota)
+			templateData["Error"] = fmt.Sprintf(
+				"Anda baru melunasi %.2f%% pokok pinjaman. Minimal harus 60%% untuk mengajukan pinjaman baru.",
+				persentasePokok,
+			)
+			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+			return
+		}
+	}
+
+	// // Cek apakah anggota sudah punya pinjaman aktif
+	// pinjamanAktif, err := repository.GetPinjamanAktifByAnggotaID(userID)
+	// if err != nil {
+	// 	templateData := getAjukanPinjamanTemplateData(userID, anggota)
+	// 	templateData["Error"] = "Gagal memeriksa status pinjaman aktif."
+	// 	c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
+	// 	return
+	// }
+	// if len(pinjamanAktif) > 0 {
+	// 	// Cek apakah pinjaman aktif sudah lunas >= 60% angsuran
+	// 	// Ambil pinjaman aktif pertama (asumsi hanya satu aktif)
+	// 	p := pinjamanAktif[0]
+	// 	angsurans, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+	// 	if err != nil {
+	// 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
+	// 		templateData["Error"] = "Gagal memeriksa status angsuran pinjaman aktif."
+	// 		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
+	// 		return
+	// 	}
+	// 	totalAngsuran := p.JangkaWaktu
+	// 	angsuranLunas := 0
+	// 	for _, a := range angsurans {
+	// 		// Anggap status 'lunas' atau 'diterima' sebagai angsuran sah
+	// 		if a.Status == "lunas" || a.Status == "diterima" {
+	// 			angsuranLunas++
+	// 		}
+	// 	}
+	// 	persentase := float64(angsuranLunas) / float64(totalAngsuran) * 100
+	// 	if persentase < 60 {
+	// 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
+	// 		templateData["Error"] = "Anda hanya dapat mengajukan pinjaman baru jika angsuran pinjaman sebelumnya sudah lunas minimal 60%."
+	// 		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+	// 		return
+	// 	}
+	// }
+
 	// Hitung total simpanan
 	totalSimpanan, _, _, err := repository.GetSaldoAnggota(userID)
 	if err != nil {
