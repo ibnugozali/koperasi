@@ -8,7 +8,6 @@ import (
 
 	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
-
 )
 
 // Mengambil semua anggota dengan status pending
@@ -44,9 +43,19 @@ func UpdateAnggotaStatusWithCode(id string, newStatus string, memberCode string)
 // Membuat anggota baru (registrasi)
 func CreateAnggota(anggota models.Anggota) error {
 	db := config.GetDB()
+	// Ambil tahun konfirmasi (tahun sekarang)
+	tahun := time.Now().Format("2006")
+	anggota.Tahun = tahun
+
+	// Generate temporary ID for pending members: TEMP{timestamp}
+	tempID := fmt.Sprintf("TEMP%d", time.Now().UnixNano())
+	anggota.IDAnggota = tempID
+
+	// nomor_urut will be set to NULL during registration and assigned during confirmation
+	anggota.NomorUrut = ""
 	query := `
-		INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer, gaji_bulanan)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+	INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer, gaji_bulanan, tahun, nomor_urut)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 	`
 	_, err := db.Exec(query,
 		anggota.IDAnggota,
@@ -65,6 +74,8 @@ func CreateAnggota(anggota models.Anggota) error {
 		anggota.FakultasCode,
 		anggota.BuktiTransfer,
 		anggota.GajiBulanan,
+		anggota.Tahun,
+		anggota.NomorUrut,
 	)
 	return err
 }

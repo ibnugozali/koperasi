@@ -8,49 +8,6 @@
 
 <div class="row">
     <div class="col-md-8">
-        <!-- Form Update Profil -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-primary text-white">
-                <i class="fa-solid fa-user-edit"></i> Update Profil
-            </div>
-            <div class="card-body">
-                <form id="profileForm" action="/bendahara/update-profile" method="POST">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="namaBendahara" class="form-label">Nama Lengkap</label>
-                                <input type="text" class="form-control" id="namaBendahara" name="nama_pengelola" value="{{.Bendahara.NamaPengelola}}" readonly>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="usernameBendahara" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="usernameBendahara" name="username" value="{{.Bendahara.Username}}" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="emailBendahara" class="form-label">Jabatan</label>
-                                <input type="text" class="form-control" id="emailBendahara" value="{{.Bendahara.JabatanKoperasi}}" readonly>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="levelBendahara" class="form-label">Level</label>
-                                <input type="text" class="form-control" id="levelBendahara" value="{{.Bendahara.Level}}" readonly>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-end">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-save"></i> Simpan Perubahan
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
 
         <!-- Form Ganti Password -->
         <div class="card shadow-sm">

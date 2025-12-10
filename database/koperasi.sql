@@ -1,4 +1,5 @@
 -- SQLBook: Code
+-- Active: 1716903284734@@127.0.0.1@5432@postgres
 -- Hapus tabel jika sudah ada untuk memastikan skrip bisa dijalankan ulang
 DROP TABLE IF EXISTS import_history CASCADE;
 DROP TABLE IF EXISTS angsuran CASCADE;

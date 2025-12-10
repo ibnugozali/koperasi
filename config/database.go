@@ -13,7 +13,7 @@ var db *sql.DB
 // InitDB menginisialisasi koneksi ke database PostgreSQL
 func InitDB() {
 	var err error
-	connStr := "postgres://postgres:SuTa@localhost:5432/koperasi?sslmode=disable"
+	connStr := "postgres://postgres:SuTa@localhost:5432/postgres?sslmode=disable"
 
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {
