@@ -404,3 +404,22 @@ ALTER TABLE detail ADD COLUMN IF NOT EXISTS bukti_pembayaran VARCHAR(255);
 ALTER TABLE angsuran DROP CONSTRAINT IF EXISTS angsuran_status_check;
 ALTER TABLE angsuran ADD CONSTRAINT angsuran_status_check CHECK (status IN ('pending', 'confirmed', 'rejected'));
 ALTER TABLE angsuran ALTER COLUMN status SET DEFAULT 'pending';
+-- Update nomor_urut dan id_anggota agar urut per kombinasi unit_kerja, fakultas_code, tahun
+WITH ranked AS (
+  SELECT
+    id_anggota,
+    unit_kerja,
+    fakultas_code,
+    tahun,
+    ROW_NUMBER() OVER (
+      PARTITION BY unit_kerja, fakultas_code, tahun
+      ORDER BY tgl_gabung, id_anggota
+    ) AS rn
+  FROM anggota
+)
+UPDATE anggota a
+SET
+  nomor_urut = LPAD(r.rn::text, 4, '0'),
+  id_anggota = r.unit_kerja || r.fakultas_code || r.tahun || LPAD(r.rn::text, 4, '0')
+FROM ranked r
+WHERE a.id_anggota = r.id_anggota;

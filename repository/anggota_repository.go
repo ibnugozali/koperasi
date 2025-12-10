@@ -832,3 +832,56 @@ func BatchInsertAnggota(db *sql.DB, anggotaList []models.Anggota) (successCount 
 
 	return successCount, failedCount, detailErrors, successfulIDs
 }
+
+// ActivateAnggota mengaktifkan anggota dan mengisi id_anggota serta nomor_urut urut global
+func ActivateAnggota(tempID string) error {
+	db := config.GetDB()
+
+	// Mulai transaksi
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Ambil data anggota berdasarkan tempID
+	var unitKerja, fakultasCode, tahun string
+	err = tx.QueryRow(`SELECT unit_kerja, fakultas_code, tahun FROM anggota WHERE id_anggota = $1 FOR UPDATE`, tempID).Scan(&unitKerja, &fakultasCode, &tahun)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Validasi dan pastikan kode unitKerja dan fakultasCode 2 digit
+	if len(unitKerja) == 1 {
+		unitKerja = "0" + unitKerja
+	}
+	if len(fakultasCode) == 1 {
+		fakultasCode = "0" + fakultasCode
+	}
+
+	// Ambil nomor urut dari sequence database
+	// Ambil nomor urut dari sequence global
+	var nomorUrut int64
+	err = tx.QueryRow(`SELECT nextval('anggota_nomor_urut_seq')`).Scan(&nomorUrut)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	nomorUrutStr := fmt.Sprintf("%04d", nomorUrut)
+	idAnggota := unitKerja + fakultasCode + tahun + nomorUrutStr
+	// Update anggota: set id_anggota, nomor_urut, status aktif
+	_, err = tx.Exec(`UPDATE anggota SET id_anggota = $1, nomor_urut = $2, status = 'aktif' WHERE id_anggota = $3`, idAnggota, nomorUrutStr, tempID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	return err
+}
