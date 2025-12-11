@@ -8,6 +8,30 @@ import (
 	"koperasi-simpan-pinjam/models"
 )
 
+// GetPengambilanSimpananByID mengambil detail pengambilan simpanan berdasarkan ID
+func GetPengambilanSimpananByID(id int) (models.PengambilanSimpanan, error) {
+	db := config.GetDB()
+	var ps models.PengambilanSimpanan
+	query := `
+	   SELECT ps.id_pengambilan, ps.id_anggota, a.nama_anggota, ps.id_simpanan, s.jenis_simpanan,
+			  ps.jumlah, ps.alasan, ps.tgl_pengajuan, ps.tgl_proses, ps.status,
+			  COALESCE(ps.catatan_bendahara, ''), ps.id_pengelola,
+			  ps.no_rekening, ps.nama_bank, ps.nama_pemilik, ps.metode_pengambilan, ''
+	   FROM pengambilan_simpanan ps
+	   JOIN anggota a ON ps.id_anggota = a.id_anggota
+	   JOIN simpanan s ON ps.id_simpanan = s.id_simpanan
+	   WHERE ps.id_pengambilan = $1
+	   LIMIT 1
+   `
+	err := db.QueryRow(query, id).Scan(
+		&ps.IDPengambilan, &ps.IDAnggota, &ps.NamaAnggota, &ps.IDSimpanan, &ps.JenisSimpanan,
+		&ps.Jumlah, &ps.Alasan, &ps.TglPengajuan, &ps.TglProses, &ps.Status,
+		&ps.CatatanBendahara, &ps.IDPengelola,
+		&ps.NomorRekening, &ps.NamaBank, &ps.NamaPemilikRekening, &ps.MetodePencairan, &ps.BuktiPengambilan,
+	)
+	return ps, err
+}
+
 // CreateSimpanan mencatat transaksi simpanan
 func CreateSimpanan(detail models.Detail) error {
 	db := config.GetDB()

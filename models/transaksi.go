@@ -75,16 +75,21 @@ type Riwayat struct {
 
 // PengambilanSimpanan mewakili pengajuan pengambilan simpanan
 type PengambilanSimpanan struct {
-	IDPengambilan    int           `json:"id_pengambilan" db:"id_pengambilan"`
-	IDAnggota        string        `json:"id_anggota" db:"id_anggota"`
-	NamaAnggota      string        `json:"nama_anggota" db:"nama_anggota"`
-	IDSimpanan       int           `json:"id_simpanan" db:"id_simpanan"`
-	JenisSimpanan    string        `json:"jenis_simpanan" db:"jenis_simpanan"`
-	Jumlah           float64       `json:"jumlah" db:"jumlah"`
-	Alasan           string        `json:"alasan" db:"alasan"`
-	TglPengajuan     time.Time     `json:"tgl_pengajuan" db:"tgl_pengajuan"`
-	TglProses        sql.NullTime  `json:"tgl_proses" db:"tgl_proses"`
-	Status           string        `json:"status" db:"status"`
-	CatatanBendahara string        `json:"catatan_bendahara" db:"catatan_bendahara"`
-	IDPengelola      sql.NullInt64 `json:"id_pengelola" db:"id_pengelola"`
+	IDPengambilan       int           `json:"id_pengambilan" db:"id_pengambilan"`
+	IDAnggota           string        `json:"id_anggota" db:"id_anggota"`
+	NamaAnggota         string        `json:"nama_anggota" db:"nama_anggota"`
+	IDSimpanan          int           `json:"id_simpanan" db:"id_simpanan"`
+	JenisSimpanan       string        `json:"jenis_simpanan" db:"jenis_simpanan"`
+	Jumlah              float64       `json:"jumlah" db:"jumlah"`
+	Alasan              string        `json:"alasan" db:"alasan"`
+	TglPengajuan        time.Time     `json:"tgl_pengajuan" db:"tgl_pengajuan"`
+	TglProses           sql.NullTime  `json:"tgl_proses" db:"tgl_proses"`
+	Status              string        `json:"status" db:"status"`
+	CatatanBendahara    string        `json:"catatan_bendahara" db:"catatan_bendahara"`
+	IDPengelola         sql.NullInt64 `json:"id_pengelola" db:"id_pengelola"`
+	NomorRekening       string        `json:"nomor_rekening" db:"nomor_rekening"`
+	NamaBank            string        `json:"nama_bank" db:"nama_bank"`
+	NamaPemilikRekening string        `json:"nama_pemilik_rekening" db:"nama_pemilik_rekening"`
+	MetodePencairan     string        `json:"metode_pencairan" db:"metode_pencairan"`
+	BuktiPengambilan    string        `json:"bukti_pengambilan" db:"bukti_pengambilan"`
 }

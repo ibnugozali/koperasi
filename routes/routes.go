@@ -12,6 +12,7 @@ import (
 
 	"koperasi-simpan-pinjam/controllers"
 	"koperasi-simpan-pinjam/middleware"
+
 )
 
 func SetupRouter() *gin.Engine {
@@ -140,6 +141,8 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.GET("/lihat-detail-simpanan/:id", controllers.BendaharaLihatDetailSimpanan)
 		bendaharaRoutes.GET("/lihat-persyaratan-pinjaman/:id", controllers.BendaharaLihatPersyaratanPinjaman)
 		bendaharaRoutes.GET("/detail-angsuran/:id", controllers.BendaharaDetailAngsuran)
+		bendaharaRoutes.GET("/anggota-angsuran/:id", controllers.BendaharaLihatDetailAngsuran)
+		bendaharaRoutes.GET("/detail-ajukan-pengambilan/:id", controllers.BendaharaDetailAjukanPengambilan)
 		bendaharaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.BendaharaKonfirmasiTransaksiPost)
 		bendaharaRoutes.GET("/halaman/edit/:slug", controllers.BendaharaShowEditHalamanForm)
 		bendaharaRoutes.POST("/halaman/update/:slug", controllers.BendaharaUpdateHalaman)

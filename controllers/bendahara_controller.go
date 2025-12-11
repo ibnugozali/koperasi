@@ -24,6 +24,97 @@ import (
 )
 
 // Menampilkan dashboard bendahara dengan data statistik
+func BendaharaLihatDetailAngsuran(c *gin.Context) {
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("./static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+	id := c.Param("id")
+	// TODO: Ambil data angsuran dari repository sesuai id
+	// Contoh: angsuran, err := repository.GetAngsuranByID(id)
+	// Untuk sekarang, tampilkan halaman detail angsuran sederhana
+	c.HTML(http.StatusOK, "bendahara_lihat_detail_angsuran.html", gin.H{
+		"AngsuranID":  id,
+		"ActivePage":  "lihat-detail-angsuran",
+		"CurrentLogo": latestLogo,
+		// Tambahkan data lain sesuai kebutuhan
+	})
+}
+
+// Handler untuk detail ajukan pengambilan simpanan
+func BendaharaDetailAjukanPengambilan(c *gin.Context) {
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("./static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "ID tidak valid")
+		return
+	}
+	pengambilan, err := repository.GetPengambilanSimpananByID(id)
+	if err != nil {
+		c.String(http.StatusNotFound, "Data pengambilan tidak ditemukan")
+		return
+	}
+	c.HTML(http.StatusOK, "bendahara_detail_ajukan_pengambilan.html", gin.H{
+		"Anggota": map[string]interface{}{
+			"NamaAnggota": pengambilan.NamaAnggota,
+			"IDAnggota":   pengambilan.IDAnggota,
+		},
+		"JenisSimpanan":     pengambilan.JenisSimpanan,
+		"Jumlah":            pengambilan.Jumlah,
+		"MetodePengambilan": pengambilan.MetodePencairan,
+		"Status":            pengambilan.Status,
+		"NomorRekening":     pengambilan.NomorRekening,
+		"NamaBank":          pengambilan.NamaBank,
+		"NamaPemilik":       pengambilan.NamaPemilikRekening,
+		"TglPengajuan":      pengambilan.TglPengajuan,
+		"Alasan":            pengambilan.Alasan,
+		"BuktiPengambilan":  pengambilan.BuktiPengambilan,
+		"ActivePage":        "detail-ajukan-pengambilan",
+		"CurrentLogo":       latestLogo,
+	})
+}
+
+// Menampilkan dashboard bendahara dengan data statistik
 func BendaharaDashboard(c *gin.Context) {
 	db := config.GetDB()
 
@@ -95,7 +186,7 @@ func BendaharaDashboard(c *gin.Context) {
 	c.HTML(http.StatusOK, "bendahara_dashboard_content.html", data)
 }
 
-// Menampilkan halaman konfirmasi anggota
+// Menampilkan halaman konfirmasi anggota----
 // BendaharaEditRekeningRegister menampilkan halaman edit nomor rekening koperasi
 // BendaharaKonfirmasi menampilkan halaman konfirmasi anggota
 func BendaharaKonfirmasi(c *gin.Context) {
@@ -3380,33 +3471,25 @@ func BendaharaDetailAngsuran(c *gin.Context) {
 		pinjamans = []models.Pinjaman{} // Default kosong jika error
 	}
 
-	// Hitung jumlah pinjaman dan sisa pinjaman
 	var jumlahPinjaman float64
 	var sisaPinjaman float64
 	var angsuranKe int
-	var totalAngsuranTerbayar float64
+	var angsurans []models.Angsuran
 
 	if len(pinjamans) > 0 {
-		pinjaman := pinjamans[0] // Ambil pinjaman pertama yang aktif
+		pinjaman := pinjamans[0]
 		jumlahPinjaman = pinjaman.JumlahPinjaman
-
-		// Hitung total angsuran yang sudah dibayar
-		angsurans, err := repository.GetAngsuranByPinjamanID(pinjaman.IDPinjaman)
-		if err == nil && len(angsurans) > 0 {
-			for _, a := range angsurans {
-				if a.Status == "confirmed" {
-					totalAngsuranTerbayar += a.SisaPinjaman
-				}
+		angsurans, _ = repository.GetAngsuranByPinjamanID(pinjaman.IDPinjaman)
+		sisaPinjaman = pinjaman.JumlahPinjaman
+		for _, a := range angsurans {
+			if a.Status == "confirmed" {
+				sisaPinjaman -= a.SisaPinjaman
 			}
-			sisaPinjaman = jumlahPinjaman - totalAngsuranTerbayar
-			if sisaPinjaman < 0 {
-				sisaPinjaman = 0
-			}
-			angsuranKe = len(angsurans) + 1
-		} else {
-			sisaPinjaman = jumlahPinjaman
-			angsuranKe = 1
 		}
+		if sisaPinjaman < 0 {
+			sisaPinjaman = 0
+		}
+		angsuranKe = len(angsurans) + 1
 	} else if totalPinjaman > 0 {
 		jumlahPinjaman = totalPinjaman
 		sisaPinjaman = totalPinjaman
@@ -3449,9 +3532,9 @@ func BendaharaDetailAngsuran(c *gin.Context) {
 		"JumlahPinjaman": jumlahPinjaman,
 		"SisaPinjaman":   sisaPinjaman,
 		"AngsuranKe":     angsuranKe,
-		"Pinjamans":      pinjamans,
 		"TotalPinjaman":  totalPinjaman,
 		"NomorRekening":  nomorRekening,
+		"Angsurans":      angsurans,
 		"CurrentLogo":    latestLogo,
 	})
 }
