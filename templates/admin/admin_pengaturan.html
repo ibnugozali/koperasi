@@ -27,27 +27,66 @@
                                  
             <div class="row mt-4">
                 <div class="col-12">
-                    <div class="stat-card">
-                        <h5>Update Login Admin</h5>
-                        <form id="updateProfileForm">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <label for="username" class="form-label">Username</label>
-                                    <input type="text" class="form-control" id="username" name="username" value="{{.Admin.Username}}" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="password" class="form-label">Password Baru (Opsional)</label>
-                                    <input type="password" class="form-control" id="password" name="password">
-                                </div>
-                            </div>
-                            <div class="row mt-3">
-                                <div class="col-md-6">
-                                    <label for="confirm_password" class="form-label">Konfirmasi Password</label>
-                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password">
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary mt-3">Update Profil</button>
-                        </form>
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="fa fa-users me-2"></i> Manajemen User Koperasi</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Role</th>
+                                        <th>Nama</th>
+                                        <th>Username</th>
+                                        <th>Password</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{range $i, $user := .UserList}}
+                                    <tr>
+                                        <td>{{$i | add 1}}</td>
+                                        <td>{{$user.Role}}</td>
+                                        <td>{{$user.Name}}</td>
+                                        <td>{{$user.Username}}</td>
+                                        <td>{{$user.Password}}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editUserModal{{$user.ID}}">Edit</button>
+                                        </td>
+                                    </tr>
+                                    <!-- Modal Edit User -->
+                                    <div class="modal fade" id="editUserModal{{$user.ID}}" tabindex="-1" aria-labelledby="editUserModalLabel{{$user.ID}}" aria-hidden="true">
+                                      <div class="modal-dialog">
+                                        <div class="modal-content">
+                                          <div class="modal-header">
+                                            <h5 class="modal-title" id="editUserModalLabel{{$user.ID}}">Edit User</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                          </div>
+                                          <form method="POST" action="/admin/update-user">
+                                            <div class="modal-body">
+                                              <input type="hidden" name="id" value="{{$user.ID}}">
+                                              <div class="mb-3">
+                                                <label for="username{{$user.ID}}" class="form-label">Username</label>
+                                                <input type="text" class="form-control" id="username{{$user.ID}}" name="username" value="{{$user.Username}}" required>
+                                              </div>
+                                              <div class="mb-3">
+                                                <label for="password{{$user.ID}}" class="form-label">Password Baru (Opsional)</label>
+                                                <input type="password" class="form-control" id="password{{$user.ID}}" name="password" placeholder="Kosongkan jika tidak ingin mengubah">
+                                              </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                              <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                                            </div>
+                                          </form>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
