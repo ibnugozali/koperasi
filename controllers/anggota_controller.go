@@ -137,8 +137,22 @@ func AnggotaProfil(c *gin.Context) {
 	// Ambil total pinjaman
 	_, totalPinjaman, _, err := repository.GetSaldoAnggota(userID)
 	if err != nil {
-		// Jika gagal ambil pinjaman, set ke 0
 		totalPinjaman = 0
+	}
+
+	// Kurangi total pinjaman dengan total angsuran yang statusnya diterima/confirmed
+	angsurans, err := repository.GetRiwayatAngsuranByAnggotaID(userID, "")
+	if err == nil {
+		var totalAngsuranDiterima float64 = 0
+		for _, a := range angsurans {
+			if a.Status == "confirmed" || a.Status == "lunas" {
+				totalAngsuranDiterima += a.SisaPinjaman
+			}
+		}
+		totalPinjaman -= totalAngsuranDiterima
+		if totalPinjaman < 0 {
+			totalPinjaman = 0
+		}
 	}
 
 	// Cari logo terbaru di static/images
@@ -614,21 +628,17 @@ func AjukanPinjamanPost(c *gin.Context) {
 			return
 		}
 
-		// Hitung jumlah angsuran lunas
-		angsuranLunas := 0
+		// Hitung total pokok yang sudah dilunasi dari angsuran yang statusnya lunas/confirmed
+		totalPokokLunas := 0.0
 		for _, a := range angsurans {
-			if a.Status == "lunas" || a.Status == "diterima" {
-				angsuranLunas++
+			if a.Status == "lunas" || a.Status == "confirmed" || a.Status == "diterima" {
+				totalPokokLunas += a.SisaPinjaman
 			}
 		}
-
-		totalAngsuran := p.JangkaWaktu
-
-		// ——— RUMUS OB (Outstanding Balance) ———
-		pokokPerBulan := p.JumlahPinjaman / float64(totalAngsuran)
-		pokokLunas := float64(angsuranLunas) * pokokPerBulan
-		persentasePokok := (pokokLunas / p.JumlahPinjaman) * 100
-
+		persentasePokok := 0.0
+		if p.JumlahPinjaman > 0 {
+			persentasePokok = (totalPokokLunas / p.JumlahPinjaman) * 100
+		}
 		// Syarat: minimal 60% pokok harus lunas
 		if persentasePokok < 60 {
 			templateData := getAjukanPinjamanTemplateData(userID, anggota)

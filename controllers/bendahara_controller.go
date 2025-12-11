@@ -3357,3 +3357,101 @@ func BendaharaCekDanProsesPemotonganOtomatis(c *gin.Context) {
 		"errorMessage":  errorMessage,
 	})
 }
+
+// BendaharaDetailAngsuran menampilkan detail angsuran anggota
+func BendaharaDetailAngsuran(c *gin.Context) {
+	id := c.Param("id")
+
+	anggota, err := repository.GetAnggotaByID(id)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		return
+	}
+
+	// Ambil data saldo (total pinjaman yang belum lunas)
+	_, totalPinjaman, _, err := repository.GetSaldoAnggota(id)
+	if err != nil {
+		totalPinjaman = 0
+	}
+
+	// Ambil pinjaman aktif anggota
+	pinjamans, err := repository.GetPinjamanAktifByAnggotaID(id)
+	if err != nil {
+		pinjamans = []models.Pinjaman{} // Default kosong jika error
+	}
+
+	// Hitung jumlah pinjaman dan sisa pinjaman
+	var jumlahPinjaman float64
+	var sisaPinjaman float64
+	var angsuranKe int
+	var totalAngsuranTerbayar float64
+
+	if len(pinjamans) > 0 {
+		pinjaman := pinjamans[0] // Ambil pinjaman pertama yang aktif
+		jumlahPinjaman = pinjaman.JumlahPinjaman
+
+		// Hitung total angsuran yang sudah dibayar
+		angsurans, err := repository.GetAngsuranByPinjamanID(pinjaman.IDPinjaman)
+		if err == nil && len(angsurans) > 0 {
+			for _, a := range angsurans {
+				if a.Status == "confirmed" {
+					totalAngsuranTerbayar += a.SisaPinjaman
+				}
+			}
+			sisaPinjaman = jumlahPinjaman - totalAngsuranTerbayar
+			if sisaPinjaman < 0 {
+				sisaPinjaman = 0
+			}
+			angsuranKe = len(angsurans) + 1
+		} else {
+			sisaPinjaman = jumlahPinjaman
+			angsuranKe = 1
+		}
+	} else if totalPinjaman > 0 {
+		jumlahPinjaman = totalPinjaman
+		sisaPinjaman = totalPinjaman
+		angsuranKe = 1
+	}
+
+	db := config.GetDB()
+	var nomorRekening string
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nomor_rekening'").Scan(&nomorRekening)
+	if err != nil {
+		nomorRekening = "1234567890 (Bank ABC)" // Default jika belum diset
+	}
+
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "bendahara_detail_angsuran.html", gin.H{
+		"Judul":          "Detail Angsuran Anggota",
+		"Anggota":        anggota,
+		"JumlahPinjaman": jumlahPinjaman,
+		"SisaPinjaman":   sisaPinjaman,
+		"AngsuranKe":     angsuranKe,
+		"Pinjamans":      pinjamans,
+		"TotalPinjaman":  totalPinjaman,
+		"NomorRekening":  nomorRekening,
+		"CurrentLogo":    latestLogo,
+	})
+}

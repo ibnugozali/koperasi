@@ -139,6 +139,7 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.GET("/konfirmasi-transaksi", controllers.BendaharaKonfirmasiTransaksi)
 		bendaharaRoutes.GET("/lihat-detail-simpanan/:id", controllers.BendaharaLihatDetailSimpanan)
 		bendaharaRoutes.GET("/lihat-persyaratan-pinjaman/:id", controllers.BendaharaLihatPersyaratanPinjaman)
+		bendaharaRoutes.GET("/detail-angsuran/:id", controllers.BendaharaDetailAngsuran)
 		bendaharaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.BendaharaKonfirmasiTransaksiPost)
 		bendaharaRoutes.GET("/halaman/edit/:slug", controllers.BendaharaShowEditHalamanForm)
 		bendaharaRoutes.POST("/halaman/update/:slug", controllers.BendaharaUpdateHalaman)
