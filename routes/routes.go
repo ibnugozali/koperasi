@@ -12,7 +12,6 @@ import (
 
 	"koperasi-simpan-pinjam/controllers"
 	"koperasi-simpan-pinjam/middleware"
-
 )
 
 func SetupRouter() *gin.Engine {
@@ -197,15 +196,17 @@ func SetupRouter() *gin.Engine {
 	ketuaRoutes.Use(middleware.AuthRequired(), middleware.KetuaOnly())
 	{
 		ketuaRoutes.GET("/dashboard", controllers.KetuaDashboard)
-		ketuaRoutes.GET("/konfirmasi", controllers.KetuaKonfirmasi)
-		ketuaRoutes.GET("/halaman", controllers.KetuaListHalaman)
-		ketuaRoutes.GET("/anggota", controllers.KetuaListAllAnggota)
-		ketuaRoutes.GET("/anggota/:id", controllers.KetuaViewAnggota)
-		ketuaRoutes.GET("/transaksi", controllers.KetuaTransaksi)
-		ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
-		ketuaRoutes.GET("/tentang", controllers.KetuaTentang)
-		ketuaRoutes.GET("/pengaturan", controllers.KetuaPengaturan)
-		ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
+		ketuaRoutes.GET("/ketua-dashboard", controllers.KetuaDashboard)
+		ketuaRoutes.GET("/ketua-data-anggota", controllers.KetuaDataAnggota)
+		ketuaRoutes.GET("/ketua-riwayat-login", controllers.KetuaRiwayat)
+		ketuaRoutes.GET("/ketua-laporan", controllers.KetuaLaporan)
+		ketuaRoutes.GET("/ketua-pengaturan", controllers.KetuaPengaturan)
+		// ketuaRoutes.GET("/anggota/:id", controllers.KetuaViewAnggota)
+		// ketuaRoutes.GET("/transaksi", controllers.KetuaTransaksi)
+		// ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
+		// ketuaRoutes.GET("/tentang", controllers.KetuaTentang)
+		// ketuaRoutes.GET("/pengaturan", controllers.KetuaPengaturan)
+		// ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
 	}
 	return router
 }

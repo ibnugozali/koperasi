@@ -1,19 +1,49 @@
-{{define "ketua_laporan_content"}}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Laporan Keuangan</h5>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fa-solid fa-info-circle me-2"></i>Halaman laporan keuangan sedang dalam pengembangan.
-                    </div>
-                    <p>Di sini ketua dapat melihat laporan keuangan koperasi.</p>
-                </div>
-            </div>
-        </div>
+{{define "ketua_laporan.html"}}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan - Ketua</title>
+    <link rel="stylesheet" href="/static/css/admin_laporan.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    {{template "ketua_navbar.html" .}}
+    <div class="container mt-4">
+        <h2 class="mb-4">Laporan Koperasi</h2>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Jenis Laporan</th>
+                    <th>Periode</th>
+                    <th>Tanggal Dibuat</th>
+                    <th>Dibuat Oleh</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $i, $laporan := .LaporanList}}
+                <tr>
+                    <td>{{$i | add 1}}</td>
+                    <td>{{$laporan.Jenis}}</td>
+                    <td>{{$laporan.Periode}}</td>
+                    <td>{{$laporan.TanggalDibuat}}</td>
+                    <td>{{$laporan.DibuatOleh}}</td>
+                    <td>
+                        <a href="/ketua/laporan/detail/{{$laporan.ID}}" class="btn btn-info btn-sm"><i class="fa fa-eye"></i> Detail</a>
+                        <a href="/ketua/laporan/cetak/{{$laporan.ID}}" class="btn btn-success btn-sm"><i class="fa fa-print"></i> Cetak</a>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="6" class="text-center">Tidak ada laporan tersedia.</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
     </div>
-</div>
+</body>
+</html>
 {{end}}

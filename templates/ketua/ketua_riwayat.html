@@ -1,0 +1,44 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riwayat Ketua</title>
+    <link rel="stylesheet" href="/static/css/admin_keamanan_riwayat.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    {{template "ketua_navbar.html" .}}
+    <div class="container mt-4">
+        <h2 class="mb-4">Riwayat Login Ketua</h2>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Username</th>
+                    <th>Waktu Login</th>
+                    <th>IP Address</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $i, $riwayat := .RiwayatLoginList}}
+                <tr>
+                    <td>{{$i | add 1}}</td>
+                    <td>{{$riwayat.Username}}</td>
+                    <td>{{$riwayat.WaktuLogin}}</td>
+                    <td>{{$riwayat.IPAddress}}</td>
+                    <td>{{$riwayat.Status}}</td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="5" class="text-center">Tidak ada riwayat login.</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+

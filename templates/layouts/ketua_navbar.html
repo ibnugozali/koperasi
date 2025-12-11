@@ -10,35 +10,11 @@
         <img src="/static/images/placeholder.png" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px;">
         <h5 class="mt-2">Koperasi Simpan Pinjam</h5>
     </div>
-    <a href="/ketua/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
-
-    <!-- Manajemen Anggota -->
-    <a href="#manajemenAnggota" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
-    <div class="collapse" id="manajemenAnggota">
-        <a href="/ketua/konfirmasi" class="ms-3 {{ if eq .ActivePage "konfirmasi" }}active{{ end }}"><i class="fa-solid fa-user-check me-2"></i> Konfirmasi Anggota</a>
-        <a href="/ketua/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
-    </div>
-
-    <!-- Konten Website -->
-    <a href="#kontenWebsite" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fa-solid fa-globe me-2"></i> Konten Website</a>
-    <div class="collapse" id="kontenWebsite">
-        <a href="/ketua/halaman" class="ms-3 {{ if eq .ActivePage "halaman" }}active{{ end }}"><i class="fa-solid fa-edit me-2"></i> Kelola Halaman</a>
-        <a href="/ketua/halaman/edit/sejarah" class="ms-3 {{ if eq .ActivePage "sejarah" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Edit Sejarah</a>
-        <a href="/ketua/halaman/edit/visi-misi" class="ms-3 {{ if eq .ActivePage "visi_misi" }}active{{ end }}"><i class="fa-solid fa-eye me-2"></i> Edit Visi & Misi</a>
-        <a href="/ketua/halaman/edit/pinjaman" class="ms-3 {{ if eq .ActivePage "pinjaman" }}active{{ end }}"><i class="fa-solid fa-money-bill-wave me-2"></i> Edit Pinjaman</a>
-        <a href="/ketua/halaman/edit/simpanan" class="ms-3 {{ if eq .ActivePage "simpanan" }}active{{ end }}"><i class="fa-solid fa-piggy-bank me-2"></i> Edit Simpanan</a>
-        <a href="/ketua/halaman/edit/angsuran" class="ms-3 {{ if eq .ActivePage "angsuran" }}active{{ end }}"><i class="fa-solid fa-calendar-check me-2"></i> Edit Angsuran</a>
-    </div>
-
-    <!-- Transaksi & Laporan -->
-    <a href="#transaksiLaporan" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fa-solid fa-chart-bar me-2"></i> Transaksi & Laporan</a>
-    <div class="collapse" id="transaksiLaporan">
-        <a href="/ketua/riwayat" class="ms-3 {{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Riwayat</a>
-        <a href="/ketua/laporan" class="ms-3 {{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
-    </div>
-
-    <a href="/ketua/pesan" class="{{ if eq .ActivePage "pesan" }}active{{ end }}"><i class="fa-solid fa-envelope me-2"></i> Pesan</a>
-    <a href="/ketua/pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
+    <a href="/ketua/ketua-dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
+    <a href="/ketua/ketua-data-anggota" class="{{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
+    <a href="/ketua/ketua-riwayat-login" class="{{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-clock-rotate-left me-2"></i> Riwayat Login</a>
+    <a href="/ketua/ketua-laporan" class="{{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
+    <a href="/ketua/ketua-pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
     <a href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
 </div>
 

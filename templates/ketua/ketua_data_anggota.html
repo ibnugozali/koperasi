@@ -1,0 +1,45 @@
+    {{ template "ketua_navbar.html" . }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Anggota - Ketua</title>
+    <link rel="stylesheet" href="/static/css/admin_data_simpanan.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    {{template "ketua_navbar.html" .}}
+    <div class="container mt-4">
+        <h2 class="mb-4">Data Anggota</h2>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Nama</th>
+                    <th>NIK</th>
+                    <th>Alamat</th>
+                    <th>No. HP</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $i, $anggota := .AnggotaList}}
+                <tr>
+                    <td>{{$i | add 1}}</td>
+                    <td>{{$anggota.Nama}}</td>
+                    <td>{{$anggota.NIK}}</td>
+                    <td>{{$anggota.Alamat}}</td>
+                    <td>{{$anggota.NoHP}}</td>
+                    <td>{{$anggota.Status}}</td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="6" class="text-center">Tidak ada data anggota.</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
