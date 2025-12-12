@@ -41,8 +41,8 @@
             <li><a class="dropdown-item" href="/anggota/pesan"><i class="bi bi-envelope me-2"></i>Pesan</a></li>
             <li><a class="dropdown-item" href="/anggota/ganti-password"><i class="bi bi-key me-2"></i>Ganti Password</a></li>
             <li><a class="dropdown-item" href="/hubungi-kami"><i class="bi bi-telephone me-2"></i>Hubungi Kami</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
+            <!-- <li><hr class="dropdown-divider"></li> -->
+            <!-- <li> -->
               <a class="dropdown-item text-danger" href="/logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                 <i class="bi bi-box-arrow-right me-2"></i>Keluar
               </a>
@@ -53,7 +53,9 @@
       {{ else }}
       <ul class="navbar-nav ms-auto"><li class="nav-item"><a href="/login" class="btn btn-primary">Login</a></li></ul>
       {{ end }}
-    </div>
+
+    <!-- Form logout tersembunyi agar tombol logout berfungsi di semua halaman -->
+    <form id="logout-form" action="/logout" method="POST" style="display:none;"></form>
   </div>
 </nav>
 
