@@ -8,6 +8,7 @@ type Pengelola struct {
 	NamaPengelola   string    `json:"nama_pengelola"`
 	Username        string    `json:"username"`
 	Password        string    `json:"password"`
+	PlainPassword   string    `json:"plain_password"`
 	JabatanKoperasi string    `json:"jabatan_koperasi"`
 	NoTelepon       string    `json:"no_telepon"`
 	Email           string    `json:"email"`

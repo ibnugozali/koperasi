@@ -537,6 +537,7 @@ func UpdateAdminProfile(c *gin.Context) {
 
 	// Password disimpan dalam bentuk plain text sesuai permintaan
 	passwordToUpdate := request.Password
+	plainPasswordToUpdate := ""
 	if passwordToUpdate == "" {
 		// Jika password kosong, ambil password lama
 		admin, err := repository.GetPengelolaByID(adminID.(int))
@@ -545,10 +546,13 @@ func UpdateAdminProfile(c *gin.Context) {
 			return
 		}
 		passwordToUpdate = admin.Password
+		plainPasswordToUpdate = admin.PlainPassword
+	} else {
+		plainPasswordToUpdate = request.Password
 	}
 
-	// Update username dan password
-	err := repository.UpdatePengelolaUsernamePassword(adminID.(int), request.Username, passwordToUpdate)
+	// Update username, password, dan plain_password
+	err := repository.UpdatePengelolaUsernamePassword(adminID.(int), request.Username, passwordToUpdate, plainPasswordToUpdate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui profil"})
 		return

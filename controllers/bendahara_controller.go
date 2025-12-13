@@ -22,7 +22,6 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
-
 )
 
 // Menampilkan dashboard bendahara dengan data statistik
@@ -974,7 +973,7 @@ func BendaharaEditAnggota(c *gin.Context) {
 		"ActivePage": "anggota",
 		// "LogoPath":   logoPath,
 		"CurrentLogo": latestLogo,
-		"Title": "Edit Data Anggota",
+		"Title":       "Edit Data Anggota",
 	})
 }
 
@@ -1373,13 +1372,14 @@ func UpdateBendaharaProfile(c *gin.Context) {
 
 	// Hash password jika ada
 	passwordToUpdate := request.Password
+	plainPasswordToUpdate := ""
 	if passwordToUpdate != "" {
-		// Import bcrypt
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordToUpdate), bcrypt.DefaultCost)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengenkripsi password"})
 			return
 		}
+		plainPasswordToUpdate = request.Password
 		passwordToUpdate = string(hashedPassword)
 	} else {
 		// Jika password kosong, ambil password lama
@@ -1389,10 +1389,11 @@ func UpdateBendaharaProfile(c *gin.Context) {
 			return
 		}
 		passwordToUpdate = bendahara.Password
+		plainPasswordToUpdate = bendahara.PlainPassword
 	}
 
-	// Update username dan password
-	err := repository.UpdatePengelolaUsernamePassword(bendaharaID.(int), request.Username, passwordToUpdate)
+	// Update username, password, dan plain_password
+	err := repository.UpdatePengelolaUsernamePassword(bendaharaID.(int), request.Username, passwordToUpdate, plainPasswordToUpdate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui profil"})
 		return

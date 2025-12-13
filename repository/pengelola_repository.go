@@ -3,7 +3,6 @@ package repository
 import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
-
 )
 
 func GetPengelolaByUsername(username string) (models.Pengelola, error) {
@@ -17,15 +16,15 @@ func GetPengelolaByUsername(username string) (models.Pengelola, error) {
 func GetPengelolaByID(id int) (models.Pengelola, error) {
 	db := config.GetDB()
 	var p models.Pengelola
-	query := "SELECT id_pengelola, nama_pengelola, username, password, jabatan_koperasi, COALESCE(no_telepon, '') as no_telepon, COALESCE(email, '') as email, tgl_gabung, level, status FROM pengelola WHERE id_pengelola = $1"
-	err := db.QueryRow(query, id).Scan(&p.IDPengelola, &p.NamaPengelola, &p.Username, &p.Password, &p.JabatanKoperasi, &p.NoTelepon, &p.Email, &p.TglGabung, &p.Level, &p.Status)
+	query := "SELECT id_pengelola, nama_pengelola, username, password, COALESCE(plain_password, '') as plain_password, jabatan_koperasi, COALESCE(no_telepon, '') as no_telepon, COALESCE(email, '') as email, tgl_gabung, level, status FROM pengelola WHERE id_pengelola = $1"
+	err := db.QueryRow(query, id).Scan(&p.IDPengelola, &p.NamaPengelola, &p.Username, &p.Password, &p.PlainPassword, &p.JabatanKoperasi, &p.NoTelepon, &p.Email, &p.TglGabung, &p.Level, &p.Status)
 	return p, err
 }
 
-func UpdatePengelolaUsernamePassword(id int, username, password string) error {
+func UpdatePengelolaUsernamePassword(id int, username, password, plainPassword string) error {
 	db := config.GetDB()
-	query := "UPDATE pengelola SET username = $1, password = $2 WHERE id_pengelola = $3"
-	_, err := db.Exec(query, username, password, id)
+	query := "UPDATE pengelola SET username = $1, password = $2, plain_password = $3 WHERE id_pengelola = $4"
+	_, err := db.Exec(query, username, password, plainPassword, id)
 	return err
 }
 

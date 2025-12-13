@@ -63,6 +63,7 @@ CREATE TABLE pengelola (
     nama_pengelola VARCHAR(50) NOT NULL,
     username VARCHAR(25) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    plain_password VARCHAR(255), -- password asli untuk Info Akun
     jabatan_koperasi VARCHAR(25),
     no_telepon VARCHAR(20),
     email VARCHAR(50),
