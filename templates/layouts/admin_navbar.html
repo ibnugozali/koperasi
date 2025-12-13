@@ -12,7 +12,7 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="text-center mb-3">
-        <img id="navbarLogo" src="{{.LogoPath}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;">
+        <img id="navbarLogo" src="{{if .LogoPath}}{{.LogoPath}}{{else}}/static/images/logo.png{{end}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;" onerror="this.src='/static/images/logo.png'">
         <h5 class="mt-2">KOPMA</h5>
     </div>
     <a href="/admin/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
