@@ -148,12 +148,20 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="container-fluid">
+
             <br><br><br>
             <!-- Page Header -->
             <div class="page-header">
                 <h1><i class="fas fa-user-check me-3"></i>Konfirmasi Anggota</h1>
                 <p>Verifikasi dan konfirmasi pendaftaran anggota baru</p>
             </div>
+
+            <!-- Pesan Error -->
+            {{ if .ErrorMessage }}
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>{{ .ErrorMessage }}
+            </div>
+            {{ end }}
 
             <!-- Pending Members List -->
             <div class="row">

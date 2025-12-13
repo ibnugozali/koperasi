@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,6 +22,7 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
+
 )
 
 // Menampilkan dashboard bendahara dengan data statistik
@@ -220,11 +222,14 @@ func BendaharaKonfirmasi(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	// Ambil pesan error dari query string jika ada
+	errorMsg := c.Query("error")
 	c.HTML(http.StatusOK, "bendahara_anggota_konfirmasi.html", gin.H{
 		"PendingMembers": pendingMembers,
 		"ActivePage":     "konfirmasi_anggota",
 		"CurrentLogo":    latestLogo,
 		"Title":          "Konfirmasi Anggota",
+		"ErrorMessage":   errorMsg,
 	})
 }
 
@@ -422,7 +427,10 @@ func BendaharaConfirmMembership(c *gin.Context) {
 	// Ambil data anggota untuk mendapatkan informasi unit_kerja, fakultas, dan tahun
 	anggota, err := repository.GetAnggotaByID(tempID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data anggota"})
+		// Log error detail ke terminal/server log
+		fmt.Printf("[ERROR] Gagal mengambil data anggota dengan id %s: %v\n", tempID, err)
+		// Redirect ke halaman konfirmasi dengan pesan error
+		c.Redirect(http.StatusFound, "/bendahara/konfirmasi?error=Gagal mengambil data anggota")
 		return
 	}
 
@@ -439,15 +447,12 @@ func BendaharaConfirmMembership(c *gin.Context) {
 	// Ambil tahun konfirmasi saat ini
 	tahunKonfirmasi := time.Now().Format("2006")
 
-	// Ambil nomor urut terakhir untuk kombinasi unit_kerja, fakultas_code, dan tahun konfirmasi ini
+	// Ambil nomor urut terakhir secara global (tidak direset per kombinasi)
 	var lastNumber int
-	query := `SELECT COALESCE(MAX(CAST(nomor_urut AS INTEGER)), 0) 
-	          FROM anggota 
-	          WHERE unit_kerja = $1 AND fakultas_code = $2 AND tahun = $3 AND id_anggota NOT LIKE 'TEMP%'`
-
-	err = db.QueryRow(query, anggota.UnitKerja, anggota.FakultasCode, tahunKonfirmasi).Scan(&lastNumber)
+	query := `SELECT COALESCE(MAX(CAST(nomor_urut AS INTEGER)), 0) FROM anggota WHERE id_anggota NOT LIKE 'TEMP%'`
+	err = db.QueryRow(query).Scan(&lastNumber)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal generate nomor urut"})
+		c.Redirect(http.StatusFound, "/bendahara/konfirmasi?error=Gagal generate nomor urut")
 		return
 	}
 
@@ -465,7 +470,9 @@ func BendaharaConfirmMembership(c *gin.Context) {
 
 	_, err = db.Exec(updateQuery, newIDAnggota, "aktif", tahunKonfirmasi, nomorUrut, tempID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengkonfirmasi anggota"})
+		// Log error detail ke terminal/server log
+		fmt.Printf("[CONFIRM ANGGOTA ERROR] update anggota: %v\n", err)
+		c.Redirect(http.StatusFound, "/bendahara/konfirmasi?error="+url.QueryEscape("Gagal mengkonfirmasi anggota: "+err.Error()))
 		return
 	}
 
@@ -893,15 +900,38 @@ func BendaharaViewAnggota(c *gin.Context) {
 		return
 	}
 
-	// Get LogoPath from context
-	logoPath, _ := c.Get("LogoPath")
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
 
 	// Use bendahara template
 	c.HTML(http.StatusOK, "bendahara_data_anggota_view.html", gin.H{
 		"Anggota":    anggota,
 		"ActivePage": "anggota",
-		"LogoPath":   logoPath,
-		"Title":      "Detail Anggota",
+		// "LogoPath":   logoPath,
+
+		"CurrentLogo": latestLogo,
+		"Title":       "Detail Anggota",
 	})
 }
 
@@ -915,14 +945,36 @@ func BendaharaEditAnggota(c *gin.Context) {
 		return
 	}
 
-	// Get LogoPath from context
-	logoPath, _ := c.Get("LogoPath")
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
 
 	c.HTML(http.StatusOK, "bendahara_data_anggota_edit.html", gin.H{
 		"Anggota":    anggota,
 		"ActivePage": "anggota",
-		"LogoPath":   logoPath,
-		"Title":      "Edit Data Anggota",
+		// "LogoPath":   logoPath,
+		"CurrentLogo": latestLogo,
+		"Title": "Edit Data Anggota",
 	})
 }
 

@@ -131,7 +131,8 @@
                     fakultasHidden.value = fakultasSelect.value;
                 });
 
-                // Pastikan hidden input terisi saat form submit
+
+                // Pastikan hidden input terisi dan Gaji Bulanan tidak kosong saat form submit
                 registerForm.addEventListener('submit', function(e) {
                     fakultasHidden.value = fakultasSelect.value;
                     if (!fakultasHidden.value) {
@@ -139,14 +140,18 @@
                         alert('Silakan pilih fakultas terlebih dahulu');
                         return false;
                     }
+                    // Pastikan Gaji Bulanan tidak kosong (default 0 jika kosong)
+                    if (gajiBulananInput.value === '' || isNaN(gajiBulananInput.value)) {
+                        gajiBulananInput.value = 0;
+                    }
                 });
 
                 function updateGajiBulananStatus() {
                     const selectedValue = statusAnggotaSelect.value;
                     if (selectedValue === 'mahasiswa') {
-                        // Jika mahasiswa, disable input gaji dan set value ke 0
+                        // Jika mahasiswa, disable input gaji dan set value ke 0 agar tidak error di backend
+                        gajiBulananInput.value = 0;
                         gajiBulananInput.disabled = true;
-                        gajiBulananInput.value = '';
                         gajiBulananInput.required = false;
                         gajiBulananInput.classList.add('bg-light');
 

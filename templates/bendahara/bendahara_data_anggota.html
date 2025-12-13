@@ -85,6 +85,7 @@
             vertical-align: middle;
             white-space: nowrap;
             font-size: 0.9rem;
+            text-align: center;
         }
 
         .table tbody td {
@@ -92,6 +93,8 @@
             vertical-align: middle;
             color: #2d3748;
             font-size: 0.875rem;
+            text-align: center;
+            white-space: nowrap;
         }
 
         .table tbody td:nth-child(1) {
@@ -102,6 +105,7 @@
         .table tbody td:nth-child(2) {
             font-weight: 600;
             width: 120px;
+            white-space: nowrap;
         }
 
         .table tbody td:nth-child(3) {
@@ -109,22 +113,21 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            text-align: left;
         }
 
-        .table tbody td:nth-child(7) {
+        .table tbody td:nth-child(7),
+        .table tbody td:nth-child(8),
+        .table tbody td:nth-child(9),
+        .table tbody td:nth-child(10),
+        .table tbody td:nth-child(11),
+        .table tbody td:nth-child(12),
+        .table tbody td:nth-child(13) {
             text-align: center;
-            width: 120px;
+            white-space: nowrap;
         }
 
-        .table tbody td:nth-child(8) {
-            text-align: center;
-            width: 110px;
-        }
-
-        .table tbody td:nth-child(9) {
-            text-align: center;
-            width: 140px;
-        }
+        /* Remove redundant nth-child(8) and (9) rules, handled above */
 
         .badge-status {
             padding: 5px 12px;
@@ -504,7 +507,7 @@
                 },
                 "pageLength": 10,
                 "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-                "order": [[1, 'desc']],
+                "order": [], // Tidak ada sorting default, urut sesuai backend
                 "responsive": true
             });
 

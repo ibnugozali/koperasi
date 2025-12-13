@@ -15,7 +15,7 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 	db := config.GetDB() // Fungsi untuk mendapatkan koneksi DB
 	var anggotas []models.Anggota
 
-	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, nik_ktp, no_telepon, tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, '') FROM anggota WHERE status = 'pending' ORDER BY tgl_gabung ASC")
+	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, nik_ktp, no_telepon, tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, '') FROM anggota WHERE status = 'pending' ORDER BY LPAD(nomor_urut, 4, '0') DESC")
 	if err != nil {
 		return nil, err
 	}
@@ -52,11 +52,17 @@ func CreateAnggota(anggota models.Anggota) error {
 	anggota.IDAnggota = tempID
 
 	// nomor_urut will be set to NULL during registration and assigned during confirmation
-	anggota.NomorUrut = ""
+	anggota.NomorUrut = "NULL"
 	query := `
 	INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer, gaji_bulanan, tahun, nomor_urut)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 	`
+	var nomorUrut interface{}
+	if anggota.NomorUrut == "NULL" {
+		nomorUrut = nil
+	} else {
+		nomorUrut = anggota.NomorUrut
+	}
 	_, err := db.Exec(query,
 		anggota.IDAnggota,
 		anggota.NamaAnggota,
@@ -75,7 +81,7 @@ func CreateAnggota(anggota models.Anggota) error {
 		anggota.BuktiTransfer,
 		anggota.GajiBulanan,
 		anggota.Tahun,
-		anggota.NomorUrut,
+		nomorUrut,
 	)
 	return err
 }
@@ -89,13 +95,13 @@ func GetAnggotaByID(id string) (models.Anggota, error) {
 	var a models.Anggota
 	var encryptedPassword string
 	query := `
-		SELECT
-			id_anggota, nama_anggota, username, password,
-			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
-			alamat, jenis_kelamin, status,
-			unit_kerja, fakultas_code, COALESCE(tahun, ''), COALESCE(nomor_urut, ''), COALESCE(bukti_transfer, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, ''), COALESCE(gaji_bulanan, 0)
-		FROM anggota
-		WHERE id_anggota = $1`
+		       SELECT
+			       id_anggota, nama_anggota, username, password,
+			       tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
+			       alamat, jenis_kelamin, status,
+			       unit_kerja, fakultas_code, COALESCE(tahun, ''), COALESCE(CAST(nomor_urut AS TEXT), '0'), COALESCE(bukti_transfer, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, ''), COALESCE(gaji_bulanan, 0)
+		       FROM anggota
+		       WHERE id_anggota = $1`
 
 	err := db.QueryRow(query, id).Scan(
 		&a.IDAnggota, &a.NamaAnggota, &a.Username, &encryptedPassword,
@@ -119,13 +125,13 @@ func GetAllAnggota() ([]models.Anggota, error) {
 	var anggotas []models.Anggota
 
 	query := `
-		SELECT
-			id_anggota, nama_anggota, username,
-			tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
-			alamat, jenis_kelamin, status, unit_kerja, fakultas, COALESCE(gaji_bulanan, 0)
-		FROM anggota
-		WHERE status = 'aktif'
-		ORDER BY id_anggota DESC`
+	       SELECT
+	       	id_anggota, nama_anggota, username,
+	       	tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
+	       	alamat, jenis_kelamin, status, unit_kerja, fakultas, COALESCE(gaji_bulanan, 0)
+	       FROM anggota
+	       WHERE status = 'aktif'
+	       ORDER BY CAST(nomor_urut AS INTEGER) DESC`
 
 	rows, err := db.Query(query)
 	if err != nil {

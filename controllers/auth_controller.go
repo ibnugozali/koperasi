@@ -147,10 +147,14 @@ func Register(c *gin.Context) {
 
 	// Parse GajiBulanan
 	gajiBulananStr := c.PostForm("GajiBulanan")
-	if gajiBulananStr != "" {
+	if gajiBulananStr == "" {
+		newAnggota.GajiBulanan = 0
+	} else {
 		gajiBulanan, err := strconv.Atoi(gajiBulananStr)
 		if err == nil {
 			newAnggota.GajiBulanan = gajiBulanan
+		} else {
+			newAnggota.GajiBulanan = 0
 		}
 	}
 
@@ -242,6 +246,8 @@ func Register(c *gin.Context) {
 
 	err = repository.CreateAnggota(newAnggota)
 	if err != nil {
+		// Tambahkan log error ke console/server log
+		println("[REGISTER ERROR]", err.Error())
 		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Gagal menyimpan data: " + err.Error()})
 		return
 	}

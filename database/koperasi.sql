@@ -14,13 +14,27 @@ DROP TABLE IF EXISTS halaman CASCADE;
 -- BAGIAN 1: PEMBUATAN STRUKTUR TABEL
 -- =================================================================
 
--- Tabel anggota koperasi
 -- Format ID Anggota: {unit_kerja}{fakultas_code}{tahun}{nomor_urut}
 -- Contoh: 010120250001
--- - 01: Unit Kerja (01=Dosen, 02=Karyawan/Staff, 03=Mahasiswa)
--- - 01: Fakultas (01=FAI, 02=FE, 03=FH, 04=FISIP, 05=FKIP, 06=FKM, 07=FAPERTA, 08=FT, 09=Rektorat/Yayasan/Staff)
--- - 2025: Tahun konfirmasi oleh bendahara
--- - 0001: Nomor urut anggota (4 digit)
+--
+-- Kode Unit Kerja:
+--   01 = Dosen
+--   02 = Karyawan/Staff
+--   03 = Mahasiswa
+--
+-- Kode Fakultas:
+--   01 = Fakultas Agama Islam (FAI)
+--   02 = Fakultas Ekonomi (FE)
+--   03 = Fakultas Hukum (FH)
+--   04 = Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)
+--   05 = Fakultas Keguruan dan Ilmu Pendidikan (FKIP)
+--   06 = Fakultas Kesehatan Masyarakat (FKM)
+--   07 = Fakultas Pertanian (FAPERTA)
+--   08 = Fakultas Teknik (FT)
+--   09 = Rektorat / Yayasan / Staff
+--
+-- Tahun: diambil dari tahun konfirmasi oleh admin/bendahara (misal: 2025)
+-- Nomor urut: 4 digit, auto-increment global seluruh anggota
 CREATE TABLE anggota (
   id_anggota VARCHAR(50) PRIMARY KEY,
   nama_anggota VARCHAR(50) NOT NULL,
@@ -39,7 +53,7 @@ CREATE TABLE anggota (
   unit_kerja VARCHAR(50),  -- Dosen, Staff, Mahasiswa (nama lengkap)
   fakultas_code VARCHAR(2),  -- 01=FAI, 02=FE, 03=FH, 04=FISIP, 05=FKIP, 06=FKM, 07=FAPERTA, 08=FT, 09=Rektorat/Yayasan/Staff
   tahun VARCHAR(4),  -- Tahun konfirmasi
-  nomor_urut SERIAL,  -- Nomor urut auto-increment
+  nomor_urut SERIAL,  -- Nomor urut auto-increment, NULLABLE
   bukti_transfer VARCHAR(255),
   gaji_bulanan INTEGER DEFAULT 0  -- Gaji bulanan anggota dalam Rupiah
 );
@@ -419,7 +433,68 @@ WITH ranked AS (
 )
 UPDATE anggota a
 SET
-  nomor_urut = LPAD(r.rn::text, 4, '0'),
+nomor_urut = r.rn,
   id_anggota = r.unit_kerja || r.fakultas_code || r.tahun || LPAD(r.rn::text, 4, '0')
 FROM ranked r
 WHERE a.id_anggota = r.id_anggota;
+
+CREATE TABLE IF NOT EXISTS login_history (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    role VARCHAR(25) NOT NULL,
+    login_time TIMESTAMP NOT NULL,
+    ip_address VARCHAR(50),
+    status VARCHAR(25) NOT NULL
+);
+
+ALTER TABLE anggota ALTER COLUMN nomor_urut DROP NOT NULL;
+-- Ubah tipe kolom nomor_urut menjadi VARCHAR(4) agar bisa menyimpan '0001', '0002', dst
+ALTER TABLE anggota ALTER COLUMN nomor_urut TYPE VARCHAR(4);
+-- =============================================
+
+-- (JANGAN ISI nomor_urut MANUAL, biarkan trigger yang mengisi untuk anggota baru)
+--
+-- 1. Penomoran ulang anggota aktif:
+
+-- Penomoran ulang anggota aktif, nomor_urut selalu 4 digit (0001, 0002, ...)
+WITH ranked AS (
+  SELECT
+    id_anggota,
+    ROW_NUMBER() OVER (ORDER BY tgl_gabung, id_anggota) AS rn
+  FROM anggota
+  WHERE status = 'aktif'
+)
+UPDATE anggota a
+SET
+  nomor_urut = r.rn,
+  id_anggota = a.unit_kerja || a.fakultas_code || a.tahun || LPAD(r.rn::text, 4, '0')
+FROM ranked r
+WHERE a.id_anggota = r.id_anggota;
+
+-- 2. Set nomor_urut anggota non-aktif ke NULL
+UPDATE anggota SET nomor_urut = NULL WHERE status != 'aktif';
+
+-- =============================================
+-- TRIGGER: Auto-generate nomor_urut & id_anggota saat konfirmasi
+-- =============================================
+CREATE OR REPLACE FUNCTION anggota_generate_id()
+RETURNS TRIGGER AS $$
+DECLARE
+
+  max_urut INTEGER;
+BEGIN
+  -- Hanya proses jika status diubah menjadi 'aktif' dan nomor_urut masih NULL atau id_anggota masih kosong/TEMP
+  IF (NEW.status = 'aktif' AND (NEW.nomor_urut IS NULL OR NEW.id_anggota IS NULL OR NEW.id_anggota = '' OR NEW.id_anggota LIKE 'TEMP%')) THEN
+     SELECT COALESCE(MAX(nomor_urut), 0) INTO max_urut FROM anggota;
+    NEW.nomor_urut = max_urut + 1;
+    NEW.id_anggota = NEW.unit_kerja || NEW.fakultas_code || NEW.tahun || LPAD((max_urut + 1)::text, 4, '0');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS anggota_generate_id_trigger ON anggota;
+CREATE TRIGGER anggota_generate_id_trigger
+  BEFORE INSERT OR UPDATE ON anggota
+  FOR EACH ROW
+  EXECUTE FUNCTION anggota_generate_id();
