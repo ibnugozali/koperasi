@@ -1,43 +1,243 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Riwayat Login - Ketua</title>
-	<link rel="stylesheet" href="/static/css/admin_keamanan_riwayat.css">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pengaturan & Laporan Keuangan - Ketua</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/admin_dashboard.css" rel="stylesheet">
 </head>
 <body>
-	{{template "ketua_navbar.html" .}}
-	<div class="container mt-4">
-		<h2 class="mb-4">Riwayat Login Ketua</h2>
-		<table class="table table-bordered table-striped">
-			<thead>
-				<tr>
-					<th>No</th>
-					<th>Username</th>
-					<th>Waktu Login</th>
-					<th>IP Address</th>
-					<th>Status</th>
-				</tr>
-			</thead>
-			<tbody>
-				{{range $i, $riwayat := .RiwayatLoginList}}
-				<tr>
-					<td>{{$i | add 1}}</td>
-					<td>{{$riwayat.Username}}</td>
-					<td>{{$riwayat.WaktuLogin}}</td>
-					<td>{{$riwayat.IPAddress}}</td>
-					<td>{{$riwayat.Status}}</td>
-				</tr>
-				{{else}}
-				<tr>
-					<td colspan="5" class="text-center">Tidak ada riwayat login.</td>
-				</tr>
-				{{end}}
-			</tbody>
-		</table>
-	</div>
+    {{ template "ketua_navbar.html" . }}
+    <div class="main-content">
+        <div class="container-fluid">
+            <br><br><br>
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Laporan Keuangan</h5>
+                                <small class="text-white-50">Ringkasan laporan keuangan koperasi</small>
+                            </div>
+                            <div class="card-body">
+                                {{if .Error}}
+                                <div class="alert alert-danger">
+                                    <i class="fa-solid fa-exclamation-triangle me-2"></i>{{.Error}}
+                                </div>
+                                {{end}}
+                                <div class="mb-3 text-end">
+                                    <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}" class="btn btn-success">
+                                        <i class="fa-solid fa-download me-2"></i> Download Excel
+                                    </a>
+                                    <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&format=pdf" class="btn btn-danger ms-2">
+                                        <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
+                                    </a>
+                                </div>
+                                <div class="stat-card mb-4">
+                                    <h5>Pilih Periode Laporan</h5>
+                                    <form method="GET" action="/ketua/ketua-pengaturan" class="row g-3">
+                                        <div class="col-md-3">
+                                            <label for="bulan" class="form-label">Bulan</label>
+                                            <select class="form-control" id="bulan" name="bulan">
+                                                <option value="1" {{if eq .Bulan 1}}selected{{end}}>Januari</option>
+                                                <option value="2" {{if eq .Bulan 2}}selected{{end}}>Februari</option>
+                                                <option value="3" {{if eq .Bulan 3}}selected{{end}}>Maret</option>
+                                                <option value="4" {{if eq .Bulan 4}}selected{{end}}>April</option>
+                                                <option value="5" {{if eq .Bulan 5}}selected{{end}}>Mei</option>
+                                                <option value="6" {{if eq .Bulan 6}}selected{{end}}>Juni</option>
+                                                <option value="7" {{if eq .Bulan 7}}selected{{end}}>Juli</option>
+                                                <option value="8" {{if eq .Bulan 8}}selected{{end}}>Agustus</option>
+                                                <option value="9" {{if eq .Bulan 9}}selected{{end}}>September</option>
+                                                <option value="10" {{if eq .Bulan 10}}selected{{end}}>Oktober</option>
+                                                <option value="11" {{if eq .Bulan 11}}selected{{end}}>November</option>
+                                                <option value="12" {{if eq .Bulan 12}}selected{{end}}>Desember</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="tahun" class="form-label">Tahun</label>
+                                            <input type="number" class="form-control" id="tahun" name="tahun" value="{{.Tahun}}" min="2020" max="2030">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="submit" class="btn btn-primary w-100">Tampilkan Laporan</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-3 mb-4">
+                                        <div class="stat-card">
+                                            <div class="stat-icon text-success">
+                                                <i class="fas fa-piggy-bank"></i>
+                                            </div>
+                                            <div class="stat-number">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</div>
+                                            <div class="stat-label">Total Simpanan</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 mb-4">
+                                        <div class="stat-card">
+                                            <div class="stat-icon text-danger">
+                                                <i class="fas fa-hand-holding-usd"></i>
+                                            </div>
+                                            <div class="stat-number">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</div>
+                                            <div class="stat-label">Total Pinjaman</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 mb-4">
+                                        <div class="stat-card">
+                                            <div class="stat-icon text-info">
+                                                <i class="fas fa-coins"></i>
+                                            </div>
+                                            <div class="stat-number">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</div>
+                                            <div class="stat-label">Total Angsuran</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 mb-4">
+                                        <div class="stat-card">
+                                            <div class="stat-icon text-warning">
+                                                <i class="fas fa-chart-line"></i>
+                                            </div>
+                                            <div class="stat-number">Rp {{if .Report.total_pengambilan}}{{printf "%.0f" .Report.total_pengambilan}}{{else}}0{{end}}</div>
+                                            <div class="stat-label">Total Pengambilan</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <h5>Ringkasan Laporan Keuangan Bulan {{.Bulan}} Tahun {{.Tahun}}</h5>
+                                    <p>Berikut adalah ringkasan laporan keuangan koperasi untuk periode yang dipilih.</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Pemasukan</h6>
+                                            <ul class="list-group list-group-flush">
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Total Simpanan
+                                                    <span class="badge bg-primary rounded-pill">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                                                    Total Pemasukan
+                                                    <span class="badge bg-success rounded-pill">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Pengeluaran</h6>
+                                            <ul class="list-group list-group-flush">
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Total Pinjaman
+                                                    <span class="badge bg-danger rounded-pill">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Total Angsuran
+                                                    <span class="badge bg-info rounded-pill">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                                                    Total Pengeluaran
+                                                    <span class="badge bg-danger rounded-pill">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Tabel Rincian Laporan Keuangan -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-info text-white">
+                            <i class="fa-solid fa-list"></i> Rincian Laporan Keuangan
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table id="riwayatTable" class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Tanggal</th>
+                                            <th>ID Anggota</th>
+                                            <th>Anggota</th>
+                                            <th>No. HP</th>
+                                            <th>Jenis Transaksi</th>
+                                            <th>Jumlah Simpanan</th>
+                                            <th>Sisa Gaji</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="riwayatTableBody">
+                                        {{ if .Error }}
+                                        <tr>
+                                            <td colspan="8" class="text-center text-danger">
+                                                <i class="fas fa-exclamation-circle"></i> {{ .Error }}
+                                            </td>
+                                        </tr>
+                                        {{ else }}
+                                            {{ if .Riwayats }}
+                                                {{ range .Riwayats }}
+                                                <tr>
+                                                    <td style="white-space: nowrap;">{{ .Tanggal.Format "2006-01-02 15:04" }}</td>
+                                                    <td style="white-space: nowrap;">{{ .IDAnggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ .NamaAnggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ .NoTelepon }}</td>
+                                                    <td style="white-space: nowrap;">{{ .Jenis }}</td>
+                                                    <td class="{{ if eq .Jenis "Simpanan" }}text-success{{ else }}text-danger{{ end }}" style="white-space: nowrap;">
+                                                        {{ if eq .Jenis "Simpanan" }}
+                                                            +Rp {{ printf "%.0f" .Jumlah }}
+                                                        {{ else }}
+                                                            -Rp {{ printf "%.0f" .Jumlah }}
+                                                        {{ end }}
+                                                    </td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%d" .GajiBulanan }}</td>
+                                                    <td style="white-space: nowrap;">
+                                                        <span class="badge bg-success">Selesai</span>
+                                                    </td>
+                                                </tr>
+                                                {{ end }}
+                                            {{ else }}
+                                            <tr>
+                                                <td colspan="8" class="text-center text-muted">
+                                                    <i class="fas fa-info-circle"></i> Belum ada riwayat transaksi
+                                                </td>
+                                            </tr>
+                                            {{ end }}
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        {{ if and (not .Error) .Riwayats }}
+        $('#riwayatTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
+            },
+            "pageLength": 10,
+            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+            "order": [[0, 'desc']],
+            "responsive": true
+        });
+        {{ end }}
+    });
+    </script>
+</body>
+</html>
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat memperbarui profil');
+    });
+});
+</script>
 </body>
 </html>

@@ -1,86 +1,102 @@
-    {{ template "ketua_navbar.html" . }}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0"><i class="fa-solid fa-gear me-2"></i>Pengaturan Profil</h5>
-                </div>
-                <div class="card-body">
-                    {{if .Error}}
-                    <div class="alert alert-danger">
-                        <i class="fa-solid fa-exclamation-triangle me-2"></i>{{.Error}}
+{{define "content"}}
+<link rel="stylesheet" href="/static/css/bendahara_pengaturan_content.css">
+
+<div class="top-header">
+    <h4 class="mb-1">Pengaturan Akun</h4>
+    <small class="text-muted">Kelola informasi akun dan keamanan</small>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+
+        <!-- Form Ganti Password -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <i class="fa-solid fa-key"></i> Ganti Password
+            </div>
+            <div class="card-body">
+                <form id="passwordForm" action="/bendahara/update-profile" method="POST">
+                    <div class="mb-3">
+                        <label for="editUsername" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="editUsername" name="username" value="{{.Bendahara.Username}}" required>
+                        <div class="form-text">Username harus unik dan tidak boleh kosong.</div>
                     </div>
-                    {{end}}
-                    {{if .Ketua}}
-                    <form id="profileForm">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="nama_pengelola" class="form-label">Nama Lengkap</label>
-                                    <input type="text" class="form-control" id="nama_pengelola" value="{{.Ketua.NamaPengelola}}" readonly>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="jabatan_koperasi" class="form-label">Jabatan</label>
-                                    <input type="text" class="form-control" id="jabatan_koperasi" value="{{.Ketua.JabatanKoperasi}}" readonly>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="no_telepon" class="form-label">No. Telepon</label>
-                                    <input type="text" class="form-control" id="no_telepon" value="{{.Ketua.NoTelepon}}" readonly>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="username" class="form-label">Username</label>
-                                    <input type="text" class="form-control" id="username" name="username" value="{{.Ketua.Username}}" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="password" class="form-label">Password Baru</label>
-                                    <input type="password" class="form-control" id="password" name="password" placeholder="Kosongkan jika tidak ingin mengubah">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="confirm_password" class="form-label">Konfirmasi Password</label>
-                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Kosongkan jika tidak ingin mengubah">
-                                </div>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-save me-2"></i>Simpan Perubahan
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">Password Baru</label>
+                        <input type="password" class="form-control" id="newPassword" name="password">
+                        <div class="form-text">Password minimal 6 karakter (kosongkan jika tidak ingin mengubah)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Konfirmasi Password Baru</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password">
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fa-solid fa-key"></i> Simpan Perubahan
                         </button>
-                    </form>
-                    {{else}}
-                    <div class="alert alert-warning">
-                        <i class="fa-solid fa-exclamation-triangle me-2"></i>Data ketua tidak ditemukan.
                     </div>
-                    {{end}}
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Info Akun -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <i class="fa-solid fa-info-circle"></i> Info Akun
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <img src="{{if .LogoPath}}{{.LogoPath}}{{else}}/static/images/placeholder.png{{end}}" alt="Logo Koperasi" class="rounded-circle" width="80" height="80">
+                    <h6 class="mt-2">{{.Bendahara.NamaPengelola}}</h6>
+                    <small class="text-muted">{{.Bendahara.JabatanKoperasi}}</small>
+                </div>
+                <hr>
+                <div class="small">
+                    <p><strong>Username:</strong> {{.Bendahara.Username}}</p>
+                    <p><strong>Password:</strong> 
+                        <span id="password-text" data-password="{{.Bendahara.PlainPassword}}">********</span>
+                        <button type="button" id="togglePassword" class="btn btn-sm btn-outline-secondary ms-2" style="padding:2px 8px; font-size:0.85em;">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                        <span id="password-fallback" data-fallback="{{.Bendahara.Password}}" style="display:none;"></span>
+                    </p>
+                    <p><strong>Level:</strong> {{.Bendahara.Level}}</p>
+                    <p><strong>Status:</strong> <span class="badge bg-success">{{.Bendahara.Status}}</span></p>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<script src="/static/js/bendahara_pengaturan_content.js"></script>
 <script>
-document.getElementById('profileForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    const formData = new FormData(this);
-
-    fetch('/ketua/update-profile', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.message) {
-            alert('Berhasil: ' + data.message);
-            location.reload();
-        } else if (data.error) {
-            alert('Error: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan saat memperbarui profil');
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    var toggleBtn = document.getElementById('togglePassword');
+    var pwText = document.getElementById('password-text');
+    var pwFallback = document.getElementById('password-fallback');
+    var shown = false;
+    if (toggleBtn && pwText) {
+        toggleBtn.addEventListener('click', function() {
+            if (!shown) {
+                var plain = pwText.getAttribute('data-password');
+                if (plain && plain.trim() !== '') {
+                    pwText.textContent = plain;
+                } else if (pwFallback && pwFallback.getAttribute('data-fallback')) {
+                    pwText.textContent = pwFallback.getAttribute('data-fallback');
+                } else {
+                    pwText.textContent = '(Password tidak tersedia)';
+                }
+                toggleBtn.innerHTML = '<i class="fa fa-eye-slash"></i>';
+                shown = true;
+            } else {
+                pwText.textContent = '********';
+                toggleBtn.innerHTML = '<i class="fa fa-eye"></i>';
+                shown = false;
+            }
+        });
+    }
 });
 </script>
+{{end}}

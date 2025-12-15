@@ -206,7 +206,7 @@ func SetupRouter() *gin.Engine {
 		// ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
 		// ketuaRoutes.GET("/tentang", controllers.KetuaTentang)
 		// ketuaRoutes.GET("/pengaturan", controllers.KetuaPengaturan)
-		// ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
+		ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
 	}
 	return router
 }
