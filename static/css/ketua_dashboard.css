@@ -1,0 +1,130 @@
+body {
+    background-color: #f5f7fa;
+    font-family: "Poppins", sans-serif;
+    overflow-x: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 240px;
+    height: 100vh;
+    background: #004aad;
+    color: white;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    overflow-y: auto;
+    z-index: 1000;
+
+    /* MATCH admin_konfirmasi */
+    transform: translateX(0);
+    transition: transform 0.3s ease;
+}
+
+/* Hamburger Menu */
+.hamburger {
+    display: inline-block;
+    background: #004aad;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.hamburger:hover {
+    background: #0a58ca;
+}
+
+.hamburger i {
+    font-size: 20px;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    .hamburger {
+        display: block;
+    }
+
+    .main-content, .navbar, footer {
+        margin-left: 0 !important;
+    }
+
+    .main-content {
+        padding: 20px 15px;
+    }
+}
+
+.sidebar h4 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+.sidebar a {
+    color: #fff;
+    text-decoration: none;
+    padding: 12px 25px;
+    display: block;
+    font-size: 15px;
+    transition: background 0.2s;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+    background: #0a58ca;
+}
+
+/* Navbar */
+.navbar {
+    margin-left: 240px;
+    background: #ffffff;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+    transition: margin-left 0.3s ease;
+}
+
+/* Main Content */
+.main-content {
+    margin-left: 240px;
+    padding: 30px;
+    transition: margin-left 0.3s ease;
+}
+
+/* Statistik Cards */
+.stat-card {
+    background: #ffffff;
+    border-radius: 15px;
+    padding: 30px 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    height: 100%;
+    text-align: center;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+/* Footer */
+footer {
+    margin-left: 240px;
+    padding: 15px;
+    text-align: center;
+    color: #666;
+    background: #fff;
+    border-top: 1px solid #ddd;
+    transition: margin-left 0.3s ease;
+}

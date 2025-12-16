@@ -1,24 +1,36 @@
-{{define "content"}}
-<link rel="stylesheet" href="/static/css/bendahara_pengaturan_content.css">
-
-<div class="top-header">
-    <h4 class="mb-1">Pengaturan Akun</h4>
-    <small class="text-muted">Kelola informasi akun dan keamanan</small>
-</div>
-
-<div class="row">
-    <div class="col-md-8">
-
-        <!-- Form Ganti Password -->
-        <div class="card shadow-sm">
-            <div class="card-header bg-warning text-dark">
-                <i class="fa-solid fa-key"></i> Ganti Password
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pengaturan Akun - Ketua</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/bendahara_pengaturan_content.css">
+    <link rel="stylesheet" href="/static/css/ketua_navbar.css">
+    <link rel="stylesheet" href="/static/css/ketua_pengaturan.css">
+</head>
+<body>
+    {{ template "ketua_navbar.html" . }}
+    <div class="main-content">
+        <div class="container-fluid">
+            <br><br><br>
+            <div class="top-header mb-4">
+                <h4 class="mb-1">Pengaturan Akun</h4>
+                <small class="text-muted">Kelola informasi akun dan keamanan</small>
             </div>
-            <div class="card-body">
-                <form id="passwordForm" action="/bendahara/update-profile" method="POST">
-                    <div class="mb-3">
-                        <label for="editUsername" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="editUsername" name="username" value="{{.Bendahara.Username}}" required>
+            <div class="row g-4">
+                <div class="col-lg-8 col-md-7">
+                    <!-- Form Ganti Password -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <i class="fa-solid fa-key"></i> Ganti Password
+                        </div>
+                        <div class="card-body">
+                            <form id="passwordForm" action="/ketua/update-profile" method="POST">
+                                <div class="mb-3">
+                                    <label for="editUsername" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="editUsername" name="username" value="{{.Ketua.Username}}" required>
                         <div class="form-text">Username harus unik dan tidak boleh kosong.</div>
                     </div>
                     <div class="mb-3">
@@ -39,8 +51,7 @@
             </div>
         </div>
     </div>
-
-    <div class="col-md-4">
+    <div class="col-lg-4 col-md-5">
         <!-- Info Akun -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-info text-white">
@@ -48,22 +59,22 @@
             </div>
             <div class="card-body">
                 <div class="text-center mb-3">
-                    <img src="{{if .LogoPath}}{{.LogoPath}}{{else}}/static/images/placeholder.png{{end}}" alt="Logo Koperasi" class="rounded-circle" width="80" height="80">
-                    <h6 class="mt-2">{{.Bendahara.NamaPengelola}}</h6>
-                    <small class="text-muted">{{.Bendahara.JabatanKoperasi}}</small>
+                    <img src="{{if .LogoPath}}{{.LogoPath}}{{else}}/static/images/placeholder.png{{end}}" alt="Logo Koperasi" class="rounded-circle mb-2" width="80" height="80">
+                    <h6 class="mt-2 mb-0">{{.Ketua.NamaPengelola}}</h6>
+                    <small class="text-muted">{{.Ketua.JabatanKoperasi}}</small>
                 </div>
                 <hr>
                 <div class="small">
-                    <p><strong>Username:</strong> {{.Bendahara.Username}}</p>
-                    <p><strong>Password:</strong> 
-                        <span id="password-text" data-password="{{.Bendahara.PlainPassword}}">********</span>
+                    <p class="mb-2"><strong>Username:</strong> {{.Ketua.Username}}</p>
+                    <p class="mb-2"><strong>Password:</strong> 
+                        <span id="password-text" data-password="{{.Ketua.PlainPassword}}">********</span>
                         <button type="button" id="togglePassword" class="btn btn-sm btn-outline-secondary ms-2" style="padding:2px 8px; font-size:0.85em;">
                             <i class="fa fa-eye"></i>
                         </button>
-                        <span id="password-fallback" data-fallback="{{.Bendahara.Password}}" style="display:none;"></span>
+                        <span id="password-fallback" data-fallback="{{.Ketua.Password}}" style="display:none;"></span>
                     </p>
-                    <p><strong>Level:</strong> {{.Bendahara.Level}}</p>
-                    <p><strong>Status:</strong> <span class="badge bg-success">{{.Bendahara.Status}}</span></p>
+                    <p class="mb-2"><strong>Level:</strong> {{.Ketua.Level}}</p>
+                    <p class="mb-0"><strong>Status:</strong> <span class="badge bg-success">{{.Ketua.Status}}</span></p>
                 </div>
             </div>
         </div>
@@ -99,4 +110,3 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-{{end}}

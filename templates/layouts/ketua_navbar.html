@@ -1,13 +1,19 @@
+
 {{define "ketua_navbar.html"}}
-<!-- Hamburger Menu -->
-<button class="hamburger" onclick="toggleSidebar()">
-    <i class="fas fa-bars"></i>
-</button>
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg fixed-top">
+    <div class="container-fluid">
+        <button class="hamburger me-3" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+        <span class="navbar-brand fw-bold ms-auto">Dasbor Ketua</span>
+    </div>
+</nav>
 
 <!-- Sidebar -->
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
     <div class="text-center mb-3">
-        <img src="/static/images/placeholder.png" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px;">
+        <img id="navbarLogo" src="/static/images/placeholder.png" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;">
         <h5 class="mt-2">Koperasi Simpan Pinjam</h5>
     </div>
     <a href="/ketua/ketua-dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
@@ -19,14 +25,23 @@
 </div>
 
 <script>
-    // Initialize Bootstrap collapse
+    // Fungsi toggle sidebar
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const hamburger = document.querySelector('.hamburger');
+        if (sidebar && hamburger) {
+            sidebar.classList.toggle('show');
+            hamburger.classList.toggle('active');
+        }
+    }
+    // Auto-open sidebar on page load
     document.addEventListener('DOMContentLoaded', function() {
-        var collapseElements = document.querySelectorAll('.collapse');
-        collapseElements.forEach(function(element) {
-            new bootstrap.Collapse(element, {
-                hide: true
-            });
-        });
+        const sidebar = document.getElementById('sidebar');
+        const hamburger = document.querySelector('.hamburger');
+        if (sidebar && hamburger) {
+            sidebar.classList.add('show');
+            hamburger.classList.add('active');
+        }
     });
 </script>
 {{end}}
