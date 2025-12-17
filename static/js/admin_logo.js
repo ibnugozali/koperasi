@@ -2,10 +2,9 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     const logoFileInput = document.getElementById('logoFile');
-    const previewLogo = document.getElementById('previewLogo');
-    const currentLogo = document.getElementById('currentLogo');
+    const previewLogo = document.getElementById('previewLogoImg');
+    const currentLogo = document.getElementById('currentLogoImg');
     const uploadForm = document.getElementById('uploadLogoForm');
-    const resetBtn = document.getElementById('resetBtn');
     const uploadProgress = document.getElementById('uploadProgress');
 
     // Preview logo saat file dipilih
@@ -175,11 +174,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Reset preview
-    resetBtn.addEventListener('click', function() {
-        logoFileInput.value = '';
-        previewLogo.src = currentLogo.src;
-    });
 
     // Fungsi untuk update logo di navbar
     function updateNavbarLogo(logoPath) {

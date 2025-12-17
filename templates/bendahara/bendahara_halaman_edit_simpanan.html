@@ -202,11 +202,11 @@
                     <div class="row">
                         <div class="col-md-4 mb-2">
                             <label class="form-label">Nama Simpanan</label>
-                            <input type="text" class="form-control jenis-nama" value="${nama}" placeholder="Contoh: Simpanan Pokok">
+                            <input type="text" class="form-control jenis-nama" value="${nama}" placeholder="Contoh: Simpanan Pokok" name="jenis_nama[]">
                         </div>
                         <div class="col-md-7 mb-2">
                             <label class="form-label">Deskripsi</label>
-                            <input type="text" class="form-control jenis-deskripsi" value="${deskripsi}" placeholder="Deskripsi singkat">
+                            <input type="text" class="form-control jenis-deskripsi" value="${deskripsi}" placeholder="Deskripsi singkat" name="jenis_deskripsi[]">
                         </div>
                         <div class="col-md-1 mb-2 d-flex align-items-end">
                             <button type="button" class="btn btn-danger" onclick="hapusJenisSimpanan(${index})">
@@ -249,7 +249,7 @@
                     <div class="row">
                         <div class="col-md-11 mb-2">
                             <label class="form-label">Manfaat ${index + 1}</label>
-                            <input type="text" class="form-control manfaat-text" value="${text}" placeholder="Tuliskan manfaat simpanan">
+                            <input type="text" class="form-control manfaat-text" value="${text}" placeholder="Tuliskan manfaat simpanan" name="manfaat_text[]">
                         </div>
                         <div class="col-md-1 mb-2 d-flex align-items-end">
                             <button type="button" class="btn btn-danger" onclick="hapusManfaat(${index})">

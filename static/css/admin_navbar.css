@@ -1,0 +1,24 @@
+/* admin_navbar.css - minimal placeholder to prevent 404 */
+
+.navbar {
+    background: #004aad;
+    color: #fff;
+}
+
+.navbar .navbar-brand {
+    font-weight: bold;
+    color: #fff;
+}
+
+.hamburger {
+    background: #004aad;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.hamburger:hover {
+    background: #0a58ca;
+}
