@@ -168,8 +168,8 @@
                                     <th>ID Anggota</th>
                                     <th>Anggota</th>
                                     <th>No. HP</th>
-                                    <th>Jenis Transaksi</th>
-                                    <th>Jumlah Simpanan</th>
+                                    <th>Jenis Unit</th>
+                                    <th>Gaji Bulanan</th>
                                     <th>Sisa Gaji</th>
                                     <th>Status</th>
                                 </tr>
@@ -182,22 +182,16 @@
                                     </td>
                                 </tr>
                                 {{ else }}
-                                    {{ if .Riwayats }}
+                                {{ if .Riwayats }}
                                         {{ range .Riwayats }}
                                         <tr>
                                             <td style="white-space: nowrap;">{{ .Tanggal.Format "2006-01-02 15:04" }}</td>
                                             <td style="white-space: nowrap;">{{ .IDAnggota }}</td>
                                             <td style="white-space: nowrap;">{{ .NamaAnggota }}</td>
                                             <td style="white-space: nowrap;">{{ .NoTelepon }}</td>
-                                            <td style="white-space: nowrap;">{{ .Jenis }}</td>
-                                            <td class="{{ if eq .Jenis "Simpanan" }}text-success{{ else }}text-danger{{ end }}" style="white-space: nowrap;">
-                                                {{ if eq .Jenis "Simpanan" }}
-                                                    +Rp {{ printf "%.0f" .Jumlah }}
-                                                {{ else }}
-                                                    -Rp {{ printf "%.0f" .Jumlah }}
-                                                {{ end }}
-                                            </td>
+                                            <td style="white-space: nowrap;">{{ .UnitKerja }}</td>
                                             <td style="white-space: nowrap;">Rp {{ printf "%d" .GajiBulanan }}</td>
+                                            <td style="white-space: nowrap;">Rp {{ printf "%d" .SisaGaji }}</td>
                                             <td style="white-space: nowrap;">
                                                 <span class="badge bg-success">Selesai</span>
                                             </td>
@@ -241,7 +235,8 @@ $(document).ready(function() {
     {{ if and (not .Error) .Riwayats }}
     $('#riwayatTable').DataTable({
         "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json"
+            "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json",
+            "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
         },
         "pageLength": 10,
         "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],

@@ -1266,6 +1266,40 @@ func BendaharaLaporan(c *gin.Context) {
 		uniqueRiwayats = append(uniqueRiwayats, v)
 	}
 
+	// Ambil data anggota aktif untuk memastikan semua anggota muncul
+	anggotaAktif, err := repository.GetAllAnggota()
+	if err == nil {
+		// Ambil data potongan bulan ini untuk semua anggota
+		potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+		if err != nil {
+			potonganBulanIni = make(map[string]float64)
+		}
+
+		for _, anggota := range anggotaAktif {
+			key := anggota.IDAnggota + "-" + anggota.NoTelepon
+			if _, exists := uniqueMap[key]; !exists {
+				// Tambahkan anggota yang belum ada di riwayat
+				potongan := int(potonganBulanIni[anggota.IDAnggota])
+				sisaGaji := anggota.GajiBulanan - potongan
+
+				newRiwayat := models.Riwayat{
+					ID:          0,
+					Tanggal:     anggota.TglGabung,
+					Jenis:       "Pendaftaran",
+					Jumlah:      0,
+					Status:      "Aktif",
+					NamaAnggota: anggota.NamaAnggota,
+					IDAnggota:   anggota.IDAnggota,
+					NoTelepon:   anggota.NoTelepon,
+					UnitKerja:   repository.GetUnitKerjaName(anggota.UnitKerja),
+					GajiBulanan: anggota.GajiBulanan,
+					SisaGaji:    sisaGaji,
+				}
+				uniqueRiwayats = append(uniqueRiwayats, newRiwayat)
+			}
+		}
+	}
+
 	c.HTML(http.StatusOK, "bendahara_laporan.html", gin.H{
 		"ActivePage":  "laporan",
 		"Report":      report,
@@ -1871,18 +1905,107 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 
 		f := excelize.NewFile()
 		sheet := "Sheet1"
-		f.SetCellValue(sheet, "A1", "Laporan Keuangan Koperasi")
-		f.SetCellValue(sheet, "A2", fmt.Sprintf("Periode: %02d/%d", bulanInt, tahunInt))
-		f.SetCellValue(sheet, "A4", "Ringkasan")
-		f.SetCellValue(sheet, "A5", "Total Simpanan")
-		f.SetCellValue(sheet, "B5", report["total_simpanan"])
-		f.SetCellValue(sheet, "A6", "Total Pinjaman")
-		f.SetCellValue(sheet, "B6", report["total_pinjaman"])
-		f.SetCellValue(sheet, "A7", "Total Angsuran")
-		f.SetCellValue(sheet, "B7", report["total_angsuran"])
-		f.SetCellValue(sheet, "A8", "Arus Kas")
-		f.SetCellValue(sheet, "B8", report["arus_kas"])
-
+		// Header judul
+		f.SetCellValue(sheet, "A1", "LAPORAN KEUANGAN KOPERASI")
+		// Tanggal cetak dan periode
+		waktuCetak := time.Now()
+		tanggalCetak := waktuCetak.Format("2 Januari 2006")
+		jamCetak := waktuCetak.Format("15.04")
+		namaBulan := []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
+		f.SetCellValue(sheet, "A2", "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak)
+		f.SetCellValue(sheet, "A3", fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt))
+		// Header tabel
+		f.SetCellValue(sheet, "A5", "Keterangan")
+		f.SetCellValue(sheet, "B5", "Jumlah")
+		// Data
+		totalPengeluaran := 0.0
+		if pinjaman, ok := report["total_pinjaman"].(float64); ok {
+			totalPengeluaran += pinjaman
+		}
+		if pengambilan, ok := report["total_pengambilan"].(float64); ok {
+			totalPengeluaran += pengambilan
+		}
+		dataRows := []struct {
+			label string
+			value interface{}
+		}{
+			{"Total Simpanan", report["total_simpanan"]},
+			{"Total Pinjaman", report["total_pinjaman"]},
+			{"Total Angsuran", report["total_angsuran"]},
+			{"Total Pengeluaran", totalPengeluaran},
+		}
+		for i, row := range dataRows {
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", 6+i), row.label)
+			f.SetCellValue(sheet, fmt.Sprintf("B%d", 6+i), row.value)
+		}
+		// Style header tabel
+		styleHeader, _ := f.NewStyle(&excelize.Style{
+			Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+			Fill:      excelize.Fill{Type: "pattern", Color: []string{"#2ecc71"}, Pattern: 1},
+			Alignment: &excelize.Alignment{Horizontal: "center"},
+			Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+		})
+		f.SetCellStyle(sheet, "A5", "B5", styleHeader)
+		// Style data
+		styleData, _ := f.NewStyle(&excelize.Style{
+			Alignment: &excelize.Alignment{Horizontal: "left"},
+			Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+		})
+		f.SetCellStyle(sheet, "A6", fmt.Sprintf("B%d", 6+len(dataRows)-1), styleData)
+		// Set lebar kolom otomatis
+		f.SetColWidth(sheet, "A", "B", 25)
+		// Tambahkan tabel Rincian Laporan Keuangan (seperti PDF)
+		allRiwayats, err := repository.GetAllRiwayat()
+		if err == nil {
+			uniqueMap := make(map[string]models.Riwayat)
+			for _, r := range allRiwayats {
+				key := r.IDAnggota + "-" + r.NoTelepon
+				if key == "-" || r.IDAnggota == "" || r.NoTelepon == "" {
+					continue
+				}
+				if _, exists := uniqueMap[key]; !exists {
+					uniqueMap[key] = r
+				}
+			}
+			riwayats := make([]models.Riwayat, 0, len(uniqueMap))
+			for _, v := range uniqueMap {
+				riwayats = append(riwayats, v)
+			}
+			if len(riwayats) > 0 {
+				startRow := 6 + len(dataRows) + 2
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Keuangan")
+				// Header
+				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+				cols := []string{"A", "B", "C", "D", "E"}
+				for i, h := range headers {
+					col := cols[i]
+					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow), h)
+				}
+				// Data
+				for idx, r := range riwayats {
+					row := startRow + 1 + idx
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), r.NamaAnggota)
+					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), r.NoTelepon)
+					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), r.UnitKerja)
+					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(r.GajiBulanan))
+					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(r.SisaGaji))
+				}
+				// Style header rincian
+				rincianHeaderStyle, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#2ecc71"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+				})
+				rincianDataStyle, _ := f.NewStyle(&excelize.Style{
+					Alignment: &excelize.Alignment{Horizontal: "left"},
+					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+				})
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("E%d", startRow), rincianHeaderStyle)
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow+1), fmt.Sprintf("E%d", startRow+len(riwayats)), rincianDataStyle)
+				f.SetColWidth(sheet, "A", "E", 22)
+			}
+		}
 		// Set header untuk download
 		c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.xlsx")
@@ -1900,32 +2023,235 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 			return
 		}
 
+		// Convert bulan to nama bulan
+		namaBulan := []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+			"Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
+		// Format tanggal cetak
+		waktuCetak := time.Now()
+		tanggalCetak := waktuCetak.Format("2 Januari 2006")
+		jamCetak := waktuCetak.Format("15.04")
+
+		// Hitung total pengeluaran (pinjaman + pengambilan)
+		totalPengeluaran := 0.0
+		if pinjaman, ok := report["total_pinjaman"].(float64); ok {
+			totalPengeluaran += pinjaman
+		}
+		if pengambilan, ok := report["total_pengambilan"].(float64); ok {
+			totalPengeluaran += pengambilan
+		}
+
+		// Helper function untuk format Rupiah dengan pemisah ribuan (tanpa dobel 'Rp')
+		formatRupiah := func(amount float64) string {
+			amountStr := fmt.Sprintf("%.0f", amount)
+			var result []string
+			for i, digit := range amountStr {
+				if i > 0 && (len(amountStr)-i)%3 == 0 {
+					result = append(result, ".")
+				}
+				result = append(result, string(digit))
+			}
+			return "Rp " + strings.Join(result, "")
+		}
+
 		pdf := gofpdf.New("P", "mm", "A4", "")
 		pdf.AddPage()
+
+		// Header judul
 		pdf.SetFont("Arial", "B", 16)
-		pdf.Cell(40, 10, "Laporan Keuangan Koperasi")
-		pdf.Ln(12)
-		pdf.SetFont("Arial", "", 12)
-		pdf.Cell(40, 10, fmt.Sprintf("Periode: %02d/%d", bulanInt, tahunInt))
-		pdf.Ln(12)
-		pdf.SetFont("Arial", "B", 12)
-		pdf.Cell(40, 10, "Ringkasan")
+		pdf.CellFormat(190, 10, "LAPORAN KEUANGAN KOPERASI", "0", 1, "C", false, 0, "")
+		pdf.Ln(3)
+
+		// Tanggal cetak dan Periode (tengah, rapat)
+		pdf.SetFont("Arial", "", 10)
+		pdf.CellFormat(190, 6, "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak, "0", 1, "C", false, 0, "")
+		pdf.CellFormat(190, 6, fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt), "0", 1, "C", false, 0, "")
 		pdf.Ln(10)
-		pdf.SetFont("Arial", "", 12)
-		pdf.Cell(60, 10, "Total Simpanan")
-		pdf.Cell(40, 10, fmt.Sprintf("%v", report["total_simpanan"]))
-		pdf.Ln(8)
-		pdf.Cell(60, 10, "Total Pinjaman")
-		pdf.Cell(40, 10, fmt.Sprintf("%v", report["total_pinjaman"]))
-		pdf.Ln(8)
-		pdf.Cell(60, 10, "Total Angsuran")
-		pdf.Cell(40, 10, fmt.Sprintf("%v", report["total_angsuran"]))
-		pdf.Ln(8)
-		pdf.Cell(60, 10, "Arus Kas")
-		pdf.Cell(40, 10, fmt.Sprintf("%v", report["arus_kas"]))
+
+		// Data rows dan header, lebar kolom dinamis
+		pdf.SetFont("Arial", "", 10)
+		dataRows := []struct {
+			label string
+			value float64
+		}{
+			{"Total Simpanan", report["total_simpanan"].(float64)},
+			{"Total Pinjaman", report["total_pinjaman"].(float64)},
+			{"Total Angsuran", report["total_angsuran"].(float64)},
+			{"Total Pengeluaran", totalPengeluaran},
+		}
+		// Hitung lebar kolom maksimal
+		pdf.SetFont("Arial", "B", 11)
+		maxLabelWidth := pdf.GetStringWidth("Keterangan")
+		maxValueWidth := pdf.GetStringWidth("Jumlah")
+		pdf.SetFont("Arial", "", 10)
+		for _, row := range dataRows {
+			lw := pdf.GetStringWidth(row.label)
+			vw := pdf.GetStringWidth(formatRupiah(row.value))
+			if lw > maxLabelWidth {
+				maxLabelWidth = lw
+			}
+			if vw > maxValueWidth {
+				maxValueWidth = vw
+			}
+		}
+		// Tambahkan padding
+		maxLabelWidth += 10
+		maxValueWidth += 10
+		totalWidth := maxLabelWidth + maxValueWidth
+		// Jika totalWidth < 190, distribusikan sisa ke label
+		if totalWidth < 190 {
+			maxLabelWidth += 190 - totalWidth
+			totalWidth = 190
+		}
+		// Header tabel
+		pdf.SetFont("Arial", "B", 11)
+		pdf.SetFillColor(46, 204, 113)
+		pdf.SetTextColor(255, 255, 255)
+		// Hitung tinggi baris header secara dinamis
+		headerLabelLines := pdf.SplitLines([]byte("Keterangan"), maxLabelWidth)
+		headerValueLines := pdf.SplitLines([]byte("Jumlah"), maxValueWidth)
+		headerLines := len(headerLabelLines)
+		if len(headerValueLines) > headerLines {
+			headerLines = len(headerValueLines)
+		}
+		headerHeight := float64(headerLines) * 6.0
+		pdf.CellFormat(maxLabelWidth, headerHeight, "Keterangan", "1", 0, "C", true, 0, "")
+		pdf.CellFormat(maxValueWidth, headerHeight, "Jumlah", "1", 1, "C", true, 0, "")
+
+		// Data rows dengan tinggi baris dinamis
+		pdf.SetFont("Arial", "", 10)
+		pdf.SetTextColor(0, 0, 0)
+		for _, row := range dataRows {
+			// Hitung tinggi baris berdasarkan jumlah baris teks (jika multiline)
+			labelLines := pdf.SplitLines([]byte(row.label), maxLabelWidth)
+			valueLines := pdf.SplitLines([]byte(formatRupiah(row.value)), maxValueWidth)
+			nLines := len(labelLines)
+			if len(valueLines) > nLines {
+				nLines = len(valueLines)
+			}
+			rowHeight := float64(nLines) * 6.0
+			pdf.CellFormat(maxLabelWidth, rowHeight, row.label, "1", 0, "L", false, 0, "")
+			pdf.CellFormat(maxValueWidth, rowHeight, formatRupiah(row.value), "1", 1, "L", false, 0, "")
+		}
+
+		// Ambil data riwayat transaksi dan filter unik seperti di halaman HTML
+		allRiwayats, err := repository.GetAllRiwayat()
+		if err == nil {
+			uniqueMap := make(map[string]models.Riwayat)
+			for _, r := range allRiwayats {
+				key := r.IDAnggota + "-" + r.NoTelepon
+				if key == "-" || r.IDAnggota == "" || r.NoTelepon == "" {
+					continue
+				}
+				if _, exists := uniqueMap[key]; !exists {
+					uniqueMap[key] = r
+				}
+			}
+			riwayats := make([]models.Riwayat, 0, len(uniqueMap))
+			for _, v := range uniqueMap {
+				riwayats = append(riwayats, v)
+			}
+			if len(riwayats) > 0 {
+				pdf.Ln(6)
+				pdf.SetFont("Arial", "B", 12)
+				pdf.CellFormat(190, 8, "Rincian Laporan Keuangan", "0", 1, "L", false, 0, "")
+				pdf.Ln(1)
+				// Header dan data dinamis
+				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+				// Hitung lebar kolom maksimal
+				pdf.SetFont("Arial", "B", 10)
+				colWidths := make([]float64, len(headers))
+				// Inisialisasi dengan lebar header
+				for i, h := range headers {
+					colWidths[i] = pdf.GetStringWidth(h) + 8
+				}
+				pdf.SetFont("Arial", "", 9)
+				for _, r := range riwayats {
+					values := []string{
+						r.NamaAnggota,
+						r.NoTelepon,
+						r.UnitKerja,
+						formatRupiah(float64(r.GajiBulanan)),
+						formatRupiah(float64(r.SisaGaji)),
+					}
+					for i, v := range values {
+						w := pdf.GetStringWidth(v) + 8
+						if w > colWidths[i] {
+							colWidths[i] = w
+						}
+					}
+				}
+				// Total lebar
+				totalWidth := 0.0
+				for _, w := range colWidths {
+					totalWidth += w
+				}
+				// Jika totalWidth < 190, distribusikan sisa ke kolom pertama
+				if totalWidth < 190 {
+					colWidths[0] += 190 - totalWidth
+				}
+				// Header: hitung tinggi baris header dinamis agar rata
+				pdf.SetFont("Arial", "B", 10)
+				pdf.SetFillColor(46, 204, 113)
+				pdf.SetTextColor(255, 255, 255)
+				// Hitung jumlah baris terbanyak dari header
+				headerLines := make([]int, len(headers))
+				maxHeaderLines := 1
+				for i, h := range headers {
+					lines := len(pdf.SplitLines([]byte(h), colWidths[i]))
+					headerLines[i] = lines
+					if lines > maxHeaderLines {
+						maxHeaderLines = lines
+					}
+				}
+				headerHeight := float64(maxHeaderLines) * 6.0
+				for i, h := range headers {
+					align := "C"
+					border := "1"
+					ln := 0
+					if i == len(headers)-1 {
+						ln = 1
+					}
+					pdf.CellFormat(colWidths[i], headerHeight, h, border, ln, align, true, 0, "")
+				}
+				// Data
+				pdf.SetFont("Arial", "", 9)
+				pdf.SetTextColor(0, 0, 0)
+				for _, r := range riwayats {
+					values := []string{
+						r.NamaAnggota,
+						r.NoTelepon,
+						r.UnitKerja,
+						formatRupiah(float64(r.GajiBulanan)),
+						formatRupiah(float64(r.SisaGaji)),
+					}
+					// Hitung tinggi baris maksimal (jika ada multiline)
+					maxLines := 1
+					for i, v := range values {
+						lines := len(pdf.SplitLines([]byte(v), colWidths[i]))
+						if lines > maxLines {
+							maxLines = lines
+						}
+					}
+					rowHeight := float64(maxLines) * 6.0
+					for i, v := range values {
+						align := "L"
+						border := "1"
+						ln := 0
+						if i == len(values)-1 {
+							ln = 1
+						}
+						pdf.CellFormat(colWidths[i], rowHeight, v, border, ln, align, false, 0, "")
+					}
+				}
+			}
+		}
+		pdf.Ln(5)
+		pdf.SetFont("Arial", "I", 8)
+		pdf.SetTextColor(100, 100, 100)
+		pdf.CellFormat(190, 5, "Laporan ini dibuat secara otomatis oleh sistem Koperasi Simpan Pinjam", "0", 1, "C", false, 0, "")
 
 		c.Header("Content-Type", "application/pdf")
-		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.pdf")
+		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi_"+fmt.Sprintf("%02d_%d", bulanInt, tahunInt)+".pdf")
 		err = pdf.Output(c.Writer)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Gagal membuat file PDF")

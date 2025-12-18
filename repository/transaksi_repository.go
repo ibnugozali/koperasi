@@ -6,6 +6,7 @@ import (
 
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
+
 )
 
 // GetPengambilanSimpananByID mengambil detail pengambilan simpanan berdasarkan ID
@@ -325,6 +326,12 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	}
 	report["total_pengambilan"] = totalPengambilan
 
+	// Hitung arus kas: Pemasukan - Pengeluaran
+	// Pemasukan: total_simpanan
+	// Pengeluaran: total_pinjaman + total_pengambilan
+	arusKas := totalSimpanan - (totalPinjaman + totalPengambilan)
+	report["arus_kas"] = arusKas
+
 	return report, nil
 }
 
@@ -445,14 +452,34 @@ func GetAllAngsurans() ([]models.Angsuran, error) {
 	return angsurans, nil
 }
 
+// GetUnitKerjaName mengkonversi kode unit kerja menjadi nama yang readable
+func GetUnitKerjaName(unitKerja string) string {
+	switch unitKerja {
+	case "01":
+		return "Dosen"
+	case "02":
+		return "Karyawan/Staff"
+	case "03":
+		return "Mahasiswa"
+	default:
+		return unitKerja // Return as-is jika tidak dikenali
+	}
+}
+
 // GetAllRiwayat mengambil semua riwayat transaksi gabungan
 func GetAllRiwayat() ([]models.Riwayat, error) {
 	db := config.GetDB()
 	var riwayats []models.Riwayat
 
+	// Ambil data potongan bulan ini untuk semua anggota
+	potonganBulanIni, err := GetPotonganBulanIniAllAnggota()
+	if err != nil {
+		potonganBulanIni = make(map[string]float64) // Default kosong jika error
+	}
+
 	// Simpanan
 	querySimpanan := `
-		SELECT d.id_detail, d.tgl_transaksi, s.jenis_simpanan as jenis, d.jumlah_simpanan, 'Selesai' as status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
+		SELECT d.id_detail, d.tgl_transaksi, s.jenis_simpanan as jenis, d.jumlah_simpanan, 'Selesai' as status, a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
@@ -465,15 +492,20 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	for rows.Next() {
 		var r models.Riwayat
-		if err := rows.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.GajiBulanan); err != nil {
+		if err := rows.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.UnitKerja, &r.GajiBulanan); err != nil {
 			return nil, err
 		}
+		// Konversi kode unit kerja ke nama readable
+		r.UnitKerja = GetUnitKerjaName(r.UnitKerja)
+		// Hitung sisa gaji: Gaji Bulanan - Potongan Bulan Ini
+		potongan := int(potonganBulanIni[r.IDAnggota])
+		r.SisaGaji = r.GajiBulanan - potongan
 		riwayats = append(riwayats, r)
 	}
 
 	// Pinjaman
 	queryPinjaman := `
-		SELECT p.id_pinjaman, p.tgl_pinjaman, 'Pinjaman' as jenis, p.jumlah_pinjaman, p.status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
+		SELECT p.id_pinjaman, p.tgl_pinjaman, 'Pinjaman' as jenis, p.jumlah_pinjaman, p.status, a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
 		FROM pinjaman p
 		JOIN anggota a ON p.id_anggota = a.id_anggota
 	`
@@ -485,15 +517,20 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	for rows2.Next() {
 		var r models.Riwayat
-		if err := rows2.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.GajiBulanan); err != nil {
+		if err := rows2.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.UnitKerja, &r.GajiBulanan); err != nil {
 			return nil, err
 		}
+		// Konversi kode unit kerja ke nama readable
+		r.UnitKerja = GetUnitKerjaName(r.UnitKerja)
+		// Hitung sisa gaji: Gaji Bulanan - Potongan Bulan Ini
+		potongan := int(potonganBulanIni[r.IDAnggota])
+		r.SisaGaji = r.GajiBulanan - potongan
 		riwayats = append(riwayats, r)
 	}
 
 	// Angsuran
 	queryAngsuran := `
-		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, a.sisa_pinjaman, a.status, ang.nama_anggota, ang.id_anggota, ang.no_telepon, ang.gaji_bulanan
+		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, a.sisa_pinjaman, a.status, ang.nama_anggota, ang.id_anggota, ang.no_telepon, ang.unit_kerja, ang.gaji_bulanan
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
@@ -506,9 +543,38 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	for rows3.Next() {
 		var r models.Riwayat
-		if err := rows3.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.GajiBulanan); err != nil {
+		if err := rows3.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.UnitKerja, &r.GajiBulanan); err != nil {
 			return nil, err
 		}
+		// Hitung sisa gaji: Gaji Bulanan - Potongan Bulan Ini
+		potongan := int(potonganBulanIni[r.IDAnggota])
+		r.SisaGaji = r.GajiBulanan - potongan
+		riwayats = append(riwayats, r)
+	}
+
+	// Anggota aktif (untuk menampilkan semua anggota di laporan)
+	queryAnggota := `
+		SELECT '0' as id, a.tgl_gabung as tanggal, 'Pendaftaran' as jenis, 0.0 as jumlah, 'Aktif' as status,
+		       a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
+		FROM anggota a
+		WHERE a.status = 'aktif'
+	`
+	rows4, err := db.Query(queryAnggota)
+	if err != nil {
+		return nil, err
+	}
+	defer rows4.Close()
+
+	for rows4.Next() {
+		var r models.Riwayat
+		if err := rows4.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.UnitKerja, &r.GajiBulanan); err != nil {
+			return nil, err
+		}
+		// Konversi kode unit kerja ke nama readable
+		r.UnitKerja = GetUnitKerjaName(r.UnitKerja)
+		// Hitung sisa gaji: Gaji Bulanan - Potongan Bulan Ini
+		potongan := int(potonganBulanIni[r.IDAnggota])
+		r.SisaGaji = r.GajiBulanan - potongan
 		riwayats = append(riwayats, r)
 	}
 

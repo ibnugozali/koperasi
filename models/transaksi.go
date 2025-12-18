@@ -71,6 +71,8 @@ type Riwayat struct {
 	IDAnggota   string    `json:"id_anggota" db:"id_anggota"`
 	NoTelepon   string    `json:"no_telepon" db:"no_telepon"`
 	GajiBulanan int       `json:"gaji_bulanan" db:"gaji_bulanan"`
+	SisaGaji    int       `json:"sisa_gaji" db:"sisa_gaji"`
+	UnitKerja   string    `json:"unit_kerja" db:"unit_kerja"`
 }
 
 // PengambilanSimpanan mewakili pengajuan pengambilan simpanan
