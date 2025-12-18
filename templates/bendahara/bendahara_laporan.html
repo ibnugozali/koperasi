@@ -188,7 +188,15 @@
                                             <td style="white-space: nowrap;">{{ .Tanggal.Format "2006-01-02 15:04" }}</td>
                                             <td style="white-space: nowrap;">{{ .IDAnggota }}</td>
                                             <td style="white-space: nowrap;">{{ .NamaAnggota }}</td>
-                                            <td style="white-space: nowrap;">{{ .NoTelepon }}</td>
+                                            <td style="white-space: nowrap;">
+                                                {{ if hasPrefix .NoTelepon "+62" }}
+                                                    {{ .NoTelepon }}
+                                                {{ else if eq (printf "%c" (index .NoTelepon 0)) "0" }}
+                                                    +62{{ slice .NoTelepon 1 }}
+                                                {{ else }}
+                                                    +62{{ .NoTelepon }}
+                                                {{ end }}
+                                            </td>
                                             <td style="white-space: nowrap;">{{ .UnitKerja }}</td>
                                             <td style="white-space: nowrap;">Rp {{ printf "%d" .GajiBulanan }}</td>
                                             <td style="white-space: nowrap;">Rp {{ printf "%d" .SisaGaji }}</td>

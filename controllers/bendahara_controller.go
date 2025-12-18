@@ -1984,8 +1984,13 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 				// Data
 				for idx, r := range riwayats {
 					row := startRow + 1 + idx
+					// Format no hp dengan +62
+					nohp := r.NoTelepon
+					if !strings.HasPrefix(nohp, "+62") {
+						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					}
 					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), r.NamaAnggota)
-					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), r.NoTelepon)
+					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
 					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), r.UnitKerja)
 					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(r.GajiBulanan))
 					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(r.SisaGaji))
@@ -2217,9 +2222,14 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 				pdf.SetFont("Arial", "", 9)
 				pdf.SetTextColor(0, 0, 0)
 				for _, r := range riwayats {
+					// Format no hp dengan +62
+					nohp := r.NoTelepon
+					if !strings.HasPrefix(nohp, "+62") {
+						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					}
 					values := []string{
 						r.NamaAnggota,
-						r.NoTelepon,
+						nohp,
 						r.UnitKerja,
 						formatRupiah(float64(r.GajiBulanan)),
 						formatRupiah(float64(r.SisaGaji)),
