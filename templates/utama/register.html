@@ -34,17 +34,22 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="nik_ktp" class="form-label">NIK KTP</label>
-                                    <input type="text" class="form-control" id="register_nik_ktp" name="NikKTP" required>
+                                    <input type="text" class="form-control" id="register_nik_ktp" name="NikKTP" required pattern="[0-9]{16}" maxlength="16" inputmode="numeric" title="NIK harus 16 digit angka" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16)">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="no_telepon" class="form-label">No. Telepon</label>
-                                    <input type="text" class="form-control" id="register_no_telepon" name="NoTelepon" required>
+                                    <div class="input-group">
+                                        <span class="input-group-text">+62</span>
+                                        <input type="text" class="form-control" id="register_no_telepon" name="NoTelepon" required pattern="[1-9][0-9]{8,12}" maxlength="13" inputmode="numeric" title="Nomor telepon Indonesia, 9-13 digit, tidak boleh diawali 0" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^0+/, '').slice(0, 13)">
+                                    </div>
+                                    <small class="form-text text-muted">Masukkan nomor tanpa 0 di depan, contoh: 81234567890</small>
                                 </div>
                             </div>
                              <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="tgl_lahir" class="form-label">Tanggal Lahir</label>
                                     <input type="date" class="form-control" id="register_tgl_lahir" name="TglLahir" required>
+                                    <small class="form-text text-muted">Minimal usia 18 tahun</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="jenis_kelamin" class="form-label">Jenis Kelamin</label>
@@ -117,6 +122,18 @@
     </div>
 
       <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+                        <script>
+                            // Set max date for Tanggal Lahir (minimal 18 tahun)
+                            (function() {
+                                const tglLahirInput = document.getElementById('register_tgl_lahir');
+                                const today = new Date();
+                                const min18 = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+                                const yyyy = min18.getFullYear();
+                                const mm = String(min18.getMonth() + 1).padStart(2, '0');
+                                const dd = String(min18.getDate()).padStart(2, '0');
+                                tglLahirInput.max = `${yyyy}-${mm}-${dd}`;
+                            })();
+                        </script>
             <script>
                 // Ambil elemen dengan id yang benar
                 const statusAnggotaSelect = document.getElementById('register_status_anggota');
@@ -125,14 +142,24 @@
                 const fakultasHidden = document.getElementById('register_fakultas_hidden');
                 const optionRektorat = document.getElementById('option_rektorat');
                 const registerForm = document.querySelector('form');
+                const tglLahirInput = document.getElementById('register_tgl_lahir');
+
+                // Set max date for Tanggal Lahir (minimal 18 tahun)
+                (function() {
+                    const today = new Date();
+                    const min18 = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+                    const yyyy = min18.getFullYear();
+                    const mm = String(min18.getMonth() + 1).padStart(2, '0');
+                    const dd = String(min18.getDate()).padStart(2, '0');
+                    tglLahirInput.max = `${yyyy}-${mm}-${dd}`;
+                })();
 
                 // Update hidden input setiap kali fakultas berubah
                 fakultasSelect.addEventListener('change', function() {
                     fakultasHidden.value = fakultasSelect.value;
                 });
 
-
-                // Pastikan hidden input terisi dan Gaji Bulanan tidak kosong saat form submit
+                // Pastikan hidden input terisi, Gaji Bulanan tidak kosong, dan Tanggal Lahir valid saat form submit
                 registerForm.addEventListener('submit', function(e) {
                     fakultasHidden.value = fakultasSelect.value;
                     if (!fakultasHidden.value) {
@@ -143,6 +170,19 @@
                     // Pastikan Gaji Bulanan tidak kosong (default 0 jika kosong)
                     if (gajiBulananInput.value === '' || isNaN(gajiBulananInput.value)) {
                         gajiBulananInput.value = 0;
+                    }
+                    // Validasi Tanggal Lahir minimal 18 tahun
+                    const tglLahirValue = tglLahirInput.value;
+                    if (tglLahirValue) {
+                        const today = new Date();
+                        const tglLahir = new Date(tglLahirValue);
+                        const min18 = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+                        if (tglLahir > min18) {
+                            e.preventDefault();
+                            alert('Usia minimal harus 18 tahun.');
+                            tglLahirInput.focus();
+                            return false;
+                        }
                     }
                 });
 
