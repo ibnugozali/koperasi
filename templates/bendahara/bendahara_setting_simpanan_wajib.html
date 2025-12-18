@@ -34,7 +34,7 @@
                 padding: 15px;
             }
         }
-
+/* 
         .page-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -42,7 +42,7 @@
             border-radius: 15px;
             margin-bottom: 30px;
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-        }
+        } */
 
         .card {
             border: none;
@@ -140,11 +140,23 @@
     <div class="main-content">
         <div class="container-fluid">
             <br><br><br>
-            
+<!--             
             <div class="page-header">
-                <h1><i class="fas fa-cog me-3"></i>Setting Pemotongan Simpanan Wajib</h1>
+    <h1><i class="fas fa-cog me-3"></i>Setting Pemotongan Simpanan Wajib</h1>
+    <p>Atur tanggal dan metode pemotongan otomatis simpanan wajib dari gaji bulanan</p>
+</div> -->
+            <div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cog me-3"></i>Setting Pemotongan Simpanan Wajib</h5>
+            </div>
+            <div class="card-body">
                 <p>Atur tanggal dan metode pemotongan otomatis simpanan wajib dari gaji bulanan</p>
             </div>
+        </div>
+    </div>
+</div>
 
             {{ if .success }}
             <div class="alert alert-success alert-dismissible fade show" role="alert">
