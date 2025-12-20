@@ -56,14 +56,13 @@ func BendaharaListAnggotaKeluar(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "bendahara_data_anggota_keluar.html", gin.H{
-		"Anggotas": anggotas,
-		"ActivePage": "anggota_keluar",
+		"Anggotas":    anggotas,
+		"ActivePage":  "anggota_keluar",
 		"CurrentLogo": latestLogo,
-		"Title": "Data Anggota Keluar",
+		"Title":       "Data Anggota Keluar",
 	})
 
 }
-
 
 // Menampilkan dashboard bendahara dengan data statistik
 func BendaharaLihatDetailAngsuran(c *gin.Context) {
@@ -3402,11 +3401,9 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 		})
 	}
 
-
-
 	// Add Pinjaman to all transactions
 	for _, p := range pinjamans {
-			allTransactions = append(allTransactions, Transaction{
+		allTransactions = append(allTransactions, Transaction{
 			ID:          p.IDPinjaman,
 			IDAnggota:   p.IDAnggota,
 			NamaAnggota: p.NamaAnggota,
