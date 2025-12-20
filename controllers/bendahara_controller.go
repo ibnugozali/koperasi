@@ -22,8 +22,47 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
-
 )
+
+// BendaharaViewAnggotaKeluar menampilkan detail anggota keluar berdasarkan ID
+func BendaharaViewAnggotaKeluar(c *gin.Context) {
+	idStr := c.Param("id")
+
+	anggota, err := repository.GetAnggotaByID(idStr)
+	if err != nil || anggota.Status != "keluar" {
+		c.Redirect(http.StatusFound, "/bendahara/anggota/keluar?error=Anggota keluar tidak ditemukan")
+		return
+	}
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "bendahara_data_anggota_keluar_view.html", gin.H{
+		"Anggota":     anggota,
+		"ActivePage":  "anggota_keluar",
+		"CurrentLogo": latestLogo,
+		"Title":       "Detail Anggota Keluar",
+	})
+}
 
 // BendaharaListAnggotaKeluar menampilkan daftar anggota yang sudah keluar
 func BendaharaListAnggotaKeluar(c *gin.Context) {
@@ -77,6 +116,7 @@ func BendaharaListAnggotaKeluar(c *gin.Context) {
 		"Title":       "Data Anggota Keluar",
 	})
 }
+
 // // BendaharaListAnggotaKeluar menampilkan daftar anggota yang sudah keluar
 // func BendaharaListAnggotaKeluar(c *gin.Context) {
 // 	// Cari logo terbaru di static/images
@@ -1113,7 +1153,8 @@ func BendaharaDeleteAnggota(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/bendahara/anggota")
+	// Setelah hapus, redirect ke detail anggota keluar
+	c.Redirect(http.StatusFound, "/bendahara/anggota/keluar/view/"+idStr)
 }
 
 // BendaharaTransaksi menampilkan halaman transaksi bendahara

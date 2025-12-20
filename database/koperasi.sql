@@ -55,7 +55,8 @@ CREATE TABLE anggota (
   tahun VARCHAR(4),  -- Tahun konfirmasi
   nomor_urut SERIAL,  -- Nomor urut auto-increment, NULLABLE
   bukti_transfer VARCHAR(255),
-  gaji_bulanan INTEGER DEFAULT 0  -- Gaji bulanan anggota dalam Rupiah
+  gaji_bulanan INTEGER DEFAULT 0,  -- Gaji bulanan anggota dalam Rupiah
+  tgl_keluar TIMESTAMP NULL  -- Tanggal keluar anggota
 );
 
 CREATE TABLE pengelola (

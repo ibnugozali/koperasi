@@ -4,43 +4,84 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
 )
 
-// GetAnggotaByStatus mengambil semua anggota dengan status tertentu (misal: 'keluar')
+// GetAnggotaByStatus mengambil semua anggota dengan status tertentu
 func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 	db := config.GetDB()
 	var anggotas []models.Anggota
+
+	// Normalisasi input
+	status = strings.TrimSpace(strings.ToLower(status))
+
 	query := `
 		       SELECT
-			       id_anggota, nama_anggota, username,
-			       tgl_lahir, nik_ktp, no_telepon, tgl_gabung, tgl_keluar,
-			       alamat, jenis_kelamin, status, unit_kerja, fakultas, COALESCE(gaji_bulanan, 0)
+			       id_anggota,
+			       nama_anggota,
+			       username,
+			       tgl_lahir,
+			       nik_ktp,
+			       no_telepon,
+			       tgl_gabung,
+			       tgl_keluar,
+			       alamat,
+			       jenis_kelamin,
+			       status,
+			       status_anggota,
+			       unit_kerja,
+			       fakultas,
+			       COALESCE(gaji_bulanan, 0)
 		       FROM anggota
-		       WHERE status = $1
-		       ORDER BY CAST(nomor_urut AS INTEGER) DESC`
+		       WHERE LOWER(TRIM(status)) LIKE '%' || $1 || '%'
+		       ORDER BY CAST(nomor_urut AS INTEGER) DESC
+	       `
+
 	rows, err := db.Query(query, status)
 	if err != nil {
+		log.Printf("[ERROR] Query gagal: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		var a models.Anggota
 		err := rows.Scan(
-			&a.IDAnggota, &a.NamaAnggota, &a.Username,
-			&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung, &a.TglKeluar,
-			&a.Alamat, &a.JenisKelamin, &a.Status, &a.UnitKerja, &a.Fakultas, &a.GajiBulanan,
+			&a.IDAnggota,
+			&a.NamaAnggota,
+			&a.Username,
+			&a.TglLahir,
+			&a.NikKTP,
+			&a.NoTelepon,
+			&a.TglGabung,
+			&a.TglKeluar,
+			&a.Alamat,
+			&a.JenisKelamin,
+			&a.Status,
+			&a.StatusAnggota,
+			&a.UnitKerja,
+			&a.Fakultas,
+			&a.GajiBulanan,
 		)
 		if err != nil {
+			log.Printf("[ERROR] Scan gagal: %v", err)
 			return nil, err
 		}
+
+		log.Printf(
+			"[DEBUG] DATA MASUK ➜ ID=%s | Nama=%s | Status=%s | StatusAnggota=%s",
+			a.IDAnggota, a.NamaAnggota, a.Status, a.StatusAnggota,
+		)
+
 		anggotas = append(anggotas, a)
 	}
-	return anggotas, nil
 
+	log.Printf("[DEBUG] TOTAL anggota keluar ditemukan: %d", len(anggotas))
+	return anggotas, nil
 }
 
 // Mengambil semua anggota dengan status pending
@@ -192,8 +233,15 @@ func GetAllAnggota() ([]models.Anggota, error) {
 // DeleteAnggota melakukan soft delete dengan mengubah status menjadi 'keluar'
 func DeleteAnggota(id string) error {
 	db := config.GetDB()
-	_, err := db.Exec("UPDATE anggota SET status = 'keluar' WHERE id_anggota = $1", id)
-	return err
+	now := time.Now()
+	res, err := db.Exec("UPDATE anggota SET status = 'keluar', tgl_keluar = $2 WHERE id_anggota = $1", id, now)
+	if err != nil {
+		log.Printf("[DEBUG] Gagal update status anggota keluar: %v", err)
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	log.Printf("[DEBUG] Update status anggota keluar: id=%s, status=keluar, tgl_keluar=%v, rowsAffected=%d", id, now, rows)
+	return nil
 }
 
 // UpdateAnggotaPassword memperbarui password anggota berdasarkan ID
@@ -752,10 +800,27 @@ func ProsesPemotonganSimpananWajib() (successCount, failedCount int, errors []st
 // UpdateAnggotaStatus memperbarui status anggota berdasarkan ID
 func UpdateAnggotaStatus(id string, status string) error {
 	db := config.GetDB()
-	query := "UPDATE anggota SET status = $1 WHERE id_anggota = $2"
+
+	// 🔧 Normalisasi status (WAJIB)
+	status = strings.TrimSpace(strings.ToLower(status))
+
+	query := `
+		UPDATE anggota
+		SET status = $1
+		WHERE id_anggota = $2
+	`
+
 	_, err := db.Exec(query, status, id)
 	return err
 }
+
+// // UpdateAnggotaStatus memperbarui status anggota berdasarkan ID
+// func UpdateAnggotaStatus(id string, status string) error {
+// 	db := config.GetDB()
+// 	query := "UPDATE anggota SET status = $1 WHERE id_anggota = $2"
+// 	_, err := db.Exec(query, status, id)
+// 	return err
+// }
 
 // GetNomorRekening mengambil nomor rekening berdasarkan jenis (simpanan, angsuran, register)
 func GetNomorRekening(jenis string) (string, error) {
