@@ -223,6 +223,7 @@
                 <div class="card-body">
                     <h6 class="card-title">Aksi</h6>
                     <a href="/anggota/ganti-password" class="btn btn-info w-100">Edit Password</a>
+                    <button type="button" class="btn btn-danger w-100 mt-2" data-bs-toggle="modal" data-bs-target="#keluarModal">Keluar dari Koperasi</button>
                 </div>
             </div>
         </div>
@@ -276,6 +277,29 @@ document.addEventListener("DOMContentLoaded", function(){
   });
 });
 </script>
+
+<!-- Modal Konfirmasi Keluar -->
+<div class="modal fade" id="keluarModal" tabindex="-1" aria-labelledby="keluarModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="keluarModalLabel">Konfirmasi Keluar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Apakah Anda yakin ingin keluar dari koperasi?
+                <p>Simpanan wajib dan sukarela dapat dikembalikan sesuai ketentuan. Simpanan pokok tidak dikembalikan. Pengembalian dilakukan setelah kewajiban selesai.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <form method="POST" action="/anggota/keluar" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Ya, Keluar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
   {{ template "footer.html" . }}
 </body>
 </html>

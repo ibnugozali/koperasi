@@ -182,36 +182,36 @@
                                     </td>
                                 </tr>
                                 {{ else }}
-                                {{ if .Riwayats }}
-                                        {{ range .Riwayats }}
-                                        <tr>
-                                            <td style="white-space: nowrap;">{{ .Tanggal.Format "2006-01-02 15:04" }}</td>
-                                            <td style="white-space: nowrap;">{{ .IDAnggota }}</td>
-                                            <td style="white-space: nowrap;">{{ .NamaAnggota }}</td>
-                                            <td style="white-space: nowrap;">
-                                                {{ if hasPrefix .NoTelepon "+62" }}
-                                                    {{ .NoTelepon }}
-                                                {{ else if eq (printf "%c" (index .NoTelepon 0)) "0" }}
-                                                    +62{{ slice .NoTelepon 1 }}
-                                                {{ else }}
-                                                    +62{{ .NoTelepon }}
-                                                {{ end }}
-                                            </td>
-                                            <td style="white-space: nowrap;">{{ .UnitKerja }}</td>
-                                            <td style="white-space: nowrap;">Rp {{ printf "%d" .GajiBulanan }}</td>
-                                            <td style="white-space: nowrap;">Rp {{ printf "%d" .SisaGaji }}</td>
-                                            <td style="white-space: nowrap;">
-                                                <span class="badge bg-success">Selesai</span>
-                                            </td>
-                                        </tr>
-                                        {{ end }}
-                                    {{ else }}
+                                {{ if .Anggotas }}
+                                    {{ range .Anggotas }}
                                     <tr>
-                                        <td colspan="8" class="text-center text-muted">
-                                            <i class="fas fa-info-circle"></i> Belum ada riwayat transaksi
+                                        <td style="white-space: nowrap;">{{ .TglGabung.Format "2006-01-02" }}</td>
+                                        <td style="white-space: nowrap;">{{ .IDAnggota }}</td>
+                                        <td style="white-space: nowrap;">{{ .NamaAnggota }}</td>
+                                        <td style="white-space: nowrap;">
+                                            {{ if hasPrefix .NoTelepon "+62" }}
+                                                {{ .NoTelepon }}
+                                            {{ else if eq (printf "%c" (index .NoTelepon 0)) "0" }}
+                                                +62{{ slice .NoTelepon 1 }}
+                                            {{ else }}
+                                                +62{{ .NoTelepon }}
+                                            {{ end }}
+                                        </td>
+                                        <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName .UnitKerja }}</td>
+                                        <td style="white-space: nowrap;">Rp {{ printf "%d" .GajiBulanan }}</td>
+                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" (index $.SisaGaji .IDAnggota) }}</td>
+                                        <td style="white-space: nowrap;">
+                                            <span class="badge bg-success">Aktif</span>
                                         </td>
                                     </tr>
                                     {{ end }}
+                                {{ else }}
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted">
+                                            <i class="fas fa-info-circle"></i> Tidak ada data anggota aktif
+                                        </td>
+                                    </tr>
+                                {{ end }}
                                 {{ end }}
                             </tbody>
                         </table>

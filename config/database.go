@@ -42,6 +42,11 @@ func InitDB() {
 	if err := ensureSimpananWajibTables(); err != nil {
 		log.Printf("Peringatan: gagal memastikan tabel simpanan wajib ada: %v", err)
 	}
+
+	// Update anggota status constraint to include 'keluar'
+	if err := updateAnggotaStatusConstraint(); err != nil {
+		log.Printf("Peringatan: gagal memperbarui constraint status anggota: %v", err)
+	}
 }
 
 // ensureAngsuranTable membuat tabel angsuran jika belum ada.
@@ -205,6 +210,19 @@ func ensureSimpananWajibTables() error {
 
 	log.Println("✓ Tabel simpanan wajib siap digunakan")
 	return nil
+}
+
+// updateAnggotaStatusConstraint memperbarui constraint status anggota agar mengizinkan 'keluar'
+func updateAnggotaStatusConstraint() error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+	alterSQL := `
+	ALTER TABLE anggota DROP CONSTRAINT IF EXISTS anggota_status_check;
+	ALTER TABLE anggota ADD CONSTRAINT anggota_status_check CHECK (status IN ('aktif', 'nonaktif', 'pending', 'keluar'));
+	`
+	_, err := db.Exec(alterSQL)
+	return err
 }
 
 // GetDB mengembalikan instance koneksi database yang sudah ada

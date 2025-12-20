@@ -13,6 +13,7 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
+
 )
 
 // ShowLoginPage menampilkan halaman login utama.
@@ -332,7 +333,33 @@ func Login(c *gin.Context) {
 	}
 	repository.CreateLoginHistory(loginHistory)
 
-	c.HTML(http.StatusUnauthorized, "login.html", gin.H{"error": "Username atau password salah."})
+	// Cari logo terbaru di static/images untuk ditampilkan saat error login
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusUnauthorized, "login.html", gin.H{
+		"error":       "Username atau password salah.",
+		"CurrentLogo": latestLogo,
+	})
 }
 
 // Logout menghapus session pengguna.

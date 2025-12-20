@@ -10,6 +10,39 @@ import (
 	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
 )
 
+// GetAnggotaByStatus mengambil semua anggota dengan status tertentu (misal: 'keluar')
+func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
+	db := config.GetDB()
+	var anggotas []models.Anggota
+	query := `
+		       SELECT
+			       id_anggota, nama_anggota, username,
+			       tgl_lahir, nik_ktp, no_telepon, tgl_gabung, tgl_keluar,
+			       alamat, jenis_kelamin, status, unit_kerja, fakultas, COALESCE(gaji_bulanan, 0)
+		       FROM anggota
+		       WHERE status = $1
+		       ORDER BY CAST(nomor_urut AS INTEGER) DESC`
+	rows, err := db.Query(query, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a models.Anggota
+		err := rows.Scan(
+			&a.IDAnggota, &a.NamaAnggota, &a.Username,
+			&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung, &a.TglKeluar,
+			&a.Alamat, &a.JenisKelamin, &a.Status, &a.UnitKerja, &a.Fakultas, &a.GajiBulanan,
+		)
+		if err != nil {
+			return nil, err
+		}
+		anggotas = append(anggotas, a)
+	}
+	return anggotas, nil
+
+}
+
 // Mengambil semua anggota dengan status pending
 func GetPendingAnggota() ([]models.Anggota, error) {
 	db := config.GetDB() // Fungsi untuk mendapatkan koneksi DB
@@ -156,9 +189,10 @@ func GetAllAnggota() ([]models.Anggota, error) {
 }
 
 // DeleteAnggota menghapus anggota berdasarkan ID (soft delete atau hard delete tergantung kebutuhan)
+// DeleteAnggota melakukan soft delete dengan mengubah status menjadi 'keluar'
 func DeleteAnggota(id string) error {
 	db := config.GetDB()
-	_, err := db.Exec("DELETE FROM anggota WHERE id_anggota = $1", id)
+	_, err := db.Exec("UPDATE anggota SET status = 'keluar' WHERE id_anggota = $1", id)
 	return err
 }
 
