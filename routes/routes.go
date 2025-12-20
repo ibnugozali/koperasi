@@ -36,8 +36,7 @@ func SetupRouter() *gin.Engine {
 	router.Static("/static", "./static")
 	router.StaticFile("/favicon.ico", "./static/images/logo.png")
 
-	// PERBAIKAN: Gunakan SATU baris ini untuk memuat semua file .html
-	// dari folder templates dan semua subfoldernya.
+	// PERBAIKAN: Gunakan baris ini untuk memuat semua file .html dari folder templates dan semua subfoldernya.
 	router.SetFuncMap(template.FuncMap{
 		"add": func(a, b int) int { return a + b },
 		"json": func(v interface{}) template.JS {
@@ -54,7 +53,7 @@ func SetupRouter() *gin.Engine {
 			return items
 		},
 	})
-	router.LoadHTMLGlob("templates/**/*.html")
+	router.LoadHTMLGlob("templates/**/*")
 
 	// 3. Definisikan rute dan middleware
 	// --- Rute Publik (tidak perlu login) ---

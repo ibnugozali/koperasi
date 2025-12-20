@@ -22,6 +22,7 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
+
 )
 
 // BendaharaListAnggotaKeluar menampilkan daftar anggota yang sudah keluar
@@ -30,10 +31,14 @@ func BendaharaListAnggotaKeluar(c *gin.Context) {
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
 	var latestTime int64
+
 	if errLogo == nil {
 		for _, file := range dirFiles {
 			name := file.Name()
-			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+			if (len(name) > 5 && name[:5] == "logo_" &&
+				(name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) ||
+				name == "logo.png" {
+
 				info, err := file.Info()
 				if err == nil {
 					modTime := info.ModTime().Unix()
@@ -45,24 +50,72 @@ func BendaharaListAnggotaKeluar(c *gin.Context) {
 			}
 		}
 	}
+
 	if latestLogo == "" {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	// Ambil data anggota keluar
 	anggotas, err := repository.GetAnggotaByStatus("keluar")
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota keluar"})
+		// ❗ TIDAK LAGI MEMANGGIL error.html
+		c.HTML(http.StatusOK, "bendahara_data_anggota_keluar.html", gin.H{
+			"Anggotas":    []models.Anggota{},
+			"ActivePage":  "anggota_keluar",
+			"CurrentLogo": latestLogo,
+			"Title":       "Data Anggota Keluar",
+			"Error":       "Gagal mengambil data anggota keluar",
+		})
 		return
 	}
 
+	// Render normal
 	c.HTML(http.StatusOK, "bendahara_data_anggota_keluar.html", gin.H{
 		"Anggotas":    anggotas,
 		"ActivePage":  "anggota_keluar",
 		"CurrentLogo": latestLogo,
 		"Title":       "Data Anggota Keluar",
 	})
-
 }
+// // BendaharaListAnggotaKeluar menampilkan daftar anggota yang sudah keluar
+// func BendaharaListAnggotaKeluar(c *gin.Context) {
+// 	// Cari logo terbaru di static/images
+// 	dirFiles, errLogo := os.ReadDir("static/images")
+// 	var latestLogo string
+// 	var latestTime int64
+// 	if errLogo == nil {
+// 		for _, file := range dirFiles {
+// 			name := file.Name()
+// 			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+// 				info, err := file.Info()
+// 				if err == nil {
+// 					modTime := info.ModTime().Unix()
+// 					if modTime > latestTime {
+// 						latestTime = modTime
+// 						latestLogo = "/static/images/" + name
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// 	if latestLogo == "" {
+// 		latestLogo = "/static/images/placeholder.png"
+// 	}
+
+// 	anggotas, err := repository.GetAnggotaByStatus("keluar")
+// 	if err != nil {
+// 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota keluar"})
+// 		return
+// 	}
+
+// 	c.HTML(http.StatusOK, "bendahara_data_anggota_keluar.html", gin.H{
+// 		"Anggotas":    anggotas,
+// 		"ActivePage":  "anggota_keluar",
+// 		"CurrentLogo": latestLogo,
+// 		"Title":       "Data Anggota Keluar",
+// 	})
+
+// }
 
 // Menampilkan dashboard bendahara dengan data statistik
 func BendaharaLihatDetailAngsuran(c *gin.Context) {

@@ -466,7 +466,9 @@ func AdminPengaturan(c *gin.Context) {
 	allHalaman, err := repository.GetAllHalaman()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data halaman"})
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data halaman"})
 		return
+
 	}
 
 	// Map judul ke nama keamanan
