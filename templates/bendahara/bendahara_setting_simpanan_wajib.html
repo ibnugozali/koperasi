@@ -159,16 +159,24 @@
 </div>
 
             {{ if .success }}
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>{{ .success }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <div class="row justify-content-center">
+                <div class="col-lg-8 mx-auto">
+                    <div class="alert alert-success alert-dismissible fade show w-100" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>{{ .success }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </div>
             </div>
             {{ end }}
 
             {{ if .error }}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>{{ .error }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <div class="row justify-content-center">
+                <div class="col-lg-8 mx-auto">
+                    <div class="alert alert-danger alert-dismissible fade show w-100" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ .error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </div>
             </div>
             {{ end }}
 

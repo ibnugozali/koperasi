@@ -170,209 +170,195 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="container-fluid">
-            <br><br><br>
-            <!-- Page Header -->
-            <div class="page-header">
-                <h1><i class="fas fa-user me-3"></i>Detail Anggota</h1>
-                <p>Informasi lengkap data anggota koperasi</p>
-            </div>
-
+  
             <!-- Anggota Detail Card -->
             <div class="row">
-                <div class="col-lg-10 col-md-12 mx-auto">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Informasi Anggota</h5>
+                <div class="container-fluid">
+                    <br><br><br>
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <h1><i class="fas fa-user me-3"></i>Detail Anggota</h1>
+                        <p>Informasi lengkap data anggota koperasi</p>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg-8 col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Informasi Anggota</h5>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Profile Icon -->
+                                    <div class="text-center mb-4">
+                                        <div class="profile-icon">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <h3 class="mb-2">{{ .Anggota.NamaAnggota }}</h3>
+                                        <p class="text-muted">
+                                            {{ if eq .Anggota.Status "aktif" }}
+                                                <span class="badge-status badge-active"><i class="fas fa-check-circle me-1"></i>Aktif</span>
+                                            {{ else if eq .Anggota.Status "pending" }}
+                                                <span class="badge-status badge-pending"><i class="fas fa-clock me-1"></i>Pending</span>
+                                            {{ else }}
+                                                <span class="badge-status badge-inactive"><i class="fas fa-times-circle me-1"></i>Tidak Aktif</span>
+                                            {{ end }}
+                                        </p>
+                                    </div>
+                                    <!-- Data Pribadi -->
+                                    <h5 class="mt-4 mb-3"><i class="fas fa-user-circle me-2"></i>Data Pribadi</h5>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-id-badge me-2"></i>ID Anggota</div>
+                                        <div class="info-value">
+                                            {{ if hasPrefix .Anggota.IDAnggota "TEMP" }}
+                                                <span class="badge-status badge-pending"><i class="fas fa-clock me-1"></i>Dalam Proses - Menunggu Konfirmasi</span>
+                                            {{ else }}
+                                                <strong>{{ .Anggota.IDAnggota }}</strong>
+                                            {{ end }}
+                                        </div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-user me-2"></i>Nama Lengkap</div>
+                                        <div class="info-value">{{ .Anggota.NamaAnggota }}</div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-id-card me-2"></i>NIK/KTP</div>
+                                        <div class="info-value">{{ .Anggota.NikKTP }}</div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-birthday-cake me-2"></i>Tanggal Lahir</div>
+                                        <div class="info-value">{{ if .Anggota.TglLahir }}<span id="tanggalLahir">{{ .Anggota.TglLahir }}</span>{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-venus-mars me-2"></i>Jenis Kelamin</div>
+                                        <div class="info-value">{{ if eq .Anggota.JenisKelamin "L" }}Laki-laki{{ else }}Perempuan{{ end }}</div>
+                                    </div>
+                                    <h5 class="mt-4 mb-3"><i class="fas fa-address-book me-2"></i>Informasi Kontak</h5>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-phone me-2"></i>No. Telepon</div>
+                                        <div class="info-value">{{ .Anggota.NoTelepon }}</div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-map-marker-alt me-2"></i>Alamat</div>
+                                        <div class="info-value">{{ .Anggota.Alamat }}</div>
+                                    </div>
+                                    <h5 class="mt-4 mb-3"><i class="fas fa-university me-2"></i>Informasi Akademik</h5>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-building me-2"></i>Fakultas</div>
+                                        <div class="info-value">{{ .Anggota.Fakultas }}</div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-briefcase me-2"></i>Unit Kerja</div>
+                                        <div class="info-value">{{ if eq .Anggota.UnitKerja "01" }}Dosen{{ else if eq .Anggota.UnitKerja "02" }}Staff{{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa{{ else }}{{ .Anggota.UnitKerja }}{{ end }}</div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-money-bill-wave me-2"></i>Gaji Bulanan</div>
+                                        <div class="info-value">{{ if gt .Anggota.GajiBulanan 0 }}<span id="gajiBulanan">Rp {{ .Anggota.GajiBulanan }}</span>{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
+                                    </div>
+                                    <h5 class="mt-4 mb-3"><i class="fas fa-calendar-check me-2"></i>Data Keanggotaan</h5>
+                                    <div class="info-row">
+                                        <div class="info-label"><i class="fas fa-calendar-plus me-2"></i>Tanggal Gabung</div>
+                                        <div class="info-value">{{ if .Anggota.TglGabung.IsZero }}<span class="text-muted">Tidak ada data</span>{{ else }}{{ .Anggota.TglGabung.Format "02 January 2006" }}{{ end }}</div>
+                                    </div>
+                                    {{ if .Anggota.BuktiTransfer }}
+                                        <h5 class="mt-4 mb-3"><i class="fas fa-receipt me-2"></i>Bukti Transfer Simpanan Pokok</h5>
+                                        <div class="info-row">
+                                            <div class="info-label"><i class="fas fa-file-image me-2"></i>Bukti Transfer</div>
+                                            <div class="info-value">
+                                                <a href="/static/uploads/{{ .Anggota.BuktiTransfer }}" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-eye me-2"></i>Lihat Bukti Transfer</a>
+                                            </div>
+                                        </div>
+                                        <div class="text-center mt-3">
+                                            <img src="/static/uploads/{{ .Anggota.BuktiTransfer }}" alt="Bukti Transfer" class="img-fluid rounded shadow" style="max-height: 400px; cursor: pointer;" onclick="window.open('/static/uploads/{{ .Anggota.BuktiTransfer }}', '_blank')">
+                                        </div>
+                                    {{ end }}
+                                    <!-- Action Buttons -->
+                                    <div class="text-center mt-4 pt-3 border-top">
+                                        <a href="/bendahara/anggota/keluar" class="btn btn-action btn-back">
+                                            <i class="fas fa-arrow-left me-2"></i>Kembali
+                                        </a>
+                                        <button type="button" class="btn btn-action btn-delete" 
+                                                onclick="if(confirm('Apakah Anda yakin ingin menghapus anggota {{ .Anggota.NamaAnggota }}?')) { 
+                                                    document.getElementById('deleteForm').submit(); 
+                                                }">
+                                            <i class="fas fa-trash me-2"></i>Hapus
+                                        </button>
+                                        <form id="deleteForm" action="/bendahara/anggota/delete/{{ .Anggota.IDAnggota }}" method="POST" style="display: none;"></form>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <!-- Profile Icon -->
-                            <div class="text-center mb-4">
-                                <div class="profile-icon">
-                                    <i class="fas fa-user"></i>
+                        <div class="col-lg-4 col-md-12 mt-4 mt-lg-0">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>Saldo Simpanan & Pinjaman</h5>
                                 </div>
-                                <h3 class="mb-2">{{ .Anggota.NamaAnggota }}</h3>
-                                <p class="text-muted">
-                                    {{ if eq .Anggota.Status "aktif" }}
-                                        <span class="badge-status badge-active">
-                                            <i class="fas fa-check-circle me-1"></i>Aktif
-                                        </span>
-                                    {{ else if eq .Anggota.Status "pending" }}
-                                        <span class="badge-status badge-pending">
-                                            <i class="fas fa-clock me-1"></i>Pending
-                                        </span>
-                                    {{ else }}
-                                        <span class="badge-status badge-inactive">
-                                            <i class="fas fa-times-circle me-1"></i>Tidak Aktif
-                                        </span>
-                                    {{ end }}
-                                </p>
-                            </div>
-
-                            <!-- Data Pribadi -->
-                            <h5 class="mt-4 mb-3"><i class="fas fa-user-circle me-2"></i>Data Pribadi</h5>
-                            
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-id-badge me-2"></i>ID Anggota
-                                </div>
-                                <div class="info-value">
-                                    {{ if hasPrefix .Anggota.IDAnggota "TEMP" }}
-                                        <span class="badge-status badge-pending">
-                                            <i class="fas fa-clock me-1"></i>Dalam Proses - Menunggu Konfirmasi
-                                        </span>
-                                    {{ else }}
-                                        <strong>{{ .Anggota.IDAnggota }}</strong>
-                                    {{ end }}
-                                </div>
-                            </div>
-
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-user me-2"></i>Nama Lengkap
-                                </div>
-                                <div class="info-value">
-                                    {{ .Anggota.NamaAnggota }}
-                                </div>
-                            </div>
-
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-id-card me-2"></i>NIK/KTP
-                                </div>
-                                <div class="info-value">
-                                    {{ .Anggota.NikKTP }}
-                                </div>
-                            </div>
-
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-birthday-cake me-2"></i>Tanggal Lahir
-                                </div>
-                                <div class="info-value">
-                                    {{ if .Anggota.TglLahir }}
-                                        <span id="tanggalLahir">{{ .Anggota.TglLahir }}</span>
-                                    {{ else }}
-                                        <span class="text-muted">Tidak ada data</span>
-                                    {{ end }}
+                                <div class="card-body">
+                                    <div class="row mb-2">
+                                        <div class="col-6"><strong>Simpanan Pokok:</strong></div>
+                                        <div class="col-6 text-end">
+                                            <span class="saldo-value" data-value="{{ .SimpananPokok }}">Rp {{ printf "%.0f" .SimpananPokok }}</span>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row mb-2">
+                                        <div class="col-6"><strong>Simpanan Wajib:</strong></div>
+                                        <div class="col-6 text-end">
+                                            {{ if .SimpananWajib }}
+                                                <span class="saldo-value" data-value="{{ .SimpananWajib }}">Rp {{ printf "%.0f" .SimpananWajib }}</span>
+                                            {{ else }}
+                                                <span class="saldo-value" data-value="0">Rp 0</span>
+                                            {{ end }}
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row mb-2">
+                                        <div class="col-6"><strong>Simpanan Sukarela:</strong></div>
+                                        <div class="col-6 text-end">
+                                            {{ if .SimpananSukarela }}
+                                                <span class="saldo-value" data-value="{{ .SimpananSukarela }}">Rp {{ printf "%.0f" .SimpananSukarela }}</span>
+                                            {{ else }}
+                                                <span class="saldo-value" data-value="0">Rp 0</span>
+                                            {{ end }}
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row mb-2">
+                                        <div class="col-6"><strong>Simpanan Hari Raya:</strong></div>
+                                        <div class="col-6 text-end">
+                                            {{ if .SimpananHariRaya }}
+                                                <span class="saldo-value" data-value="{{ .SimpananHariRaya }}">Rp {{ printf "%.0f" .SimpananHariRaya }}</span>
+                                            {{ else }}
+                                                <span class="saldo-value" data-value="0">Rp 0</span>
+                                            {{ end }}
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row mb-2">
+                                        <div class="col-6"><strong>Total Simpanan:</strong></div>
+                                        <div class="col-6 text-end">
+                                            {{ if .TotalSimpanan }}
+                                                <strong><span class="saldo-value text-success" data-value="{{ .TotalSimpanan }}">Rp {{ printf "%.0f" .TotalSimpanan }}</span></strong>
+                                            {{ else }}
+                                                <strong><span class="saldo-value text-success" data-value="0">Rp 0</span></strong>
+                                            {{ end }}
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row mb-2">
+                                        <div class="col-6"><strong>Total Pinjaman:</strong></div>
+                                        <div class="col-6 text-end">
+                                            {{ if .TotalPinjaman }}
+                                                <span class="saldo-value text-danger" data-value="{{ .TotalPinjaman }}">Rp {{ printf "%.0f" .TotalPinjaman }}</span>
+                                            {{ else }}
+                                                <span class="saldo-value text-danger" data-value="0">Rp 0</span>
+                                            {{ end }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-venus-mars me-2"></i>Jenis Kelamin
-                                </div>
-                                <div class="info-value">
-                                    {{ if eq .Anggota.JenisKelamin "L" }}Laki-laki{{ else }}Perempuan{{ end }}
-                                </div>
-                            </div>
+                      
 
-                            <!-- Kontak -->
-                            <h5 class="mt-4 mb-3"><i class="fas fa-address-book me-2"></i>Informasi Kontak</h5>
-                            
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-phone me-2"></i>No. Telepon
-                                </div>
-                                <div class="info-value">
-                                    {{ .Anggota.NoTelepon }}
-                                </div>
-                            </div>
-
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-map-marker-alt me-2"></i>Alamat
-                                </div>
-                                <div class="info-value">
-                                    {{ .Anggota.Alamat }}
-                                </div>
-                            </div>
-
-                            <!-- Data Akademik -->
-                            <h5 class="mt-4 mb-3"><i class="fas fa-university me-2"></i>Informasi Akademik</h5>
-                            
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-building me-2"></i>Fakultas
-                                </div>
-                                <div class="info-value">
-                                    {{ .Anggota.Fakultas }}
-                                </div>
-                            </div>
-
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-briefcase me-2"></i>Unit Kerja
-                                </div>
-                                <div class="info-value">
-                                    {{ if eq .Anggota.UnitKerja "01" }}Dosen
-                                    {{ else if eq .Anggota.UnitKerja "02" }}Staff
-                                    {{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa
-                                    {{ else }}{{ .Anggota.UnitKerja }}{{ end }}
-                                </div>
-                            </div>
-
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-money-bill-wave me-2"></i>Gaji Bulanan
-                                </div>
-                                <div class="info-value">
-                                    {{ if gt .Anggota.GajiBulanan 0 }}
-                                        <span id="gajiBulanan">Rp {{ .Anggota.GajiBulanan }}</span>
-                                    {{ else }}
-                                        <span class="text-muted">Tidak ada data</span>
-                                    {{ end }}
-                                </div>
-                            </div>
-
-                            <!-- Data Keanggotaan -->
-                            <h5 class="mt-4 mb-3"><i class="fas fa-calendar-check me-2"></i>Data Keanggotaan</h5>
-                            
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-calendar-plus me-2"></i>Tanggal Gabung
-                                </div>
-                                <div class="info-value">
-                                    {{ .Anggota.TglGabung.Format "02 January 2006" }}
-                                </div>
-                            </div>
-
-                            <!-- Bukti Transfer Simpanan Pokok -->
-                            {{ if .Anggota.BuktiTransfer }}
-                            <h5 class="mt-4 mb-3"><i class="fas fa-receipt me-2"></i>Bukti Transfer Simpanan Pokok</h5>
-                            
-                            <div class="info-row">
-                                <div class="info-label">
-                                    <i class="fas fa-file-image me-2"></i>Bukti Transfer
-                                </div>
-                                <div class="info-value">
-                                    <a href="/static/uploads/{{ .Anggota.BuktiTransfer }}" target="_blank" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-eye me-2"></i>Lihat Bukti Transfer
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div class="text-center mt-3">
-                                <img src="/static/uploads/{{ .Anggota.BuktiTransfer }}" 
-                                     alt="Bukti Transfer" 
-                                     class="img-fluid rounded shadow" 
-                                     style="max-height: 400px; cursor: pointer;"
-                                     onclick="window.open('/static/uploads/{{ .Anggota.BuktiTransfer }}', '_blank')">
-                            </div>
-                            {{ end }}
-
-                            <!-- Action Buttons -->
-                            <div class="text-center mt-4 pt-3 border-top">
-                                <a href="/bendahara/anggota/keluar" class="btn btn-action btn-back">
-                                    <i class="fas fa-arrow-left me-2"></i>Kembali
-                                </a>
-                                <button type="button" class="btn btn-action btn-delete" 
-                                        onclick="if(confirm('Apakah Anda yakin ingin menghapus anggota {{ .Anggota.NamaAnggota }}?')) { 
-                                            document.getElementById('deleteForm').submit(); 
-                                        }">
-                                    <i class="fas fa-trash me-2"></i>Hapus
-                                </button>
-                                <form id="deleteForm" action="/bendahara/anggota/delete/{{ .Anggota.IDAnggota }}" method="POST" style="display: none;"></form>
-                            </div>
+                          
                         </div>
                     </div>
                 </div>
@@ -395,17 +381,17 @@
                     gajiElement.textContent = 'Rp ' + formatted;
                 }
             }
-            
+
             // Format Tanggal Lahir - hapus T00:00:00Z dan konversi ke dd/mm/yyyy
             const tanggalLahirElement = document.getElementById('tanggalLahir');
             if (tanggalLahirElement) {
                 let dateValue = tanggalLahirElement.textContent.trim();
-                
+
                 // Hapus T00:00:00Z atau timestamp lainnya jika ada
                 if (dateValue.includes('T')) {
                     dateValue = dateValue.split('T')[0];
                 }
-                
+
                 // Konversi dari YYYY-MM-DD ke dd/mm/yyyy
                 if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
                     const parts = dateValue.split('-');
@@ -416,6 +402,42 @@
                 }
             }
         });
+
+        function deleteAnggota(form) {
+            const btn = form.querySelector('button[type="submit"]');
+
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menghapus...';
+
+            // Submit form via AJAX
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(new FormData(form))
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Redirect to list page after successful deletion
+                    window.location.href = '/bendahara/anggota/keluar';
+                } else {
+                    // Re-enable button on error
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-trash me-2"></i>Hapus';
+                    alert('Gagal menghapus anggota');
+                }
+            })
+            .catch(error => {
+                // Re-enable button on error
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash me-2"></i>Hapus';
+                alert('Terjadi kesalahan saat menghapus anggota');
+            });
+
+            return false; // Prevent default form submission
+        }
     </script>
 </body>
 </html>

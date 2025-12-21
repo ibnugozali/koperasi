@@ -24,7 +24,6 @@ body {
 .sidebar:not(.show) {
     transform: translateX(-100%);
 }
-}
 
 /* Hamburger Menu */
 .hamburger {

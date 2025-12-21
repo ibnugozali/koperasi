@@ -233,14 +233,13 @@ func GetAllAnggota() ([]models.Anggota, error) {
 // DeleteAnggota melakukan soft delete dengan mengubah status menjadi 'keluar'
 func DeleteAnggota(id string) error {
 	db := config.GetDB()
-	now := time.Now()
-	res, err := db.Exec("UPDATE anggota SET status = 'keluar', tgl_keluar = $2 WHERE id_anggota = $1", id, now)
+	res, err := db.Exec("DELETE FROM anggota WHERE id_anggota = $1", id)
 	if err != nil {
-		log.Printf("[DEBUG] Gagal update status anggota keluar: %v", err)
+		log.Printf("[DEBUG] Gagal hard delete anggota: %v", err)
 		return err
 	}
 	rows, _ := res.RowsAffected()
-	log.Printf("[DEBUG] Update status anggota keluar: id=%s, status=keluar, tgl_keluar=%v, rowsAffected=%d", id, now, rows)
+	log.Printf("[DEBUG] Hard delete anggota: id=%s, rowsAffected=%d", id, rows)
 	return nil
 }
 
@@ -328,8 +327,8 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 		return nil, err
 	}
 
-	// Jika anggota sudah aktif dan punya bukti transfer, simpanan pokok diambil dari pengaturan
-	if status == "aktif" && buktiTransfer != "" {
+	// Jika anggota sudah aktif atau keluar dan punya bukti transfer, simpanan pokok diambil dari pengaturan
+	if (status == "aktif" || status == "keluar") && buktiTransfer != "" {
 		var nominalSimpananPokok float64
 		err = db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok)
 		if err != nil {

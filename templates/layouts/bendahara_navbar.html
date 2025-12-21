@@ -60,13 +60,20 @@
             }
         });
 
-        // Auto-open sidebar on page load
+        // Auto-open sidebar hanya di desktop
         const sidebar = document.querySelector('.sidebar');
         const hamburger = document.querySelector('.hamburger');
-        if (sidebar && hamburger) {
-            sidebar.classList.add('show');
-            hamburger.classList.add('active');
+        function setSidebarInitial() {
+            if (window.innerWidth > 768) {
+                sidebar.classList.add('show');
+                hamburger.classList.add('active');
+            } else {
+                sidebar.classList.remove('show');
+                hamburger.classList.remove('active');
+            }
         }
+        setSidebarInitial();
+        window.addEventListener('resize', setSidebarInitial);
     });
 
     var elemenCollapse = document.querySelectorAll('.collapse');
@@ -88,11 +95,26 @@
         }
     });
 
-    // Mencegah submenu tertutup saat klik link di dalamnya
-    var linkSubmenu = document.querySelectorAll('.collapse a');
-    linkSubmenu.forEach(function(link) {
+
+    // Tutup sidebar hanya saat klik link submenu (bukan menu utama yang punya submenu) di mode mobile
+    function closeSidebarOnMobile() {
+        var sidebar = document.querySelector('.sidebar');
+        var hamburger = document.querySelector('.hamburger');
+        if (window.innerWidth <= 768 && sidebar && hamburger) {
+            sidebar.classList.remove('show');
+            hamburger.classList.remove('active');
+        }
+    }
+
+    // Untuk semua link di sidebar
+    var sidebarLinks = document.querySelectorAll('.sidebar a');
+    sidebarLinks.forEach(function(link) {
         link.addEventListener('click', function(event) {
-            event.stopPropagation();
+            // Jika link ada di dalam .collapse (submenu) dan bukan menu utama
+            if (link.closest('.collapse') && !link.classList.contains('dropdown-toggle')) {
+                event.stopPropagation();
+                closeSidebarOnMobile();
+            }
         });
     });
 

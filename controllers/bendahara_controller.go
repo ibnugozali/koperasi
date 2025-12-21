@@ -33,6 +33,28 @@ func BendaharaViewAnggotaKeluar(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/bendahara/anggota/keluar?error=Anggota keluar tidak ditemukan")
 		return
 	}
+
+	// Ambil detail simpanan per jenis (seperti di anggota_controller)
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(idStr)
+	if err != nil {
+		simpananByJenis = map[string]float64{
+			"pokok":     0,
+			"wajib":     0,
+			"sukarela":  0,
+			"hari_raya": 0,
+		}
+	}
+
+	// Hitung Total Simpanan dari semua simpanan yang ada
+	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
+		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"]
+
+	// Ambil total pinjaman
+	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
+	if err != nil {
+		totalPinjaman = 0
+	}
+
 	// Cari logo terbaru di static/images
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
@@ -57,10 +79,16 @@ func BendaharaViewAnggotaKeluar(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "bendahara_data_anggota_keluar_view.html", gin.H{
-		"Anggota":     anggota,
-		"ActivePage":  "anggota_keluar",
-		"CurrentLogo": latestLogo,
-		"Title":       "Detail Anggota Keluar",
+		"Anggota":          anggota,
+		"ActivePage":       "anggota_keluar",
+		"CurrentLogo":      latestLogo,
+		"Title":            "Detail Anggota Keluar",
+		"SimpananPokok":    simpananByJenis["pokok"],
+		"SimpananWajib":    simpananByJenis["wajib"],
+		"SimpananSukarela": simpananByJenis["sukarela"],
+		"SimpananHariRaya": simpananByJenis["hari_raya"],
+		"TotalSimpanan":    totalSimpanan,
+		"TotalPinjaman":    totalPinjaman,
 	})
 }
 
@@ -1032,6 +1060,27 @@ func BendaharaViewAnggota(c *gin.Context) {
 		return
 	}
 
+	// Ambil detail simpanan per jenis (seperti di anggota_controller)
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(idStr)
+	if err != nil {
+		simpananByJenis = map[string]float64{
+			"pokok":     0,
+			"wajib":     0,
+			"sukarela":  0,
+			"hari_raya": 0,
+		}
+	}
+
+	// Hitung Total Simpanan dari semua simpanan yang ada
+	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
+		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"]
+
+	// Ambil total pinjaman
+	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
+	if err != nil {
+		totalPinjaman = 0
+	}
+
 	// Cari logo terbaru di static/images
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
@@ -1056,14 +1105,17 @@ func BendaharaViewAnggota(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
-	// Use bendahara template
 	c.HTML(http.StatusOK, "bendahara_data_anggota_view.html", gin.H{
-		"Anggota":    anggota,
-		"ActivePage": "anggota",
-		// "LogoPath":   logoPath,
-
-		"CurrentLogo": latestLogo,
-		"Title":       "Detail Anggota",
+		"Anggota":          anggota,
+		"ActivePage":       "anggota",
+		"CurrentLogo":      latestLogo,
+		"Title":            "Detail Anggota",
+		"SimpananPokok":    simpananByJenis["pokok"],
+		"SimpananWajib":    simpananByJenis["wajib"],
+		"SimpananSukarela": simpananByJenis["sukarela"],
+		"SimpananHariRaya": simpananByJenis["hari_raya"],
+		"TotalSimpanan":    totalSimpanan,
+		"TotalPinjaman":    totalPinjaman,
 	})
 }
 
@@ -1110,7 +1162,7 @@ func BendaharaEditAnggota(c *gin.Context) {
 	})
 }
 
-// UpdateAnggota memproses update data anggota
+// UpdateAnggota memproses update data anggotac.Redirect(http.StatusFound, "/bendahara/anggota/keluar")
 func BendaharaUpdateAnggota(c *gin.Context) {
 	idStr := c.Param("id")
 
@@ -1153,8 +1205,8 @@ func BendaharaDeleteAnggota(c *gin.Context) {
 		return
 	}
 
-	// Setelah hapus, redirect ke detail anggota keluar
-	c.Redirect(http.StatusFound, "/bendahara/anggota/keluar/view/"+idStr)
+	// Setelah hapus, redirect ke daftar anggota keluar
+	c.Redirect(http.StatusFound, "/bendahara/anggota/keluar")
 }
 
 // BendaharaTransaksi menampilkan halaman transaksi bendahara
@@ -3600,7 +3652,29 @@ func BendaharaSettingSimpananWajib(c *gin.Context) {
 
 // BendaharaSaveSettingSimpananWajib menyimpan konfigurasi pemotongan simpanan wajib
 func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
-	logoPath, _ := c.Get("LogoPath")
+	// logoPath, _ := c.Get("LogoPath")
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
 
 	tanggalPotong, _ := strconv.Atoi(c.PostForm("TanggalPotong"))
 	persentasePotong, _ := strconv.ParseFloat(c.PostForm("PersentasePotong"), 64)
@@ -3631,10 +3705,11 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 		}
 		c.HTML(http.StatusInternalServerError, "bendahara_setting_simpanan_wajib.html", gin.H{
 			"ActivePage": "setting_simpanan_wajib",
-			"LogoPath":   logoPath,
-			"Title":      "Setting Simpanan Wajib",
-			"Config":     config,
-			"error":      "Gagal menyimpan konfigurasi: " + err.Error(),
+			// "LogoPath":   logoPath,
+			"CurrentLogo": latestLogo,
+			"Title":       "Setting Simpanan Wajib",
+			"Config":      config,
+			"error":       "Gagal menyimpan konfigurasi: " + err.Error(),
 		})
 		return
 	}
@@ -3672,10 +3747,11 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "bendahara_setting_simpanan_wajib.html", gin.H{
 		"ActivePage": "setting_simpanan_wajib",
-		"LogoPath":   logoPath,
-		"Title":      "Setting Simpanan Wajib",
-		"Config":     config,
-		"success":    successMsg,
+		// "LogoPath":   logoPath,
+		"CurrentLogo": latestLogo,
+		"Title":       "Setting Simpanan Wajib",
+		"Config":      config,
+		"success":     successMsg,
 	})
 }
 
