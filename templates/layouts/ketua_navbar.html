@@ -3,10 +3,10 @@
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg fixed-top">
     <div class="container-fluid">
-        <button class="hamburger me-3" onclick="toggleSidebar()">
+        <button class="hamburger me-3" onclick="toggleSidebar()" style="padding:6px 12px;background:#004aad;color:#fff;">
             <i class="fas fa-bars"></i>
         </button>
-        <span class="navbar-brand fw-bold ms-auto">Dasbor Ketua</span>
+        <span class="navbar-brand fw-bold">Dasbor Ketua</span>
     </div>
 </nav>
 
@@ -16,32 +16,125 @@
         <img id="navbarLogo" src="{{if .CurrentLogo}}{{.CurrentLogo}}{{else}}/static/images/placeholder.png{{end}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;" onerror="this.src='/static/images/placeholder.png'">
         <h5 class="mt-2">KOPMA</h5>
     </div>
-    <a href="/ketua/ketua-dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
-    <a href="/ketua/ketua-data-anggota" class="{{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
-    <a href="/ketua/ketua-riwayat-login" class="{{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-clock-rotate-left me-2"></i> Riwayat Login</a>
-    <a href="/ketua/ketua-laporan" class="{{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
-    <a href="/ketua/ketua-pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
-    <a href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
+    <a href="/ketua/ketua-dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}" style="color:#fff;"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
+    <a href="/ketua/ketua-data-anggota" class="{{ if eq .ActivePage "anggota" }}active{{ end }}" style="color:#fff;"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
+    <a href="/ketua/ketua-riwayat-login" class="{{ if eq .ActivePage "login_history" }}active{{ end }}" style="color:#fff;"><i class="fa-solid fa-users me-2"></i> Riwayat Login</a>
+    <a href="/ketua/ketua-laporan" class="{{ if eq .ActivePage "laporan" }}active{{ end }}" style="color:#fff;"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
+    <a href="/ketua/ketua-pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}" style="color:#fff;"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
+    <a href="/logout" style="color:#fff;"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
 </div>
 
 <script>
-    // Fungsi toggle sidebar
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const hamburger = document.querySelector('.hamburger');
-        if (sidebar && hamburger) {
-            sidebar.classList.toggle('show');
-            hamburger.classList.toggle('active');
-        }
-    }
-    // Auto-open sidebar on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const sidebar = document.getElementById('sidebar');
-        const hamburger = document.querySelector('.hamburger');
-        if (sidebar && hamburger) {
+// Sidebar auto-show di desktop, auto-close di mobile
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    const hamburger = document.querySelector('.hamburger');
+
+    function setSidebarInitial() {
+        if (window.innerWidth > 768) {
             sidebar.classList.add('show');
             hamburger.classList.add('active');
+        } else {
+            sidebar.classList.remove('show');
+            hamburger.classList.remove('active');
         }
+    }
+    setSidebarInitial();
+    window.addEventListener('resize', setSidebarInitial);
+
+    // Tutup sidebar saat klik menu di mobile
+    document.querySelectorAll('.sidebar a').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('show');
+                hamburger.classList.remove('active');
+            }
+        });
     });
+
+    // Pastikan submenu tetap terbuka berdasarkan URL saat ini dengan animasi (jika ada submenu di masa depan)
+    var currentURL = window.location.pathname;
+    // Contoh: jika ada submenu, tambahkan logika di sini seperti pada bendahara_navbar.html
+    // if (currentURL.includes('/ketua/anggota')) { ... }
+});
+
+// Fungsi toggle sidebar
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const hamburger = document.querySelector('.hamburger');
+    if (sidebar && hamburger) {
+        sidebar.classList.toggle('show');
+        hamburger.classList.toggle('active');
+    }
+}
+
+// Fungsi toggle submenu dengan animasi (untuk masa depan jika ada submenu)
+function toggleSubmenu(toggle, id) {
+    var elemenTarget = document.getElementById(id);
+    var elemenToggle = toggle;
+
+    if (elemenTarget) {
+        // Toggle submenu yang diklik - klik pertama buka, klik kedua tutup
+        if (elemenTarget.classList.contains('show')) {
+            // Jika submenu sudah terbuka, tutup dengan animasi
+            elemenTarget.style.transition = 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out';
+            elemenTarget.style.maxHeight = elemenTarget.scrollHeight + 'px';
+            elemenTarget.style.opacity = '1';
+            setTimeout(function() {
+                elemenTarget.style.maxHeight = '0px';
+                elemenTarget.style.opacity = '0';
+            }, 10);
+            setTimeout(function() {
+                elemenTarget.classList.remove('show');
+                elemenTarget.style.display = 'none';
+                elemenTarget.style.maxHeight = '';
+                elemenTarget.style.opacity = '';
+                elemenTarget.style.transition = '';
+                elemenToggle.setAttribute('aria-expanded', 'false');
+            }, 300);
+        } else {
+            // Jika submenu tertutup, buka dan tutup semua submenu lain
+            var semuaCollapse = document.querySelectorAll('.collapse');
+            semuaCollapse.forEach(function(collapse) {
+                if (collapse !== elemenTarget && collapse.classList.contains('show')) {
+                    collapse.style.transition = 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out';
+                    collapse.style.maxHeight = collapse.scrollHeight + 'px';
+                    collapse.style.opacity = '1';
+                    setTimeout(function() {
+                        collapse.style.maxHeight = '0px';
+                        collapse.style.opacity = '0';
+                    }, 10);
+                    setTimeout(function() {
+                        collapse.classList.remove('show');
+                        collapse.style.display = 'none';
+                        collapse.style.maxHeight = '';
+                        collapse.style.opacity = '';
+                        collapse.style.transition = '';
+                        var toggleLain = collapse.previousElementSibling;
+                        if (toggleLain) {
+                            toggleLain.setAttribute('aria-expanded', 'false');
+                        }
+                    }, 300);
+                }
+            });
+
+            // Buka submenu yang diklik dengan animasi
+            elemenTarget.style.display = 'block';
+            elemenTarget.style.maxHeight = '0px';
+            elemenTarget.style.opacity = '0';
+            elemenTarget.style.transition = 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out';
+            setTimeout(function() {
+                elemenTarget.classList.add('show');
+                elemenTarget.style.maxHeight = elemenTarget.scrollHeight + 'px';
+                elemenTarget.style.opacity = '1';
+                elemenToggle.setAttribute('aria-expanded', 'true');
+            }, 10);
+            setTimeout(function() {
+                elemenTarget.style.maxHeight = '';
+                elemenTarget.style.transition = '';
+            }, 300);
+        }
+    }
+}
 </script>
 {{end}}

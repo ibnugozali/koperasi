@@ -1,3 +1,8 @@
+body {
+    background-color: #f5f7fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 /* Sidebar */
 .sidebar {
     width: 240px;
@@ -118,41 +123,77 @@ body:not(:has(.sidebar.show)) footer {
     background: #0a58ca;
     color: #fff !important;
 }
-/* CSS khusus halaman ketua_laporan */
-.stat-card {
-    background: #ffffff;
-    border-radius: 15px;
-    padding: 30px 20px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-    height: 100%;
-    text-align: center;
-    margin-bottom: 20px;
+.top-header {
+    margin-bottom: 24px;
 }
-.stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-}
-.stat-icon {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
-}
-.stat-number {
-    font-size: 2rem;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-.stat-label {
-    font-size: 1rem;
-    color: #6c757d;
+.top-header h4 {
+    margin-bottom: 4px;
+    font-weight: 600;
 }
 .card {
     border: none;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
 }
 .card-header {
     border-radius: 12px 12px 0 0 !important;
     padding: 20px;
     border: none;
+    font-weight: 600;
+}
+.card-body {
+    padding: 25px;
+}
+.form-label {
+    font-weight: 500;
+}
+.form-control {
+    border-radius: 8px;
+    font-size: 1rem;
+}
+.text-end {
+    text-align: right;
+}
+.text-center {
+    text-align: center;
+}
+.mb-3 {
+    margin-bottom: 1rem !important;
+}
+.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+.shadow-sm {
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+}
+.bg-warning {
+    background-color: #ffe066 !important;
+}
+.bg-info {
+    background-color: #3bc9db !important;
+}
+.text-dark {
+    color: #343a40 !important;
+}
+.text-white {
+    color: #fff !important;
+}
+.rounded-circle {
+    border-radius: 50% !important;
+}
+.small {
+    font-size: 0.9rem;
+}
+.btn-warning {
+    background-color: #ffe066;
+    color: #343a40;
+    border: none;
+}
+.btn-outline-secondary {
+    border: 1px solid #adb5bd;
+    color: #495057;
+}
+.ms-2 {
+    margin-left: 0.5rem !important;
 }

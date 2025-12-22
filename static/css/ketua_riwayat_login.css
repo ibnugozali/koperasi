@@ -1,4 +1,8 @@
-/* Sidebar */
+/* .sidebar a.active, .sidebar a:hover {
+    background: #0a58ca;
+    color: #fff !important;
+} */
+
 .sidebar {
     width: 240px;
     height: 100vh;
@@ -18,8 +22,6 @@
 .sidebar:not(.show) {
     transform: translateX(-100%);
 }
-
-/* Hamburger Menu */
 .hamburger {
     display: inline-block;
     background: #004aad;
@@ -36,7 +38,6 @@
 .hamburger i {
     font-size: 20px;
 }
-
 @media (max-width: 768px) {
     .sidebar {
         transform: translateX(-100%);
@@ -54,7 +55,6 @@
         padding: 20px 15px;
     }
 }
-
 .sidebar h4 {
     text-align: center;
     margin-bottom: 20px;
@@ -68,12 +68,10 @@
     font-size: 15px;
     transition: background 0.2s;
 }
-.sidebar a:hover,
-.sidebar a.active {
+.sidebar a.active, .sidebar a:hover {
     background: #0a58ca;
+    color: #fff !important;
 }
-
-/* Navbar */
 .navbar {
     margin-left: 240px;
     background: #ffffff;
@@ -88,8 +86,6 @@ body:not(:has(.sidebar.show)) .main-content,
 body:not(:has(.sidebar.show)) footer {
     margin-left: 0 !important;
 }
-
-/* Main Content */
 .main-content {
     margin-left: 240px;
     padding: 30px;
@@ -99,8 +95,6 @@ body:not(:has(.sidebar.show)) footer {
 body:not(:has(.sidebar.show)) .main-content {
     margin-left: 0 !important;
 }
-
-/* Footer */
 footer {
     margin-left: 240px;
     padding: 15px;
@@ -114,37 +108,34 @@ footer {
 body:not(:has(.sidebar.show)) footer {
     margin-left: 0 !important;
 }
-.sidebar a.active, .sidebar a:hover {
-    background: #0a58ca;
-    color: #fff !important;
+/* CSS khusus halaman ketua_riwayat_login */
+.main-content {
+    margin-left: 240px;
+    padding: 30px;
+    transition: margin-left 0.3s ease;
 }
-/* CSS khusus halaman ketua_laporan */
-.stat-card {
-    background: #ffffff;
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        padding: 15px;
+    }
+}
+.page-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
     border-radius: 15px;
-    padding: 30px 20px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-    height: 100%;
-    text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
 }
-.stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-}
-.stat-icon {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
-}
-.stat-number {
+.page-header h1 {
+    margin: 0;
     font-size: 2rem;
-    font-weight: bold;
-    margin-bottom: 5px;
+    font-weight: 600;
 }
-.stat-label {
-    font-size: 1rem;
-    color: #6c757d;
+.page-header p {
+    margin: 10px 0 0 0;
+    opacity: 0.9;
 }
 .card {
     border: none;
@@ -152,7 +143,44 @@ body:not(:has(.sidebar.show)) footer {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
     border-radius: 12px 12px 0 0 !important;
     padding: 20px;
     border: none;
+}
+.table thead th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #4a5568;
+    border-bottom: 2px solid #dee2e6;
+}
+.badge-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+.badge-failed {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+#searchContainer label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+#searchContainer input {
+    margin: 0 !important;
+}
+#lengthMenuContainer label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    white-space: nowrap;
+}
+#lengthMenuContainer select {
+    margin: 0 !important;
+    display: inline-block;
+    width: auto;
 }
