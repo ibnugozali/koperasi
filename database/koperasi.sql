@@ -258,9 +258,25 @@ INSERT INTO simpanan (jenis_simpanan) VALUES
 ('hari_raya');
 
 
--- SEED DATA HALAMAN (pastikan data penting selalu ada)
-
-
+-- Pastikan data dashboard_anggota ada (otomatis insert jika belum ada, update jika sudah ada)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM halaman WHERE slug = 'dashboard_anggota') THEN
+    UPDATE halaman
+    SET judul = 'Dashboard Anggota',
+      kategori = 'tentang',
+      konten = '{"welcome":"Selamat Datang di Koperasi KOPMA","slogan":"Dari Anggota, Oleh Anggota, dan Untuk Anggota","teks":"Selamat datang di dashboard anggota.","gambar":"/static/images/placeholder.png"}'
+    WHERE slug = 'dashboard_anggota';
+  ELSE
+    INSERT INTO halaman (slug, judul, kategori, konten)
+    VALUES (
+      'dashboard_anggota',
+      'Dashboard Anggota',
+      'tentang',
+      '{"welcome":"Selamat Datang di Koperasi KOPMA","slogan":"Dari Anggota, Oleh Anggota, dan Untuk Anggota","teks":"Selamat datang di dashboard anggota.","gambar":"/static/images/placeholder.png"}'
+    );
+  END IF;
+END $$;
 
 -- =================================================================
 -- BAGIAN 3: PEMBUATAN INDEX UNTUK OPTIMASI PERFORMA

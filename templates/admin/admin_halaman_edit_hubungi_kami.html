@@ -14,21 +14,14 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="container-fluid">
-            <p class="text-muted">Kelola konten halaman <b>{{ .Halaman.Judul }}</b></p>
+             <br><br><br>
             <div class="row">
+          
                 <div class="col-12">
                     <div class="card shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="fas fa-edit me-2"></i> Edit Halaman: {{ .Halaman.Judul }}</h5>
-                        </div>
                         <div class="card-body">
                             <form id="editForm">
                                 <input type="hidden" id="konten" name="konten">
-                                <!-- Judul Halaman -->
-                                <div class="mb-3">
-                                    <label for="judul_halaman" class="form-label">Judul Halaman</label>
-                                    <input type="text" class="form-control" id="judul_halaman" name="judul" value="{{ .Halaman.Judul }}">
-                                </div>
                                 <!-- Konten Hubungi Kami -->
                                 <div class="mb-3">
                                     <label for="alamat" class="form-label">Alamat</label>

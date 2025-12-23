@@ -26,8 +26,9 @@
         <div class="card-body">
             <h1>{{ .Judul }}</h1>
             <p>Silakan hubungi kami untuk informasi lebih lanjut.</p>
-            <p>Email: info@koperasiwirya.com</p>
-            <p>Telepon: 08123456789</p>
+            <p>Alamat: {{ index .Konten "alamat" }}</p>
+            <p>Email: {{ index .Konten "email" }}</p>
+            <p>Telepon: {{ index .Konten "telepon" }}</p>
         </div>
     </div>
 </main>

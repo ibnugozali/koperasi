@@ -14,25 +14,22 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="container-fluid">
-            <p class="text-muted">Kelola konten halaman <b>{{ .Halaman.Judul }}</b></p>
+            
             <div class="row">
                 <div class="col-12">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="fas fa-edit me-2"></i> Edit Halaman: {{ .Halaman.Judul }}</h5>
-                        </div>
+                      <br><br><br>
+                    <div class="card shadow-sm">   
                         <div class="card-body">
                             <form id="editForm">
                                 <input type="hidden" id="konten" name="konten">
-                                <!-- Judul Halaman -->
-                                <div class="mb-3">
-                                    <label for="judul_halaman" class="form-label">Judul Halaman</label>
-                                    <input type="text" class="form-control" id="judul_halaman" name="judul" value="{{ .Halaman.Judul }}">
-                                </div>
                                 <!-- Konten Dashboard -->
                                 <div class="mb-3">
-                                    <label for="dashboard_content" class="form-label">Konten Dashboard (HTML diperbolehkan)</label>
-                                    <textarea class="form-control" id="dashboard_content" name="dashboard_content" rows="8">{{ index .Konten "dashboard_content" }}</textarea>
+                                    <label for="welcome" class="form-label">Judul Sambutan (welcome)</label>
+                                    <input type="text" class="form-control" id="welcome" name="welcome" value="{{ index .Konten "welcome" }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="slogan" class="form-label">Slogan</label>
+                                    <input type="text" class="form-control" id="slogan" name="slogan" value="{{ index .Konten "slogan" }}">
                                 </div>
                                 <button type="submit" class="btn btn-success"><i class="fas fa-save me-2"></i>Simpan Perubahan</button>
                                 <a href="/admin/dashboard" class="btn btn-secondary ms-2">Batal</a>
@@ -48,17 +45,18 @@
     $(function() {
         $('#editForm').on('submit', function(e) {
             e.preventDefault();
-            var judul = $('#judul_halaman').val();
-            var dashboardContent = $('#dashboard_content').val();
-            var konten = JSON.stringify({ dashboard_content: dashboardContent });
+            var welcome = $('#welcome').val();
+            var slogan = $('#slogan').val();
+            var konten = JSON.stringify({ welcome: welcome, slogan: slogan });
             $('#konten').val(konten);
             $.ajax({
-                url: window.location.pathname,
+                url: '/admin/halaman/update/dashboard_anggota',
                 method: 'POST',
-                data: {
-                    judul: judul,
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    judul: '',
                     konten: konten
-                },
+                }),
                 success: function(res) {
                     alert('Konten dashboard berhasil diperbarui!');
                     window.location.href = '/admin/dashboard';

@@ -278,6 +278,15 @@ func ShowTentang(c *gin.Context) {
 
 // ShowHubungiKami handles the /hubungi-kami route with a static page.
 func ShowHubungiKami(c *gin.Context) {
+	// Ambil data halaman hubungi_kami dari database
+	halaman, err := repository.GetHalamanBySlug("hubungi_kami")
+	var konten map[string]interface{}
+	if err == nil {
+		_ = json.Unmarshal([]byte(halaman.Konten), &konten)
+	} else {
+		konten = map[string]interface{}{}
+	}
+
 	// Cek session untuk info login di navbar
 	session := sessions.Default(c)
 	var anggota models.Anggota
@@ -313,6 +322,7 @@ func ShowHubungiKami(c *gin.Context) {
 		"Judul":       "Hubungi Kami",
 		"Anggota":     anggota,
 		"CurrentLogo": latestLogo,
+		"Konten":      konten,
 	})
 }
 
