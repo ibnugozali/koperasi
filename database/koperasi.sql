@@ -1,6 +1,11 @@
+
 -- SQLBook: Code
 -- Active: 1716903284734@@127.0.0.1@5432@postgres
--- Hapus tabel jika sudah ada untuk memastikan skrip bisa dijalankan ulang
+
+-- DROP TABLES (urutan dari yang paling dependent ke yang paling independen)
+DROP TABLE IF EXISTS log_pemotongan_simpanan CASCADE;
+DROP TABLE IF EXISTS pengambilan_simpanan CASCADE;
+DROP TABLE IF EXISTS pesan CASCADE;
 DROP TABLE IF EXISTS import_history CASCADE;
 DROP TABLE IF EXISTS angsuran CASCADE;
 DROP TABLE IF EXISTS pinjaman CASCADE;
@@ -9,6 +14,8 @@ DROP TABLE IF EXISTS simpanan CASCADE;
 DROP TABLE IF EXISTS pengelola CASCADE;
 DROP TABLE IF EXISTS anggota CASCADE;
 DROP TABLE IF EXISTS halaman CASCADE;
+DROP TABLE IF EXISTS konfigurasi_simpanan_wajib CASCADE;
+DROP TABLE IF EXISTS login_history CASCADE;
 
 -- =================================================================
 -- BAGIAN 1: PEMBUATAN STRUKTUR TABEL
@@ -250,81 +257,10 @@ INSERT INTO simpanan (jenis_simpanan) VALUES
 ('sukarela'),
 ('hari_raya');
 
--- Mengisi data awal untuk halaman statis dengan format JSON
-INSERT INTO halaman (slug, judul, kategori, konten) VALUES
-('simpanan', 'Simpanan', 'pelayanan',
-  '{
-    "judul": "Simpanan",
-    "jenis_simpanan": [
-      {
-        "nama": "Simpanan Pokok",
-        "deskripsi": "Simpanan wajib yang dibayarkan saat menjadi anggota"
-      },
-      {
-        "nama": "Simpanan Wajib",
-        "deskripsi": "Simpanan rutin bulanan yang harus dibayarkan anggota"
-      },
-      {
-        "nama": "Simpanan Sukarela",
-        "deskripsi": "Simpanan tambahan yang dapat dibayarkan kapan saja"
-      },
-      {
-        "nama": "Simpanan Hari Raya",
-        "deskripsi": "Simpanan yang ditujukan untuk mempersiapkan kebutuhan pada saat hari raya"
-      }
-    ],
-    "manfaat": [
-      "Mendapatkan bagi hasil sesuai ketentuan koperasi",
-      "Dapat digunakan sebagai modal pinjaman",
-      "Meningkatkan kesejahteraan anggota",
-      "Investasi yang aman dan terpercaya"
-    ]
-  }'
-),
-('dashboard_anggota', 'Dashboard Anggota', 'dashboard',
-  '{
-    "teks": "Selamat datang di dashboard anggota Koperasi Wirya. Di sini Anda dapat mengakses berbagai layanan simpanan dan pinjaman yang disediakan oleh koperasi.",
-    "gambar": "/static/images/placeholder.png",
-    "welcome": "Selamat Datang di Koperasi Wirya",
-    "slogan": "Dari Anggota, Oleh Anggota, dan Untuk Anggota"
-  }'
-),
-('pinjaman', 'Pinjaman', 'pelayanan',
-  '{
-    "judul": "Pinjaman",
-    "deskripsi": "Layanan pinjaman untuk membantu memenuhi kebutuhan finansial anggota dengan bunga yang kompetitif",
-    "syarat": [
-      "Sudah menjadi anggota aktif koperasi",
-      "Memiliki simpanan pokok dan wajib",
-      "Menyerahkan fotokopi KTP dan KK",
-      "Mengisi formulir pengajuan pinjaman",
-      "Melampirkan slip gaji atau surat keterangan penghasilan"
-    ],
-    "manfaat": [
-      "Proses pengajuan yang mudah dan cepat",
-      "Bunga kompetitif",
-      "Jangka waktu pembayaran yang fleksibel",
-      "Tanpa agunan untuk nominal tertentu"
-    ]
-  }'
-),
-('angsuran', 'Angsuran', 'pelayanan',
-  '{
-    "judul": "Angsuran",
-    "deskripsi": "Sistem pembayaran angsuran pinjaman yang fleksibel dan mudah",
-    "cara_bayar": [
-      "Transfer ke rekening koperasi",
-      "Pembayaran langsung di kantor koperasi",
-      "Potong gaji (untuk yang bekerja di institusi kerjasama)"
-    ],
-    "ketentuan": [
-      "Angsuran dibayarkan setiap bulan",
-      "Denda keterlambatan 0.5% per hari",
-      "Dapat melakukan pelunasan dipercepat tanpa penalti",
-      "Pembayaran dapat dilakukan melalui berbagai metode"
-    ]
-  }'
-);
+
+-- SEED DATA HALAMAN (pastikan data penting selalu ada)
+
+
 
 -- =================================================================
 -- BAGIAN 3: PEMBUATAN INDEX UNTUK OPTIMASI PERFORMA
@@ -377,6 +313,13 @@ INSERT INTO halaman (slug, judul, kategori, konten) VALUES
     ],
     "komitmen_title": "Komitmen Kami",
     "komitmen_text": "Koperasi Wirya berkomitmen untuk terus berkembang dan berinovasi dalam memberikan layanan terbaik kepada anggota. Dengan prinsip kebersamaan dan demokrasi, kami berusaha menciptakan dampak positif bagi masyarakat dan ekonomi lokal."
+  }'
+),
+('hubungi_kami', 'Hubungi Kami', 'tentang',
+  '{
+    "alamat": "Jl. Contoh No. 123, Kota",
+    "telepon": "08123456789",
+    "email": "info@koperasi.com"
   }'
 ),
 ('visi-misi', 'Visi dan Misi', 'tentang',
@@ -495,8 +438,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS anggota_generate_id_trigger ON anggota;
-CREATE TRIGGER anggota_generate_id_trigger
-  BEFORE INSERT OR UPDATE ON anggota
-  FOR EACH ROW
-  EXECUTE FUNCTION anggota_generate_id();
+
+-- Hapus trigger jika sudah ada, agar tidak error saat migrasi ulang
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'anggota_generate_id_trigger'
+    ) THEN
+        EXECUTE 'DROP TRIGGER anggota_generate_id_trigger ON anggota';
+    END IF;
+    CREATE TRIGGER anggota_generate_id_trigger
+      BEFORE INSERT OR UPDATE ON anggota
+      FOR EACH ROW
+      EXECUTE FUNCTION anggota_generate_id();
+END $$ LANGUAGE plpgsql;

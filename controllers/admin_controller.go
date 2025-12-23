@@ -101,7 +101,12 @@ func ShowEditHalamanForm(c *gin.Context) {
 
 	// Pilih template berdasarkan slug (ganti - dengan _ untuk nama file)
 	templateSlug := strings.ReplaceAll(slug, "-", "_")
-	templateName := "admin_halaman_edit_" + templateSlug + ".html"
+	var templateName string
+	if templateSlug == "hubungi_kami" {
+		templateName = "admin_halaman_edit_hubungi_kami.html"
+	} else {
+		templateName = "admin_halaman_edit_" + templateSlug + ".html"
+	}
 
 	c.HTML(http.StatusOK, templateName, gin.H{
 		"Halaman":  halaman,
