@@ -11,7 +11,7 @@
 
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
-    <div class="text-center mb-3">
+    <div class="text-center mb-3" style="padding-top:56px;">
         <img id="navbarLogo" src="{{if .LogoPath}}{{.LogoPath}}{{else}}/static/images/logo.png{{end}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;" onerror="this.src='/static/images/logo.png'">
         <h5 class="mt-2">KOPMA</h5>
     </div>
@@ -34,6 +34,14 @@
 </div>
 
 <script>
+    // Fungsi untuk toggle sidebar responsive
+    function toggleSidebar() {
+        var sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            sidebar.classList.toggle('show');
+        }
+    }
+
     // Inisialisasi - pastikan submenu yang tidak aktif tertutup, yang aktif tetap terbuka
     document.addEventListener('DOMContentLoaded', function() {
         const navbarLogo = document.getElementById('navbarLogo');
@@ -66,13 +74,20 @@
             }
         });
 
-        // Auto-open sidebar on page load
+        // Auto-open sidebar hanya di desktop
         const sidebar = document.querySelector('.sidebar');
         const hamburger = document.querySelector('.hamburger');
-        if (sidebar && hamburger) {
-            sidebar.classList.add('show');
-            hamburger.classList.add('active');
+        function setSidebarInitial() {
+            if (window.innerWidth > 768) {
+                sidebar.classList.add('show');
+                hamburger.classList.add('active');
+            } else {
+                sidebar.classList.remove('show');
+                hamburger.classList.remove('active');
+            }
         }
+        setSidebarInitial();
+        window.addEventListener('resize', setSidebarInitial);
     });
 
     var elemenCollapse = document.querySelectorAll('.collapse');
