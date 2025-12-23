@@ -92,16 +92,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         <label class="form-label">Judul Timeline</label>
                         <input type="text" class="form-control timeline-title" placeholder="Masukkan judul timeline">
                     </div>
-                    <div class="col-md-3 mb-2">
-                        <label class="form-label">Warna Marker</label>
-                        <select class="form-control timeline-marker">
-                            <option value="bg-primary" selected>Biru</option>
-                            <option value="bg-success">Hijau</option>
-                            <option value="bg-warning">Kuning</option>
-                            <option value="bg-info">Cyan</option>
-                            <option value="bg-danger">Merah</option>
-                        </select>
-                    </div>
                     <div class="col-md-3 mb-2 d-flex align-items-end">
                         <button type="button" class="btn btn-danger btn-sm remove-timeline-item">Hapus</button>
                     </div>
@@ -135,16 +125,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const timelineItems = [];
             const timelineEditors = document.querySelectorAll('.timeline-item-editor');
             timelineEditors.forEach(editor => {
-                const title = editor.querySelector('.timeline-title').value;
-                const marker = editor.querySelector('.timeline-marker').value;
-                const text = editor.querySelector('.timeline-text').value;
-                if (title.trim() || text.trim()) {
-                    timelineItems.push({
-                        title: title,
-                        marker: marker,
-                        text: text
-                    });
-                }
+                const title = editor.querySelector('.timeline-title').value.trim();
+                const text = editor.querySelector('.timeline-text').value.trim();
+                timelineItems.push({
+                    title: title,
+                    text: text
+                });
             });
             konten.timeline = timelineItems;
             konten.komitmen_title = document.getElementById('komitmen_title_sejarah').value;
@@ -171,8 +157,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Response data:', data); // Debug log
                 if (data.success) {
                     alert('Halaman berhasil diperbarui!');
-                    // Optional: reload page or update UI
-                    // window.location.reload();
+                    // Reload page to show updated data and ensure persistence
+                    window.location.reload();
                 } else {
                     throw new Error(data.message || 'Gagal memperbarui halaman');
                 }
