@@ -20,36 +20,47 @@
     <div class="container-fluid">
         
 <!-- Statistik -->
-<div class="row g-4">
-    <div class="col-md-3 col-sm-6">
+<div class="row g-4 mb-5">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <div class="stat-card">
             <div class="stat-icon text-primary"><i class="fa-solid fa-users"></i></div>
-            <div class="stat-number text-primary">{{len .PendingMembers}}</div>
-            <div class="stat-label"><a href="/ketua/anggota" class="text-decoration-none text-primary">Data Anggota</a></div>
+            <div class="stat-number text-primary" data-value="{{ .TotalAnggota }}">{{ .TotalAnggota }}</div>
+            <div class="stat-label">Total Anggota</div>
         </div>
     </div>
-
-    <div class="col-md-3 col-sm-6">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <div class="stat-card">
             <div class="stat-icon text-warning"><i class="fa-solid fa-user-clock"></i></div>
-            <div class="stat-number text-warning">{{len .PendingMembers}}</div>
+            <div class="stat-number text-warning" data-value="{{ .MenungguKonfirmasi }}">{{ .MenungguKonfirmasi }}</div>
             <div class="stat-label">Menunggu Konfirmasi</div>
         </div>
     </div>
-
-    <div class="col-md-3 col-sm-6">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <div class="stat-card">
             <div class="stat-icon text-success"><i class="fa-solid fa-wallet"></i></div>
-            <div class="stat-number text-success">Rp 45.000.000</div>
+            <div class="stat-number text-success" data-value="{{ printf "%.0f" .TotalSimpanan }}">{{ printf "%.0f" .TotalSimpanan }}</div>
             <div class="stat-label">Total Simpanan</div>
         </div>
     </div>
-
-    <div class="col-md-3 col-sm-6">
+    <div class="col-lg-2 col-md-4 col-sm-6">
         <div class="stat-card">
             <div class="stat-icon text-danger"><i class="fa-solid fa-money-bill-wave"></i></div>
-            <div class="stat-number text-danger">Rp 120.000.000</div>
-            <div class="stat-label">Total Pinjaman</div>
+            <div class="stat-number text-danger" data-value="{{ printf "%.0f" .TotalPinjaman }}">{{ printf "%.0f" .TotalPinjaman }}</div>
+            <div class="stat-label">Total Pinjaman Aktif</div>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-6 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon text-info"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            <div class="stat-number text-info" data-value="{{ printf "%.0f" .TotalAngsuran }}">{{ printf "%.0f" .TotalAngsuran }}</div>
+            <div class="stat-label">Total Angsuran Terbayar</div>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-6 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon text-secondary"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+            <div class="stat-number text-secondary" data-value="{{ printf "%.0f" .TotalPengambilan }}">{{ printf "%.0f" .TotalPengambilan }}</div>
+            <div class="stat-label">Total Pengambilan Simpanan</div>
         </div>
     </div>
 </div>
@@ -61,7 +72,12 @@
             <i class="fa-solid fa-chart-line"></i> Aktivitas Terbaru
         </div>
         <div class="card-body">
-            <canvas id="activityChart" width="400" height="200"></canvas>
+            <div class="mb-2 text-center fw-bold" style="font-size: 1.1rem;">
+                Statistik Koperasi (Saat Ini)
+            </div>
+            <div style="position: relative; width: 100%; min-height: 300px;">
+                <canvas id="activityChart" style="display: block; width: 100% !important; height: 300px;"></canvas>
+            </div>
         </div>
     </div>
 </div>
@@ -73,27 +89,118 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const ctx = document.getElementById('activityChart');
-    const myChart = new Chart(ctx, {
+// Helper function untuk format rupiah
+function formatRupiah(angka) {
+    if (isNaN(angka) || angka === null || angka === undefined) return 'Rp 0';
+    const numberString = angka.toString();
+    const split = numberString.split('.');
+    const sisa = split[0].length % 3;
+    let rupiah = split[0].substr(0, sisa);
+    const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+    if (ribuan) {
+        const separator = sisa ? '.' : '';
+        rupiah += separator + ribuan.join('.');
+    }
+    return 'Rp ' + rupiah;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Format angka rupiah pada stat-card
+    document.querySelectorAll('.stat-number[data-value]').forEach((el) => {
+        const value = parseFloat(el.getAttribute('data-value')) || 0;
+        if (value >= 1000) {
+            el.textContent = formatRupiah(value);
+        }
+    });
+
+    // Grafik statistik line chart (bukan riwayat, hanya snapshot saat ini)
+    const canvas = document.getElementById('activityChart');
+    if (!canvas) return;
+    const labels = [
+        'Total Anggota',
+        'Menunggu Konfirmasi',
+        'Total Simpanan',
+        'Total Pinjaman Aktif',
+        'Total Angsuran Terbayar',
+        'Total Pengambilan Simpanan'
+    ];
+    const data = [
+        parseFloat({{ .TotalAnggota }}),
+        parseFloat({{ .MenungguKonfirmasi }}),
+        parseFloat({{ printf "%.0f" .TotalSimpanan }}),
+        parseFloat({{ printf "%.0f" .TotalPinjaman }}),
+        parseFloat({{ printf "%.0f" .TotalAngsuran }}),
+        parseFloat({{ printf "%.0f" .TotalPengambilan }})
+    ];
+    const datasetColors = [
+        'blue', 'orange', 'green', 'red', 'teal', 'gray'
+    ];
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'],
+            labels: labels,
             datasets: [{
-                label: 'Data Aktivitas Terbaru',
-                data: [12, 19, 3, 5, 2, 3, 5, 4, 7, 8, 9, 10],
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1
+                label: 'Statistik',
+                data: data,
+                borderColor: 'purple',
+                backgroundColor: 'rgba(128,0,128,0.1)',
+                tension: 0.3,
+                fill: true,
+                pointBackgroundColor: datasetColors,
+                pointBorderColor: datasetColors,
+                pointRadius: 6
             }]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                title: {
+                    display: true,
+                    text: 'Statistik Koperasi',
+                    font: { size: 16, weight: 'bold' },
+                    padding: { top: 10, bottom: 30 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) label += ': ';
+                            // Format rupiah hanya untuk data keuangan
+                            if (context.dataIndex >= 2) {
+                                label += formatRupiah(context.parsed.y);
+                            } else {
+                                label += context.parsed.y;
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value, idx) {
+                            // Format rupiah hanya untuk data keuangan
+                            if (value >= 1000) return formatRupiah(value);
+                            return value;
+                        }
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Kategori',
+                        font: { weight: 'bold' }
+                    }
                 }
             }
         }
     });
+});
 </script>
 </body>
 </html>

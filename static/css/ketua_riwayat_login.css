@@ -184,3 +184,22 @@ body:not(:has(.sidebar.show)) footer {
     display: inline-block;
     width: auto;
 }
+
+/* Responsive button Hapus Semua */
+.responsive-delete-all {
+    white-space: nowrap;
+}
+@media (max-width: 576px) {
+    .mb-3.d-flex.justify-content-between.align-items-center {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px;
+    }
+    .responsive-delete-all {
+        width: 100%;
+        margin-top: 8px;
+    }
+    #lengthMenuContainer {
+        width: 100%;
+    }
+}

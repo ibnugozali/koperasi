@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
+	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
 )
@@ -24,11 +25,57 @@ func KetuaDashboard(c *gin.Context) {
 		return
 	}
 
+	// Ambil data statistik seperti bendahara
+	db := config.GetDB()
+	totalAnggota, err := repository.GetTotalAnggota(db)
+	if err != nil {
+		totalAnggota = 0
+	}
+	menungguKonfirmasi, err := repository.GetMenungguKonfirmasi(db)
+	if err != nil {
+		menungguKonfirmasi = 0
+	}
+	totalSimpanan, err := repository.GetTotalSimpanan(db)
+	if err != nil {
+		totalSimpanan = 0
+	}
+	totalPinjaman, err := repository.GetTotalPinjaman(db)
+	if err != nil {
+		totalPinjaman = 0
+	}
+	totalAngsuran, err := repository.GetTotalAngsuran(db)
+	if err != nil {
+		totalAngsuran = 0
+	}
+	totalPengambilan, err := repository.GetTotalPengambilan(db)
+	if err != nil {
+		totalPengambilan = 0
+	}
+
+	// Ambil data aktivitas (riwayat simpanan & pinjaman per hari)
+	riwayatSimpanan, _ := repository.GetRiwayatTotalSimpananPerHari(db)
+	riwayatPinjaman, _ := repository.GetRiwayatTotalPinjamanPerHari(db)
+	aktivitasData := []map[string]interface{}{}
+	for _, r := range riwayatSimpanan {
+		r["Jenis"] = "Simpanan"
+		aktivitasData = append(aktivitasData, r)
+	}
+	for _, r := range riwayatPinjaman {
+		r["Jenis"] = "Pinjaman"
+		aktivitasData = append(aktivitasData, r)
+	}
+	// Fallback jika kosong
+	if len(aktivitasData) == 0 {
+		aktivitasData = []map[string]interface{}{
+			{"Tanggal": time.Now(), "Jenis": "Simpanan", "Jumlah": totalSimpanan},
+			{"Tanggal": time.Now(), "Jenis": "Pinjaman", "Jumlah": totalPinjaman},
+		}
+	}
+
 	// Ambil konten dashboard anggota untuk form edit
 	dashboardHalaman, err := repository.GetHalamanBySlug("dashboard_anggota")
 	var dashboardKonten map[string]interface{}
 	if err == nil {
-		// Parse JSON
 		json.Unmarshal([]byte(dashboardHalaman.Konten), &dashboardKonten)
 	} else {
 		dashboardKonten = map[string]interface{}{
@@ -63,10 +110,17 @@ func KetuaDashboard(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "ketua_dashboard.html", gin.H{
-		"PendingMembers":  pendingMembers,
-		"DashboardKonten": dashboardKonten,
-		"ActivePage":      "dashboard",
-		"CurrentLogo":     latestLogo,
+		"PendingMembers":     pendingMembers,
+		"DashboardKonten":    dashboardKonten,
+		"ActivePage":         "dashboard",
+		"CurrentLogo":        latestLogo,
+		"TotalAnggota":       totalAnggota,
+		"MenungguKonfirmasi": menungguKonfirmasi,
+		"TotalSimpanan":      totalSimpanan,
+		"TotalPinjaman":      totalPinjaman,
+		"TotalAngsuran":      totalAngsuran,
+		"TotalPengambilan":   totalPengambilan,
+		"AktivitasData":      aktivitasData,
 	})
 }
 

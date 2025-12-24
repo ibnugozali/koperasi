@@ -85,6 +85,7 @@
             </div>
         </div>
     </div>
+    
     {{ template "ketua_footer" . }}
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -97,7 +98,10 @@
         $(document).ready(function() {
             $('#anggotaTable').DataTable({
                 language: {
-                    url: "/static/datatables/i18n/id.json"
+                    url: "/static/datatables/i18n/id.json",
+                    info: "Menampilkan halaman _PAGE_ dari _PAGES_",
+                    infoEmpty: "Tidak ada data tersedia",
+                    infoFiltered: "(difilter dari _MAX_ total data)"
                 },
                 pageLength: 10,
                 lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
