@@ -19,21 +19,22 @@
                     <div class="mb-3">
                         <label for="editUsername" class="form-label">Username</label>
                         <input type="text" class="form-control" id="editUsername" name="username" value="{{.Bendahara.Username}}" required>
-                        <div class="form-text">Username harus unik dan tidak boleh kosong.</div>
+                        <!-- <div class="form-text">Username harus unik dan tidak boleh kosong.</div> -->
                     </div>
                     <div class="mb-3">
                         <label for="newPassword" class="form-label">Password Baru</label>
                         <input type="password" class="form-control" id="newPassword" name="password">
-                        <div class="form-text">Password minimal 6 karakter (kosongkan jika tidak ingin mengubah)</div>
+                        <!-- <div class="form-text">Password minimal 6 karakter (kosongkan jika tidak ingin mengubah)</div> -->
                     </div>
                     <div class="mb-3">
                         <label for="confirmPassword" class="form-label">Konfirmasi Password Baru</label>
                         <input type="password" class="form-control" id="confirmPassword" name="confirm_password">
                     </div>
                     <div class="text-end">
-                        <button type="submit" class="btn btn-warning">
+                        <button type="submit" class="btn btn-warning" id="btnSimpanPerubahan">
                             <i class="fa-solid fa-key"></i> Simpan Perubahan
                         </button>
+                        <div id="formAlert" class="mt-3"></div>
                     </div>
                 </form>
             </div>
@@ -54,7 +55,7 @@
                 </div>
                 <hr>
                 <div class="small">
-                    <p><strong>Username:</strong> {{.Bendahara.Username}}</p>
+                    <p><strong>Username:</strong> <span id="info-username">{{.Bendahara.Username}}</span></p>
                     <p><strong>Password:</strong> 
                         <span id="password-text" data-password="{{.Bendahara.PlainPassword}}">********</span>
                         <button type="button" id="togglePassword" class="btn btn-sm btn-outline-secondary ms-2" style="padding:2px 8px; font-size:0.85em;">
@@ -73,6 +74,51 @@
 <script src="/static/js/bendahara_pengaturan_content.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // AJAX submit untuk form update profile bendahara
+    var passwordForm = document.getElementById('passwordForm');
+    var formAlert = document.getElementById('formAlert');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            formAlert.innerHTML = '';
+            var password = passwordForm.querySelector('[name="password"]').value.trim();
+            var confirmPassword = passwordForm.querySelector('[name="confirm_password"]').value.trim();
+            if (password !== '' && confirmPassword === '') {
+                formAlert.innerHTML = '<div class="alert alert-danger">Konfirmasi Password Baru wajib diisi jika ingin mengubah password.</div>';
+                return;
+            }
+            var formData = new FormData(passwordForm);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', passwordForm.action, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    try {
+                        var res = JSON.parse(xhr.responseText);
+                        if (xhr.status === 200 && res.message) {
+                            formAlert.innerHTML = '<div class="alert alert-success">' + res.message + '</div>';
+                            // Update username di Info Akun tanpa reload, gunakan data dari response jika ada
+                            var infoUsername = document.getElementById('info-username');
+                            if (infoUsername && res.username) {
+                                infoUsername.textContent = res.username;
+                            } else if (infoUsername) {
+                                // fallback ke input value jika response tidak ada username
+                                var newUsername = passwordForm.querySelector('[name="username"]').value;
+                                infoUsername.textContent = newUsername;
+                            }
+                            passwordForm.reset();
+                        } else if (res.error) {
+                            formAlert.innerHTML = '<div class="alert alert-danger">' + res.error + '</div>';
+                        } else {
+                            formAlert.innerHTML = '<div class="alert alert-danger">Terjadi kesalahan.</div>';
+                        }
+                    } catch (err) {
+                        formAlert.innerHTML = '<div class="alert alert-danger">Terjadi kesalahan.</div>';
+                    }
+                }
+            };
+            xhr.send(formData);
+        });
+    }
     var toggleBtn = document.getElementById('togglePassword');
     var pwText = document.getElementById('password-text');
     var pwFallback = document.getElementById('password-fallback');

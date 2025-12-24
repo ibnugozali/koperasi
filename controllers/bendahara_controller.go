@@ -1544,8 +1544,13 @@ func UpdateBendaharaProfile(c *gin.Context) {
 		return
 	}
 
-	// Validasi password jika diisi
-	if request.Password != "" {
+	// Jika hanya salah satu field password/konfirmasi diisi, abaikan perubahan password, update username saja
+	if (request.Password != "" && request.ConfirmPassword == "") || (request.Password == "" && request.ConfirmPassword != "") {
+		request.Password = ""
+		request.ConfirmPassword = ""
+	}
+	// Validasi password jika diisi lengkap
+	if request.Password != "" && request.ConfirmPassword != "" {
 		if request.Password != request.ConfirmPassword {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Password tidak cocok"})
 			return
