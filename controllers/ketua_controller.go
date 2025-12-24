@@ -508,14 +508,28 @@ func KetuaLaporan(c *gin.Context) {
 	// Ambil data anggota aktif
 	anggotas, err := repository.GetAllAnggota()
 	if err != nil {
-		anggotas = []models.Anggota{}
+		c.HTML(http.StatusInternalServerError, "ketua_laporan.html", gin.H{
+			"ActivePage":  "laporan",
+			"Error":       "Gagal mengambil data anggota",
+			"CurrentLogo": latestLogo,
+			"Bulan":       bulan,
+			"Tahun":       tahun,
+			"Report":      report,
+		})
+		return
 	}
 
-	// Hitung sisa gaji untuk setiap anggota
+	// Ambil data potongan bulan ini untuk semua anggota
+	potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+	if err != nil {
+		potonganBulanIni = make(map[string]float64)
+	}
+
+	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
 	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
-		totalSimpanan, totalPinjaman, _, _ := repository.GetSaldoAnggota(anggota.IDAnggota)
-		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - totalSimpanan - totalPinjaman
+		potongan := potonganBulanIni[anggota.IDAnggota]
+		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 	}
 
 	c.HTML(http.StatusOK, "ketua_laporan.html", gin.H{
@@ -582,9 +596,9 @@ func KetuaPengaturan(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "ketua_layout.html", gin.H{
+	c.HTML(http.StatusOK, "ketua_pengaturan.html", gin.H{
 		"ActivePage":  "pengaturan",
-		"Bendahara":   bendahara,
+		"Ketua":       bendahara,
 		"LogoPath":    latestLogo,
 		"CurrentLogo": latestLogo,
 	})
@@ -608,12 +622,21 @@ func UpdateKetuaProfile(c *gin.Context) {
 	}
 
 	if err := c.ShouldBind(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		fmt.Println("[UpdateKetuaProfile] Bind error:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid", "detail": err.Error()})
 		return
 	}
 
-	// Validasi password jika diisi
-	if request.Password != "" {
+	// Trim spasi pada password dan konfirmasi
+	request.Password = strings.TrimSpace(request.Password)
+	request.ConfirmPassword = strings.TrimSpace(request.ConfirmPassword)
+	// Jika hanya salah satu field password/konfirmasi diisi, tampilkan error
+	if (request.Password != "" && request.ConfirmPassword == "") || (request.Password == "" && request.ConfirmPassword != "") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password dan konfirmasi password harus diisi bersamaan untuk mengubah password"})
+		return
+	}
+	// Jika keduanya diisi, validasi dan update password
+	if request.Password != "" && request.ConfirmPassword != "" {
 		if request.Password != request.ConfirmPassword {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Password tidak cocok"})
 			return
@@ -653,5 +676,5 @@ func UpdateKetuaProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Profil berhasil diperbarui"})
+	c.JSON(http.StatusOK, gin.H{"message": "Profil berhasil diperbarui", "username": request.Username})
 }
