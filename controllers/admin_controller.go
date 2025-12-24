@@ -15,11 +15,77 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
 )
+
+// UpdateUser memproses update data user (pengelola)
+func UpdateUser(c *gin.Context) {
+	id := c.PostForm("id")
+	username := c.PostForm("username")
+	password := c.PostForm("password")
+
+	// Validasi
+	if id == "" || username == "" {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID dan Username wajib diisi"})
+		return
+	}
+
+	db := config.GetDB()
+	var query string
+	var args []interface{}
+	if password != "" {
+		// Hash password dengan bcrypt
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengenkripsi password"})
+			return
+		}
+		query = "UPDATE pengelola SET username = $1, password = $2 WHERE id_pengelola = $3"
+		args = []interface{}{username, string(hashedPassword), id}
+	} else {
+		query = "UPDATE pengelola SET username = $1 WHERE id_pengelola = $2"
+		args = []interface{}{username, id}
+	}
+	_, err := db.Exec(query, args...)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal memperbarui user"})
+		return
+	}
+	c.Redirect(http.StatusFound, "/admin/pengaturan")
+}
+
+// UpdateAnggota memproses update data anggota
+func UpdateAnggota(c *gin.Context) {
+	id := c.PostForm("id")
+	username := c.PostForm("username")
+	password := c.PostForm("password")
+
+	if id == "" || username == "" {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID dan Username wajib diisi"})
+		return
+	}
+
+	db := config.GetDB()
+	var query string
+	var args []interface{}
+	if password != "" {
+		query = "UPDATE anggota SET username = $1, password = $2 WHERE id_anggota = $3"
+		args = []interface{}{username, password, id}
+	} else {
+		query = "UPDATE anggota SET username = $1 WHERE id_anggota = $2"
+		args = []interface{}{username, id}
+	}
+	_, err := db.Exec(query, args...)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal memperbarui anggota"})
+		return
+	}
+	c.Redirect(http.StatusFound, "/admin/pengaturan")
+}
 
 // Menampilkan dashboard admin dengan data statistik
 func AdminDashboard(c *gin.Context) {
@@ -46,10 +112,31 @@ func AdminDashboard(c *gin.Context) {
 		totalPinjaman = 0
 	}
 
-	// Ambil data aktivitas terbaru untuk grafik
-	aktivitasData, err := repository.GetAktivitasTerbaru(db)
-	if err != nil {
-		aktivitasData = []map[string]interface{}{}
+	// Ambil riwayat total anggota, simpanan, pinjaman per hari
+	riwayatAnggota, _ := repository.GetRiwayatTotalAnggotaPerHari(db)
+	riwayatSimpanan, _ := repository.GetRiwayatTotalSimpananPerHari(db)
+	riwayatPinjaman, _ := repository.GetRiwayatTotalPinjamanPerHari(db)
+
+	aktivitasData := []map[string]interface{}{}
+	for _, r := range riwayatAnggota {
+		r["Jenis"] = "Anggota"
+		aktivitasData = append(aktivitasData, r)
+	}
+	for _, r := range riwayatSimpanan {
+		r["Jenis"] = "Simpanan"
+		aktivitasData = append(aktivitasData, r)
+	}
+	for _, r := range riwayatPinjaman {
+		r["Jenis"] = "Pinjaman"
+		aktivitasData = append(aktivitasData, r)
+	}
+	// Jika semua riwayat kosong, fallback ke statistik utama
+	if len(aktivitasData) == 0 {
+		aktivitasData = []map[string]interface{}{
+			{"Tanggal": time.Now(), "Jenis": "Anggota", "Jumlah": totalAnggota},
+			{"Tanggal": time.Now(), "Jenis": "Simpanan", "Jumlah": totalSimpanan},
+			{"Tanggal": time.Now(), "Jenis": "Pinjaman", "Jumlah": totalPinjaman},
+		}
 	}
 	// Data untuk template
 	data := map[string]interface{}{
@@ -474,9 +561,17 @@ func AdminPengaturan(c *gin.Context) {
 	allHalaman, err := repository.GetAllHalaman()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data halaman"})
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data halaman"})
 		return
+	}
 
+	userList, err := repository.GetAllPengelola()
+	if err != nil {
+		userList = []models.Pengelola{}
+	}
+
+	anggotaList, err := repository.GetAnggotaByStatus("aktif")
+	if err != nil {
+		anggotaList = []models.Anggota{}
 	}
 
 	// Map judul ke nama keamanan
@@ -506,9 +601,11 @@ func AdminPengaturan(c *gin.Context) {
 		logoPath = "/static/images/placeholder.png"
 	}
 	c.HTML(http.StatusOK, "admin_pengaturan.html", gin.H{
-		"AllHalaman": filteredHalaman,
-		"ActivePage": "pengaturan",
-		"LogoPath":   logoPath,
+		"AllHalaman":  filteredHalaman,
+		"UserList":    userList,
+		"AnggotaList": anggotaList,
+		"ActivePage":  "pengaturan",
+		"LogoPath":    logoPath,
 	})
 }
 

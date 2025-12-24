@@ -5,6 +5,26 @@ import (
 	"koperasi-simpan-pinjam/models"
 )
 
+// GetAllPengelola mengambil semua data pengelola (user) dari tabel pengelola
+func GetAllPengelola() ([]models.Pengelola, error) {
+	db := config.GetDB()
+	var pengelolas []models.Pengelola
+	rows, err := db.Query("SELECT id_pengelola, nama_pengelola, username, password, COALESCE(plain_password, ''), jabatan_koperasi, COALESCE(no_telepon, ''), COALESCE(email, ''), tgl_gabung, level, status FROM pengelola ORDER BY id_pengelola")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var p models.Pengelola
+		err := rows.Scan(&p.IDPengelola, &p.NamaPengelola, &p.Username, &p.Password, &p.PlainPassword, &p.JabatanKoperasi, &p.NoTelepon, &p.Email, &p.TglGabung, &p.Level, &p.Status)
+		if err != nil {
+			return nil, err
+		}
+		pengelolas = append(pengelolas, p)
+	}
+	return pengelolas, nil
+}
+
 func GetPengelolaByUsername(username string) (models.Pengelola, error) {
 	db := config.GetDB()
 	var p models.Pengelola

@@ -7,9 +7,32 @@ import (
 	"strings"
 	"time"
 
-	"koperasi-simpan-pinjam/config" // Ganti dengan path config Anda
-	"koperasi-simpan-pinjam/models" // Ganti dengan path models Anda
+	"koperasi-simpan-pinjam/config"
+	"koperasi-simpan-pinjam/models"
 )
+
+// GetRiwayatTotalAnggotaPerHari mengambil jumlah anggota aktif per hari selama 30 hari terakhir
+func GetRiwayatTotalAnggotaPerHari(db *sql.DB) ([]map[string]interface{}, error) {
+	query := `SELECT DATE(tgl_gabung) as tanggal, COUNT(*) as total FROM anggota WHERE status = 'aktif' AND tgl_gabung >= CURRENT_DATE - INTERVAL '30 days' GROUP BY DATE(tgl_gabung) ORDER BY tanggal ASC`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var riwayat []map[string]interface{}
+	for rows.Next() {
+		var tanggal time.Time
+		var total int
+		if err := rows.Scan(&tanggal, &total); err != nil {
+			return nil, err
+		}
+		riwayat = append(riwayat, map[string]interface{}{
+			"Tanggal": tanggal,
+			"Jumlah":  total,
+		})
+	}
+	return riwayat, nil
+}
 
 // GetAnggotaByStatus mengambil semua anggota dengan status tertentu
 func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
@@ -20,26 +43,27 @@ func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 	status = strings.TrimSpace(strings.ToLower(status))
 
 	query := `
-		       SELECT
-			       id_anggota,
-			       nama_anggota,
-			       username,
-			       tgl_lahir,
-			       nik_ktp,
-			       no_telepon,
-			       tgl_gabung,
-			       tgl_keluar,
-			       alamat,
-			       jenis_kelamin,
-			       status,
-			       status_anggota,
-			       unit_kerja,
-			       fakultas,
-			       COALESCE(gaji_bulanan, 0)
-		       FROM anggota
-		       WHERE LOWER(TRIM(status)) LIKE '%' || $1 || '%'
-		       ORDER BY CAST(nomor_urut AS INTEGER) DESC
-	       `
+	       SELECT
+		       id_anggota,
+		       nama_anggota,
+		       username,
+		       password,
+		       tgl_lahir,
+		       nik_ktp,
+		       no_telepon,
+		       tgl_gabung,
+		       tgl_keluar,
+		       alamat,
+		       jenis_kelamin,
+		       status,
+		       status_anggota,
+		       unit_kerja,
+		       fakultas,
+		       COALESCE(gaji_bulanan, 0)
+	       FROM anggota
+	       WHERE LOWER(TRIM(status)) LIKE '%' || $1 || '%'
+	       ORDER BY CAST(nomor_urut AS INTEGER) DESC
+	   `
 
 	rows, err := db.Query(query, status)
 	if err != nil {
@@ -54,6 +78,7 @@ func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 			&a.IDAnggota,
 			&a.NamaAnggota,
 			&a.Username,
+			&a.Password,
 			&a.TglLahir,
 			&a.NikKTP,
 			&a.NoTelepon,
@@ -199,13 +224,13 @@ func GetAllAnggota() ([]models.Anggota, error) {
 	var anggotas []models.Anggota
 
 	query := `
-	       SELECT
-	       	id_anggota, nama_anggota, username,
-	       	tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
-	       	alamat, jenis_kelamin, status, unit_kerja, fakultas, COALESCE(gaji_bulanan, 0)
-	       FROM anggota
-	       WHERE status = 'aktif'
-	       ORDER BY CAST(nomor_urut AS INTEGER) DESC`
+		SELECT
+		 id_anggota, nama_anggota, username, password,
+		 tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
+		 alamat, jenis_kelamin, status, unit_kerja, fakultas, COALESCE(gaji_bulanan, 0)
+		FROM anggota
+		WHERE status = 'aktif'
+		ORDER BY CAST(nomor_urut AS INTEGER) DESC`
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -216,7 +241,7 @@ func GetAllAnggota() ([]models.Anggota, error) {
 	for rows.Next() {
 		var a models.Anggota
 		err := rows.Scan(
-			&a.IDAnggota, &a.NamaAnggota, &a.Username,
+			&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.Password,
 			&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
 			&a.Alamat, &a.JenisKelamin, &a.Status, &a.UnitKerja, &a.Fakultas, &a.GajiBulanan,
 		)

@@ -17,8 +17,8 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="container-fluid">
-            <br>
-            <h2 class="mb-4">Dashboard Admin</h2>
+            <br> <br><br>
+         
 
             <!-- Statistik -->
             <div class="row g-4 mb-5">
@@ -63,8 +63,11 @@
                             <i class="fa-solid fa-chart-line me-2"></i> Aktivitas Terbaru
                         </div>
                         <div class="card-body">
-                            <div style="position: relative; height: 400px; width: 100%;">
-                                <canvas id="activityChart"></canvas>
+                            <div class="mb-2 text-center fw-bold" style="font-size: 1.1rem;">
+                                Riwayat Total Anggota, Simpanan, Pinjaman (30 Hari Terakhir)
+                            </div>
+                            <div class="chart-container-admin" style="position: relative; width: 100%;">
+                                <canvas id="activityChart" style="display: block; width: 100% !important; height: 350px; margin: 0 auto;"></canvas>
                             </div>
                         </div>
                     </div>
@@ -81,6 +84,115 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-   <script src="/static/js/admin_dashboard.js"></script>
+
+        <!-- Inject AktivitasData ke window agar bisa diakses JS -->
+
+        <!-- Inject AktivitasData ke window agar grafik selalu terisi -->
+        <script>
+        window.AktivitasData = {{ toJson .AktivitasData }};
+        </script>
+
+        <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof window.AktivitasData !== 'undefined' && document.getElementById('activityChart')) {
+                const aktivitas = window.AktivitasData;
+                if (!aktivitas || aktivitas.length === 0) {
+                    document.getElementById('activityChart').style.display = 'none';
+                    const chartContainer = document.querySelector('.chart-container-admin');
+                    if (chartContainer) {
+                        chartContainer.innerHTML = '<div class="text-center text-muted py-5">Belum ada data riwayat dalam 30 hari terakhir.</div>';
+                    }
+                    return;
+                }
+                // Ambil label tanggal unik
+                const labels = [...new Set(aktivitas.map(item => {
+                    const tgl = new Date(item.Tanggal);
+                    return tgl.toLocaleDateString('id-ID');
+                }))];
+                // Data per jenis
+                function getData(jenis) {
+                    return labels.map(label => {
+                        const found = aktivitas.find(x => x.Jenis === jenis && (new Date(x.Tanggal)).toLocaleDateString('id-ID') === label);
+                        return found ? found.Jumlah : 0;
+                    });
+                }
+                const datasets = [
+                    {
+                        label: 'Total Anggota',
+                        data: getData('Anggota'),
+                        borderColor: 'blue',
+                        backgroundColor: 'rgba(0,0,255,0.1)',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Total Simpanan',
+                        data: getData('Simpanan'),
+                        borderColor: 'green',
+                        backgroundColor: 'rgba(0,128,0,0.1)',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Total Pinjaman',
+                        data: getData('Pinjaman'),
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255,0,0,0.1)',
+                        tension: 0.3
+                    }
+                ];
+                const ctx = document.getElementById('activityChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label + ': ';
+                                        if (context.dataset.label !== 'Total Anggota') {
+                                            label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                        } else {
+                                            label += context.parsed.y.toLocaleString('id-ID') + ' orang';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: 0
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Tanggal',
+                                    font: { weight: 'bold' }
+                                },
+                                ticks: {
+                                    maxRotation: 0,
+                                    autoSkip: true
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Jumlah',
+                                    font: { weight: 'bold' }
+                                },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+        });
+        </script>
 
 </body>

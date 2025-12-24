@@ -39,4 +39,87 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
     });
+    
+        // --- Tambahkan Script Chart.js untuk Aktivitas Terbaru ---
+        if (typeof window.AktivitasData !== 'undefined' && document.getElementById('activityChart')) {
+            // Jika data hanya berisi statistik utama (Anggota, Simpanan, Pinjaman)
+            const isStatistikOnly = window.AktivitasData.length === 3 &&
+                window.AktivitasData.some(x => x.Jenis === 'Anggota') &&
+                window.AktivitasData.some(x => x.Jenis === 'Simpanan') &&
+                window.AktivitasData.some(x => x.Jenis === 'Pinjaman');
+
+            let labels = [];
+            let datasets = [];
+            if (isStatistikOnly) {
+                labels = ['Statistik'];
+                datasets = [
+                    {
+                        label: 'Anggota',
+                        data: [window.AktivitasData.find(x => x.Jenis === 'Anggota').Jumlah],
+                        borderColor: 'blue',
+                        backgroundColor: 'rgba(0,0,255,0.1)',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Simpanan',
+                        data: [window.AktivitasData.find(x => x.Jenis === 'Simpanan').Jumlah],
+                        borderColor: 'green',
+                        backgroundColor: 'rgba(0,128,0,0.1)',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Pinjaman',
+                        data: [window.AktivitasData.find(x => x.Jenis === 'Pinjaman').Jumlah],
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255,0,0,0.1)',
+                        tension: 0.3
+                    }
+                ];
+            } else {
+                // Format data untuk Chart.js seperti sebelumnya
+                labels = window.AktivitasData.map(item => {
+                    const tgl = new Date(item.Tanggal);
+                    return tgl.toLocaleDateString('id-ID');
+                });
+                datasets = [
+                    {
+                        label: 'Simpanan',
+                        data: window.AktivitasData.filter(x => x.Jenis === 'Simpanan').map(x => x.Jumlah),
+                        borderColor: 'green',
+                        backgroundColor: 'rgba(0,128,0,0.1)',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Pinjaman',
+                        data: window.AktivitasData.filter(x => x.Jenis === 'Pinjaman').map(x => x.Jumlah),
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255,0,0,0.1)',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Anggota',
+                        data: window.AktivitasData.filter(x => x.Jenis === 'Anggota').map(x => x.Jumlah),
+                        borderColor: 'blue',
+                        backgroundColor: 'rgba(0,0,255,0.1)',
+                        tension: 0.3
+                    }
+                ];
+            }
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: isStatistikOnly ? 'Statistik Koperasi' : 'Aktivitas 30 Hari Terakhir' }
+                    }
+                }
+            });
+        }
 });

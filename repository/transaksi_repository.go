@@ -6,8 +6,53 @@ import (
 
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
-
 )
+
+// GetRiwayatTotalSimpananPerHari mengambil total simpanan per hari selama 30 hari terakhir
+func GetRiwayatTotalSimpananPerHari(db *sql.DB) ([]map[string]interface{}, error) {
+	query := `SELECT DATE(tgl_transaksi) as tanggal, SUM(jumlah_simpanan) as total FROM detail WHERE COALESCE(status, 'confirmed') = 'confirmed' AND tgl_transaksi >= CURRENT_DATE - INTERVAL '30 days' GROUP BY DATE(tgl_transaksi) ORDER BY tanggal ASC`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var riwayat []map[string]interface{}
+	for rows.Next() {
+		var tanggal time.Time
+		var total float64
+		if err := rows.Scan(&tanggal, &total); err != nil {
+			return nil, err
+		}
+		riwayat = append(riwayat, map[string]interface{}{
+			"Tanggal": tanggal,
+			"Jumlah":  total,
+		})
+	}
+	return riwayat, nil
+}
+
+// GetRiwayatTotalPinjamanPerHari mengambil total pinjaman per hari selama 30 hari terakhir
+func GetRiwayatTotalPinjamanPerHari(db *sql.DB) ([]map[string]interface{}, error) {
+	query := `SELECT DATE(tgl_pinjaman) as tanggal, SUM(jumlah_pinjaman) as total FROM pinjaman WHERE status = 'aktif' AND tgl_pinjaman >= CURRENT_DATE - INTERVAL '30 days' GROUP BY DATE(tgl_pinjaman) ORDER BY tanggal ASC`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var riwayat []map[string]interface{}
+	for rows.Next() {
+		var tanggal time.Time
+		var total float64
+		if err := rows.Scan(&tanggal, &total); err != nil {
+			return nil, err
+		}
+		riwayat = append(riwayat, map[string]interface{}{
+			"Tanggal": tanggal,
+			"Jumlah":  total,
+		})
+	}
+	return riwayat, nil
+}
 
 // GetPengambilanSimpananByID mengambil detail pengambilan simpanan berdasarkan ID
 func GetPengambilanSimpananByID(id int) (models.PengambilanSimpanan, error) {

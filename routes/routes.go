@@ -43,6 +43,10 @@ func SetupRouter() *gin.Engine {
 			a, _ := json.Marshal(v)
 			return template.JS(a)
 		},
+		"toJson": func(v interface{}) template.JS {
+			a, _ := json.Marshal(v)
+			return template.JS(a)
+		},
 		"now":       func() time.Time { return time.Now() },
 		"hasPrefix": func(s, prefix string) bool { return len(s) >= len(prefix) && s[:len(prefix)] == prefix },
 		"iterate": func(count int) []int {
@@ -114,6 +118,8 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/laporan", controllers.AdminLaporan)
 		adminRoutes.GET("/tentang", controllers.AdminTentang)
 		adminRoutes.GET("/pengaturan", controllers.AdminPengaturan)
+		adminRoutes.POST("/update-user", controllers.UpdateUser)
+		adminRoutes.POST("/update-anggota", controllers.UpdateAnggota)
 		adminRoutes.GET("/keamanan/login", controllers.AdminKeamananLogin)
 		adminRoutes.GET("/edit-logo", controllers.AdminLogo)
 		adminRoutes.POST("/upload-logo", controllers.UploadLogo)
