@@ -207,6 +207,8 @@ func SetupRouter() *gin.Engine {
 		ketuaRoutes.GET("/ketua-data-anggota", controllers.KetuaDataAnggota)
 		ketuaRoutes.GET("/ketua-riwayat-login", controllers.KetuaRiwayat)
 		ketuaRoutes.GET("/ketua-laporan", controllers.KetuaLaporan)
+		ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
+		ketuaRoutes.GET("/laporan/download", controllers.KetuaDownloadLaporan)
 		ketuaRoutes.GET("/ketua-pengaturan", controllers.KetuaPengaturan)
 		// ketuaRoutes.GET("/anggota/:id", controllers.KetuaViewAnggota)
 		// ketuaRoutes.GET("/transaksi", controllers.KetuaTransaksi)
