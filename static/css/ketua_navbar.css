@@ -208,6 +208,6 @@ body:not(:has(.sidebar.show)) footer {
     color: #fff !important;
 }
 .sidebar .text-center img {
-    border-radius: 50%;
+    /* border-radius: 50%; */
     background: #f3f6fd;
 }

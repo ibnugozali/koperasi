@@ -116,12 +116,33 @@ func KetuaRiwayat(c *gin.Context) {
 		loginHistory = []models.LoginHistory{} // Default kosong jika error
 	}
 
-	// Cari logo terbaru di static/images (opsional, jika ingin tampilkan logo)
-	// ... (bisa ditambahkan jika ingin)
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
 
 	c.HTML(http.StatusOK, "ketua_riwayat_login.html", gin.H{
 		"ActivePage":   "login_history",
 		"LoginHistory": loginHistory,
+		"CurrentLogo":  latestLogo,
 	})
 }
 
