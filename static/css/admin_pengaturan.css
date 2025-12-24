@@ -1,3 +1,17 @@
+/* Responsive Table in Card */
+@media (max-width: 768px) {
+    .card-body .table-responsive {
+        padding: 0;
+    }
+    .card-body .table {
+        font-size: 0.95rem;
+        min-width: 600px;
+    }
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
 body {
     background-color: #f5f7fa;
     font-family: "Poppins", sans-serif;

@@ -32,31 +32,32 @@
                             <h5 class="mb-0"><i class="fa fa-users me-2"></i> Manajemen User Koperasi</h5>
                         </div>
                         <div class="card-body">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Role</th>
-                                        <th>Nama</th>
-                                        <th>Username</th>
-                                        <th>Password</th>
-                                        <th>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {{if .UserList}}
-                                        {{range $i, $user := .UserList}}
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped align-middle">
+                                    <thead>
                                         <tr>
-                                            <td>{{$i | add 1}}</td>
-                                            <td>{{$user.Level}}</td>
-                                            <td>{{$user.NamaPengelola}}</td>
-                                            <td>{{$user.Username}}</td>
-                                            <td>{{$user.Password}}</td>
-                                            <td>
-                                                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editUserModal{{$user.IDPengelola}}">Edit</button>
-                                            </td>
+                                            <th>No</th>
+                                            <th>Role</th>
+                                            <th>Nama</th>
+                                            <th>Username</th>
+                                            <th>Password</th>
+                                            <th>Aksi</th>
                                         </tr>
-                                        <!-- Modal Edit User -->
+                                    </thead>
+                                    <tbody>
+                                        {{if .UserList}}
+                                            {{range $i, $user := .UserList}}
+                                            <tr>
+                                                <td>{{$i | add 1}}</td>
+                                                <td>{{$user.Level}}</td>
+                                                <td>{{$user.NamaPengelola}}</td>
+                                                <td>{{$user.Username}}</td>
+                                                <td>{{$user.Password}}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editUserModal{{$user.IDPengelola}}">Edit</button>
+                                                </td>
+                                            </tr>
+                                            <!-- Modal Edit User -->
                                                                                 <div class="modal fade" id="editUserModal{{$user.IDPengelola}}" tabindex="-1" aria-labelledby="editUserModalLabel{{$user.IDPengelola}}" aria-hidden="true">
                                                                                     <div class="modal-dialog">
                                                                                         <div class="modal-content">
@@ -91,7 +92,8 @@
                                         </tr>
                                     {{end}}
                                 </tbody>
-                            </table>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -105,19 +107,20 @@
                             <h5 class="mb-0"><i class="fa fa-user-friends me-2"></i> Daftar Anggota Aktif</h5>
                         </div>
                         <div class="card-body">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Nama</th>
-                                        <th>Username</th>
-                                        <th>Password</th>
-                                        <th>Status Anggota</th>
-                                        <th>Status</th>
-                                        <th>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>No</th>
+                                            <th>Nama</th>
+                                            <th>Username</th>
+                                            <th>Password</th>
+                                            <th>Status Anggota</th>
+                                            <th>Status</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                     {{if .AnggotaList}}
                                         {{range $i, $anggota := .AnggotaList}}
                                         <tr>
@@ -167,7 +170,8 @@
                                         </tr>
                                     {{end}}
                                 </tbody>
-                            </table>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
