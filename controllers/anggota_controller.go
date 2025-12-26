@@ -323,12 +323,32 @@ func GantiPasswordPost(c *gin.Context) {
 	newPassword := c.PostForm("new_password")
 	confirmPassword := c.PostForm("confirm_password")
 
-	// Validasi: pastikan semua field diisi
-	if oldPassword == "" || newPassword == "" || confirmPassword == "" {
+	// Validasi: old password diperlukan jika akan mengubah password
+	if (newPassword != "" || confirmPassword != "") && oldPassword == "" {
 		c.HTML(http.StatusBadRequest, "anggota_ganti_password.html", gin.H{
 			"Title":   "Ganti Password",
 			"Anggota": anggota,
-			"Error":   "Semua field harus diisi.",
+			"Error":   "Password lama harus diisi jika akan mengubah password.",
+		})
+		return
+	}
+
+	// Validasi: jika password baru diisi, konfirmasi juga harus diisi
+	if newPassword != "" && confirmPassword == "" {
+		c.HTML(http.StatusBadRequest, "anggota_ganti_password.html", gin.H{
+			"Title":   "Ganti Password",
+			"Anggota": anggota,
+			"Error":   "Konfirmasi password baru harus diisi.",
+		})
+		return
+	}
+
+	// Validasi: jika konfirmasi password diisi, password baru juga harus diisi
+	if confirmPassword != "" && newPassword == "" {
+		c.HTML(http.StatusBadRequest, "anggota_ganti_password.html", gin.H{
+			"Title":   "Ganti Password",
+			"Anggota": anggota,
+			"Error":   "Password baru harus diisi.",
 		})
 		return
 	}
@@ -343,15 +363,27 @@ func GantiPasswordPost(c *gin.Context) {
 		return
 	}
 
-	// Validasi: password lama harus cocok
-	err = bcrypt.CompareHashAndPassword([]byte(anggota.Password), []byte(oldPassword))
-	if err != nil {
-		c.HTML(http.StatusUnauthorized, "anggota_ganti_password.html", gin.H{
-			"Title":   "Ganti Password",
-			"Anggota": anggota,
-			"Error":   "Password lama salah.",
-		})
-		return
+	// Validasi: password lama harus cocok hanya jika mengubah password
+	if newPassword != "" || confirmPassword != "" {
+		// Cek apakah password tersimpan adalah hash bcrypt atau plain text
+		var passwordMatch bool
+		if strings.HasPrefix(anggota.Password, "$2a$") {
+			// Password tersimpan adalah hash bcrypt
+			err = bcrypt.CompareHashAndPassword([]byte(anggota.Password), []byte(oldPassword))
+			passwordMatch = err == nil
+		} else {
+			// Password tersimpan adalah plain text
+			passwordMatch = anggota.Password == oldPassword
+		}
+
+		if !passwordMatch {
+			c.HTML(http.StatusUnauthorized, "anggota_ganti_password.html", gin.H{
+				"Title":   "Ganti Password",
+				"Anggota": anggota,
+				"Error":   "Password lama salah.",
+			})
+			return
+		}
 	}
 
 	// Jika username baru kosong, gunakan username lama
@@ -359,19 +391,18 @@ func GantiPasswordPost(c *gin.Context) {
 		newUsername = anggota.Username
 	}
 
-	// Hash password baru
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "anggota_ganti_password.html", gin.H{
-			"Title":   "Ganti Password",
-			"Anggota": anggota,
-			"Error":   "Gagal mengenkripsi password baru.",
-		})
-		return
+	// Tentukan password yang akan disimpan
+	var passwordToStore string
+	if newPassword != "" {
+		// Simpan password dalam bentuk plain text
+		passwordToStore = newPassword
+	} else {
+		// Jika tidak mengubah password, gunakan password lama (yang sudah ada)
+		passwordToStore = anggota.Password
 	}
 
 	// Update username dan password di database
-	err = repository.UpdateAnggotaUsernamePassword(userID, newUsername, string(hashedPassword))
+	err = repository.UpdateAnggotaUsernamePassword(userID, newUsername, passwordToStore)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "anggota_ganti_password.html", gin.H{
 			"Title":   "Ganti Password",
