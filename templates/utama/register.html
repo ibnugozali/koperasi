@@ -167,6 +167,21 @@
                         alert('Silakan pilih fakultas terlebih dahulu');
                         return false;
                     }
+                    // Validasi keunikan Nama Pengguna, Kata Sandi, NIK KTP, dan No. Telepon
+                    const username = document.getElementById('register_username').value.trim();
+                    const password = document.getElementById('register_password').value.trim();
+                    const nik = document.getElementById('register_nik_ktp').value.trim();
+                    const telepon = document.getElementById('register_no_telepon').value.trim();
+                    const fields = [username, password, nik, telepon];
+                    for (let i = 0; i < fields.length; i++) {
+                        for (let j = i + 1; j < fields.length; j++) {
+                            if (fields[i] !== '' && fields[i] === fields[j]) {
+                                e.preventDefault();
+                                alert('Nama Pengguna, Kata Sandi, NIK KTP, dan No. Telepon tidak boleh sama satu sama lain.');
+                                return false;
+                            }
+                        }
+                    }
                     // Pastikan Gaji Bulanan tidak kosong (default 0 jika kosong)
                     if (gajiBulananInput.value === '' || isNaN(gajiBulananInput.value)) {
                         gajiBulananInput.value = 0;
