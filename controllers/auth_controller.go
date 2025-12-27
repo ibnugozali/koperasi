@@ -161,7 +161,7 @@ func Register(c *gin.Context) {
 	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR password = $2 OR nik_ktp = $3 OR no_telepon = $4", newAnggota.Username, newAnggota.Password, newAnggota.NikKTP, newAnggota.NoTelepon).Scan(&count)
 	if err == nil && count > 0 {
 		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Nama Pengguna, Kata Sandi, NIK KTP, atau No. Telepon sudah digunakan oleh anggota lain.",
+			"error":           "Data yang Anda masukkan sudah terdaftar. Silakan periksa kembali atau gunakan data lain.",
 			"NomorRekening":   nomorRekening,
 			"NominalSimpanan": nominalSimpanan,
 		})
