@@ -1,3 +1,7 @@
+-- Tambahan agar /pelayanan/pinjaman dan /pelayanan/angsuran tidak 404
+INSERT INTO halaman (slug, judul, kategori, konten) VALUES
+('pinjaman', 'Pinjaman', 'pelayanan', '{"judul":"Pinjaman","deskripsi":"Informasi dan pengajuan pinjaman koperasi."}'),
+('angsuran', 'Angsuran', 'pelayanan', '{"judul":"Angsuran","deskripsi":"Informasi dan pembayaran angsuran pinjaman."}');
 
 -- SQLBook: Code
 -- Active: 1716903284734@@127.0.0.1@5432@postgres
@@ -87,31 +91,35 @@ CREATE TABLE simpanan (
 
 -- PERBAIKAN: Menggunakan ON DELETE SET NULL untuk id_pengelola agar riwayat transaksi tidak hilang
 -- jika seorang pengelola dihapus dari sistem.
-CREATE TABLE detail (
-    id_detail SERIAL PRIMARY KEY,
-    id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
-    id_simpanan INT REFERENCES simpanan(id_simpanan) ON DELETE CASCADE,
-    id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL, -- Diubah
-    tgl_transaksi DATE DEFAULT CURRENT_DATE,
-    jumlah_simpanan NUMERIC(15,2),
-    total_simpanan NUMERIC(15,2)
+CREATE TABLE IF NOT EXISTS detail (
+  id_detail SERIAL PRIMARY KEY,
+  id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+  id_simpanan INT REFERENCES simpanan(id_simpanan) ON DELETE CASCADE,
+  id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL,
+  tgl_transaksi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  jumlah_simpanan NUMERIC(15,2),
+  total_simpanan NUMERIC(15,2),
+  status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
+  bukti_pembayaran VARCHAR(255)
 );
+CREATE INDEX IF NOT EXISTS idx_detail_anggota ON detail(id_anggota);
+CREATE INDEX IF NOT EXISTS idx_detail_simpanan ON detail(id_simpanan);
 
-CREATE TABLE pinjaman (
-    id_pinjaman SERIAL PRIMARY KEY,
-    id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
-    id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL, -- Diubah
-    tgl_pinjaman DATE DEFAULT CURRENT_DATE,
-    jumlah_pinjaman NUMERIC(15,2),
-    jangka_waktu INT, -- Dalam bulan
-    bunga NUMERIC(5,2) DEFAULT 2.0,
-    status VARCHAR(25) CHECK (status IN ('proses', 'aktif', 'lunas', 'gagal')),
-    metode_pencairan VARCHAR(25) DEFAULT 'tunai' CHECK (metode_pencairan IN ('transfer_bank', 'tunai')),
-    nomor_rekening VARCHAR(50),
-    nama_bank VARCHAR(100),
-    nama_pemilik_rekening VARCHAR(100),
-    gaji_bulanan NUMERIC(15,2),
-    tujuan_pinjaman TEXT
+CREATE TABLE IF NOT EXISTS pinjaman (
+  id_pinjaman SERIAL PRIMARY KEY,
+  id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+  id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL,
+  tgl_pinjaman TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  jumlah_pinjaman NUMERIC(15,2),
+  jangka_waktu INT,
+  bunga NUMERIC(5,2) DEFAULT 2.0,
+  status VARCHAR(25) CHECK (status IN ('proses', 'aktif', 'lunas', 'gagal')),
+  metode_pencairan VARCHAR(25) DEFAULT 'tunai' CHECK (metode_pencairan IN ('transfer_bank', 'tunai')),
+  nomor_rekening VARCHAR(50),
+  nama_bank VARCHAR(100),
+  nama_pemilik_rekening VARCHAR(100),
+  gaji_bulanan NUMERIC(15,2) DEFAULT 0,
+  tujuan_pinjaman TEXT
 );
 
 CREATE TABLE IF NOT EXISTS angsuran (
@@ -282,29 +290,24 @@ END $$;
 -- BAGIAN 3: PEMBUATAN INDEX UNTUK OPTIMASI PERFORMA
 -- =================================================================
 
-CREATE INDEX idx_anggota_username ON anggota(username);
-CREATE INDEX idx_pengelola_username ON pengelola(username);
-CREATE INDEX idx_pinjaman_anggota ON pinjaman(id_anggota);
-CREATE INDEX idx_angsuran_pinjaman ON angsuran(id_pinjaman);
-CREATE INDEX idx_detail_anggota ON detail(id_anggota);
-CREATE INDEX idx_detail_simpanan ON detail(id_simpanan);
-CREATE INDEX idx_halaman_slug ON halaman(slug);
+CREATE INDEX IF NOT EXISTS idx_anggota_username ON anggota(username);
+CREATE INDEX IF NOT EXISTS idx_pengelola_username ON pengelola(username);
+CREATE INDEX IF NOT EXISTS idx_pinjaman_anggota ON pinjaman(id_anggota);
+CREATE INDEX IF NOT EXISTS idx_angsuran_pinjaman ON angsuran(id_pinjaman);
+CREATE INDEX IF NOT EXISTS idx_detail_anggota ON detail(id_anggota);
+CREATE INDEX IF NOT EXISTS idx_detail_simpanan ON detail(id_simpanan);
+CREATE INDEX IF NOT EXISTS idx_halaman_slug ON halaman(slug);
 
 -- Add new columns for status_anggota and fakultas
 ALTER TABLE anggota ADD COLUMN IF NOT EXISTS status_anggota VARCHAR(50);
 ALTER TABLE anggota ADD COLUMN IF NOT EXISTS fakultas VARCHAR(100);
 -- Note: provinsi column already exists in the CREATE TABLE statement above
 
--- Mengisi data awal untuk halaman struktur
 INSERT INTO halaman (slug, judul, kategori, konten) VALUES
 ('struktur', 'Struktur Organisasi', 'tentang',
   '{
     "deskripsi": "Koperasi Wirya memiliki struktur organisasi yang terdiri dari berbagai jabatan penting yang saling mendukung untuk mencapai tujuan bersama. Struktur ini memastikan pengelolaan yang efektif dan demokratis sesuai dengan prinsip-prinsip koperasi.",
-    "gambar_struktur": "/static/images/placeholder.png"
-  }'
-),
-('sejarah', 'Sejarah Koperasi', 'tentang',
-  '{
+    "gambar_struktur": "/static/images/placeholder.png",
     "timeline": [
       {
         "title": "Pendirian Koperasi (2020)",
@@ -331,6 +334,13 @@ INSERT INTO halaman (slug, judul, kategori, konten) VALUES
     "komitmen_text": "Koperasi Wirya berkomitmen untuk terus berkembang dan berinovasi dalam memberikan layanan terbaik kepada anggota. Dengan prinsip kebersamaan dan demokrasi, kami berusaha menciptakan dampak positif bagi masyarakat dan ekonomi lokal."
   }'
 ),
+('simpanan', 'Halaman Simpanan', 'pelayanan', '{"judul":"Halaman Simpanan","jenis_simpanan":[],"manfaat":[]}'),
+('sejarah', 'Sejarah Koperasi', 'tentang',
+  '{
+    "teks": "Koperasi adalah bentuk organisasi ekonomi yang didirikan oleh masyarakat untuk memenuhi kebutuhan bersama. Gerakan koperasi modern dimulai di Eropa pada abad ke-19, dipelopori oleh tokoh-tokoh seperti Robert Owen di Inggris dan Charles Fourier di Prancis. Mereka melihat koperasi sebagai alternatif terhadap kapitalisme yang eksploitatif.\n\nDi Indonesia, perkembangan koperasi dimulai pada masa kolonial Belanda. Pada tahun 1896, Raden Aria Wiriatmadja mendirikan Koperasi Kredit pertama di Purwokerto, Jawa Tengah. Gerakan ini semakin berkembang setelah Indonesia merdeka, dengan dukungan pemerintah untuk membangun ekonomi rakyat.\n\nPada tahun 1967, pemerintah mengeluarkan Undang-Undang No. 12 Tahun 1967 tentang Pokok-Pokok Perkoperasian. Undang-undang ini kemudian diganti dengan Undang-Undang No. 25 Tahun 1992 tentang Perkoperasian, yang menjadi dasar hukum koperasi di Indonesia hingga saat ini.\n\nKoperasi di Indonesia berperan penting dalam berbagai sektor, termasuk simpan pinjam, pertanian, konsumsi, dan produksi. Prinsip-prinsip koperasi seperti keanggotaan sukarela, pengelolaan demokratis, dan pembagian hasil secara adil menjadi landasan operasional koperasi.",
+    "gambar": "/static/images/placeholder.png"
+  }'
+),
 ('hubungi_kami', 'Hubungi Kami', 'tentang',
   '{
     "alamat": "Jl. Contoh No. 123, Kota",
@@ -350,11 +360,7 @@ INSERT INTO halaman (slug, judul, kategori, konten) VALUES
   }'
 );
 
--- Update sejarah content
-UPDATE halaman SET konten = '{
-  "teks": "Koperasi adalah bentuk organisasi ekonomi yang didirikan oleh masyarakat untuk memenuhi kebutuhan bersama. Gerakan koperasi modern dimulai di Eropa pada abad ke-19, dipelopori oleh tokoh-tokoh seperti Robert Owen di Inggris dan Charles Fourier di Prancis. Mereka melihat koperasi sebagai alternatif terhadap kapitalisme yang eksploitatif.\n\nDi Indonesia, perkembangan koperasi dimulai pada masa kolonial Belanda. Pada tahun 1896, Raden Aria Wiriatmadja mendirikan Koperasi Kredit pertama di Purwokerto, Jawa Tengah. Gerakan ini semakin berkembang setelah Indonesia merdeka, dengan dukungan pemerintah untuk membangun ekonomi rakyat.\n\nPada tahun 1967, pemerintah mengeluarkan Undang-Undang No. 12 Tahun 1967 tentang Pokok-Pokok Perkoperasian. Undang-undang ini kemudian diganti dengan Undang-Undang No. 25 Tahun 1992 tentang Perkoperasian, yang menjadi dasar hukum koperasi di Indonesia hingga saat ini.\n\nKoperasi di Indonesia berperan penting dalam berbagai sektor, termasuk simpan pinjam, pertanian, konsumsi, dan produksi. Prinsip-prinsip koperasi seperti keanggotaan sukarela, pengelolaan demokratis, dan pembagian hasil secara adil menjadi landasan operasional koperasi.",
-  "gambar": "/static/images/placeholder.png"
-}' WHERE slug = 'sejarah';
+
 
 -- Update dashboard content
 UPDATE halaman SET konten = '{"welcome":"Selamat Datang di Koperasi KOPMA","slogan":"Dari Anggota, Oleh Anggota, dan Untuk Anggota","teks":"Selamat datang di dashboard anggota.","gambar":"/static/images/placeholder.png"}' WHERE slug = 'dashboard_anggota';

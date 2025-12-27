@@ -1317,9 +1317,11 @@ func BendaharaRiwayat(c *gin.Context) {
 	// Ambil semua data riwayat transaksi dari database
 	riwayats, err := repository.GetAllRiwayat()
 	if err != nil {
+		// Log error detail ke console agar mudah debug
+		fmt.Printf("[ERROR] Gagal mengambil data riwayat: %v\n", err)
 		c.HTML(http.StatusInternalServerError, "bendahara_riwayat_content.html", gin.H{
 			"ActivePage": "riwayat",
-			"Error":      "Gagal mengambil data riwayat: " + err.Error(),
+			"Error":      "Gagal mengambil data riwayat. Silakan hubungi admin.",
 		})
 		return
 	}

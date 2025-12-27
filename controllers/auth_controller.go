@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
 	"strconv"
@@ -19,6 +20,15 @@ import (
 func ShowLoginPage(c *gin.Context) {
 	status := c.Query("status")
 	logoPath, _ := c.Get("LogoPath")
+
+	// Ambil data halaman hubungi_kami dari database
+	var kontak map[string]interface{}
+	halaman, err := repository.GetHalamanBySlug("hubungi_kami")
+	if err == nil {
+		_ = json.Unmarshal([]byte(halaman.Konten), &kontak)
+	} else {
+		kontak = map[string]interface{}{}
+	}
 	// // Cari logo.png jika ada, jika tidak cari logo_ terbaru, jika tidak ada fallback ke placeholder.png
 	// dirFiles, err := os.ReadDir("static/images")
 	// var latestLogo string
@@ -80,12 +90,14 @@ func ShowLoginPage(c *gin.Context) {
 			"success":     "Pendaftaran berhasil! Silakan tunggu konfirmasi dari admin sebelum login.",
 			"LogoPath":    logoPath,
 			"CurrentLogo": latestLogo,
+			"Konten":      kontak,
 		})
 		return
 	}
 	c.HTML(http.StatusOK, "login.html", gin.H{
 		"LogoPath":    logoPath,
 		"CurrentLogo": latestLogo,
+		"Konten":      kontak,
 	})
 }
 
@@ -378,9 +390,18 @@ func Login(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	// Ambil data halaman hubungi_kami dari database untuk modal kontak admin
+	var kontak map[string]interface{}
+	halaman, err := repository.GetHalamanBySlug("hubungi_kami")
+	if err == nil {
+		_ = json.Unmarshal([]byte(halaman.Konten), &kontak)
+	} else {
+		kontak = map[string]interface{}{}
+	}
 	c.HTML(http.StatusUnauthorized, "login.html", gin.H{
 		"error":       "Username atau password salah.",
 		"CurrentLogo": latestLogo,
+		"Konten":      kontak,
 	})
 }
 

@@ -56,17 +56,14 @@
                     {{ else if .Riwayats }}
                     {{ range .Riwayats }}
                     <tr>
-                        <td>{{ .Tanggal.Format "2006-01-02 15:04" }}</td>
-                        <td>{{ .IDAnggota }}</td>
-                        <td>{{ .NamaAnggota }}</td>
-                        <td>{{ .NoTelepon }}</td>
-                        <td>{{ .Jenis }}</td>
+                        <td>{{ if .Tanggal }}{{ .Tanggal.Format "2006-01-02 15:04" }}{{ else }}-{{ end }}</td>
+                        <td>{{ if .IDAnggota }}{{ .IDAnggota }}{{ else }}-{{ end }}</td>
+                        <td>{{ if .NamaAnggota }}{{ .NamaAnggota }}{{ else }}-{{ end }}</td>
+                        <td>{{ if .NoTelepon }}{{ .NoTelepon }}{{ else }}-{{ end }}</td>
+                        <td>{{ if .Jenis }}{{ .Jenis }}{{ else }}-{{ end }}</td>
                         <td class="{{ if eq .Jenis "Pendaftaran" }}text-secondary{{ else if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}text-success{{ else }}text-danger{{ end }}">
-                            {{ if eq .Jenis "Pendaftaran" }}
-                                -
-                            {{ else }}
-                                {{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}+{{ else }}-{{ end }}Rp {{ printf "%.0f" .Jumlah }}
-                            {{ end }}
+                            {{ if eq .Jenis "Pendaftaran" }}-
+                            {{ else }}{{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}+{{ else }}-{{ end }}Rp {{ if .Jumlah }}{{ printf "%.0f" .Jumlah }}{{ else }}0{{ end }}{{ end }}
                         </td>
                         <td>
                             <span class="badge bg-success">Selesai</span>

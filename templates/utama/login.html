@@ -50,11 +50,33 @@
 
             <div class="text-center mt-4">
                 <p class="mb-0">Belum punya akun? <a href="/register">Daftar Anggota</a></p>
-                <small><a href="/hubungi-admin">Hubungi Admin</a></small>
+                <small><a href="#" data-bs-toggle="modal" data-bs-target="#adminModal">Hubungi Admin</a></small>
             </div>
         </div>
         <div class="card-footer text-center">
-          <small>&copy; 2025 | Gozali</small>
+                <!-- Modal Hubungi Admin -->
+                <div class="modal fade" id="adminModal" tabindex="-1" aria-labelledby="adminModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="adminModalLabel">Hubungi Admin</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Kontak Admin:</p>
+                                <ul class="list-unstyled">
+                                    <li><strong>Telepon:</strong> {{ index .Konten "telepon" }}</li>
+                                    <li><strong>Email:</strong> {{ index .Konten "email" }}</li>
+                                    <li><strong>Alamat:</strong> {{ index .Konten "alamat" }}</li>
+                                </ul>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {{ template "footer.html" . }}
         </div>
     </div>
 
