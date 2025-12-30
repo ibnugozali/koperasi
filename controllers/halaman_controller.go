@@ -14,6 +14,7 @@ import (
 
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
+
 )
 
 func ShowHalaman(c *gin.Context) {
@@ -501,7 +502,7 @@ func ShowRiwayatPage(c *gin.Context) {
 		case "pending":
 			status = "Dalam Proses"
 		case "approved":
-			status = "Disetujui"
+			status = "Diterima"
 		case "rejected":
 			status = "Ditolak"
 		default:

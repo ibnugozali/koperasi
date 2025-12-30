@@ -396,7 +396,7 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 		SELECT s.jenis_simpanan, COALESCE(SUM(d.jumlah_simpanan), 0) as total
 		FROM detail d
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
-		WHERE d.id_anggota = $1 
+		WHERE d.id_anggota = $1
 		  AND COALESCE(d.status, 'confirmed') = 'confirmed'
 		  AND s.jenis_simpanan IN ('sukarela', 'hari_raya')
 		GROUP BY s.jenis_simpanan
@@ -412,6 +412,36 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 				continue
 			}
 			simpananByJenis[jenis] = total
+		}
+	}
+
+	// Kurangi dengan pengambilan simpanan yang disetujui
+	// Ambil total pengambilan simpanan yang approved per jenis
+	queryPengambilan := `
+		SELECT s.jenis_simpanan, COALESCE(SUM(ps.jumlah), 0) as total_pengambilan
+		FROM pengambilan_simpanan ps
+		JOIN simpanan s ON ps.id_simpanan = s.id_simpanan
+		WHERE ps.id_anggota = $1 AND ps.status = 'approved'
+		GROUP BY s.jenis_simpanan
+	`
+
+	rowsPengambilan, err := db.Query(queryPengambilan, id)
+	if err == nil {
+		defer rowsPengambilan.Close()
+		for rowsPengambilan.Next() {
+			var jenis string
+			var totalPengambilan float64
+			if err := rowsPengambilan.Scan(&jenis, &totalPengambilan); err != nil {
+				continue
+			}
+			// Kurangi saldo simpanan dengan jumlah pengambilan yang disetujui
+			if currentSaldo, exists := simpananByJenis[jenis]; exists {
+				simpananByJenis[jenis] = currentSaldo - totalPengambilan
+				// Pastikan tidak negatif
+				if simpananByJenis[jenis] < 0 {
+					simpananByJenis[jenis] = 0
+				}
+			}
 		}
 	}
 

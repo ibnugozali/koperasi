@@ -529,6 +529,7 @@ func AjukanPinjaman(c *gin.Context) {
 		"LimitPinjaman": limitPinjaman,
 		"BungaTerkini":  bungaTerkini,
 		"CurrentLogo":   latestLogo,
+		"GajiBulanan":   anggota.GajiBulanan,
 	})
 }
 
@@ -1275,6 +1276,11 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	tanggalPembayaranStr := c.PostForm("tanggal_pembayaran")
 	metodePembayaran := c.PostForm("metode_pembayaran")
 
+	// Fallback tanggal pembayaran ke hari ini jika tidak dikirim dari form
+	if tanggalPembayaranStr == "" {
+		tanggalPembayaranStr = time.Now().Format("2006-01-02")
+	}
+
 	// Validasi input
 	if jumlahAngsuranStr == "" {
 		c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
@@ -1388,16 +1394,21 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		if parsedID, err := strconv.Atoi(idPinjamanStr); err == nil {
 			idPinjaman = parsedID
 		} else {
-			c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
-				"Judul":          "Angsuran",
-				"Anggota":        anggota,
-				"Error":          "ID pinjaman tidak valid.",
-				"JumlahPinjaman": 0.0,
-				"SisaPinjaman":   0.0,
-				"AngsuranKe":     0,
-				"TotalPinjaman":  0.0,
-			})
-			return
+			// fallback: cari pinjaman aktif
+			pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
+			if err != nil || len(pinjamans) == 0 {
+				c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
+					"Judul":          "Angsuran",
+					"Anggota":        anggota,
+					"Error":          "Tidak ada pinjaman aktif.",
+					"JumlahPinjaman": 0.0,
+					"SisaPinjaman":   0.0,
+					"AngsuranKe":     0,
+					"TotalPinjaman":  0.0,
+				})
+				return
+			}
+			idPinjaman = pinjamans[0].IDPinjaman
 		}
 	} else {
 		// Jika tidak ada ID pinjaman di form, ambil pinjaman aktif pertama
