@@ -156,21 +156,19 @@ func Register(c *gin.Context) {
 	newAnggota.StatusAnggota = c.PostForm("StatusAnggota")
 	newAnggota.Fakultas = c.PostForm("Fakultas")
 
-	// Validasi: Username, Password, NIK KTP, dan No. Telepon tidak boleh sama satu sama lain
-	if newAnggota.Username == newAnggota.Password || newAnggota.Username == newAnggota.NikKTP || newAnggota.Username == newAnggota.NoTelepon ||
-		newAnggota.Password == newAnggota.NikKTP || newAnggota.Password == newAnggota.NoTelepon ||
-		newAnggota.NikKTP == newAnggota.NoTelepon {
+	// Validasi: Username, NIK KTP, dan No. Telepon tidak boleh sama satu sama lain
+	if newAnggota.Username == newAnggota.NikKTP || newAnggota.Username == newAnggota.NoTelepon || newAnggota.NikKTP == newAnggota.NoTelepon {
 		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Nama Pengguna, Kata Sandi, NIK KTP, dan No. Telepon tidak boleh sama satu sama lain.",
+			"error":           "Nama Pengguna, NIK KTP, dan No. Telepon tidak boleh sama satu sama lain.",
 			"NomorRekening":   nomorRekening,
 			"NominalSimpanan": nominalSimpanan,
 		})
 		return
 	}
 
-	// Validasi: Username, Password, NIK KTP, dan No. Telepon tidak boleh sama dengan anggota lain
+	// Validasi: Username, NIK KTP, dan No. Telepon tidak boleh sama dengan anggota lain
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR password = $2 OR nik_ktp = $3 OR no_telepon = $4", newAnggota.Username, newAnggota.Password, newAnggota.NikKTP, newAnggota.NoTelepon).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR nik_ktp = $2 OR no_telepon = $3", newAnggota.Username, newAnggota.NikKTP, newAnggota.NoTelepon).Scan(&count)
 	if err == nil && count > 0 {
 		c.HTML(http.StatusBadRequest, "register.html", gin.H{
 			"error":           "Data yang Anda masukkan sudah terdaftar. Silakan periksa kembali atau gunakan data lain.",
