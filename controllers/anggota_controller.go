@@ -527,7 +527,7 @@ func AjukanPinjaman(c *gin.Context) {
 		"TotalSimpanan": totalSimpanan,
 		"JenisAnggota":  jenisAnggota,
 		"LimitPinjaman": limitPinjaman,
-		"BungaTerkini":  bungaTerkini,
+		"Bunga":         bungaTerkini,
 		"CurrentLogo":   latestLogo,
 		"GajiBulanan":   anggota.GajiBulanan,
 	})
@@ -1186,16 +1186,25 @@ func AnggotaAngsuran(c *gin.Context) {
 	if latestLogo == "" {
 		latestLogo = "/static/images/placeholder.png"
 	}
+	// Hitung persentase pelunasan
+	persentasePelunasan := 0.0
+	if totalPinjaman > 0 {
+		persentasePelunasan = float64(totalPinjaman-sisaPinjaman) / float64(totalPinjaman) * 100
+		if persentasePelunasan < 0 {
+			persentasePelunasan = 0
+		}
+	}
 	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
-		"Judul":          "Angsuran",
-		"Anggota":        anggota,
-		"JumlahPinjaman": jumlahPinjaman,
-		"SisaPinjaman":   sisaPinjaman,
-		"AngsuranKe":     angsuranKe,
-		"Pinjamans":      pinjamans,
-		"TotalPinjaman":  totalPinjaman,
-		"NomorRekening":  nomorRekening,
-		"CurrentLogo":    latestLogo,
+		"Judul":               "Angsuran",
+		"Anggota":             anggota,
+		"JumlahPinjaman":      jumlahPinjaman,
+		"SisaPinjaman":        sisaPinjaman,
+		"AngsuranKe":          angsuranKe,
+		"Pinjamans":           pinjamans,
+		"TotalPinjaman":       totalPinjaman,
+		"NomorRekening":       nomorRekening,
+		"CurrentLogo":         latestLogo,
+		"PersentasePelunasan": persentasePelunasan,
 	})
 }
 

@@ -18,7 +18,8 @@
           <p class="text-muted">
             Jumlah Pinjaman: Rp {{if gt .TotalPinjaman 0.0}}{{printf "%.0f" .TotalPinjaman}}{{else}}0{{end}},
             Sisa Pinjaman: Rp {{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}},
-            Angsuran Ke: {{if gt .AngsuranKe 0}}{{.AngsuranKe}}{{else}}-{{end}}
+            Angsuran Ke: {{if gt .AngsuranKe 0}}{{.AngsuranKe}}{{else}}-{{end}},
+            Jumlah Pelunasan: {{printf "%.2f" .PersentasePelunasan}}%
           </p>
       <hr>
         <div class="mt-4">
