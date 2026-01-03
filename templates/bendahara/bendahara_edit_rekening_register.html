@@ -14,41 +14,73 @@
     <link href="/static/css/bendahara_edit_bunga.css" rel="stylesheet"> -->
     
 </head>
-<br><br>
+
 <body>
     {{ template "bendahara_navbar.html" . }}
-    
-<div class="container mt-4">
-    <br><br>
-    <h2>Nomor Rekening | Nominal Simpanan</h2>
-    
-    <!-- Form untuk Nomor Rekening Koperasi -->
-    <form method="POST" action="/bendahara/edit-rekening-register" class="mb-4">
-        <div class="mb-3">
-            <label for="nomorRekening" class="form-label">Nomor Rekening Koperasi</label>
-            <input type="text" class="form-control" id="nomorRekening" name="nomor_rekening" placeholder="Contoh: 1234567890 (Bank ABC)" value="{{ .NomorRekening }}" required>
-            <div class="form-text">Masukkan nomor rekening koperasi beserta nama bank.</div>
-        </div>
-        <input type="hidden" name="field_type" value="rekening">
-        <button type="submit" class="btn btn-primary">Simpan Nomor Rekening</button>
-        <a href="/bendahara/dashboard" class="btn btn-secondary ms-2">Batal</a>
-    </form>
 
-    <hr class="my-4">
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <br><br>
+            <h2 class="mb-4">Edit Rekening & Simpanan</h2>
 
-    <!-- Form untuk Nominal Simpanan Pokok Wajib -->
-    <form method="POST" action="/bendahara/edit-rekening-register">
-        <div class="mb-3">
-            <label for="nominalSimpanan" class="form-label">Nominal Simpanan Pokok Wajib</label>
-            <div class="input-group">
-                <span class="input-group-text">Rp.</span>
-                <input type="number" class="form-control" id="nominalSimpanan" name="nominal_simpanan" placeholder="100000" value="{{ .NominalSimpanan }}" min="0" required>
+            <!-- Card: Nomor Rekening Koperasi -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <i class="fa-solid fa-building-columns"></i> Nomor Rekening Koperasi
+                </div>
+                <div class="card-body">
+                    {{ if .ErrorRekening }}
+                    <div class="alert alert-danger" role="alert">
+                        {{ .ErrorRekening }}
+                    </div>
+                    {{ end }}
+                    <form method="POST" action="/bendahara/edit-rekening-register">
+                        <div class="mb-3">
+                            <label for="nomorRekening" class="form-label">Nomor Rekening Koperasi</label>
+                            <input type="text" class="form-control" id="nomorRekening" name="nomor_rekening" placeholder="Contoh: 1234567890 (Bank ABC)" value="{{ .NomorRekening }}" required>
+                            <div class="form-text">Masukkan nomor rekening koperasi beserta nama bank.</div>
+                        </div>
+                        <input type="hidden" name="field_type" value="rekening">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-save"></i> Simpan Nomor Rekening
+                        </button>
+                        <a href="/bendahara/dashboard" class="btn btn-secondary ms-2">Batal</a>
+                    </form>
+                </div>
             </div>
-            <div class="form-text">Masukkan nominal simpanan pokok wajib dalam rupiah (contoh: 100000 untuk Rp. 100.000).</div>
+
+            <!-- Card: Nominal Simpanan Pokok Wajib -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <i class="fa-solid fa-money-bill-wave"></i> Nominal Simpanan Pokok Wajib
+                </div>
+                <div class="card-body">
+                    {{ if .ErrorSimpanan }}
+                    <div class="alert alert-danger" role="alert">
+                        {{ .ErrorSimpanan }}
+                    </div>
+                    {{ end }}
+                    <form method="POST" action="/bendahara/edit-rekening-register">
+                        <div class="mb-3">
+                            <label for="nominalSimpanan" class="form-label">Nominal Simpanan Pokok Wajib</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp.</span>
+                                <input type="number" class="form-control" id="nominalSimpanan" name="nominal_simpanan" placeholder="100000" value="{{ .NominalSimpanan }}" min="0" required>
+                            </div>
+                            <div class="form-text">Masukkan nominal simpanan pokok wajib dalam rupiah (contoh: 100000 untuk Rp. 100.000).</div>
+                        </div>
+                        <input type="hidden" name="field_type" value="simpanan">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-save"></i> Simpan Nominal Simpanan
+                        </button>
+                        <a href="/bendahara/dashboard" class="btn btn-secondary ms-2">Batal</a>
+                    </form>
+                </div>
+            </div>
         </div>
-        <input type="hidden" name="field_type" value="simpanan">
-        <button type="submit" class="btn btn-primary">Simpan Nominal Simpanan</button>
-        <a href="/bendahara/dashboard" class="btn btn-secondary ms-2">Batal</a>
-    </form>
-</div>
+    </div>
+
+    <script src="/static/js/bendahara_navbar.js"></script>
+</body>
 

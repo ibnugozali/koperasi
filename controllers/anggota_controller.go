@@ -660,23 +660,24 @@ func AjukanPinjamanPost(c *gin.Context) {
 			return
 		}
 
-		// Hitung total pokok yang sudah dilunasi dari angsuran yang statusnya lunas/confirmed
-		totalPokokLunas := 0.0
+		// Hitung jumlah angsuran yang sudah dibayar (status lunas/confirmed/diterima)
+		totalAngsuran := p.JangkaWaktu
+		angsuranLunas := 0
 		for _, a := range angsurans {
 			if a.Status == "lunas" || a.Status == "confirmed" || a.Status == "diterima" {
-				totalPokokLunas += a.SisaPinjaman
+				angsuranLunas++
 			}
 		}
-		persentasePokok := 0.0
-		if p.JumlahPinjaman > 0 {
-			persentasePokok = (totalPokokLunas / p.JumlahPinjaman) * 100
+		persentase := 0.0
+		if totalAngsuran > 0 {
+			persentase = float64(angsuranLunas) / float64(totalAngsuran) * 100
 		}
-		// Syarat: minimal 60% pokok harus lunas
-		if persentasePokok < 60 {
+		// Syarat: minimal 60% angsuran harus lunas
+		if persentase < 60 {
 			templateData := getAjukanPinjamanTemplateData(userID, anggota)
 			templateData["Error"] = fmt.Sprintf(
-				"Anda baru melunasi %.2f%% pokok pinjaman. Minimal harus 60%% untuk mengajukan pinjaman baru.",
-				persentasePokok,
+				"Anda baru melunasi %.2f%% angsuran pinjaman. Minimal harus 60%% untuk mengajukan pinjaman baru.",
+				persentase,
 			)
 			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
 			return

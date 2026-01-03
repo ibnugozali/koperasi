@@ -2299,44 +2299,24 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 			pdf.Ln(1)
 			headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
 			pdf.SetFont("Arial", "B", 10)
-			// Deklarasi variabel yang diperlukan untuk export Excel
-			cols := []string{"A", "B", "C", "D", "E"}
-			startRow := 1
-			sheet := "Sheet1"
-			f := excelize.NewFile()
-			for i, h := range headers {
-				col := cols[i]
-				f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow), h)
+			for _, h := range headers {
+				pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
 			}
-			// Data
-			for idx, anggota := range anggotas {
-				row := startRow + 1 + idx
+			pdf.Ln(-1)
+			pdf.SetFont("Arial", "", 10)
+			for _, anggota := range anggotas {
 				nohp := anggota.NoTelepon
 				if !strings.HasPrefix(nohp, "+62") {
 					nohp = "+62" + strings.TrimLeft(nohp, "0")
 				}
 				sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
 				unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
-				f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
-				f.SetCellValue(sheet, fmt.Sprintf("C%d", row), unitKerjaName)
-				f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
-				f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+				pdf.CellFormat(38, 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
+				pdf.CellFormat(38, 7, nohp, "1", 0, "L", false, 0, "")
+				pdf.CellFormat(38, 7, unitKerjaName, "1", 0, "L", false, 0, "")
+				pdf.CellFormat(38, 7, fmt.Sprintf("%d", anggota.GajiBulanan), "1", 0, "L", false, 0, "")
+				pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 1, "L", false, 0, "")
 			}
-			// Style header rincian
-			rincianHeaderStyle, _ := f.NewStyle(&excelize.Style{
-				Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
-				Fill:      excelize.Fill{Type: "pattern", Color: []string{"#2ecc71"}, Pattern: 1},
-				Alignment: &excelize.Alignment{Horizontal: "center"},
-				Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-			})
-			rincianDataStyle, _ := f.NewStyle(&excelize.Style{
-				Alignment: &excelize.Alignment{Horizontal: "left"},
-				Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-			})
-			f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("E%d", startRow), rincianHeaderStyle)
-			f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow+1), fmt.Sprintf("E%d", startRow+len(anggotas)), rincianDataStyle)
-			f.SetColWidth(sheet, "A", "E", 22)
 		}
 		// Set header untuk download
 		c.Header("Content-Type", "application/pdf")
@@ -3764,7 +3744,29 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 
 // BendaharaProsesSimpananWajib melakukan proses pemotongan simpanan wajib manual
 func BendaharaProsesSimpananWajib(c *gin.Context) {
-	logoPath, _ := c.Get("LogoPath")
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
 
 	successCount, failedCount, errors := repository.ProsesPemotonganSimpananWajib()
 
@@ -3789,11 +3791,12 @@ func BendaharaProsesSimpananWajib(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "bendahara_setting_simpanan_wajib.html", gin.H{
-		"ActivePage": "setting_simpanan_wajib",
-		"LogoPath":   logoPath,
-		"Title":      "Setting Simpanan Wajib",
-		"Config":     config,
-		"success":    message,
+		"ActivePage":  "setting_simpanan_wajib",
+		"CurrentLogo": latestLogo,
+
+		"Title":   "Setting Simpanan Wajib",
+		"Config":  config,
+		"success": message,
 	})
 }
 

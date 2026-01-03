@@ -242,8 +242,8 @@
 
 <script>
 $(document).ready(function() {
-    // Initialize DataTable only if table has valid data rows
-    {{ if and (not .Error) .Riwayats }}
+    // Initialize DataTable only if table has valid data rows (sama seperti ketua_laporan.html)
+    {{ if and (not .Error) .Anggotas }}
     $('#riwayatTable').DataTable({
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json",
