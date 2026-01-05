@@ -12,11 +12,12 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="text-center mb-3" style="padding-top:56px;">
-        <img id="navbarLogo" src="{{if .LogoPath}}{{.LogoPath}}{{else}}/static/images/logo.png{{end}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;" onerror="this.src='/static/images/logo.png'">
+        <img id="navbarLogo" src="{{if .LogoPath}}{{.LogoPath}}{{else}}/static/images/placeholder.png{{end}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;" onerror="this.src='/static/images/placeholder.png'">
         <h5 class="mt-2">KOPMA</h5>
     </div>
     <a href="/admin/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
-     <a href="/admin/edit-logo" class="{{ if eq .ActivePage "edit_logo" }}active{{ end }}"><i class="fa-solid fa-image me-2"></i> Edit Logo</a>
+    <a href="/admin/edit-logo" class="{{ if eq .ActivePage "edit_logo" }}active{{ end }}"><i class="fa-solid fa-image me-2"></i> Edit Logo</a>
+    <a href="/admin/riwayat-login" class="{{ if eq .ActivePage "login_history" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Riwayat Login</a>
 
     <!-- Konten Website -->
     <a href="#" onclick="toggleSubmenu(this, 'kontenWebsite'); return false;" class="dropdown-toggle"><i class="fa-solid fa-globe me-2"></i> Konten Website</a>

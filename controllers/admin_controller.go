@@ -22,6 +22,15 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
+func DeleteAllLoginHistory(c *gin.Context) {
+	err := repository.DeleteAllLoginHistory()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Gagal menghapus semua riwayat login"})
+		return
+	}
+	c.JSON(200, gin.H{"message": "Semua riwayat login berhasil dihapus"})
+}
+
 // UpdateUser memproses update data user (pengelola)
 func UpdateUser(c *gin.Context) {
 	id := c.PostForm("id")
@@ -676,9 +685,14 @@ func AdminKeamananLogin(c *gin.Context) {
 		loginHistory = []models.LoginHistory{} // Default kosong jika error
 	}
 
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
 	c.HTML(http.StatusOK, "admin_keamanan_login.html", gin.H{
 		"ActivePage":   "keamanan_login",
 		"LoginHistory": loginHistory,
+		"LogoPath":     logoPath,
 	})
 }
 

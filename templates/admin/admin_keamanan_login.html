@@ -1,0 +1,235 @@
+{{define "admin_keamanan_login.html"}}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Riwayat Login - Admin Koperasi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="/static/css/admin_navbar.css" rel="stylesheet">
+    <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+    <style>
+        .main-content { margin-left: 280px; padding: 30px; transition: margin-left 0.3s ease; }
+        @media (max-width: 768px) { .main-content { margin-left: 0; padding: 15px; } }
+        .page-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
+        .page-header h1 { margin: 0; font-size: 2rem; font-weight: 600; }
+        .page-header p { margin: 10px 0 0 0; opacity: 0.9; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px 12px 0 0 !important; padding: 20px; border: none; }
+        .table thead th { background-color: #f8f9fa; font-weight: 600; color: #4a5568; border-bottom: 2px solid #dee2e6; }
+        .badge-success { background-color: #d4edda; color: #155724; }
+        .badge-failed { background-color: #f8d7da; color: #721c24; }
+        #searchContainer label { display: flex; align-items: center; gap: 10px; margin: 0; }
+        #searchContainer input { margin: 0 !important; }
+        #lengthMenuContainer label { display: inline-flex; align-items: center; gap: 5px; margin: 0; white-space: nowrap; }
+        #lengthMenuContainer select { margin: 0 !important; display: inline-block; width: auto; }
+    </style>
+</head>
+<body>
+    {{ template "admin_navbar.html" . }}
+    <div class="main-content">
+        <div class="container-fluid">
+            <br><br><br>
+            <div class="page-header">
+                <h1><i class="fas fa-history me-3"></i>Riwayat Login</h1>
+                <p>Pantau aktivitas login admin</p>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Daftar Riwayat Login</h5>
+                            <div id="searchContainer"></div>
+                        </div>
+                        <div class="card-body">
+                            {{ if .LoginHistory }}
+                            <div class="mb-3 d-flex justify-content-between align-items-center">
+                                <div id="lengthMenuContainer"></div>
+                                <button class="btn btn-danger btn-sm" onclick="confirmDeleteAll()">
+                                    <i class="fas fa-trash-alt me-1"></i> Hapus Semua
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table id="loginHistoryTable" class="table table-hover table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>No</th>
+                                            <th>Username</th>
+                                            <th>Role</th>
+                                            <th>Status</th>
+                                            <th>Waktu Login</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{ range $index, $history := .LoginHistory }}
+                                        <tr>
+                                            <td></td>
+                                            <td>{{ $history.Username }}</td>
+                                            <td>
+                                                {{ if eq $history.Role "admin" }}
+                                                    <span class="badge bg-danger">Admin</span>
+                                                {{ else if eq $history.Role "bendahara" }}
+                                                    <span class="badge bg-primary">Bendahara</span>
+                                                {{ else if eq $history.Role "ketua" }}
+                                                    <span class="badge bg-warning">Ketua</span>
+                                                {{ else }}
+                                                    <span class="badge bg-secondary">Anggota</span>
+                                                {{ end }}
+                                            </td>
+                                            <td>
+                                                {{ if eq $history.Status "success" }}
+                                                    <span class="badge badge-success">
+                                                        <i class="fas fa-check-circle"></i> Berhasil
+                                                    </span>
+                                                {{ else }}
+                                                    <span class="badge badge-failed">
+                                                        <i class="fas fa-times-circle"></i> Gagal
+                                                    </span>
+                                                {{ end }}
+                                            </td>
+                                            <td>{{ $history.LoginTime.Format "02 Jan 2006 15:04:05" }}</td>
+                                            <td>
+                                                <button class="btn btn-danger btn-sm btn-delete" data-id="{{ $history.ID }}">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {{ else }}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Belum ada riwayat login.
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Konfirmasi Hapus -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Konfirmasi Hapus</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Apakah Anda yakin ingin menghapus riwayat login ini?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Hapus</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Konfirmasi Hapus Semua -->
+    <div class="modal fade" id="deleteAllModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Konfirmasi Hapus Semua</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fw-bold">Peringatan: Tindakan ini tidak dapat dibatalkan!</p>
+                    <p>Apakah Anda yakin ingin menghapus <strong>SEMUA</strong> riwayat login?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteAllBtn">
+                        <i class="fas fa-trash-alt me-1"></i> Hapus Semua
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="/static/js/admin_navbar.js"></script>
+    <script>
+        $(document).ready(function() {
+            var table = $('#loginHistoryTable').DataTable({
+                "pageLength": 10,
+                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
+                "order": [[3, "desc"]],
+                "columnDefs": [
+                    { "searchable": false, "orderable": false, "targets": 0 }
+                ],
+                "language": {
+                    "lengthMenu": "Tampilkan _MENU_ data per halaman",
+                    "zeroRecords": "Data tidak ditemukan",
+                    "info": "Menampilkan halaman _PAGE_ dari _PAGES_",
+                    "infoEmpty": "Tidak ada data tersedia",
+                    "infoFiltered": "(difilter dari _MAX_ total data)",
+                    "search": "Cari:",
+                    "paginate": {
+                        "first": "Pertama",
+                        "last": "Terakhir",
+                        "next": "Selanjutnya",
+                        "previous": "Sebelumnya"
+                    }
+                }
+            });
+            $('#loginHistoryTable_filter').appendTo('#searchContainer');
+            $('#loginHistoryTable_length').appendTo('#lengthMenuContainer');
+            table.on('order.dt search.dt', function () {
+                let i = 1;
+                table.cells(null, 0, { search: 'applied', order: 'applied' }).every(function (cell) {
+                    this.data(i++);
+                });
+            }).draw();
+        });
+        let deleteId = null;
+        $(document).on('click', '.btn-delete', function() {
+            deleteId = $(this).data('id');
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        });
+        function confirmDeleteAll() {
+            const modal = new bootstrap.Modal(document.getElementById('deleteAllModal'));
+            modal.show();
+        }
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            if (deleteId) {
+                fetch(`/admin/login-history/delete/${deleteId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) { alert(data.message); location.reload(); }
+                    else if (data.error) { alert(data.error); }
+                })
+                .catch(error => { console.error('Error:', error); alert('Terjadi kesalahan saat menghapus data'); });
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+                modal.hide();
+            }
+        });
+        document.getElementById('confirmDeleteAllBtn').addEventListener('click', function() {
+            fetch('/admin/login-history/delete-all', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) { alert(data.message); location.reload(); }
+                else if (data.error) { alert(data.error); }
+            })
+            .catch(error => { console.error('Error:', error); alert('Terjadi kesalahan saat menghapus data'); });
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteAllModal'));
+            modal.hide();
+        });
+    </script>
+</body>
+</html>
+{{end}}
