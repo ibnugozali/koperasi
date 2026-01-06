@@ -24,6 +24,39 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
+// BendaharaUploadKop menerima file kop surat dan menyimpannya ke folder static/uploads/kop/
+func BendaharaUploadKop(c *gin.Context) {
+	// Parse form file
+	file, err := c.FormFile("kop_file")
+	if err != nil {
+		c.String(http.StatusBadRequest, "Gagal menerima file kop: %v", err)
+		return
+	}
+	// Buat folder jika belum ada
+	kopDir := "static/uploads/kop/"
+	if err := os.MkdirAll(kopDir, os.ModePerm); err != nil {
+		c.String(http.StatusInternalServerError, "Gagal membuat folder kop: %v", err)
+		return
+	}
+	// Hanya izinkan file gambar (jpg, jpeg, png)
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		c.String(http.StatusBadRequest, "Hanya file gambar (JPG, JPEG, PNG) yang diperbolehkan untuk kop surat!")
+		return
+	}
+	filename := fmt.Sprintf("kop_%d%s", time.Now().Unix(), ext)
+	savePath := filepath.Join(kopDir, filename)
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.String(http.StatusInternalServerError, "Gagal menyimpan file kop: %v", err)
+		return
+	}
+	// Simpan path kop ke session atau database jika perlu (sementara ke session)
+	session := sessions.Default(c)
+	session.Set("kop_path", savePath)
+	session.Save()
+	c.Redirect(http.StatusFound, "/bendahara/laporan?success=Kop surat berhasil diupload")
+}
+
 // BendaharaViewAnggotaKeluar menampilkan detail anggota keluar berdasarkan ID
 func BendaharaViewAnggotaKeluar(c *gin.Context) {
 	idStr := c.Param("id")
@@ -2051,6 +2084,14 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 	bulan := c.Query("bulan")
 	tahun := c.Query("tahun")
 
+	// Ambil path kop dari session (jika ada)
+	session := sessions.Default(c)
+	kopPath, _ := session.Get("kop_path").(string)
+	absKopPath := kopPath
+	if kopPath != "" && !filepath.IsAbs(kopPath) {
+		absKopPath, _ = filepath.Abs(kopPath)
+	}
+
 	switch format {
 	case "excel":
 		// Ambil data laporan keuangan
@@ -2064,18 +2105,39 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 
 		f := excelize.NewFile()
 		sheet := "Sheet1"
+		// Jika ada kop gambar (jpg/png), masukkan ke Excel
+		rowOffset := 1
+		if absKopPath != "" && (strings.HasSuffix(strings.ToLower(absKopPath), ".jpg") || strings.HasSuffix(strings.ToLower(absKopPath), ".jpeg") || strings.HasSuffix(strings.ToLower(absKopPath), ".png")) {
+			// Masukkan gambar kop di baris 1, tanpa AutoFit, dan data mulai baris 15
+			if err := f.AddPicture(sheet, "A1", absKopPath, &excelize.GraphicOptions{
+				AutoFit: false,
+				OffsetY: 0,
+				OffsetX: 0,
+				ScaleX:  1.0,
+				ScaleY:  1.0,
+			}); err == nil {
+				rowOffset = 15
+			} else {
+				log.Printf("Gagal menambahkan gambar kop ke Excel: %v", err)
+				rowOffset = 1
+			}
+		}
 		// Header judul
-		f.SetCellValue(sheet, "A1", "LAPORAN KEUANGAN KOPERASI")
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset), "LAPORAN KEUANGAN KOPERASI")
 		// Tanggal cetak dan periode
-		waktuCetak := time.Now()
-		tanggalCetak := waktuCetak.Format("2 Januari 2006")
-		jamCetak := waktuCetak.Format("15.04")
-		namaBulan := []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
-		f.SetCellValue(sheet, "A2", "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak)
-		f.SetCellValue(sheet, "A3", fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt))
+		var waktuCetak time.Time
+		var tanggalCetak string
+		var jamCetak string
+		var namaBulan string
+		waktuCetak = time.Now()
+		tanggalCetak = waktuCetak.Format("2 Januari 2006")
+		jamCetak = waktuCetak.Format("15.04")
+		namaBulan = []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+1), "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak)
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+2), fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt))
 		// Header tabel
-		f.SetCellValue(sheet, "A5", "Keterangan")
-		f.SetCellValue(sheet, "B5", "Jumlah")
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+4), "Keterangan")
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", rowOffset+4), "Jumlah")
 		// Data
 		totalPengeluaran := 0.0
 		if pinjaman, ok := report["total_pinjaman"].(float64); ok {
@@ -2094,8 +2156,8 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 			{"Total Pengeluaran", totalPengeluaran},
 		}
 		for i, row := range dataRows {
-			f.SetCellValue(sheet, fmt.Sprintf("A%d", 6+i), row.label)
-			f.SetCellValue(sheet, fmt.Sprintf("B%d", 6+i), row.value)
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+5+i), row.label)
+			f.SetCellValue(sheet, fmt.Sprintf("B%d", rowOffset+5+i), row.value)
 		}
 		// Style header tabel
 		styleHeader, _ := f.NewStyle(&excelize.Style{
@@ -2104,13 +2166,13 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 			Alignment: &excelize.Alignment{Horizontal: "center"},
 			Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
 		})
-		f.SetCellStyle(sheet, "A5", "B5", styleHeader)
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", rowOffset+4), fmt.Sprintf("B%d", rowOffset+4), styleHeader)
 		// Style data
 		styleData, _ := f.NewStyle(&excelize.Style{
 			Alignment: &excelize.Alignment{Horizontal: "left"},
 			Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
 		})
-		f.SetCellStyle(sheet, "A6", fmt.Sprintf("B%d", 6+len(dataRows)-1), styleData)
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", rowOffset+5), fmt.Sprintf("B%d", rowOffset+5+len(dataRows)-1), styleData)
 		// Set lebar kolom otomatis
 		f.SetColWidth(sheet, "A", "B", 25)
 		// Ambil data anggota aktif dan potongan/sisa gaji
@@ -2120,7 +2182,7 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 			if err != nil {
 				potonganBulanIni = make(map[string]float64)
 			}
-			startRow := 6 + len(dataRows) + 2
+			startRow := rowOffset + 5 + len(dataRows) + 2
 			f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Keuangan")
 			// Header
 			headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
@@ -2208,13 +2270,32 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 
 		pdf := gofpdf.New("P", "mm", "A4", "")
 		pdf.AddPage()
-
-		// Header judul
+		// Tambahkan kop surat jika ada
+		kopDir := "static/uploads/kop/"
+		files, err := os.ReadDir(kopDir)
+		var kopPath string
+		var latestTime int64
+		for _, file := range files {
+			if !file.IsDir() && (strings.HasSuffix(strings.ToLower(file.Name()), ".jpg") || strings.HasSuffix(strings.ToLower(file.Name()), ".jpeg") || strings.HasSuffix(strings.ToLower(file.Name()), ".png")) {
+				info, _ := file.Info()
+				if info.ModTime().Unix() > latestTime {
+					latestTime = info.ModTime().Unix()
+					kopPath = filepath.Join(kopDir, file.Name())
+				}
+			}
+		}
+		if kopPath != "" {
+			pdf.ImageOptions(kopPath, 10, 10, 190, 0, false, gofpdf.ImageOptions{ImageType: ""}, 0, "")
+			pdf.Ln(45) // Tambah jarak agar data tidak bertumpuk dengan kop surat
+		}
+		// PDF header, keterangan, dan data laporan
 		pdf.SetFont("Arial", "B", 16)
 		pdf.CellFormat(190, 10, "LAPORAN KEUANGAN KOPERASI", "0", 1, "C", false, 0, "")
 		pdf.Ln(3)
-
-		// Tanggal cetak dan Periode (tengah, rapat)
+		waktuCetak = time.Now()
+		tanggalCetak = waktuCetak.Format("2 Januari 2006")
+		jamCetak = waktuCetak.Format("15.04")
+		namaBulan = []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
 		pdf.SetFont("Arial", "", 10)
 		pdf.CellFormat(190, 6, "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak, "0", 1, "C", false, 0, "")
 		pdf.CellFormat(190, 6, fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt), "0", 1, "C", false, 0, "")
@@ -2310,10 +2391,9 @@ func BendaharaDownloadLaporan(c *gin.Context) {
 					nohp = "+62" + strings.TrimLeft(nohp, "0")
 				}
 				sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-				unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
 				pdf.CellFormat(38, 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
 				pdf.CellFormat(38, 7, nohp, "1", 0, "L", false, 0, "")
-				pdf.CellFormat(38, 7, unitKerjaName, "1", 0, "L", false, 0, "")
+				pdf.CellFormat(38, 7, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "L", false, 0, "")
 				pdf.CellFormat(38, 7, fmt.Sprintf("%d", anggota.GajiBulanan), "1", 0, "L", false, 0, "")
 				pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 1, "L", false, 0, "")
 			}
@@ -2681,7 +2761,7 @@ func BendaharaImportAnggota(c *gin.Context) {
 
 		fmt.Printf("  Baris %d: Nama=%s, Gaji Final=%d\n", i+1, namaAnggota, gajiBulanan)
 
-		// Validasi format tanggal lahir jika ada (harus format date, bukan angka)
+		// Validasi format tanggal lahir jika diisi
 		if tglLahir != "" {
 			// Cek jika tanggal lahir berupa angka murni (kemungkinan salah file - data gaji/lainnya)
 			if _, err := strconv.ParseFloat(tglLahir, 64); err == nil && len(tglLahir) > 6 {
@@ -3082,7 +3162,7 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 			if tglLahir != "" {
 				// Cek jika tanggal lahir berupa angka murni (kemungkinan salah file)
 				if _, err := strconv.ParseFloat(tglLahir, 64); err == nil && len(tglLahir) > 6 {
-					previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: ⚠️ PERINGATAN - File ini sepertinya bukan file import anggota (kolom Tanggal Lahir berisi angka: %s). Download template yang benar!", rowNum, tglLahir))
+					previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Format tanggal lahir tidak valid (terdeteksi angka: %s). Gunakan format YYYY-MM-DD (contoh: 1990-05-15)", rowNum, tglLahir))
 					continue
 				}
 				if !strings.Contains(tglLahir, "-") && !strings.Contains(tglLahir, "/") {
@@ -3649,6 +3729,7 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 			name := file.Name()
 			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
 				info, err := file.Info()
+
 				if err == nil {
 					modTime := info.ModTime().Unix()
 					if modTime > latestTime {
@@ -3770,8 +3851,9 @@ func BendaharaProsesSimpananWajib(c *gin.Context) {
 
 	successCount, failedCount, errors := repository.ProsesPemotonganSimpananWajib()
 
-	config, _ := repository.GetKonfigurasiSimpananWajib()
-	if config == nil {
+	config, err := repository.GetKonfigurasiSimpananWajib()
+	if err != nil {
+		log.Printf("⚠️ Error mengambil konfigurasi: %v, menggunakan default", err)
 		config = map[string]interface{}{
 			"TanggalPotong":    1,
 			"PersentasePotong": 5.0,
@@ -3779,6 +3861,9 @@ func BendaharaProsesSimpananWajib(c *gin.Context) {
 			"TipePemotongan":   "persentase",
 			"StatusAktif":      false,
 		}
+	} else {
+		log.Printf("📖 Menampilkan konfigurasi: TanggalPotong=%v, Status=%v, Tipe=%v",
+			config["TanggalPotong"], config["StatusAktif"], config["TipePemotongan"])
 	}
 
 	message := fmt.Sprintf("✓ Proses pemotongan selesai! Berhasil memotong %d anggota", successCount)
@@ -3983,7 +4068,7 @@ func BendaharaDetailAngsuran(c *gin.Context) {
 			}
 		}
 		if sisaPinjaman < 0 {
-			sisaPinjaman = 0
+			sisaPinjaman = 0 //perbaiki bendahara_laporan.html agar untuk kop nya ada diatas data bukan seperti ini slide 1 sedangkan di slide2 itu datanya seharusnya
 		}
 		angsuranKe = len(angsurans) + 1
 	} else if totalPinjaman > 0 {

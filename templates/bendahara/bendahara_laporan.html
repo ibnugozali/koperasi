@@ -21,6 +21,23 @@
 
     <!-- Main Content -->
     <div class="main-content">
+                {{ if .KopPath }}
+                <div class="mb-3 text-center">
+                    <label class="form-label fw-bold">Preview Kop Surat</label><br>
+                    <img src="/{{.KopPath}}" alt="Kop Surat" style="max-width: 100%; max-height: 180px; border: 1px solid #ccc; background: #fff; padding: 4px;">
+                </div>
+                {{ else }}
+                <div class="mb-3 text-center text-muted">
+                    <em>Belum ada kop surat yang diupload.</em>
+                </div>
+                {{ end }}
+            {{ if .success }}
+            <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                {{ .success }}<br>
+                File kop surat akan otomatis muncul di bagian atas file PDF/Excel yang Anda download berikutnya.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {{ end }}
         <div class="container-fluid">
             <br><br>
             <div class="container-fluid">
@@ -32,15 +49,27 @@
                     <small class="text-white-50">Ringkasan laporan keuangan koperasi</small>
                 </div>
                 <div class="card-body">
-                                        <!-- Button Download Laporan -->
-                                        <div class="mb-3 text-end">
-                                            <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}" class="btn btn-success">
-                                                <i class="fa-solid fa-download me-2"></i> Download Excel
-                                            </a>
-                                            <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&format=pdf" class="btn btn-danger ms-2">
-                                                <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
-                                            </a>
-                                        </div>
+                    <!-- Upload Template Kop Surat -->
+                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                        <form method="POST" action="/bendahara/laporan/upload-kop" enctype="multipart/form-data" class="d-flex align-items-center gap-2">
+                            <input type="file" name="kop_file" accept=".jpg,.jpeg,.png,.pdf" class="form-control" required>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-upload me-2"></i> Upload Template Kop
+                            </button>
+                        </form>
+                        <div class="text-end flex-grow-1">
+                            <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}" class="btn btn-success">
+                                <i class="fa-solid fa-download me-2"></i> Download Excel
+                            </a>
+                            <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&format=pdf" class="btn btn-danger ms-2">
+                                <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
+                            </a>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Template kop yang Anda upload akan otomatis digunakan pada file PDF/Excel laporan yang diunduh.<br>
+                        Saat Anda klik <b>Download PDF</b> atau <b>Download Excel</b>, kop surat akan muncul di bagian atas file sesuai file template kop terakhir yang di-upload.</small>
+                    </div>
                     <!-- Form untuk memilih bulan dan tahun -->
                     <div class="stat-card mb-4">
                         <h5>Pilih Periode Laporan</h5>

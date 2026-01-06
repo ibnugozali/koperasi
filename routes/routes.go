@@ -154,6 +154,7 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.GET("/halaman/edit/:slug", controllers.BendaharaShowEditHalamanForm)
 		bendaharaRoutes.POST("/halaman/update/:slug", controllers.BendaharaUpdateHalaman)
 		bendaharaRoutes.POST("/upload", controllers.BendaharaUploadFile)
+		bendaharaRoutes.POST("/laporan/upload-kop", controllers.BendaharaUploadKop)
 		bendaharaRoutes.GET("/transaksi", controllers.BendaharaTransaksi)
 		bendaharaRoutes.POST("/transaksi/simpanan", controllers.BendaharaCatatSimpanan)
 		bendaharaRoutes.POST("/transaksi/pinjaman", controllers.BendaharaCatatPinjaman)
