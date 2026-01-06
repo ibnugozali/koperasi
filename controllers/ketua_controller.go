@@ -11,8 +11,8 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/jung-kurt/gofpdf/v2"
-	"github.com/xuri/excelize/v2"
+	// "github.com/jung-kurt/gofpdf/v2"
+	// "github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 
 	"koperasi-simpan-pinjam/config"
@@ -20,253 +20,257 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
-// KetuaDownloadLaporan mengunduh laporan dalam format Excel atau PDF
-func KetuaDownloadLaporan(c *gin.Context) {
-	format := c.DefaultQuery("format", "excel")
-	bulan := c.Query("bulan")
-	tahun := c.Query("tahun")
-
-	switch format {
-	case "excel":
-		bulanInt, _ := strconv.Atoi(bulan)
-		tahunInt, _ := strconv.Atoi(tahun)
-		report, err := repository.GetLaporanKeuangan(bulanInt, tahunInt)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Gagal mengambil data laporan")
-			return
-		}
-
-		f := excelize.NewFile()
-		sheet := "Sheet1"
-		f.SetCellValue(sheet, "A1", "LAPORAN KEUANGAN KOPERASI")
-		waktuCetak := time.Now()
-		tanggalCetak := waktuCetak.Format("2 Januari 2006")
-		jamCetak := waktuCetak.Format("15.04")
-		namaBulan := []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
-		f.SetCellValue(sheet, "A2", "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak)
-		f.SetCellValue(sheet, "A3", fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt))
-		f.SetCellValue(sheet, "A5", "Keterangan")
-		f.SetCellValue(sheet, "B5", "Jumlah")
-		totalPengeluaran := 0.0
-		if pinjaman, ok := report["total_pinjaman"].(float64); ok {
-			totalPengeluaran += pinjaman
-		}
-		if pengambilan, ok := report["total_pengambilan"].(float64); ok {
-			totalPengeluaran += pengambilan
-		}
-		dataRows := []struct {
-			label string
-			value interface{}
-		}{
-			{"Total Simpanan", report["total_simpanan"]},
-			{"Total Pinjaman", report["total_pinjaman"]},
-			{"Total Angsuran", report["total_angsuran"]},
-			{"Total Pengeluaran", totalPengeluaran},
-		}
-		for i, row := range dataRows {
-			f.SetCellValue(sheet, fmt.Sprintf("A%d", 6+i), row.label)
-			f.SetCellValue(sheet, fmt.Sprintf("B%d", 6+i), row.value)
-		}
-		styleHeader, _ := f.NewStyle(&excelize.Style{
-			Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
-			Fill:      excelize.Fill{Type: "pattern", Color: []string{"#2ecc71"}, Pattern: 1},
-			Alignment: &excelize.Alignment{Horizontal: "center"},
-			Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-		})
-		f.SetCellStyle(sheet, "A5", "B5", styleHeader)
-		styleData, _ := f.NewStyle(&excelize.Style{
-			Alignment: &excelize.Alignment{Horizontal: "left"},
-			Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-		})
-		f.SetCellStyle(sheet, "A6", fmt.Sprintf("B%d", 6+len(dataRows)-1), styleData)
-		f.SetColWidth(sheet, "A", "B", 25)
-		anggotas, err := repository.GetAllAnggota()
-		if err == nil && len(anggotas) > 0 {
-			potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
-			if err != nil {
-				potonganBulanIni = make(map[string]float64)
-			}
-			startRow := 6 + len(dataRows) + 2
-			f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Keuangan")
-			headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
-			cols := []string{"A", "B", "C", "D", "E"}
-			for i, h := range headers {
-				col := cols[i]
-				f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow), h)
-			}
-			for idx, anggota := range anggotas {
-				row := startRow + 1 + idx
-				nohp := anggota.NoTelepon
-				if !strings.HasPrefix(nohp, "+62") {
-					nohp = "+62" + strings.TrimLeft(nohp, "0")
-				}
-				sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-				unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
-				f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
-				f.SetCellValue(sheet, fmt.Sprintf("C%d", row), unitKerjaName)
-				f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
-				f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
-			}
-			rincianHeaderStyle, _ := f.NewStyle(&excelize.Style{
-				Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
-				Fill:      excelize.Fill{Type: "pattern", Color: []string{"#2ecc71"}, Pattern: 1},
-				Alignment: &excelize.Alignment{Horizontal: "center"},
-				Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-			})
-			rincianDataStyle, _ := f.NewStyle(&excelize.Style{
-				Alignment: &excelize.Alignment{Horizontal: "left"},
-				Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-			})
-			f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("E%d", startRow), rincianHeaderStyle)
-			f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow+1), fmt.Sprintf("E%d", startRow+len(anggotas)), rincianDataStyle)
-			f.SetColWidth(sheet, "A", "E", 22)
-		}
-		c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.xlsx")
-		c.Header("Content-Transfer-Encoding", "binary")
-		if err := f.Write(c.Writer); err != nil {
-			c.String(http.StatusInternalServerError, "Gagal membuat file Excel")
-		}
-		return
-	case "pdf":
-		bulanInt, _ := strconv.Atoi(bulan)
-		tahunInt, _ := strconv.Atoi(tahun)
-		report, err := repository.GetLaporanKeuangan(bulanInt, tahunInt)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Gagal mengambil data laporan")
-			return
-		}
-		namaBulan := []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
-		waktuCetak := time.Now()
-		tanggalCetak := waktuCetak.Format("2 Januari 2006")
-		jamCetak := waktuCetak.Format("15.04")
-		totalPengeluaran := 0.0
-		if pinjaman, ok := report["total_pinjaman"].(float64); ok {
-			totalPengeluaran += pinjaman
-		}
-		if pengambilan, ok := report["total_pengambilan"].(float64); ok {
-			totalPengeluaran += pengambilan
-		}
-		formatRupiah := func(amount float64) string {
-			amountStr := fmt.Sprintf("%.0f", amount)
-			var result []string
-			for i, digit := range amountStr {
-				if i > 0 && (len(amountStr)-i)%3 == 0 {
-					result = append(result, ".")
-				}
-				result = append(result, string(digit))
-			}
-			return "Rp " + strings.Join(result, "")
-		}
-		pdf := gofpdf.New("P", "mm", "A4", "")
-		pdf.AddPage()
-		pdf.SetFont("Arial", "B", 16)
-		pdf.CellFormat(190, 10, "LAPORAN KEUANGAN KOPERASI", "0", 1, "C", false, 0, "")
-		pdf.Ln(3)
-		pdf.SetFont("Arial", "", 10)
-		pdf.CellFormat(190, 6, "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak, "0", 1, "C", false, 0, "")
-		pdf.CellFormat(190, 6, fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt), "0", 1, "C", false, 0, "")
-		pdf.Ln(10)
-		pdf.SetFont("Arial", "", 10)
-		dataRows := []struct {
-			label string
-			value float64
-		}{
-			{"Total Simpanan", report["total_simpanan"].(float64)},
-			{"Total Pinjaman", report["total_pinjaman"].(float64)},
-			{"Total Angsuran", report["total_angsuran"].(float64)},
-			{"Total Pengeluaran", totalPengeluaran},
-		}
-		pdf.SetFont("Arial", "B", 11)
-		maxLabelWidth := pdf.GetStringWidth("Keterangan")
-		maxValueWidth := pdf.GetStringWidth("Jumlah")
-		pdf.SetFont("Arial", "", 10)
-		for _, row := range dataRows {
-			lw := pdf.GetStringWidth(row.label)
-			vw := pdf.GetStringWidth(formatRupiah(row.value))
-			if lw > maxLabelWidth {
-				maxLabelWidth = lw
-			}
-			if vw > maxValueWidth {
-				maxValueWidth = vw
-			}
-		}
-		maxLabelWidth += 10
-		maxValueWidth += 10
-		totalWidth := maxLabelWidth + maxValueWidth
-		if totalWidth < 190 {
-			maxLabelWidth += 190 - totalWidth
-			totalWidth = 190
-		}
-		pdf.SetFont("Arial", "B", 11)
-		pdf.SetFillColor(46, 204, 113)
-		pdf.SetTextColor(255, 255, 255)
-		headerLabelLines := pdf.SplitLines([]byte("Keterangan"), maxLabelWidth)
-		headerValueLines := pdf.SplitLines([]byte("Jumlah"), maxValueWidth)
-		headerLines := len(headerLabelLines)
-		if len(headerValueLines) > headerLines {
-			headerLines = len(headerValueLines)
-		}
-		headerHeight := float64(headerLines) * 6.0
-		pdf.CellFormat(maxLabelWidth, headerHeight, "Keterangan", "1", 0, "C", true, 0, "")
-		pdf.CellFormat(maxValueWidth, headerHeight, "Jumlah", "1", 1, "C", true, 0, "")
-		pdf.SetFont("Arial", "", 10)
-		pdf.SetTextColor(0, 0, 0)
-		for _, row := range dataRows {
-			labelLines := pdf.SplitLines([]byte(row.label), maxLabelWidth)
-			valueLines := pdf.SplitLines([]byte(formatRupiah(row.value)), maxValueWidth)
-			nLines := len(labelLines)
-			if len(valueLines) > nLines {
-				nLines = len(valueLines)
-			}
-			rowHeight := float64(nLines) * 6.0
-			pdf.CellFormat(maxLabelWidth, rowHeight, row.label, "1", 0, "L", false, 0, "")
-			pdf.CellFormat(maxValueWidth, rowHeight, formatRupiah(row.value), "1", 1, "L", false, 0, "")
-		}
-		anggotas, err := repository.GetAllAnggota()
-		if err == nil && len(anggotas) > 0 {
-			potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
-			if err != nil {
-				potonganBulanIni = make(map[string]float64)
-			}
-			pdf.Ln(6)
-			pdf.SetFont("Arial", "B", 12)
-			pdf.CellFormat(190, 8, "Rincian Laporan Keuangan", "0", 1, "L", false, 0, "")
-			pdf.Ln(1)
-			headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
-			pdf.SetFont("Arial", "B", 10)
-			for _, h := range headers {
-				pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
-			}
-			pdf.Ln(-1)
-			pdf.SetFont("Arial", "", 10)
-			for _, anggota := range anggotas {
-				nohp := anggota.NoTelepon
-				if !strings.HasPrefix(nohp, "+62") {
-					nohp = "+62" + strings.TrimLeft(nohp, "0")
-				}
-				sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-				unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
-				pdf.CellFormat(38, 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
-				pdf.CellFormat(38, 7, nohp, "1", 0, "L", false, 0, "")
-				pdf.CellFormat(38, 7, unitKerjaName, "1", 0, "L", false, 0, "")
-				pdf.CellFormat(38, 7, fmt.Sprintf("%d", anggota.GajiBulanan), "1", 0, "L", false, 0, "")
-				pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 0, "L", false, 0, "")
-				pdf.Ln(-1)
-			}
-		}
-		c.Header("Content-Type", "application/pdf")
-		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi_"+fmt.Sprintf("%02d_%d", bulanInt, tahunInt)+".pdf")
-		err = pdf.Output(c.Writer)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Gagal membuat file PDF")
-		}
-		return
-	default:
-		c.String(http.StatusBadRequest, "Format file tidak didukung")
+// KetuaDetailAngsuran menampilkan detail angsuran berdasarkan IDAngsuran
+func KetuaDetailAngsuran(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"message": "ID angsuran tidak valid"})
 		return
 	}
+
+	// Ambil data angsuran
+	db := config.GetDB()
+	var angsuran models.Angsuran
+	err = db.QueryRow(`SELECT id_angsuran, id_pinjaman, id_anggota, id_pengelola, tgl_bayar, sisa_pinjaman, bukti_angsuran, status_angsuran, status, nama_anggota FROM angsuran WHERE id_angsuran = $1`, id).Scan(
+		&angsuran.IDAngsuran, &angsuran.IDPinjaman, &angsuran.IDAnggota, &angsuran.IDPengelola, &angsuran.TglBayar, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran, &angsuran.StatusAngsuran, &angsuran.Status, &angsuran.NamaAnggota,
+	)
+	if err != nil {
+		c.HTML(http.StatusOK, "error.html", gin.H{"message": "Data angsuran tidak ditemukan"})
+		return
+	}
+
+	// Ambil data pinjaman terkait
+	var jumlahPinjaman float64
+	var angsuranKe int
+	var nomorRekening string
+	err = db.QueryRow(`SELECT jumlah_pinjaman, nomor_rekening FROM pinjaman WHERE id_pinjaman = $1`, angsuran.IDPinjaman).Scan(&jumlahPinjaman, &nomorRekening)
+	if err != nil {
+		jumlahPinjaman = 0
+		nomorRekening = "-"
+	}
+
+	// Hitung angsuran ke-berapa (berdasarkan urutan tgl_bayar)
+	rows, _ := db.Query(`SELECT id_angsuran FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	defer rows.Close()
+	idx := 1
+	for rows.Next() {
+		var tmpID int
+		rows.Scan(&tmpID)
+		if tmpID == angsuran.IDAngsuran {
+			angsuranKe = idx
+			break
+		}
+		idx++
+	}
+
+	// Ambil semua angsuran untuk riwayat
+	angsurans := []models.Angsuran{}
+	rows2, _ := db.Query(`SELECT id_angsuran, tgl_bayar, sisa_pinjaman, status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	defer rows2.Close()
+	for rows2.Next() {
+		var a models.Angsuran
+		rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.SisaPinjaman, &a.Status)
+		angsurans = append(angsurans, a)
+	}
+
+	c.HTML(http.StatusOK, "ketua/ketua_detail_angsuran.html", gin.H{
+		"Anggota":        angsuran,
+		"JumlahPinjaman": jumlahPinjaman,
+		"SisaPinjaman":   angsuran.SisaPinjaman,
+		"AngsuranKe":     angsuranKe,
+		"NomorRekening":  nomorRekening,
+		"Angsurans":      angsurans,
+	})
+}
+
+// KetuaKonfirmasiTransaksiPost menangani konfirmasi/reject transaksi oleh ketua
+func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
+	transactionType := c.Param("type")
+	idStr := c.Param("id")
+	action := c.PostForm("action")
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	switch transactionType {
+	case "simpanan":
+		if action == "confirm" {
+			err = repository.UpdateSimpananStatus(id, "confirmed")
+		} else {
+			err = repository.UpdateSimpananStatus(id, "rejected")
+		}
+	case "pinjaman":
+		if action == "confirm" {
+			err = repository.UpdatePinjamanStatus(id, "aktif")
+		} else {
+			err = repository.UpdatePinjamanStatus(id, "gagal")
+		}
+	case "angsuran":
+		if action == "confirm" {
+			err = repository.UpdateAngsuranStatus(id, "confirmed")
+		} else {
+			err = repository.UpdateAngsuranStatus(id, "rejected")
+		}
+	case "pengambilan":
+		if action == "confirm" {
+			err = repository.UpdatePengambilanSimpananStatus(id, "approved")
+		} else {
+			err = repository.UpdatePengambilanSimpananStatus(id, "rejected")
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe transaksi tidak valid"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses transaksi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Transaksi berhasil diproses"})
+}
+
+// KetuaLihatPersyaratanPinjaman menampilkan halaman persyaratan ajukan pinjaman untuk anggota (read-only, mirip bendahara)
+func KetuaLihatPersyaratanPinjaman(c *gin.Context) {
+	id := c.Param("id")
+
+	anggota, err := repository.GetAnggotaByID(id)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		return
+	}
+
+	// Hitung total simpanan untuk menampilkan limit
+	totalSimpanan, _, _, err := repository.GetSaldoAnggota(id)
+	if err != nil {
+		totalSimpanan = 0
+	}
+
+	// Hitung limit pinjaman berdasarkan jenis anggota
+	var limitPinjaman float64
+	var jenisAnggota string
+
+	switch anggota.UnitKerja {
+	case "03": // Mahasiswa
+		jenisAnggota = "Mahasiswa"
+		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
+	case "01", "02": // Dosen/Staff
+		jenisAnggota = "Dosen/Staff"
+		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
+	default:
+		jenisAnggota = "Tidak Diketahui"
+		limitPinjaman = 0
+	}
+
+	// Ambil data pinjaman pending dari anggota ini (jika ada)
+	db := config.GetDB()
+	var pinjaman models.Pinjaman
+	var hasPinjaman bool
+	queryPinjaman := `
+		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, 
+			   COALESCE(metode_pencairan, '') as metode_pencairan, COALESCE(nomor_rekening, '') as nomor_rekening,
+			   COALESCE(gaji_bulanan, 0) as gaji_bulanan, COALESCE(tujuan_pinjaman, '') as tujuan_pinjaman
+		FROM pinjaman 
+		WHERE id_anggota = $1 AND status = 'proses'
+		ORDER BY tgl_pinjaman DESC 
+		LIMIT 1
+	`
+	err = db.QueryRow(queryPinjaman, id).Scan(
+		&pinjaman.IDPinjaman,
+		&pinjaman.IDAnggota,
+		&pinjaman.TglPinjaman,
+		&pinjaman.JumlahPinjaman,
+		&pinjaman.JangkaWaktu,
+		&pinjaman.Bunga,
+		&pinjaman.Status,
+		&pinjaman.MetodePencairan,
+		&pinjaman.NomorRekening,
+		&pinjaman.NamaBank,
+		&pinjaman.Status,
+	)
+	if err == nil {
+		hasPinjaman = true
+	}
+
+	// Ambil bunga terkini dari database
+	var bungaTerkini float64
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'bunga_pinjaman'").Scan(&bungaTerkini)
+	if err != nil {
+		// Jika belum ada pengaturan, gunakan default 2.0
+		bungaTerkini = 2.0
+	}
+
+	// Render template persyaratan pinjaman khusus ketua
+	c.HTML(http.StatusOK, "ketua/ketua_persyaratan_pinjaman.html", gin.H{
+		"Anggota":       anggota,
+		"TotalSimpanan": totalSimpanan,
+		"LimitPinjaman": limitPinjaman,
+		"JenisAnggota":  jenisAnggota,
+		"Judul":         "Lihat Persyaratan Pengajuan Pinjaman",
+		"Pinjaman":      pinjaman,
+		"HasPinjaman":   hasPinjaman,
+		"Bunga":         bungaTerkini,
+	})
+}
+
+// KetuaDownloadLaporan handles download laporan for ketua
+func KetuaDownloadLaporan(c *gin.Context) {
+	c.String(http.StatusNotImplemented, "Download laporan belum diimplementasikan")
+}
+
+// ExportLaporanKeuangan handles export logic (stub)
+func ExportLaporanKeuangan(c *gin.Context) {
+	// ...existing code moved here...
+}
+
+// KetuaKonfirmasiTransaksi menampilkan halaman konfirmasi transaksi untuk ketua
+func KetuaKonfirmasiTransaksi(c *gin.Context) {
+	// Ambil data pending dari repository
+	pendingSimpanan, errSimpanan := repository.GetPendingSimpanan()
+	pendingPinjaman, errPinjaman := repository.GetPendingPinjaman()
+	pendingAngsuran, errAngsuran := repository.GetPendingAngsuran()
+	pendingPengambilan, errPengambilan := repository.GetPendingPengambilanSimpanan()
+
+	if errSimpanan != nil || errPinjaman != nil || errAngsuran != nil || errPengambilan != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data konfirmasi transaksi"})
+		return
+	}
+
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "ketua_konfirmasi_transaksi.html", gin.H{
+		"ActivePage":         "konfirmasi-transaksi",
+		"PendingSimpanan":    pendingSimpanan,
+		"PendingPinjaman":    pendingPinjaman,
+		"PendingAngsuran":    pendingAngsuran,
+		"PendingPengambilan": pendingPengambilan,
+		"CurrentLogo":        latestLogo,
+	})
 }
 
 // Menampilkan dashboard ketua dengan daftar calon anggota

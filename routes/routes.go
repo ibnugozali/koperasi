@@ -207,17 +207,16 @@ func SetupRouter() *gin.Engine {
 	{
 		ketuaRoutes.GET("/dashboard", controllers.KetuaDashboard)
 		ketuaRoutes.GET("/ketua-dashboard", controllers.KetuaDashboard)
+		ketuaRoutes.GET("/konfirmasi-transaksi", controllers.KetuaKonfirmasiTransaksi)
 		ketuaRoutes.GET("/ketua-data-anggota", controllers.KetuaDataAnggota)
 		ketuaRoutes.GET("/ketua-riwayat-login", controllers.KetuaRiwayat)
 		ketuaRoutes.GET("/ketua-laporan", controllers.KetuaLaporan)
 		ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
 		ketuaRoutes.GET("/laporan/download", controllers.KetuaDownloadLaporan)
 		ketuaRoutes.GET("/ketua-pengaturan", controllers.KetuaPengaturan)
-		// ketuaRoutes.GET("/anggota/:id", controllers.KetuaViewAnggota)
-		// ketuaRoutes.GET("/transaksi", controllers.KetuaTransaksi)
-		// ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
-		// ketuaRoutes.GET("/tentang", controllers.KetuaTentang)
-		// ketuaRoutes.GET("/pengaturan", controllers.KetuaPengaturan)
+		ketuaRoutes.GET("/lihat-persyaratan-pinjaman/:id", controllers.KetuaLihatPersyaratanPinjaman)
+		ketuaRoutes.GET("/detail-angsuran/:id", controllers.KetuaDetailAngsuran)
+		ketuaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.KetuaKonfirmasiTransaksiPost)
 		ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
 	}
 	return router
