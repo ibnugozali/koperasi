@@ -21,16 +21,7 @@
 
     <!-- Main Content -->
     <div class="main-content">
-                {{ if .KopPath }}
-                <div class="mb-3 text-center">
-                    <label class="form-label fw-bold">Preview Kop Surat</label><br>
-                    <img src="/{{.KopPath}}" alt="Kop Surat" style="max-width: 100%; max-height: 180px; border: 1px solid #ccc; background: #fff; padding: 4px;">
-                </div>
-                {{ else }}
-                <div class="mb-3 text-center text-muted">
-                    <em>Belum ada kop surat yang diupload.</em>
-                </div>
-                {{ end }}
+                <!-- Preview Kop Surat dihapus sesuai permintaan -->
             {{ if .success }}
             <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
                 {{ .success }}<br>
@@ -50,20 +41,25 @@
                 </div>
                 <div class="card-body">
                     <!-- Upload Template Kop Surat -->
-                    <div class="mb-3 d-flex justify-content-between align-items-center">
-                        <form method="POST" action="/bendahara/laporan/upload-kop" enctype="multipart/form-data" class="d-flex align-items-center gap-2">
-                            <input type="file" name="kop_file" accept=".jpg,.jpeg,.png,.pdf" class="form-control" required>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fa-solid fa-upload me-2"></i> Upload Template Kop
-                            </button>
-                        </form>
-                        <div class="text-end flex-grow-1">
-                            <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}" class="btn btn-success">
-                                <i class="fa-solid fa-download me-2"></i> Download Excel
-                            </a>
-                            <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&format=pdf" class="btn btn-danger ms-2">
-                                <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
-                            </a>
+                    <div class="mb-3 row g-2 align-items-center">
+                        <div class="col-12 col-md-7">
+                            <form method="POST" action="/bendahara/laporan/upload-kop" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
+                                <label for="kop_file" class="form-label mb-0 me-2">Pilih file kop surat:</label>
+                                <input type="file" id="kop_file" name="kop_file" accept=".jpg,.jpeg,.png,.pdf" class="form-control flex-fill" required autocomplete="off" style="min-width:180px;">
+                                <button type="submit" class="btn btn-primary flex-fill" style="min-width:150px;">
+                                    <i class="fa-solid fa-upload me-2"></i> Upload Template Kop
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-12 col-md-5 text-end">
+                            <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}" class="btn btn-success flex-fill" style="min-width:150px;">
+                                    <i class="fa-solid fa-download me-2"></i> Download Excel
+                                </a>
+                                <a href="/bendahara/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&format=pdf" class="btn btn-danger flex-fill" style="min-width:150px;">
+                                    <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
+                                </a>
+                            </div>
                         </div>
                     </div>
                     <div class="mb-2">
@@ -147,33 +143,33 @@
                         <p>Berikut adalah ringkasan laporan keuangan koperasi untuk periode yang dipilih.</p>
 
                         <div class="row">
-                            <div class="col-md-6">
-                                <h6>Pemasukan</h6>
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        Total Simpanan
-                                        <span class="badge bg-primary rounded-pill">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
+                            <div class="col-12 col-md-6 mb-3">
+                                <h6 class="mb-2">Pemasukan</h6>
+                                <ul class="list-group list-group-flush mb-2">
+                                    <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
+                                        <span>Total Simpanan</span>
+                                        <span class="badge bg-primary rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
                                     </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
-                                        Total Pemasukan
-                                        <span class="badge bg-success rounded-pill">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
+                                    <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center fw-bold mb-2">
+                                        <span>Total Pemasukan</span>
+                                        <span class="badge bg-success rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
                                     </li>
                                 </ul>
                             </div>
-                            <div class="col-md-6">
-                                <h6>Pengeluaran</h6>
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        Total Pinjaman
-                                        <span class="badge bg-danger rounded-pill">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
+                            <div class="col-12 col-md-6 mb-3">
+                                <h6 class="mb-2">Pengeluaran</h6>
+                                <ul class="list-group list-group-flush mb-2">
+                                    <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
+                                        <span>Total Pinjaman</span>
+                                        <span class="badge bg-danger rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
                                     </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        Total Angsuran
-                                        <span class="badge bg-info rounded-pill">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</span>
+                                    <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
+                                        <span>Total Angsuran</span>
+                                        <span class="badge bg-info rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</span>
                                     </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
-                                        Total Pengeluaran
-                                        <span class="badge bg-danger rounded-pill">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
+                                    <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center fw-bold mb-2">
+                                        <span>Total Pengeluaran</span>
+                                        <span class="badge bg-danger rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
                                     </li>
                                 </ul>
                             </div>
@@ -274,10 +270,10 @@ $(document).ready(function() {
     // Initialize DataTable only if table has valid data rows (sama seperti ketua_laporan.html)
     {{ if and (not .Error) .Anggotas }}
     $('#riwayatTable').DataTable({
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json",
-            "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
-        },
+            "language": {
+                "url": "/static/js/datatables/i18n/id.json",
+                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
+            },
         "pageLength": 10,
         "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
         "order": [[0, 'desc']],
