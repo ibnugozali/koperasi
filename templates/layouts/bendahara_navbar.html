@@ -13,6 +13,7 @@
 <div class="sidebar" id="sidebar">
     <div class="text-center mb-3">
         <img id="navbarLogo" src="{{if .CurrentLogo}}{{.CurrentLogo}}{{else}}/static/images/placeholder.png{{end}}" alt="Logo Koperasi" class="img-fluid" style="max-width: 80px; background-color: transparent;" onerror="this.src='/static/images/placeholder.png'">
+           <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
         <h5 class="mt-2">KOPMA</h5>
     </div>
     <a href="/bendahara/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>

@@ -2,6 +2,7 @@
   <div class="container-fluid px-3">
     <a class="navbar-brand d-flex align-items-center gap-2" href="{{ if .Anggota }}/anggota/dashboard{{ else }}/{{ end }}">
       <img id="navbarLogoAnggota" src="{{if .CurrentLogo}}{{.CurrentLogo}}{{else}}/static/images/placeholder.png{{end}}" alt="Logo KOPMA" width="32" height="32" class="rounded" onerror="this.src='/static/images/placeholder.png'">
+         <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
       <span class="fw-bold">KOPMA</span>
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navAnggota">
