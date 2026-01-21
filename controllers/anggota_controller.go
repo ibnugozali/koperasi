@@ -672,11 +672,11 @@ func AjukanPinjamanPost(c *gin.Context) {
 		if totalAngsuran > 0 {
 			persentase = float64(angsuranLunas) / float64(totalAngsuran) * 100
 		}
-		// Syarat: minimal 60% angsuran harus lunas
-		if persentase < 60 {
+		// Syarat: minimal 50% angsuran harus lunas
+		if persentase < 50 {
 			templateData := getAjukanPinjamanTemplateData(userID, anggota)
 			templateData["Error"] = fmt.Sprintf(
-				"Anda baru melunasi %.2f%% angsuran pinjaman. Minimal harus 60%% untuk mengajukan pinjaman baru.",
+				"Anda baru melunasi %.2f%% angsuran pinjaman. Minimal harus 50%% untuk mengajukan pinjaman baru.",
 				persentase,
 			)
 			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)

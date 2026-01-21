@@ -62,7 +62,7 @@
                             <strong>Tanggal Lahir:</strong>
                         </div>
                         <div class="col-sm-9">
-                            {{ .Anggota.TglLahir }}
+                            {{ if .Anggota.TglLahir }}{{ slice .Anggota.TglLahir 0 10 }}{{ else }}-{{ end }}
                         </div>
                     </div>
                     <hr>
@@ -197,6 +197,24 @@
                         </div>
                         <div class="col-6 text-end">
                             <span class="saldo-value" data-value="{{ .SimpananHariRaya }}">Rp {{ printf "%.0f" .SimpananHariRaya }}</span>
+                        </div>
+                    </div>
+                    <hr>
+                                        <div class="row mb-2">
+                        <div class="col-6">
+                            <strong>Simpanan Umroh/Haji:</strong>
+                        </div>
+                        <div class="col-6 text-end">
+                            <span class="saldo-value" data-value="{{ .SimpananUmrohHaji }}">Rp {{ printf "%.0f" .SimpananUmrohHaji }}</span>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row mb-2">
+                        <div class="col-6">
+                            <strong>Simpanan Qurban:</strong>
+                        </div>
+                        <div class="col-6 text-end">
+                            <span class="saldo-value" data-value="{{ .SimpananQurban }}">Rp {{ printf "%.0f" .SimpananQurban }}</span>
                         </div>
                     </div>
                     <hr>

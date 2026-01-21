@@ -31,24 +31,24 @@
             <div class="col-md-6">
               <ul class="list-unstyled mb-0">
                 <li class="mb-2">
-                  <strong>Simpanan Pokok:</strong> 
-                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "pokok") }}</span>
-                </li>
-                <li class="mb-2">
-                  <strong>Simpanan Wajib:</strong> 
-                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "wajib") }}</span>
-                </li>
-              </ul>
-            </div>
-            <div class="col-md-6">
-              <ul class="list-unstyled mb-0">
-                <li class="mb-2">
                   <strong>Simpanan Sukarela:</strong> 
                   <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "sukarela") }}</span>
                 </li>
                 <li class="mb-2">
                   <strong>Simpanan Hari Raya:</strong> 
                   <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "hari_raya") }}</span>
+                </li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <ul class="list-unstyled mb-0">
+                <li class="mb-2">
+                  <strong>Simpanan Umroh/Haji:</strong> 
+                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "umroh_haji") }}</span>
+                </li>
+                <li class="mb-2">
+                  <strong>Simpanan Qurban:</strong> 
+                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "qurban") }}</span>
                 </li>
               </ul>
             </div>
@@ -110,8 +110,12 @@
               <select class="form-select" id="jenisSimpanan" name="jenis_simpanan" required>
                 <option value="">-- Pilih Jenis Simpanan --</option>
                 {{ range .JenisSimpananList }}
-                <option value="{{ .ID }}" data-jenis="{{ .Jenis }}">{{ .Jenis }}</option>
+                  {{ if and (not (or (eq .Jenis "Simpanan Pokok") (eq .Jenis "pokok") (eq .Jenis "Simpanan Wajib") (eq .Jenis "wajib"))) }}
+                    <option value="{{ .ID }}" data-jenis="{{ .Jenis }}">{{ .Jenis }}</option>
+                  {{ end }}
                 {{ end }}
+                <option value="umroh_haji" data-jenis="Simpanan Umroh/Haji">Simpanan Umroh/Haji</option>
+                <option value="qurban" data-jenis="Simpanan Qurban">Simpanan Qurban</option>
               </select>
               <div class="form-text">
                 <i class="bi bi-info-circle me-1"></i>

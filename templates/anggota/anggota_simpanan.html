@@ -44,6 +44,14 @@
                     <i class="bi bi-check-circle-fill text-success me-2"></i>
                     <strong>Simpanan Hari Raya:</strong> Simpanan yang ditujukan untuk mempersiapkan kebutuhan pada saat hari raya
                   </li>
+                  <li class="list-group-item">
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                    <strong>Simpanan Umroh/Haji:</strong> Simpanan khusus yang dapat digunakan untuk merencanakan dan mempersiapkan biaya ibadah Umroh atau Haji.
+                  </li>
+                  <li class="list-group-item">
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                    <strong>Simpanan Qurban:</strong> Simpanan khusus yang dapat digunakan untuk persiapan pembelian hewan Qurban pada hari raya Idul Adha.
+                  </li>
                 {{ end }}
               {{ else }}
                 <li class="list-group-item">
@@ -61,6 +69,14 @@
                 <li class="list-group-item">
                   <i class="bi bi-check-circle-fill text-success me-2"></i>
                   <strong>Simpanan Hari Raya:</strong> Simpanan yang ditujukan untuk mempersiapkan kebutuhan pada saat hari raya
+                </li>
+                <li class="list-group-item">
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  <strong>Simpanan Umroh/Haji:</strong> Simpanan khusus untuk persiapan ibadah Umroh atau Haji
+                </li>
+                <li class="list-group-item">
+                  <i class="bi bi-check-circle-fill text-success me-2"></i>
+                  <strong>Simpanan Qurban:</strong> Simpanan khusus untuk persiapan ibadah Qurban
                 </li>
               {{ end }}
             </ul>
@@ -131,6 +147,24 @@
                 </div>
               </div>
               <div class="row mb-3 align-items-center">
+                <label for="simpanan_umroh_haji" class="col-sm-4 col-form-label">Simpanan Umroh/Haji</label>
+                <div class="col-sm-8">
+                  <div class="input-group">
+                    <span class="input-group-text">Rp</span>
+                    <input type="number" class="form-control simpanan-input" id="simpanan_umroh_haji" name="simpanan_umroh_haji" min="0" value="0" placeholder="0">
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-3 align-items-center">
+                <label for="simpanan_qurban" class="col-sm-4 col-form-label">Simpanan Qurban</label>
+                <div class="col-sm-8">
+                  <div class="input-group">
+                    <span class="input-group-text">Rp</span>
+                    <input type="number" class="form-control simpanan-input" id="simpanan_qurban" name="simpanan_qurban" min="0" value="0" placeholder="0">
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-3 align-items-center">
                 <label for="total_simpanan" class="col-sm-4 col-form-label">Total Simpanan</label>
                 <div class="col-sm-8">
                   <div class="input-group">
@@ -184,7 +218,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const wajib = wajibInput.disabled ? 0 : (parseFloat(wajibInput.value) || 0);
         const sukarela = parseFloat(document.getElementById('simpanan_sukarela').value) || 0;
         const hariRaya = parseFloat(document.getElementById('simpanan_hari_raya').value) || 0;
-        const total = wajib + sukarela + hariRaya;
+        const umrohHaji = parseFloat(document.getElementById('simpanan_umroh_haji').value) || 0;
+        const qurban = parseFloat(document.getElementById('simpanan_qurban').value) || 0;
+        const total = wajib + sukarela + hariRaya + umrohHaji + qurban;
         document.getElementById('total_simpanan').value = total;
     }
 
@@ -206,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Add event listeners to input fields
-    const inputFields = ['simpanan_wajib', 'simpanan_sukarela', 'simpanan_hari_raya'];
+    const inputFields = ['simpanan_wajib', 'simpanan_sukarela', 'simpanan_hari_raya', 'simpanan_umroh_haji', 'simpanan_qurban'];
     inputFields.forEach(function(fieldId) {
         const input = document.getElementById(fieldId);
         if (!input.disabled) {
