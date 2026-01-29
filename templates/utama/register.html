@@ -32,19 +32,13 @@
                                     <input type="password" class="form-control" id="register_password" name="Password" required>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="nik_ktp" class="form-label">NIK KTP</label>
-                                    <input type="text" class="form-control" id="register_nik_ktp" name="NikKTP" required pattern="[0-9]{16}" maxlength="16" inputmode="numeric" title="NIK harus 16 digit angka" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16)">
+                            <div class="mb-3">
+                                <label for="no_telepon" class="form-label">No. Telepon</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">+62</span>
+                                    <input type="text" class="form-control" id="register_no_telepon" name="NoTelepon" required pattern="[1-9][0-9]{8,12}" maxlength="13" inputmode="numeric" title="Nomor telepon Indonesia, 9-13 digit, tidak boleh diawali 0" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^0+/, '').slice(0, 13)">
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="no_telepon" class="form-label">No. Telepon</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">+62</span>
-                                        <input type="text" class="form-control" id="register_no_telepon" name="NoTelepon" required pattern="[1-9][0-9]{8,12}" maxlength="13" inputmode="numeric" title="Nomor telepon Indonesia, 9-13 digit, tidak boleh diawali 0" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^0+/, '').slice(0, 13)">
-                                    </div>
-                                    <small class="form-text text-muted">Masukkan nomor tanpa 0 di depan, contoh: 81234567890</small>
-                                </div>
+                                <small class="form-text text-muted">Masukkan nomor tanpa 0 di depan, contoh: 81234567890</small>
                             </div>
                              <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -166,17 +160,16 @@
                         alert('Silakan pilih fakultas terlebih dahulu');
                         return false;
                     }
-                    // Validasi keunikan Nama Pengguna, Kata Sandi, NIK KTP, dan No. Telepon
+                    // Validasi keunikan Nama Pengguna, Kata Sandi, dan No. Telepon
                     const username = document.getElementById('register_username').value.trim();
                     const password = document.getElementById('register_password').value.trim();
-                    const nik = document.getElementById('register_nik_ktp').value.trim();
                     const telepon = document.getElementById('register_no_telepon').value.trim();
-                    const fields = [username, password, nik, telepon];
+                    const fields = [username, password, telepon];
                     for (let i = 0; i < fields.length; i++) {
                         for (let j = i + 1; j < fields.length; j++) {
                             if (fields[i] !== '' && fields[i] === fields[j]) {
                                 e.preventDefault();
-                                alert('Nama Pengguna, Kata Sandi, NIK KTP, dan No. Telepon tidak boleh sama satu sama lain.');
+                                alert('Nama Pengguna, Kata Sandi, dan No. Telepon tidak boleh sama satu sama lain.');
                                 return false;
                             }
                         }

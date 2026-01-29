@@ -19,62 +19,98 @@
 </head>
 <body>
     {{ template "ketua_navbar.html" . }}
+
+    <!-- Main Content -->
     <div class="main-content">
+                <!-- Preview Kop Surat dihapus sesuai permintaan -->
+            {{ if .success }}
+            <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                {{ .success }}<br>
+                File kop surat akan otomatis muncul di bagian atas file PDF/Excel yang Anda download berikutnya.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {{ end }}
         <div class="container-fluid">
-            <br><br><br>
+            <br><br>
             <div class="container-fluid">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card shadow-sm">
-                            <div class="card-header bg-success text-white">
-                                <h5 class="mb-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Laporan Keuangan</h5>
-                                <small class="text-white-50">Ringkasan laporan keuangan koperasi</small>
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Laporan Keuangan</h5>
+                    <small class="text-white-50">Ringkasan laporan keuangan koperasi</small>
+                </div>
+                <div class="card-body">
+                    <!-- Upload Template Kop Surat -->
+                    <div class="mb-3 row g-2 align-items-center">
+                        <div class="col-12 col-md-7">
+                            <form method="POST" action="/ketua/laporan/upload-kop" enctype="multipart/form-data" id="uploadKopForm" class="d-flex flex-wrap gap-2 align-items-center">
+                                <label for="kop_file" class="form-label mb-0 me-2">Pilih file kop surat:</label>
+                                <input type="file" id="kop_file" name="kop_file" accept=".jpg,.jpeg,.png" class="form-control flex-fill" required autocomplete="off" style="min-width:180px;" onchange="previewKop(event)">
+                                <button type="submit" class="btn btn-primary flex-fill" style="min-width:150px;">
+                                    <i class="fa-solid fa-upload me-2"></i> Upload Template Kop
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-12 col-md-5 text-end">
+                            <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}" class="btn btn-success flex-fill" style="min-width:150px;">
+                                    <i class="fa-solid fa-download me-2"></i> Download Excel
+                                </a>
+                                <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}&format=pdf" class="btn btn-danger flex-fill" style="min-width:150px;">
+                                    <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
+                                </a>
                             </div>
-                            <div class="card-body">
-                                {{if .Error}}
-                                <div class="alert alert-danger">
-                                    <i class="fa-solid fa-exclamation-triangle me-2"></i>{{.Error}}
-                                </div>
-                                {{end}}
-                                <div class="mb-3 text-end">
-                                    <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}" class="btn btn-success">
-                                        <i class="fa-solid fa-download me-2"></i> Download Excel
-                                    </a>
-                                    <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&format=pdf" class="btn btn-danger ms-2">
-                                        <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
-                                    </a>
-                                </div>
-                                <div class="stat-card mb-4">
-                                    <h5>Pilih Periode Laporan</h5>
-                                    <form method="GET" action="/ketua/laporan" class="row g-3">
-                                        <div class="col-md-3">
-                                            <label for="bulan" class="form-label">Bulan</label>
-                                            <select class="form-control" id="bulan" name="bulan">
-                                                <option value="1" {{if eq .Bulan 1}}selected{{end}}>Januari</option>
-                                                <option value="2" {{if eq .Bulan 2}}selected{{end}}>Februari</option>
-                                                <option value="3" {{if eq .Bulan 3}}selected{{end}}>Maret</option>
-                                                <option value="4" {{if eq .Bulan 4}}selected{{end}}>April</option>
-                                                <option value="5" {{if eq .Bulan 5}}selected{{end}}>Mei</option>
-                                                <option value="6" {{if eq .Bulan 6}}selected{{end}}>Juni</option>
-                                                <option value="7" {{if eq .Bulan 7}}selected{{end}}>Juli</option>
-                                                <option value="8" {{if eq .Bulan 8}}selected{{end}}>Agustus</option>
-                                                <option value="9" {{if eq .Bulan 9}}selected{{end}}>September</option>
-                                                <option value="10" {{if eq .Bulan 10}}selected{{end}}>Oktober</option>
-                                                <option value="11" {{if eq .Bulan 11}}selected{{end}}>November</option>
-                                                <option value="12" {{if eq .Bulan 12}}selected{{end}}>Desember</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label for="tahun" class="form-label">Tahun</label>
-                                            <input type="number" class="form-control" id="tahun" name="tahun" value="{{.Tahun}}" min="2020" max="2030">
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label">&nbsp;</label>
-                                            <button type="submit" class="btn btn-primary w-100">Tampilkan Laporan</button>
-                                        </div>
-                                    </form>
-                                </div>
-                                <div class="row">
+                        </div>
+                    </div>
+                    
+                    <!-- Preview Kop Surat tidak ditampilkan sesuai permintaan bendahara -->
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">Template kop yang Anda upload akan otomatis digunakan pada file PDF/Excel laporan yang diunduh.<br>
+                        Saat Anda klik <b>Download PDF</b> atau <b>Download Excel</b>, kop surat akan muncul di bagian atas file sesuai file template kop terakhir yang di-upload.</small>
+                    </div>
+                    <!-- Form untuk memilih bulan dan tahun -->
+                    <div class="stat-card mb-4">
+                        <h5>Pilih Periode Laporan</h5>
+                        <form method="GET" action="/ketua/laporan" class="row g-3" id="formPeriode">
+                            <div class="col-md-2">
+                                <label for="tipe_laporan" class="form-label">Tipe Laporan</label>
+                                <select class="form-control" id="tipe_laporan" name="tipe_laporan" onchange="togglePeriode()">
+                                    <option value="bulanan" {{if eq .TipeLaporan "bulanan"}}selected{{else}}{{if not .TipeLaporan}}selected{{end}}{{end}}>Bulanan</option>
+                                    <option value="tahunan" {{if eq .TipeLaporan "tahunan"}}selected{{end}}>Tahunan</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="bulanField">
+                                <label for="bulan" class="form-label">Bulan</label>
+                                <select class="form-control" id="bulan" name="bulan">
+                                    <option value="1" {{if eq .Bulan 1}}selected{{end}}>Januari</option>
+                                    <option value="2" {{if eq .Bulan 2}}selected{{end}}>Februari</option>
+                                    <option value="3" {{if eq .Bulan 3}}selected{{end}}>Maret</option>
+                                    <option value="4" {{if eq .Bulan 4}}selected{{end}}>April</option>
+                                    <option value="5" {{if eq .Bulan 5}}selected{{end}}>Mei</option>
+                                    <option value="6" {{if eq .Bulan 6}}selected{{end}}>Juni</option>
+                                    <option value="7" {{if eq .Bulan 7}}selected{{end}}>Juli</option>
+                                    <option value="8" {{if eq .Bulan 8}}selected{{end}}>Agustus</option>
+                                    <option value="9" {{if eq .Bulan 9}}selected{{end}}>September</option>
+                                    <option value="10" {{if eq .Bulan 10}}selected{{end}}>Oktober</option>
+                                    <option value="11" {{if eq .Bulan 11}}selected{{end}}>November</option>
+                                    <option value="12" {{if eq .Bulan 12}}selected{{end}}>Desember</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="tahun" class="form-label">Tahun</label>
+                                <input type="number" class="form-control" id="tahun" name="tahun" value="{{.Tahun}}" min="2020" max="2030">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <button type="submit" class="btn btn-primary w-100">Tampilkan Laporan</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Statistik Utama -->
+                    <div class="row">
                                     <div class="col-md-3 mb-4">
                                         <div class="stat-card">
                                             <div class="stat-icon text-success">
@@ -116,33 +152,33 @@
                                     <h5>Ringkasan Laporan Keuangan Bulan {{.Bulan}} Tahun {{.Tahun}}</h5>
                                     <p>Berikut adalah ringkasan laporan keuangan koperasi untuk periode yang dipilih.</p>
                                     <div class="row">
-                                        <div class="col-md-6">
-                                            <h6>Pemasukan</h6>
-                                            <ul class="list-group list-group-flush">
-                                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                    Total Simpanan
-                                                    <span class="badge bg-primary rounded-pill">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
+                                        <div class="col-12 col-md-6 mb-3">
+                                            <h6 class="mb-2">Pemasukan</h6>
+                                            <ul class="list-group list-group-flush mb-2">
+                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
+                                                    <span>Total Simpanan</span>
+                                                    <span class="badge bg-primary rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
                                                 </li>
-                                                <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
-                                                    Total Pemasukan
-                                                    <span class="badge bg-success rounded-pill">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
+                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center fw-bold mb-2">
+                                                    <span>Total Pemasukan</span>
+                                                    <span class="badge bg-success rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
                                                 </li>
                                             </ul>
                                         </div>
-                                        <div class="col-md-6">
-                                            <h6>Pengeluaran</h6>
-                                            <ul class="list-group list-group-flush">
-                                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                    Total Pinjaman
-                                                    <span class="badge bg-danger rounded-pill">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
+                                        <div class="col-12 col-md-6 mb-3">
+                                            <h6 class="mb-2">Pengeluaran</h6>
+                                            <ul class="list-group list-group-flush mb-2">
+                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
+                                                    <span>Total Pinjaman</span>
+                                                    <span class="badge bg-danger rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
                                                 </li>
-                                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                    Total Angsuran
-                                                    <span class="badge bg-info rounded-pill">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</span>
+                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
+                                                    <span>Total Angsuran</span>
+                                                    <span class="badge bg-info rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</span>
                                                 </li>
-                                                <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
-                                                    Total Pengeluaran
-                                                    <span class="badge bg-danger rounded-pill">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
+                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center fw-bold mb-2">
+                                                    <span>Total Pengeluaran</span>
+                                                    <span class="badge bg-danger rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
                                                 </li>
                                             </ul>
                                         </div>
@@ -224,27 +260,100 @@
             </div>
         </div>
     </div>
-    {{ template "ketua_footer" . }} 
+
+    {{ template "ketua_footer" . }}
+
+    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    <script>
-    $(document).ready(function() {
-        // Initialize DataTable only if table has valid data rows
-        {{ if and (not .Error) .Anggotas }}
-        $('#riwayatTable').DataTable({
+
+<script src="/static/js/ketua_navbar.js"></script>
+
+<script>
+// Variable untuk zoom level
+let currentZoom = 1;
+const minZoom = 0.5;
+const maxZoom = 3;
+const zoomStep = 0.25;
+
+// Fungsi untuk zoom in
+function zoomIn() {
+    const previewImage = document.getElementById('kopPreviewImage');
+    const zoomLabel = document.getElementById('zoomLevel');
+    
+    if (currentZoom < maxZoom) {
+        currentZoom += zoomStep;
+        previewImage.style.transform = `scale(${currentZoom})`;
+        zoomLabel.textContent = Math.round(currentZoom * 100) + '%';
+    }
+}
+
+// Fungsi untuk zoom out
+function zoomOut() {
+    const previewImage = document.getElementById('kopPreviewImage');
+    const zoomLabel = document.getElementById('zoomLevel');
+    
+    if (currentZoom > minZoom) {
+        currentZoom -= zoomStep;
+        previewImage.style.transform = `scale(${currentZoom})`;
+        zoomLabel.textContent = Math.round(currentZoom * 100) + '%';
+    }
+}
+
+// Fungsi untuk reset zoom
+function resetZoom() {
+    const previewImage = document.getElementById('kopPreviewImage');
+    const zoomLabel = document.getElementById('zoomLevel');
+    
+    currentZoom = 1;
+    previewImage.style.transform = `scale(${currentZoom})`;
+    zoomLabel.textContent = '100%';
+}
+
+// Preview kop surat tidak ditampilkan sesuai dengan bendahara_laporan.html
+// Fungsi ini dibiarkan kosong karena tidak ada preview
+function previewKop(event) {
+    // No preview needed
+}
+
+// Fungsi untuk toggle field bulan berdasarkan tipe laporan
+function togglePeriode() {
+    const tipeLaporan = document.getElementById('tipe_laporan').value;
+    const bulanField = document.getElementById('bulanField');
+    const bulanSelect = document.getElementById('bulan');
+    
+    if (tipeLaporan === 'tahunan') {
+        bulanField.style.display = 'none';
+        bulanSelect.removeAttribute('required');
+    } else {
+        bulanField.style.display = 'block';
+        bulanSelect.setAttribute('required', 'required');
+    }
+}
+
+$(document).ready(function() {
+    // Toggle bulan field saat halaman load
+    togglePeriode();
+    
+    // Initialize DataTable only if table has valid data rows (sama seperti bendahara_laporan.html)
+    {{ if and (not .Error) .Anggotas }}
+    $('#riwayatTable').DataTable({
             "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json",
+                "url": "/static/js/datatables/i18n/id.json",
                 "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
             },
-            "pageLength": 10,
-            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-            "order": [[0, 'desc']],
-            "responsive": true
-        });
-        {{ end }}
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+        "order": [[0, 'desc']],
+        "responsive": true
     });
-    </script>
+    {{ end }}
+});
+</script>
+
 </body>
 </html>

@@ -3,16 +3,18 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	// "github.com/jung-kurt/gofpdf/v2"
-	// "github.com/xuri/excelize/v2"
+	"github.com/jung-kurt/gofpdf/v2"
+	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 
 	"koperasi-simpan-pinjam/config"
@@ -219,7 +221,339 @@ func KetuaLihatPersyaratanPinjaman(c *gin.Context) {
 
 // KetuaDownloadLaporan handles download laporan for ketua
 func KetuaDownloadLaporan(c *gin.Context) {
-	c.String(http.StatusNotImplemented, "Download laporan belum diimplementasikan")
+	format := c.DefaultQuery("format", "excel")
+	bulan := c.Query("bulan")
+	tahun := c.Query("tahun")
+
+	// Ambil path kop dari session (jika ada)
+	session := sessions.Default(c)
+	kopPath, _ := session.Get("kop_path").(string)
+	absKopPath := kopPath
+	if kopPath != "" && !filepath.IsAbs(kopPath) {
+		absKopPath, _ = filepath.Abs(kopPath)
+	}
+
+	switch format {
+	case "excel":
+		// Ambil data laporan keuangan
+		bulanInt, _ := strconv.Atoi(bulan)
+		tahunInt, _ := strconv.Atoi(tahun)
+		report, err := repository.GetLaporanKeuangan(bulanInt, tahunInt)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal mengambil data laporan")
+			return
+		}
+
+		f := excelize.NewFile()
+		sheet := "Sheet1"
+		// Jika ada kop PDF, skip image insert untuk Excel (PDF tidak bisa di embed ke Excel)
+		rowOffset := 1
+		if absKopPath != "" && (strings.HasSuffix(strings.ToLower(absKopPath), ".jpg") || strings.HasSuffix(strings.ToLower(absKopPath), ".jpeg") || strings.HasSuffix(strings.ToLower(absKopPath), ".png")) {
+			// Masukkan gambar kop di baris 1, tanpa AutoFit, dan data mulai baris 15
+			if err := f.AddPicture(sheet, "A1", absKopPath, &excelize.GraphicOptions{
+				AutoFit: false,
+				OffsetY: 0,
+				OffsetX: 0,
+				ScaleX:  1.0,
+				ScaleY:  1.0,
+			}); err == nil {
+				rowOffset = 15
+			} else {
+				log.Printf("Gagal menambahkan gambar kop ke Excel: %v", err)
+				rowOffset = 1
+			}
+		}
+		// Header judul
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset), "LAPORAN KEUANGAN KOPERASI")
+		// Tanggal cetak dan periode
+		var waktuCetak time.Time
+		var tanggalCetak string
+		var jamCetak string
+		var namaBulan string
+		waktuCetak = time.Now()
+		tanggalCetak = waktuCetak.Format("2 Januari 2006")
+		jamCetak = waktuCetak.Format("15.04")
+		namaBulan = []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+1), "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak)
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+2), fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt))
+		// Header tabel
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+4), "Keterangan")
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", rowOffset+4), "Jumlah")
+		// Data
+		totalPengeluaran := 0.0
+		if pinjaman, ok := report["total_pinjaman"].(float64); ok {
+			totalPengeluaran += pinjaman
+		}
+		if pengambilan, ok := report["total_pengambilan"].(float64); ok {
+			totalPengeluaran += pengambilan
+		}
+		dataRows := []struct {
+			label string
+			value interface{}
+		}{
+			{"Total Simpanan", report["total_simpanan"]},
+			{"Total Pinjaman", report["total_pinjaman"]},
+			{"Total Angsuran", report["total_angsuran"]},
+			{"Total Pengeluaran", totalPengeluaran},
+		}
+		for i, row := range dataRows {
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+5+i), row.label)
+			f.SetCellValue(sheet, fmt.Sprintf("B%d", rowOffset+5+i), row.value)
+		}
+		// Style header tabel
+		styleHeader, _ := f.NewStyle(&excelize.Style{
+			Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+			Fill:      excelize.Fill{Type: "pattern", Color: []string{"#2ecc71"}, Pattern: 1},
+			Alignment: &excelize.Alignment{Horizontal: "center"},
+			Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+		})
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", rowOffset+4), fmt.Sprintf("B%d", rowOffset+4), styleHeader)
+		// Style data
+		styleData, _ := f.NewStyle(&excelize.Style{
+			Alignment: &excelize.Alignment{Horizontal: "left"},
+			Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+		})
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", rowOffset+5), fmt.Sprintf("B%d", rowOffset+5+len(dataRows)-1), styleData)
+		// Set lebar kolom otomatis
+		f.SetColWidth(sheet, "A", "B", 25)
+		// Ambil data anggota aktif dan potongan/sisa gaji
+		anggotas, err := repository.GetAllAnggota()
+		if err == nil && len(anggotas) > 0 {
+			potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+			if err != nil {
+				potonganBulanIni = make(map[string]float64)
+			}
+			startRow := rowOffset + 5 + len(dataRows) + 2
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Keuangan")
+			// Header
+			headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+			cols := []string{"A", "B", "C", "D", "E"}
+			for i, h := range headers {
+				col := cols[i]
+				f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow), h)
+			}
+			// Data
+			for idx, anggota := range anggotas {
+				row := startRow + 1 + idx
+				nohp := anggota.NoTelepon
+				if !strings.HasPrefix(nohp, "+62") {
+					nohp = "+62" + strings.TrimLeft(nohp, "0")
+				}
+				sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+				unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+				f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+				f.SetCellValue(sheet, fmt.Sprintf("C%d", row), unitKerjaName)
+				f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+				f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+			}
+			// Style header rincian
+			rincianHeaderStyle, _ := f.NewStyle(&excelize.Style{
+				Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+				Fill:      excelize.Fill{Type: "pattern", Color: []string{"#2ecc71"}, Pattern: 1},
+				Alignment: &excelize.Alignment{Horizontal: "center"},
+				Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+			})
+			rincianDataStyle, _ := f.NewStyle(&excelize.Style{
+				Alignment: &excelize.Alignment{Horizontal: "left"},
+				Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+			})
+			f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("E%d", startRow), rincianHeaderStyle)
+			f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow+1), fmt.Sprintf("E%d", startRow+len(anggotas)), rincianDataStyle)
+			f.SetColWidth(sheet, "A", "E", 22)
+		}
+		// Set header untuk download
+		c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.xlsx")
+		c.Header("Content-Transfer-Encoding", "binary")
+		if err := f.Write(c.Writer); err != nil {
+			c.String(http.StatusInternalServerError, "Gagal membuat file Excel")
+		}
+		return
+	case "pdf":
+		bulanInt, _ := strconv.Atoi(bulan)
+		tahunInt, _ := strconv.Atoi(tahun)
+		report, err := repository.GetLaporanKeuangan(bulanInt, tahunInt)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal mengambil data laporan")
+			return
+		}
+
+		// Convert bulan to nama bulan
+		namaBulan := []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+			"Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
+		// Format tanggal cetak
+		waktuCetak := time.Now()
+		tanggalCetak := waktuCetak.Format("2 Januari 2006")
+		jamCetak := waktuCetak.Format("15.04")
+
+		// Hitung total pengeluaran (pinjaman + pengambilan)
+		totalPengeluaran := 0.0
+		if pinjaman, ok := report["total_pinjaman"].(float64); ok {
+			totalPengeluaran += pinjaman
+		}
+		if pengambilan, ok := report["total_pengambilan"].(float64); ok {
+			totalPengeluaran += pengambilan
+		}
+
+		// Helper function untuk format Rupiah dengan pemisah ribuan (tanpa dobel 'Rp')
+		formatRupiah := func(amount float64) string {
+			amountStr := fmt.Sprintf("%.0f", amount)
+			var result []string
+			for i, digit := range amountStr {
+				if i > 0 && (len(amountStr)-i)%3 == 0 {
+					result = append(result, ".")
+				}
+				result = append(result, string(digit))
+			}
+			return "Rp " + strings.Join(result, "")
+		}
+
+		// Cari kop surat gambar terbaru (jpg, jpeg, png)
+		kopDir := "static/uploads/kop/"
+		files, err := os.ReadDir(kopDir)
+		var kopPath string
+		var latestTime int64
+		for _, file := range files {
+			if !file.IsDir() {
+				ext := strings.ToLower(filepath.Ext(file.Name()))
+				if ext == ".jpg" || ext == ".jpeg" || ext == ".png" {
+					info, _ := file.Info()
+					if info.ModTime().Unix() > latestTime {
+						latestTime = info.ModTime().Unix()
+						kopPath = filepath.Join(kopDir, file.Name())
+					}
+				}
+			}
+		}
+
+		pdf := gofpdf.New("P", "mm", "A4", "")
+		pdf.AddPage()
+
+		// Jika ada kop gambar, sisipkan di bagian atas
+		if kopPath != "" {
+			pdf.ImageOptions(kopPath, 10, 10, 190, 0, false, gofpdf.ImageOptions{ImageType: ""}, 0, "")
+			pdf.Ln(45) // Tambah jarak agar data tidak bertumpuk dengan kop surat
+		}
+
+		// PDF header, keterangan, dan data laporan
+		pdf.SetFont("Arial", "B", 16)
+		pdf.CellFormat(190, 10, "LAPORAN KEUANGAN KOPERASI", "0", 1, "C", false, 0, "")
+		pdf.Ln(3)
+		pdf.SetFont("Arial", "", 10)
+		pdf.CellFormat(190, 6, "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak, "0", 1, "C", false, 0, "")
+		pdf.CellFormat(190, 6, fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt), "0", 1, "C", false, 0, "")
+		pdf.Ln(10)
+
+		// Data rows dan header, lebar kolom dinamis
+		pdf.SetFont("Arial", "", 10)
+		dataRows := []struct {
+			label string
+			value float64
+		}{
+			{"Total Simpanan", report["total_simpanan"].(float64)},
+			{"Total Pinjaman", report["total_pinjaman"].(float64)},
+			{"Total Angsuran", report["total_angsuran"].(float64)},
+			{"Total Pengeluaran", totalPengeluaran},
+		}
+		// Hitung lebar kolom maksimal
+		pdf.SetFont("Arial", "B", 11)
+		maxLabelWidth := pdf.GetStringWidth("Keterangan")
+		maxValueWidth := pdf.GetStringWidth("Jumlah")
+		pdf.SetFont("Arial", "", 10)
+		for _, row := range dataRows {
+			lw := pdf.GetStringWidth(row.label)
+			vw := pdf.GetStringWidth(formatRupiah(row.value))
+			if lw > maxLabelWidth {
+				maxLabelWidth = lw
+			}
+			if vw > maxValueWidth {
+				maxValueWidth = vw
+			}
+		}
+		// Tambahkan padding
+		maxLabelWidth += 10
+		maxValueWidth += 10
+		totalWidth := maxLabelWidth + maxValueWidth
+		// Jika totalWidth < 190, distribusikan sisa ke label
+		if totalWidth < 190 {
+			maxLabelWidth += 190 - totalWidth
+			totalWidth = 190
+		}
+		// Header tabel
+		pdf.SetFont("Arial", "B", 11)
+		pdf.SetFillColor(46, 204, 113)
+		pdf.SetTextColor(255, 255, 255)
+		// Hitung tinggi baris header secara dinamis
+		headerLabelLines := pdf.SplitLines([]byte("Keterangan"), maxLabelWidth)
+		headerValueLines := pdf.SplitLines([]byte("Jumlah"), maxValueWidth)
+		headerLines := len(headerLabelLines)
+		if len(headerValueLines) > headerLines {
+			headerLines = len(headerValueLines)
+		}
+		headerHeight := float64(headerLines) * 6.0
+		pdf.CellFormat(maxLabelWidth, headerHeight, "Keterangan", "1", 0, "C", true, 0, "")
+		pdf.CellFormat(maxValueWidth, headerHeight, "Jumlah", "1", 1, "C", true, 0, "")
+
+		// Data rows dengan tinggi baris dinamis
+		pdf.SetFont("Arial", "", 10)
+		pdf.SetTextColor(0, 0, 0)
+		for _, row := range dataRows {
+			// Hitung tinggi baris berdasarkan jumlah baris teks (jika multiline)
+			labelLines := pdf.SplitLines([]byte(row.label), maxLabelWidth)
+			valueLines := pdf.SplitLines([]byte(formatRupiah(row.value)), maxValueWidth)
+			nLines := len(labelLines)
+			if len(valueLines) > nLines {
+				nLines = len(valueLines)
+			}
+			rowHeight := float64(nLines) * 6.0
+			pdf.CellFormat(maxLabelWidth, rowHeight, row.label, "1", 0, "L", false, 0, "")
+			pdf.CellFormat(maxValueWidth, rowHeight, formatRupiah(row.value), "1", 1, "L", false, 0, "")
+		}
+
+		// Ambil data anggota aktif dan potongan/sisa gaji
+		anggotas, err := repository.GetAllAnggota()
+		if err == nil && len(anggotas) > 0 {
+			potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+			if err != nil {
+				potonganBulanIni = make(map[string]float64)
+			}
+			pdf.Ln(6)
+			pdf.SetFont("Arial", "B", 12)
+			pdf.CellFormat(190, 8, "Rincian Laporan Keuangan", "0", 1, "L", false, 0, "")
+			pdf.Ln(1)
+			headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+			pdf.SetFont("Arial", "B", 10)
+			for _, h := range headers {
+				pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
+			}
+			pdf.Ln(-1)
+			pdf.SetFont("Arial", "", 10)
+			for _, anggota := range anggotas {
+				nohp := anggota.NoTelepon
+				if !strings.HasPrefix(nohp, "+62") {
+					nohp = "+62" + strings.TrimLeft(nohp, "0")
+				}
+				sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+				pdf.CellFormat(38, 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
+				pdf.CellFormat(38, 7, nohp, "1", 0, "L", false, 0, "")
+				pdf.CellFormat(38, 7, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "L", false, 0, "")
+				pdf.CellFormat(38, 7, fmt.Sprintf("%d", anggota.GajiBulanan), "1", 0, "L", false, 0, "")
+				pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 1, "L", false, 0, "")
+			}
+		}
+		// Set header untuk download
+		c.Header("Content-Type", "application/pdf")
+		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi_"+fmt.Sprintf("%02d_%d", bulanInt, tahunInt)+".pdf")
+		err = pdf.Output(c.Writer)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Gagal membuat file PDF")
+		}
+		return
+	default:
+		c.String(http.StatusBadRequest, "Format file tidak didukung")
+		return
+	}
 }
 
 // ExportLaporanKeuangan handles export logic (stub)
@@ -419,12 +753,32 @@ func KetuaDataAnggota(c *gin.Context) {
 	})
 }
 
-// Menampilkan halaman riwayat login
+// Menampilkan halaman riwayat transaksi
 func KetuaRiwayat(c *gin.Context) {
-	// Ambil data riwayat login dari database
-	loginHistory, err := repository.GetLoginHistory()
+	// Ambil semua data riwayat transaksi dari database
+	riwayats, err := repository.GetAllRiwayat()
 	if err != nil {
-		loginHistory = []models.LoginHistory{} // Default kosong jika error
+		// Log error detail ke console agar mudah debug
+		fmt.Printf("[ERROR] Gagal mengambil data riwayat: %v\n", err)
+		c.HTML(http.StatusInternalServerError, "ketua_riwayat_transaksi.html", gin.H{
+			"ActivePage": "riwayat",
+			"Error":      "Gagal mengambil data riwayat. Silakan hubungi admin.",
+		})
+		return
+	}
+
+	// Ambil daftar anggota untuk filter
+	db := config.GetDB()
+	var anggotas []models.Anggota
+	rows, err := db.Query("SELECT id_anggota, nama_anggota FROM anggota ORDER BY nama_anggota")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var a models.Anggota
+			if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota); err == nil {
+				anggotas = append(anggotas, a)
+			}
+		}
 	}
 
 	// Cari logo terbaru di static/images
@@ -450,24 +804,38 @@ func KetuaRiwayat(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
-	c.HTML(http.StatusOK, "ketua_riwayat_login.html", gin.H{
-		"ActivePage":   "login_history",
-		"LoginHistory": loginHistory,
-		"CurrentLogo":  latestLogo,
+	c.HTML(http.StatusOK, "ketua_riwayat_transaksi.html", gin.H{
+		"ActivePage":  "riwayat",
+		"Riwayats":    riwayats,
+		"Anggotas":    anggotas,
+		"CurrentLogo": latestLogo,
 	})
 }
 
 // Menampilkan halaman laporan anggota
 func KetuaLaporan(c *gin.Context) {
+	// Ambil tipe laporan dari query parameter (default: bulanan)
+	tipeLaporan := c.Query("tipe_laporan")
+	if tipeLaporan == "" {
+		tipeLaporan = "bulanan"
+	}
+
 	// Ambil bulan dan tahun dari query parameter, default bulan dan tahun saat ini
 	currentTime := time.Now()
 	bulan := int(currentTime.Month())
 	tahun := currentTime.Year()
-	if b := c.Query("bulan"); b != "" {
-		if parsed, err := strconv.Atoi(b); err == nil {
-			bulan = parsed
+
+	// Jika laporan tahunan, set bulan ke 0 (tidak digunakan)
+	if tipeLaporan == "tahunan" {
+		bulan = 0
+	} else {
+		if b := c.Query("bulan"); b != "" {
+			if parsed, err := strconv.Atoi(b); err == nil {
+				bulan = parsed
+			}
 		}
 	}
+
 	if t := c.Query("tahun"); t != "" {
 		if parsed, err := strconv.Atoi(t); err == nil {
 			tahun = parsed
@@ -536,15 +904,20 @@ func KetuaLaporan(c *gin.Context) {
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 	}
 
+	// Ambil pesan success dari query parameter
+	successMsg := c.Query("success")
+
 	c.HTML(http.StatusOK, "ketua_laporan.html", gin.H{
 		"ActivePage":       "laporan",
 		"Report":           report,
 		"Bulan":            bulan,
 		"Tahun":            tahun,
+		"TipeLaporan":      tipeLaporan,
 		"CurrentLogo":      latestLogo,
 		"Anggotas":         anggotas,
 		"SisaGaji":         sisaGaji,
 		"GetUnitKerjaName": repository.GetUnitKerjaName,
+		"success":          successMsg,
 		"Error": func() string {
 			if err != nil {
 				return "Gagal mengambil data anggota"
@@ -681,4 +1054,118 @@ func UpdateKetuaProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Profil berhasil diperbarui", "username": request.Username})
+}
+
+// KetuaKonfirmasiAnggota menampilkan halaman konfirmasi anggota
+func KetuaKonfirmasiAnggota(c *gin.Context) {
+	// Panggil repository untuk mendapatkan anggota dengan status 'pending'
+	pendingMembers, err := repository.GetPendingAnggota()
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Gagal mengambil data anggota")
+		return
+	}
+
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	// Ambil pesan error dari query string jika ada
+	errorMsg := c.Query("error")
+	c.HTML(http.StatusOK, "ketua_anggota_konfirmasi.html", gin.H{
+		"PendingMembers": pendingMembers,
+		"ActivePage":     "konfirmasi_anggota",
+		"CurrentLogo":    latestLogo,
+		"Title":          "Konfirmasi Anggota",
+		"ErrorMessage":   errorMsg,
+	})
+}
+
+// KetuaConfirmMembership mengkonfirmasi anggota
+func KetuaConfirmMembership(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	// Update status anggota menjadi 'approved'
+	err = repository.UpdateAnggotaStatus(strconv.Itoa(id), "approved")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengonfirmasi anggota"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Anggota berhasil dikonfirmasi"})
+}
+
+// KetuaRejectMembership menolak anggota
+func KetuaRejectMembership(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	// Update status anggota menjadi 'rejected'
+	err = repository.UpdateAnggotaStatus(strconv.Itoa(id), "rejected")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menolak anggota"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Anggota berhasil ditolak"})
+}
+
+// KetuaUploadKop handles kop surat upload for ketua
+func KetuaUploadKop(c *gin.Context) {
+	// Parse form file
+	file, err := c.FormFile("kop_file")
+	if err != nil {
+		c.String(http.StatusBadRequest, "Gagal menerima file kop: %v", err)
+		return
+	}
+	// Buat folder jika belum ada
+	kopDir := "static/uploads/kop/"
+	if err := os.MkdirAll(kopDir, os.ModePerm); err != nil {
+		c.String(http.StatusInternalServerError, "Gagal membuat folder kop: %v", err)
+		return
+	}
+	// Izinkan file gambar (jpg, jpeg, png) untuk kop surat
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		c.String(http.StatusBadRequest, "Hanya file gambar (JPG, JPEG, PNG) yang diperbolehkan untuk kop surat!")
+		return
+	}
+	filename := fmt.Sprintf("kop_%d%s", time.Now().Unix(), ext)
+	savePath := filepath.Join(kopDir, filename)
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.String(http.StatusInternalServerError, "Gagal menyimpan file kop: %v", err)
+		return
+	}
+	// Simpan path kop ke session atau database jika perlu (sementara ke session)
+	session := sessions.Default(c)
+	session.Set("kop_path", savePath)
+	session.Save()
+	c.Redirect(http.StatusFound, "/ketua/laporan?success=Kop surat berhasil diupload")
 }
