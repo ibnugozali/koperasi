@@ -54,10 +54,10 @@
                         </div>
                         <div class="col-12 col-md-5 text-end">
                             <div class="d-flex flex-wrap gap-2 justify-content-end">
-                                <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}" class="btn btn-success flex-fill" style="min-width:150px;">
+                                <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}" id="downloadExcelBtn" class="btn btn-success flex-fill" style="min-width:150px;">
                                     <i class="fa-solid fa-download me-2"></i> Download Excel
                                 </a>
-                                <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}&format=pdf" class="btn btn-danger flex-fill" style="min-width:150px;">
+                                <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}&format=pdf" id="downloadPdfBtn" class="btn btn-danger flex-fill" style="min-width:150px;">
                                     <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
                                 </a>
                             </div>
@@ -190,62 +190,80 @@
                 </div>
             </div>
 
-            <!-- Tabel Rincian Laporan Keuangan -->
-            <div class="row mt-4">
+            <!-- Tabel Rincian Laporan Keuangan - Bulanan -->
+            <div class="row mt-4" id="rincianBulanan">
                 <div class="col-12">
                     <div class="card shadow-sm">
                         <div class="card-header bg-info text-white">
-                            <i class="fa-solid fa-list"></i> Rincian Laporan Keuangan
+                            <i class="fa-solid fa-list"></i> Rincian Laporan Bulanan
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table id="riwayatTable" class="table table-striped table-hover">
                                     <thead class="table-dark">
                                         <tr>
-                                            <th>Tanggal</th>
-                                            <th>ID Anggota</th>
-                                            <th>Anggota</th>
-                                            <th>No. HP</th>
-                                            <th>Jenis Unit</th>
-                                            <th>Gaji Bulanan</th>
-                                            <th>Sisa Gaji</th>
-                                            <th>Status</th>
+                                            <th rowspan="2">No</th>
+                                            <th rowspan="2">Kode</th>
+                                            <th rowspan="2">Nama</th>
+                                            <th rowspan="2">Unit</th>
+                                            <th colspan="8" class="text-center">Pinjaman</th>
+                                            <th colspan="7" class="text-center">Simpanan</th>
+                                            <th rowspan="2">Jumlah Pembayaran</th>
+                                        </tr>
+                                        <tr>
+                                            <th>Nominal Pinjaman</th>
+                                            <th>Periode/Tenor</th>
+                                            <th>Pokok Pinjaman</th>
+                                            <th>Jasa</th>
+                                            <th>Jumlah</th>
+                                            <th>Angsuran ke-1</th>
+                                            <th>Angsuran ke-2</th>
+                                            <th>Sisa Pinjaman</th>
+                                            <th>Pokok</th>
+                                            <th>Wajib</th>
+                                            <th>Jumlah Wajib</th>
+                                            <th>Simpanan Hari Raya</th>
+                                            <th>Jumlah Simpanan Hari Raya</th>
+                                            <th>Sukarela</th>
+                                            <th>Jumlah Sukarela</th>
                                         </tr>
                                     </thead>
                                     <tbody id="riwayatTableBody">
                                         {{ if .Error }}
                                         <tr>
-                                            <td colspan="8" class="text-center text-danger">
+                                            <td colspan="20" class="text-center text-danger">
                                                 <i class="fas fa-exclamation-circle"></i> {{ .Error }}
                                             </td>
                                         </tr>
                                         {{ else }}
                                         {{ if .Anggotas }}
-                                            {{ range .Anggotas }}
+                                            {{ range $index, $value := .Anggotas }}
                                             <tr>
-                                                <td style="white-space: nowrap;">{{ .TglGabung.Format "2006-01-02" }}</td>
-                                                <td style="white-space: nowrap;">{{ .IDAnggota }}</td>
-                                                <td style="white-space: nowrap;">{{ .NamaAnggota }}</td>
-                                                <td style="white-space: nowrap;">
-                                                    {{ if hasPrefix .NoTelepon "+62" }}
-                                                        {{ .NoTelepon }}
-                                                    {{ else if eq (printf "%c" (index .NoTelepon 0)) "0" }}
-                                                        +62{{ slice .NoTelepon 1 }}
-                                                    {{ else }}
-                                                        +62{{ .NoTelepon }}
-                                                    {{ end }}
-                                                </td>
-                                                <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName .UnitKerja }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%d" .GajiBulanan }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" (index $.SisaGaji .IDAnggota) }}</td>
-                                                <td style="white-space: nowrap;">
-                                                    <span class="badge bg-success">Aktif</span>
-                                                </td>
+                                                <td style="white-space: nowrap;">{{ add $index 1 }}</td>
+                                                <td style="white-space: nowrap;">{{ $value.IDAnggota }}</td>
+                                                <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
+                                                <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">Rp 0</td>
                                             </tr>
                                             {{ end }}
                                         {{ else }}
                                             <tr>
-                                                <td colspan="8" class="text-center text-muted">
+                                                <td colspan="20" class="text-center text-muted">
                                                     <i class="fas fa-info-circle"></i> Tidak ada data anggota aktif
                                                 </td>
                                             </tr>
@@ -253,6 +271,340 @@
                                         {{ end }}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabel Rincian Laporan Keuangan - Tahunan (5 Tabel) -->
+            <div id="rincianTahunan" style="display: none;">
+                <!-- Tabel 1:Daftar Simpanan Anggota -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-primary text-white">
+                                <i class="fa-solid fa-piggy-bank"></i> Daftar Simpanan Anggota
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table id="simpananWajibTable" class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>No</th>
+                                                <th>ID Anggota</th>
+                                                <th>Nama</th>
+                                                <th>Unit</th>
+                                                <th>Simpanan Pokok</th>
+                                                <th>Simpanan Wajib</th>
+                                                <th>Simpanan Hari Raya</th>
+                                                <th>Simpanan Umroh/Haji</th>
+                                                <th>Simpanan Qurban</th>
+                                                <th>Simpanan Sukarela</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {{ if .Error }}
+                                            <tr>
+                                                <td colspan="10" class="text-center text-danger">
+                                                    <i class="fas fa-exclamation-circle"></i> {{ .Error }}
+                                                </td>
+                                            </tr>
+                                            {{ else }}
+                                            {{ if .Anggotas }}
+                                                {{ range $index, $value := .Anggotas }}
+                                                <tr>
+                                                    <td style="white-space: nowrap;">{{ add $index 1 }}</td>
+                                                    <td style="white-space: nowrap;">{{ $value.IDAnggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                </tr>
+                                                {{ end }}
+                                            {{ else }}
+                                                <tr>
+                                                    <td colspan="10" class="text-center text-muted">
+                                                        <i class="fas fa-info-circle"></i> Tidak ada data simpanan wajib tahunan
+                                                    </td>
+                                                </tr>
+                                            {{ end }}
+                                            {{ end }}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabel 2: Daftar Piutang Anggota -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-info text-white">
+                                <i class="fa-solid fa-wallet"></i> Daftar Piutang Anggota
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table id="simpananSukarelaTable" class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>No</th>
+                                                <th>ID Anggota</th>
+                                                <th>Nama</th>
+                                                <th>Unit</th>
+                                                <th>Sisa Piutang</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {{ if .Error }}
+                                            <tr>
+                                                <td colspan="5" class="text-center text-danger">
+                                                    <i class="fas fa-exclamation-circle"></i> {{ .Error }}
+                                                </td>
+                                            </tr>
+                                            {{ else }}
+                                            {{ if .Anggotas }}
+                                                {{ range $index, $value := .Anggotas }}
+                                                <tr>
+                                                    <td style="white-space: nowrap;">{{ add $index 1 }}</td>
+                                                    <td style="white-space: nowrap;">{{ $value.IDAnggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                </tr>
+                                                {{ end }}
+                                            {{ else }}
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted">
+                                                        <i class="fas fa-info-circle"></i> Tidak ada data piutang anggota
+                                                    </td>
+                                                </tr>
+                                            {{ end }}
+                                            {{ end }}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabel 3: Daftar Piutang Macet Anggota -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-danger text-white">
+                                <i class="fa-solid fa-hand-holding-usd"></i> Daftar Piutang Macet Anggota
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table id="pinjamanTahunanTable" class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>No</th>
+                                                <th>ID Anggota</th>
+                                                <th>Nama</th>
+                                                <th>Unit</th>
+                                                <th>Jumlah Piutang</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {{ if .Error }}
+                                            <tr>
+                                                <td colspan="5" class="text-center text-danger">
+                                                    <i class="fas fa-exclamation-circle"></i> {{ .Error }}
+                                                </td>
+                                            </tr>
+                                            {{ else }}
+                                            {{ if .Anggotas }}
+                                                {{ range $index, $value := .Anggotas }}
+                                                <tr>
+                                                    <td style="white-space: nowrap;">{{ add $index 1 }}</td>
+                                                    <td style="white-space: nowrap;">{{ $value.IDAnggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                </tr>
+                                                {{ end }}
+                                            {{ else }}
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted">
+                                                        <i class="fas fa-info-circle"></i> Tidak ada data piutang macet anggota
+                                                    </td>
+                                                </tr>
+                                            {{ end }}
+                                            {{ end }}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabel 4: Daftar SHU Anggota -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-success text-white">
+                                <i class="fa-solid fa-coins"></i> Daftar SHU Anggota
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table id="angsuranTahunanTable" class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>No</th>
+                                                <th>Nama</th>
+                                                <th>Unit</th>
+                                                <th>SHU Pinjaman</th>
+                                                <th>SHU Simpanan</th>
+                                                <th>Jumlah SHU</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {{ if .Error }}
+                                            <tr>
+                                                <td colspan="6" class="text-center text-danger">
+                                                    <i class="fas fa-exclamation-circle"></i> {{ .Error }}
+                                                </td>
+                                            </tr>
+                                            {{ else }}
+                                            {{ if .Anggotas }}
+                                                {{ range $index, $value := .Anggotas }}
+                                                <tr>
+                                                    <td style="white-space: nowrap;">{{ add $index 1 }}</td>
+                                                    <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                </tr>
+                                                {{ end }}
+                                            {{ else }}
+                                                <tr>
+                                                    <td colspan="6" class="text-center text-muted">
+                                                        <i class="fas fa-info-circle"></i> Tidak ada data SHU anggota
+                                                    </td>
+                                                </tr>
+                                            {{ end }}
+                                            {{ end }}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabel 5: Rincian Pengambilan Tahunan -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center" id="neracaCardHeader">
+                                <span><i class="fa-solid fa-money-bill-transfer"></i> Neraca Koprasi Simpan Pinjam</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-primary" id="btnEditNeraca" onclick="editNeraca()">
+                                        <i class="fas fa-edit"></i> Edit Neraca
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th colspan="2" class="text-center">ASET</th>
+                                                <th colspan="2" class="text-center">KEWAJIBAN & EKUITAS</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="neracaTableBody">
+                                            <tr>
+                                                <td><strong>Aset Lancar</strong></td>
+                                                <td><button class="btn btn-sm btn-success d-none" id="btnAddAsetLancar" onclick="tambahItem('asetLancar')"><i class="fas fa-plus"></i></button></td>
+                                                <td><strong>Kewajiban Lancar</strong></td>
+                                                <td><button class="btn btn-sm btn-success d-none" id="btnAddKewajibanLancar" onclick="tambahItem('kewajibanLancar')"><i class="fas fa-plus"></i></button></td>
+                                            </tr>
+                                            <tr id="row_kas">
+                                                <td class="ps-4" id="label_kas">Kas</td>
+                                                <td class="text-end" id="kas">Rp 0</td>
+                                                <td class="ps-4" id="label_hutangUsaha">Hutang Usaha</td>
+                                                <td class="text-end" id="hutangUsaha">Rp 0</td>
+                                            </tr>
+                                            <tr id="row_bank">
+                                                <td class="ps-4" id="label_bank">Bank</td>
+                                                <td class="text-end" id="bank">Rp 0</td>
+                                                <td class="ps-4" id="label_hutangBunga">Hutang Bunga</td>
+                                                <td class="text-end" id="hutangBunga">Rp 0</td>
+                                            </tr>
+                                            <tr id="row_piutangAnggota">
+                                                <td class="ps-4" id="label_piutangAnggota">Piutang Anggota</td>
+                                                <td class="text-end" id="piutangAnggota">Rp 0</td>
+                                                <td class="ps-4" id="label_simpananAnggota">Simpanan Anggota</td>
+                                                <td class="text-end" id="simpananAnggota">Rp 0</td>
+                                            </tr>
+                                            <tr id="asetLancarEnd">
+                                                <td class="ps-4" id="label_perlengkapan">Perlengkapan</td>
+                                                <td class="text-end" id="perlengkapan">Rp 0</td>
+                                                <td colspan="2" id="kewajibanLancarEnd"></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Total Aset Lancar</td>
+                                                <td class="text-end fw-bold" id="totalAsetLancar">Rp 0</td>
+                                                <td class="fw-bold">Total Kewajiban Lancar</td>
+                                                <td class="text-end fw-bold" id="totalKewajibanLancar">Rp 0</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Aset Tetap</strong></td>
+                                                <td><button class="btn btn-sm btn-success d-none" id="btnAddAsetTetap" onclick="tambahItem('asetTetap')"><i class="fas fa-plus"></i></button></td>
+                                                <td><strong>Ekuitas/Modal</strong></td>
+                                                <td><button class="btn btn-sm btn-success d-none" id="btnAddEkuitas" onclick="tambahItem('ekuitas')"><i class="fas fa-plus"></i></button></td>
+                                            </tr>
+                                            <tr id="row_tanah">
+                                                <td class="ps-4" id="label_tanah">Tanah</td>
+                                                <td class="text-end" id="tanah">Rp 0</td>
+                                                <td class="ps-4" id="label_simpananPokok">Simpanan Pokok</td>
+                                                <td class="text-end" id="simpananPokok">Rp 0</td>
+                                            </tr>
+                                            <tr id="row_bangunan">
+                                                <td class="ps-4" id="label_bangunan">Bangunan</td>
+                                                <td class="text-end" id="bangunan">Rp 0</td>
+                                                <td class="ps-4" id="label_simpananWajib">Simpanan Wajib</td>
+                                                <td class="text-end" id="simpananWajib">Rp 0</td>
+                                            </tr>
+                                            <tr id="row_kendaraan">
+                                                <td class="ps-4" id="label_kendaraan">Kendaraan</td>
+                                                <td class="text-end" id="kendaraan">Rp 0</td>
+                                                <td class="ps-4" id="label_cadangan">Cadangan</td>
+                                                <td class="text-end" id="cadangan">Rp 0</td>
+                                            </tr>
+                                            <tr id="asetTetapEnd">
+                                                <td class="ps-4" id="label_peralatan">Peralatan</td>
+                                                <td class="text-end" id="peralatan">Rp 0</td>
+                                                <td class="ps-4" id="label_shuTahunBerjalan" rowspan="1">SHU Tahun Berjalan</td>
+                                                <td class="text-end" id="shuTahunBerjalan">Rp 0</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Total Aset Tetap</td>
+                                                <td class="text-end fw-bold" id="totalAsetTetap">Rp 0</td>
+                                                <td class="fw-bold">Total Ekuitas</td>
+                                                <td class="text-end fw-bold" id="totalEkuitas">Rp 0</td>
+                                            </tr>
+                                            <tr class="table-info fw-bold">
+                                                <td>TOTAL ASET</td>
+                                                <td class="text-end" id="totalAset">Rp 0</td>
+                                                <td>TOTAL KEWAJIBAN & EKUITAS</td>
+                                                <td class="text-end" id="totalKewajibanEkuitas">Rp 0</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -325,19 +677,59 @@ function togglePeriode() {
     const tipeLaporan = document.getElementById('tipe_laporan').value;
     const bulanField = document.getElementById('bulanField');
     const bulanSelect = document.getElementById('bulan');
+    const rincianBulanan = document.getElementById('rincianBulanan');
+    const rincianTahunan = document.getElementById('rincianTahunan');
+    const tahunInput = document.getElementById('tahun');
+    
+    // Update download button links
+    updateDownloadLinks();
     
     if (tipeLaporan === 'tahunan') {
         bulanField.style.display = 'none';
         bulanSelect.removeAttribute('required');
+        rincianBulanan.style.display = 'none';
+        rincianTahunan.style.display = 'block';
     } else {
         bulanField.style.display = 'block';
         bulanSelect.setAttribute('required', 'required');
+        rincianBulanan.style.display = 'block';
+        rincianTahunan.style.display = 'none';
     }
+}
+
+// Fungsi untuk update download links
+function updateDownloadLinks() {
+    const tipeLaporan = document.getElementById('tipe_laporan').value;
+    const bulan = document.getElementById('bulan').value;
+    const tahun = document.getElementById('tahun').value;
+    const downloadExcelBtn = document.getElementById('downloadExcelBtn');
+    const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+    
+    let excelUrl = '/ketua/laporan/download?';
+    let pdfUrl = '/ketua/laporan/download?';
+    
+    if (tipeLaporan === 'tahunan') {
+        // URL untuk laporan tahunan (tanpa parameter bulan)
+        excelUrl += `tahun=${tahun}&tipe_laporan=tahunan`;
+        pdfUrl += `tahun=${tahun}&tipe_laporan=tahunan&format=pdf`;
+    } else {
+        // URL untuk laporan bulanan (dengan parameter bulan)
+        excelUrl += `bulan=${bulan}&tahun=${tahun}&tipe_laporan=bulanan`;
+        pdfUrl += `bulan=${bulan}&tahun=${tahun}&tipe_laporan=bulanan&format=pdf`;
+    }
+    
+    downloadExcelBtn.href = excelUrl;
+    downloadPdfBtn.href = pdfUrl;
 }
 
 $(document).ready(function() {
     // Toggle bulan field saat halaman load
     togglePeriode();
+    
+    // Add event listeners untuk update download links saat nilai berubah
+    document.getElementById('bulan').addEventListener('change', updateDownloadLinks);
+    document.getElementById('tahun').addEventListener('change', updateDownloadLinks);
+    document.getElementById('tipe_laporan').addEventListener('change', updateDownloadLinks);
     
     // Initialize DataTable only if table has valid data rows (sama seperti bendahara_laporan.html)
     {{ if and (not .Error) .Anggotas }}
@@ -351,7 +743,1025 @@ $(document).ready(function() {
         "order": [[0, 'desc']],
         "responsive": true
     });
+    
+    // Initialize DataTables for 5 yearly report tables
+    $('#simpananWajibTable').DataTable({
+            "language": {
+                "url": "/static/js/datatables/i18n/id.json",
+                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
+            },
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+        "order": [[0, 'desc']],
+        "responsive": true
+    });
+    
+    $('#simpananSukarelaTable').DataTable({
+            "language": {
+                "url": "/static/js/datatables/i18n/id.json",
+                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
+            },
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+        "order": [[0, 'desc']],
+        "responsive": true
+    });
+    
+    $('#pinjamanTahunanTable').DataTable({
+            "language": {
+                "url": "/static/js/datatables/i18n/id.json",
+                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
+            },
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+        "order": [[0, 'desc']],
+        "responsive": true
+    });
+    
+    $('#angsuranTahunanTable').DataTable({
+            "language": {
+                "url": "/static/js/datatables/i18n/id.json",
+                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
+            },
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+        "order": [[0, 'desc']],
+        "responsive": true
+    });
     {{ end }}
+});
+
+// Counter untuk item tambahan
+let itemCounter = {
+    asetLancar: 0,
+    asetTetap: 0,
+    kewajibanLancar: 0,
+    ekuitas: 0
+};
+
+// Array untuk menyimpan item yang dihapus
+let deletedItems = [];
+
+// Fungsi untuk tambah item baru
+function tambahItem(kategori) {
+    console.log('tambahItem dipanggil dengan kategori:', kategori);
+    
+    itemCounter[kategori]++;
+    const id = `${kategori}_custom_${itemCounter[kategori]}`;
+    
+    console.log('ID baru:', id);
+    
+    let newRow;
+    if (kategori === 'asetLancar' || kategori === 'asetTetap') {
+        // Cari row kosong di kolom kiri terlebih dahulu
+        const tbody = document.getElementById('neracaTableBody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        let targetRow = null;
+        let sectionName = kategori === 'asetLancar' ? 'Aset Lancar' : 'Aset Tetap';
+        let endId = kategori === 'asetLancar' ? 'asetLancarEnd' : 'asetTetapEnd';
+        let foundSection = false;
+        
+        // Cari row yang kolom kiri kosong
+        for (let row of rows) {
+            if (row.textContent.includes(sectionName)) {
+                foundSection = true;
+                continue;
+            }
+            
+            if (foundSection && row.id === endId) {
+                break;
+            }
+            
+            if (foundSection && row.cells.length >= 4) {
+                const leftLabel = row.cells[0].textContent.trim();
+                const leftValue = row.cells[1].textContent.trim();
+                const hasLeftInput = row.cells[0].querySelector('input') || row.cells[1].querySelector('input');
+                
+                // Cek jika kolom kiri kosong
+                if (!leftLabel && !leftValue && !hasLeftInput) {
+                    targetRow = row;
+                    break;
+                }
+            }
+        }
+        
+        if (targetRow) {
+            // Gunakan row kosong yang ada
+            targetRow.cells[0].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${id}" placeholder="Nama Item">`;
+            targetRow.cells[0].className = 'ps-4';
+            targetRow.cells[0].id = `label_${id}`;
+            
+            targetRow.cells[1].innerHTML = `
+                <div class="d-flex gap-1">
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
+                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            targetRow.cells[1].className = 'text-end';
+            targetRow.cells[1].id = id;
+            
+            // Update row id jika perlu
+            if (!targetRow.id || targetRow.id.includes('row_')) {
+                targetRow.id = `row_${id}`;
+            }
+        } else {
+            // Buat row baru jika tidak ada row kosong
+            newRow = document.createElement('tr');
+            newRow.id = `row_${id}`;
+            newRow.innerHTML = `
+                <td class="ps-4" id="label_${id}">
+                    <input type="text" class="form-control form-control-sm" id="input_label_${id}" placeholder="Nama Item">
+                </td>
+                <td class="text-end" id="${id}">
+                    <div class="d-flex gap-1">
+                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
+                        <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+                <td colspan="2"></td>
+            `;
+            const endRow = document.getElementById(endId);
+            if (endRow) {
+                endRow.before(newRow);
+            }
+        }
+    } else if (kategori === 'kewajibanLancar' || kategori === 'ekuitas') {
+        // Cari row kosong di kolom kanan terlebih dahulu
+        const tbody = document.getElementById('neracaTableBody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        let targetRow = null;
+        let sectionName = kategori === 'kewajibanLancar' ? 'Kewajiban Lancar' : 'Ekuitas';
+        let foundSection = false;
+        
+        for (let row of rows) {
+            if (row.textContent.includes(sectionName)) {
+                foundSection = true;
+                continue;
+            }
+            
+            if (foundSection && (row.textContent.includes('Total') || row.textContent.includes('TOTAL'))) {
+                break;
+            }
+            
+            if (foundSection && row.cells.length >= 4) {
+                const rightLabel = row.cells[2].textContent.trim();
+                const rightValue = row.cells[3].textContent.trim();
+                const hasRightInput = row.cells[2].querySelector('input') || row.cells[3].querySelector('input');
+                const isColspan = row.cells[2].colSpan > 1;
+                
+                // Cek jika kolom kanan kosong
+                if (!rightLabel && !rightValue && !hasRightInput && !isColspan) {
+                    targetRow = row;
+                    break;
+                }
+            }
+        }
+        
+        if (targetRow) {
+            // Gunakan row kosong yang ada
+            targetRow.cells[2].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${id}" placeholder="Nama Item">`;
+            targetRow.cells[2].className = 'ps-4';
+            targetRow.cells[2].colSpan = 1;
+            targetRow.cells[2].id = `label_${id}`;
+            
+            targetRow.cells[3].innerHTML = `
+                <div class="d-flex gap-1">
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
+                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            targetRow.cells[3].className = 'text-end';
+            targetRow.cells[3].id = id;
+        } else {
+            // Buat row baru jika tidak ada row kosong
+            newRow = document.createElement('tr');
+            newRow.id = `row_${id}`;
+            newRow.innerHTML = `
+                <td colspan="2"></td>
+                <td class="ps-4" id="label_${id}">
+                    <input type="text" class="form-control form-control-sm" id="input_label_${id}" placeholder="Nama Item">
+                </td>
+                <td class="text-end" id="${id}">
+                    <div class="d-flex gap-1">
+                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
+                        <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            
+            const endId = kategori === 'kewajibanLancar' ? 'asetLancarEnd' : 'asetTetapEnd';
+            const endRow = document.getElementById(endId);
+            if (endRow) {
+                endRow.before(newRow);
+            }
+        }
+    }
+    
+    updateNeraca();
+}
+
+// Fungsi untuk reorganisasi/compact rows setelah ada yang dihapus
+function compactNeracaRows() {
+    // Definisi mapping antara item Aset dan Kewajiban
+    const asetLancarItems = ['kas', 'bank', 'piutangAnggota', 'perlengkapan'];
+    const kewajibanLancarItems = ['hutangUsaha', 'hutangBunga', 'simpananAnggota'];
+    const asetTetapItems = ['tanah', 'bangunan', 'kendaraan', 'peralatan'];
+    const ekuitasItems = ['simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'];
+    
+    // Simpan data sebelum dihapus
+    const savedData = {};
+    const savedLabels = {};
+    
+    [...asetLancarItems, ...kewajibanLancarItems, ...asetTetapItems, ...ekuitasItems].forEach(item => {
+        const labelTd = document.getElementById('label_' + item);
+        const valueTd = document.getElementById(item);
+        if (labelTd && valueTd) {
+            savedLabels[item] = labelTd.textContent || labelTd.innerHTML;
+            savedData[item] = valueTd.textContent || valueTd.innerHTML;
+        }
+    });
+    
+    // Kumpulkan data yang masih ada (tidak dihapus)
+    const activeAsetLancar = asetLancarItems.filter(item => !deletedItems.includes(item));
+    const activeKewajibanLancar = kewajibanLancarItems.filter(item => !deletedItems.includes(item));
+    const activeAsetTetap = asetTetapItems.filter(item => !deletedItems.includes(item));
+    const activeEkuitas = ekuitasItems.filter(item => !deletedItems.includes(item));
+    
+    // Rebuild Aset Lancar & Kewajiban Lancar rows
+    const tbody = document.getElementById('neracaTableBody');
+    const maxLancar = Math.max(activeAsetLancar.length, activeKewajibanLancar.length);
+    
+    // Hapus semua row default yang ada
+    ['row_kas', 'row_bank', 'row_piutangAnggota', 'row_tanah', 'row_bangunan', 'row_kendaraan'].forEach(rowId => {
+        const row = document.getElementById(rowId);
+        if (row) {
+            row.remove();
+        }
+    });
+    
+    // Rebuild rows untuk Aset Lancar & Kewajiban Lancar
+    const asetLancarHeader = Array.from(tbody.querySelectorAll('tr')).find(tr => 
+        tr.textContent.includes('Aset Lancar') && tr.querySelector('button'));
+    
+    for (let i = 0; i < maxLancar; i++) {
+        const newRow = document.createElement('tr');
+        const asetItem = activeAsetLancar[i];
+        const kewajibanItem = activeKewajibanLancar[i];
+        
+        if (asetItem) {
+            newRow.id = 'row_' + asetItem;
+            const label = savedLabels[asetItem] || asetItem;
+            const value = savedData[asetItem] || 'Rp 0';
+            
+            newRow.innerHTML += `
+                <td class="ps-4" id="label_${asetItem}">${label}</td>
+                <td class="text-end" id="${asetItem}">${value}</td>
+            `;
+        } else {
+            newRow.innerHTML += `<td></td><td></td>`;
+        }
+        
+        if (kewajibanItem) {
+            const label = savedLabels[kewajibanItem] || kewajibanItem;
+            const value = savedData[kewajibanItem] || 'Rp 0';
+            
+            newRow.innerHTML += `
+                <td class="ps-4" id="label_${kewajibanItem}">${label}</td>
+                <td class="text-end" id="${kewajibanItem}">${value}</td>
+            `;
+        } else {
+            newRow.innerHTML += `<td></td><td></td>`;
+        }
+        
+        // Insert sebelum row "asetLancarEnd"
+        const endRow = document.getElementById('asetLancarEnd');
+        if (endRow && asetLancarHeader) {
+            asetLancarHeader.after(newRow);
+        }
+    }
+    
+    // Rebuild rows untuk Aset Tetap & Ekuitas
+    const maxTetap = Math.max(activeAsetTetap.length, activeEkuitas.length);
+    const asetTetapHeader = Array.from(tbody.querySelectorAll('tr')).find(tr => 
+        tr.textContent.includes('Aset Tetap') && tr.querySelector('button'));
+    
+    for (let i = 0; i < maxTetap; i++) {
+        const newRow = document.createElement('tr');
+        const asetItem = activeAsetTetap[i];
+        const ekuitasItem = activeEkuitas[i];
+        
+        if (asetItem) {
+            newRow.id = 'row_' + asetItem;
+            const label = savedLabels[asetItem] || asetItem;
+            const value = savedData[asetItem] || 'Rp 0';
+            
+            newRow.innerHTML += `
+                <td class="ps-4" id="label_${asetItem}">${label}</td>
+                <td class="text-end" id="${asetItem}">${value}</td>
+            `;
+        } else {
+            newRow.innerHTML += `<td></td><td></td>`;
+        }
+        
+        if (ekuitasItem) {
+            const label = savedLabels[ekuitasItem] || ekuitasItem;
+            const value = savedData[ekuitasItem] || 'Rp 0';
+            
+            newRow.innerHTML += `
+                <td class="ps-4" id="label_${ekuitasItem}">${label}</td>
+                <td class="text-end" id="${ekuitasItem}">${value}</td>
+            `;
+        } else {
+            newRow.innerHTML += `<td></td><td></td>`;
+        }
+        
+        // Insert sebelum row "asetTetapEnd"
+        const endRow = document.getElementById('asetTetapEnd');
+        if (endRow && asetTetapHeader) {
+            asetTetapHeader.after(newRow);
+        }
+    }
+}
+
+// Fungsi untuk hapus item
+function hapusItem(itemId) {
+    console.log('hapusItem dipanggil untuk:', itemId);
+    
+    if (!confirm('Yakin ingin menghapus item ini?')) {
+        return;
+    }
+    
+    const labelTd = document.getElementById('label_' + itemId);
+    const valueTd = document.getElementById(itemId);
+    
+    if (!labelTd || !valueTd) {
+        console.error('Item tidak ditemukan:', itemId);
+        console.log('Mencoba mencari dengan ID:', 'label_' + itemId, 'dan', itemId);
+        return;
+    }
+    
+    console.log('Item ditemukan, menghapus...');
+    
+    // Simpan ke deletedItems untuk tracking
+    if (!deletedItems.includes(itemId)) {
+        deletedItems.push(itemId);
+    }
+    
+    // Kosongkan cell alih-alih menghapus row
+    labelTd.innerHTML = '';
+    valueTd.innerHTML = '';
+    
+    // Row hanya dihapus jika SEMUA 4 kolom benar-benar kosong
+    const row = labelTd.parentElement;
+    if (row) {
+        const allCells = Array.from(row.cells);
+        const allEmpty = allCells.every(cell => {
+            const text = cell.textContent.trim();
+            const hasContent = text !== '' && text !== undefined && text !== null;
+            const hasVisibleChildren = cell.querySelector('input, button, select, textarea') !== null;
+            return !hasContent && !hasVisibleChildren;
+        });
+        
+        console.log('Semua cell kosong?', allEmpty);
+        
+        // Hanya hapus row jika benar-benar semua kolom kosong
+        if (allEmpty) {
+            row.remove();
+            console.log('Row dihapus');
+        } else {
+            console.log('Row dipertahankan karena masih ada data di kolom lain');
+        }
+    }
+    
+    updateNeraca();
+    
+    console.log('Item berhasil dihapus');
+}
+
+// Fungsi untuk edit Neraca
+function editNeraca() {
+    console.log('editNeraca() dipanggil');
+    
+    const fields = [
+        'kas', 'bank', 'piutangAnggota', 'perlengkapan',
+        'tanah', 'bangunan', 'kendaraan', 'peralatan',
+        'hutangUsaha', 'hutangBunga', 'simpananAnggota',
+        'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'
+    ];
+    
+    // Konversi semua field nilai ke input dengan tombol hapus
+    fields.forEach(field => {
+        const td = document.getElementById(field);
+        if (!td) {
+            console.warn('Element not found:', field);
+            return;
+        }
+        const currentValue = td.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+        td.innerHTML = `
+            <div class="d-flex gap-1">
+                <input type="number" class="form-control form-control-sm text-end" 
+                       id="input_${field}" value="${currentValue}" 
+                       onchange="updateNeraca()">
+                <button class="btn btn-sm btn-danger" onclick="hapusItem('${field}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        // Konversi label/keterangan ke input text
+        const labelTd = document.getElementById('label_' + field);
+        if (labelTd) {
+            const currentLabel = labelTd.textContent.trim();
+            labelTd.innerHTML = `<input type="text" class="form-control form-control-sm ps-4" 
+                            id="input_label_${field}" value="${currentLabel}">`;
+        }
+    });
+    
+    // Tambahkan button delete untuk custom items
+    ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
+        for (let i = 1; i <= itemCounter[kategori]; i++) {
+            const row = document.getElementById(`row_${kategori}_custom_${i}`);
+            if (row) {
+                const cells = row.cells;
+                if (cells.length >= 2) {
+                    // Cari cell yang berisi label dan value
+                    let labelCell, valueCell;
+                    if (kategori === 'asetLancar' || kategori === 'asetTetap') {
+                        labelCell = cells[0];
+                        valueCell = cells[1];
+                    } else {
+                        labelCell = cells[2];
+                        valueCell = cells[3];
+                    }
+                    
+                    // Tambahkan button delete di cell value
+                    const currentLabel = labelCell.textContent.trim();
+                    const currentValue = valueCell.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                    
+                    labelCell.innerHTML = `<input type="text" class="form-control form-control-sm ps-4" 
+                                           id="input_label_${kategori}_custom_${i}" value="${currentLabel}">`;
+                    valueCell.innerHTML = `
+                        <div class="d-flex gap-1">
+                            <input type="number" class="form-control form-control-sm text-end" 
+                                   id="input_${kategori}_custom_${i}" value="${currentValue}" 
+                                   onchange="updateNeraca()">
+                            <button class="btn btn-sm btn-danger" onclick="hapusItem('${kategori}_custom_${i}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    valueCell.className = 'text-end';
+                }
+            }
+        }
+    });
+    
+    // Tampilkan button tambah item
+    const btnAddAsetLancar = document.getElementById('btnAddAsetLancar');
+    const btnAddAsetTetap = document.getElementById('btnAddAsetTetap');
+    const btnAddKewajibanLancar = document.getElementById('btnAddKewajibanLancar');
+    const btnAddEkuitas = document.getElementById('btnAddEkuitas');
+    
+    if (btnAddAsetLancar) btnAddAsetLancar.classList.remove('d-none');
+    if (btnAddAsetTetap) btnAddAsetTetap.classList.remove('d-none');
+    if (btnAddKewajibanLancar) btnAddKewajibanLancar.classList.remove('d-none');
+    if (btnAddEkuitas) btnAddEkuitas.classList.remove('d-none');
+    
+    console.log('Button + ditampilkan:', {
+        asetLancar: btnAddAsetLancar ? 'OK' : 'NOT FOUND',
+        asetTetap: btnAddAsetTetap ? 'OK' : 'NOT FOUND',
+        kewajibanLancar: btnAddKewajibanLancar ? 'OK' : 'NOT FOUND',
+        ekuitas: btnAddEkuitas ? 'OK' : 'NOT FOUND'
+    });
+    
+    // Ganti button Edit dengan button Simpan
+    const btnEdit = document.getElementById('btnEditNeraca');
+    console.log('Button ditemukan:', btnEdit);
+    if (btnEdit) {
+        btnEdit.className = 'btn btn-sm btn-success';
+        btnEdit.innerHTML = '<i class="fas fa-save"></i> Simpan';
+        btnEdit.onclick = function() { saveNeraca(); };
+        console.log('Button berhasil diubah menjadi Simpan');
+    } else {
+        console.error('Button btnEditNeraca tidak ditemukan!');
+    }
+}
+
+// Fungsi untuk update perhitungan Neraca saat ada perubahan (dari input)
+function updateNeraca() {
+    // Hitung Aset Lancar (termasuk item custom)
+    let totalAsetLancar = 0;
+    totalAsetLancar += parseFloat(document.getElementById('input_kas')?.value) || 0;
+    totalAsetLancar += parseFloat(document.getElementById('input_bank')?.value) || 0;
+    totalAsetLancar += parseFloat(document.getElementById('input_piutangAnggota')?.value) || 0;
+    totalAsetLancar += parseFloat(document.getElementById('input_perlengkapan')?.value) || 0;
+    
+    // Tambahkan custom aset lancar
+    for (let i = 1; i <= itemCounter.asetLancar; i++) {
+        const customInput = document.getElementById(`input_asetLancar_custom_${i}`);
+        if (customInput) {
+            totalAsetLancar += parseFloat(customInput.value) || 0;
+        }
+    }
+    document.getElementById('totalAsetLancar').textContent = 'Rp ' + totalAsetLancar.toLocaleString('id-ID');
+    
+    // Hitung Aset Tetap (termasuk item custom)
+    let totalAsetTetap = 0;
+    totalAsetTetap += parseFloat(document.getElementById('input_tanah')?.value) || 0;
+    totalAsetTetap += parseFloat(document.getElementById('input_bangunan')?.value) || 0;
+    totalAsetTetap += parseFloat(document.getElementById('input_kendaraan')?.value) || 0;
+    totalAsetTetap += parseFloat(document.getElementById('input_peralatan')?.value) || 0;
+    
+    // Tambahkan custom aset tetap
+    for (let i = 1; i <= itemCounter.asetTetap; i++) {
+        const customInput = document.getElementById(`input_asetTetap_custom_${i}`);
+        if (customInput) {
+            totalAsetTetap += parseFloat(customInput.value) || 0;
+        }
+    }
+    document.getElementById('totalAsetTetap').textContent = 'Rp ' + totalAsetTetap.toLocaleString('id-ID');
+    
+    // Hitung Total Aset
+    const totalAset = totalAsetLancar + totalAsetTetap;
+    document.getElementById('totalAset').textContent = 'Rp ' + totalAset.toLocaleString('id-ID');
+    
+    // Hitung Kewajiban Lancar (termasuk item custom)
+    let totalKewajibanLancar = 0;
+    totalKewajibanLancar += parseFloat(document.getElementById('input_hutangUsaha')?.value) || 0;
+    totalKewajibanLancar += parseFloat(document.getElementById('input_hutangBunga')?.value) || 0;
+    totalKewajibanLancar += parseFloat(document.getElementById('input_simpananAnggota')?.value) || 0;
+    
+    // Tambahkan custom kewajiban lancar
+    for (let i = 1; i <= itemCounter.kewajibanLancar; i++) {
+        const customInput = document.getElementById(`input_kewajibanLancar_custom_${i}`);
+        if (customInput) {
+            totalKewajibanLancar += parseFloat(customInput.value) || 0;
+        }
+    }
+    document.getElementById('totalKewajibanLancar').textContent = 'Rp ' + totalKewajibanLancar.toLocaleString('id-ID');
+    
+    // Hitung Ekuitas (termasuk item custom)
+    let totalEkuitas = 0;
+    totalEkuitas += parseFloat(document.getElementById('input_simpananPokok')?.value) || 0;
+    totalEkuitas += parseFloat(document.getElementById('input_simpananWajib')?.value) || 0;
+    totalEkuitas += parseFloat(document.getElementById('input_cadangan')?.value) || 0;
+    totalEkuitas += parseFloat(document.getElementById('input_shuTahunBerjalan')?.value) || 0;
+    
+    // Tambahkan custom ekuitas
+    for (let i = 1; i <= itemCounter.ekuitas; i++) {
+        const customInput = document.getElementById(`input_ekuitas_custom_${i}`);
+        if (customInput) {
+            totalEkuitas += parseFloat(customInput.value) || 0;
+        }
+    }
+    document.getElementById('totalEkuitas').textContent = 'Rp ' + totalEkuitas.toLocaleString('id-ID');
+    
+    // Hitung Total Kewajiban & Ekuitas
+    const totalKewajibanEkuitas = totalKewajibanLancar + totalEkuitas;
+    document.getElementById('totalKewajibanEkuitas').textContent = 'Rp ' + totalKewajibanEkuitas.toLocaleString('id-ID');
+}
+
+// Fungsi untuk menghitung total dari text content (bukan input)
+function calculateTotalsFromText() {
+    // Hitung Aset Lancar
+    let totalAsetLancar = 0;
+    ['kas', 'bank', 'piutangAnggota', 'perlengkapan'].forEach(field => {
+        const el = document.getElementById(field);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetLancar += parseFloat(text) || 0;
+        }
+    });
+    for (let i = 1; i <= itemCounter.asetLancar; i++) {
+        const el = document.getElementById(`asetLancar_custom_${i}`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetLancar += parseFloat(text) || 0;
+        }
+    }
+    
+    // Hitung Aset Tetap
+    let totalAsetTetap = 0;
+    ['tanah', 'bangunan', 'kendaraan', 'peralatan'].forEach(field => {
+        const el = document.getElementById(field);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetTetap += parseFloat(text) || 0;
+        }
+    });
+    for (let i = 1; i <= itemCounter.asetTetap; i++) {
+        const el = document.getElementById(`asetTetap_custom_${i}`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetTetap += parseFloat(text) || 0;
+        }
+    }
+    
+    // Hitung Kewajiban Lancar
+    let totalKewajibanLancar = 0;
+    ['hutangUsaha', 'hutangBunga', 'simpananAnggota'].forEach(field => {
+        const el = document.getElementById(field);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalKewajibanLancar += parseFloat(text) || 0;
+        }
+    });
+    for (let i = 1; i <= itemCounter.kewajibanLancar; i++) {
+        const el = document.getElementById(`kewajibanLancar_custom_${i}`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalKewajibanLancar += parseFloat(text) || 0;
+        }
+    }
+    
+    // Hitung Ekuitas
+    let totalEkuitas = 0;
+    ['simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'].forEach(field => {
+        const el = document.getElementById(field);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalEkuitas += parseFloat(text) || 0;
+        }
+    });
+    for (let i = 1; i <= itemCounter.ekuitas; i++) {
+        const el = document.getElementById(`ekuitas_custom_${i}`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalEkuitas += parseFloat(text) || 0;
+        }
+    }
+    
+    // Update tampilan total
+    document.getElementById('totalAsetLancar').textContent = 'Rp ' + totalAsetLancar.toLocaleString('id-ID');
+    document.getElementById('totalAsetTetap').textContent = 'Rp ' + totalAsetTetap.toLocaleString('id-ID');
+    document.getElementById('totalAset').textContent = 'Rp ' + (totalAsetLancar + totalAsetTetap).toLocaleString('id-ID');
+    document.getElementById('totalKewajibanLancar').textContent = 'Rp ' + totalKewajibanLancar.toLocaleString('id-ID');
+    document.getElementById('totalEkuitas').textContent = 'Rp ' + totalEkuitas.toLocaleString('id-ID');
+    document.getElementById('totalKewajibanEkuitas').textContent = 'Rp ' + (totalKewajibanLancar + totalEkuitas).toLocaleString('id-ID');
+}
+
+// Fungsi untuk simpan Neraca
+function saveNeraca() {
+    const fields = [
+        'kas', 'bank', 'piutangAnggota', 'perlengkapan',
+        'tanah', 'bangunan', 'kendaraan', 'peralatan',
+        'hutangUsaha', 'hutangBunga', 'simpananAnggota',
+        'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'
+    ];
+    
+    const neracaData = {};
+    const neracaLabels = {};
+    const customItems = {};
+    
+    // Ambil semua nilai dan label untuk field default
+    fields.forEach(field => {
+        const inputField = document.getElementById('input_' + field);
+        if (inputField) {
+            neracaData[field] = parseFloat(inputField.value) || 0;
+        } else {
+            // Jika tidak ada input, ambil dari text content
+            const td = document.getElementById(field);
+            if (td) {
+                const text = td.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                neracaData[field] = parseFloat(text) || 0;
+            } else {
+                neracaData[field] = 0;
+            }
+        }
+        
+        const labelInput = document.getElementById('input_label_' + field);
+        if (labelInput) {
+            neracaLabels[field] = labelInput.value.trim();
+        } else {
+            const labelTd = document.getElementById('label_' + field);
+            if (labelTd) {
+                neracaLabels[field] = labelTd.textContent.trim();
+            }
+        }
+    });
+    
+    // Ambil semua custom items
+    ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
+        customItems[kategori] = [];
+        for (let i = 1; i <= itemCounter[kategori]; i++) {
+            const labelInput = document.getElementById(`input_label_${kategori}_custom_${i}`);
+            const valueInput = document.getElementById(`input_${kategori}_custom_${i}`);
+            if (labelInput && valueInput) {
+                customItems[kategori].push({
+                    label: labelInput.value.trim(),
+                    value: parseFloat(valueInput.value) || 0
+                });
+            }
+        }
+    });
+    
+    // Update tampilan nilai default dengan nilai baru (hilangkan input dan tombol hapus)
+    Object.keys(neracaData).forEach(key => {
+        const td = document.getElementById(key);
+        if (td && !deletedItems.includes(key)) {
+            td.textContent = 'Rp ' + neracaData[key].toLocaleString('id-ID');
+            td.className = 'text-end'; // Restore class
+        }
+    });
+    
+    // Update tampilan label default dengan label baru (hilangkan input)
+    Object.keys(neracaLabels).forEach(key => {
+        const labelTd = document.getElementById('label_' + key);
+        if (labelTd && !deletedItems.includes(key)) {
+            labelTd.textContent = neracaLabels[key];
+            labelTd.className = 'ps-4'; // Restore class
+        }
+    });
+    
+    // Konversi custom items dari input ke tampilan read-only
+    ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
+        for (let i = 1; i <= itemCounter[kategori]; i++) {
+            const row = document.getElementById(`row_${kategori}_custom_${i}`);
+            if (row) {
+                const labelInput = document.getElementById(`input_label_${kategori}_custom_${i}`);
+                const valueInput = document.getElementById(`input_${kategori}_custom_${i}`);
+                
+                if (labelInput && valueInput) {
+                    const label = labelInput.value.trim();
+                    const value = parseFloat(valueInput.value) || 0;
+                    
+                    if (kategori === 'asetLancar' || kategori === 'asetTetap') {
+                        row.innerHTML = `
+                            <td class="ps-4" id="label_${kategori}_custom_${i}">${label}</td>
+                            <td class="text-end" id="${kategori}_custom_${i}">Rp ${value.toLocaleString('id-ID')}</td>
+                            <td colspan="2"></td>
+                        `;
+                    } else {
+                        row.innerHTML = `
+                            <td colspan="2"></td>
+                            <td class="ps-4" id="label_${kategori}_custom_${i}">${label}</td>
+                            <td class="text-end" id="${kategori}_custom_${i}">Rp ${value.toLocaleString('id-ID')}</td>
+                        `;
+                    }
+                }
+            }
+        }
+    });
+    
+    // Hitung ulang total dari text content (bukan input)
+    calculateTotalsFromText();
+    
+    // Sembunyikan button tambah item
+    document.getElementById('btnAddAsetLancar').classList.add('d-none');
+    document.getElementById('btnAddAsetTetap').classList.add('d-none');
+    document.getElementById('btnAddKewajibanLancar').classList.add('d-none');
+    document.getElementById('btnAddEkuitas').classList.add('d-none');
+    
+    // Ganti button Simpan dengan button Edit
+    const btnEdit = document.getElementById('btnEditNeraca');
+    console.log('Setelah save, button ditemukan:', btnEdit);
+    if (btnEdit) {
+        btnEdit.className = 'btn btn-sm btn-primary';
+        btnEdit.innerHTML = '<i class="fas fa-edit"></i> Edit Neraca';
+        btnEdit.onclick = function() { editNeraca(); };
+        console.log('Button berhasil dikembalikan ke Edit Neraca');
+    } else {
+        console.error('Button btnEditNeraca tidak ditemukan setelah save!');
+    }
+    
+    // Simpan ke localStorage untuk persistensi
+    localStorage.setItem('neracaData', JSON.stringify(neracaData));
+    localStorage.setItem('neracaLabels', JSON.stringify(neracaLabels));
+    localStorage.setItem('neracaCustomItems', JSON.stringify(customItems));
+    localStorage.setItem('itemCounter', JSON.stringify(itemCounter));
+    localStorage.setItem('deletedItems', JSON.stringify(deletedItems));
+    
+    alert('Data neraca berhasil disimpan!');
+}
+
+// Load data dari localStorage saat halaman dimuat
+window.addEventListener('load', function() {
+    const savedData = localStorage.getItem('neracaData');
+    const savedLabels = localStorage.getItem('neracaLabels');
+    const savedCustomItems = localStorage.getItem('neracaCustomItems');
+    const savedCounter = localStorage.getItem('itemCounter');
+    const savedDeleted = localStorage.getItem('deletedItems');
+    
+    // Load counter
+    if (savedCounter) {
+        itemCounter = JSON.parse(savedCounter);
+    }
+    
+    // Load deleted items
+    if (savedDeleted) {
+        deletedItems = JSON.parse(savedDeleted);
+        // Hapus atau kosongkan cell untuk item yang dihapus
+        deletedItems.forEach(itemId => {
+            const labelTd = document.getElementById('label_' + itemId);
+            const valueTd = document.getElementById(itemId);
+            
+            if (labelTd && valueTd) {
+                // Kosongkan cell saja, jangan hapus row
+                labelTd.innerHTML = '';
+                valueTd.innerHTML = '';
+                
+                // Check apakah seluruh row kosong dengan logika yang benar
+                const row = labelTd.parentElement;
+                if (row) {
+                    const allCells = Array.from(row.cells);
+                    const allEmpty = allCells.every(cell => {
+                        const text = cell.textContent.trim();
+                        const hasContent = text !== '' && text !== undefined && text !== null;
+                        const hasVisibleChildren = cell.querySelector('input, button, select, textarea') !== null;
+                        return !hasContent && !hasVisibleChildren;
+                    });
+                    
+                    // Hanya hapus row jika benar-benar semua kolom kosong
+                    if (allEmpty) {
+                        row.remove();
+                    }
+                }
+            }
+        });
+    }
+    
+    // Load data default
+    if (savedData) {
+        const neracaData = JSON.parse(savedData);
+        Object.keys(neracaData).forEach(key => {
+            const td = document.getElementById(key);
+            if (td && !deletedItems.includes(key)) {
+                td.textContent = 'Rp ' + neracaData[key].toLocaleString('id-ID');
+            }
+        });
+    }
+    
+    // Load labels default
+    if (savedLabels) {
+        const neracaLabels = JSON.parse(savedLabels);
+        Object.keys(neracaLabels).forEach(key => {
+            const labelTd = document.getElementById('label_' + key);
+            if (labelTd && !deletedItems.includes(key)) {
+                labelTd.textContent = neracaLabels[key];
+            }
+        });
+    }
+    
+    // Load custom items
+    if (savedCustomItems) {
+        const customItems = JSON.parse(savedCustomItems);
+        
+        // Load aset lancar custom
+        customItems.asetLancar?.forEach((item, index) => {
+            const i = index + 1;
+            const id = `asetLancar_custom_${i}`;
+            const newRow = document.createElement('tr');
+            newRow.id = `row_${id}`;
+            newRow.innerHTML = `
+                <td class="ps-4" id="label_${id}">${item.label}</td>
+                <td class="text-end" id="${id}">Rp ${item.value.toLocaleString('id-ID')}</td>
+                <td colspan="2"></td>
+            `;
+            document.getElementById('asetLancarEnd').before(newRow);
+        });
+        
+        // Load aset tetap custom
+        customItems.asetTetap?.forEach((item, index) => {
+            const i = index + 1;
+            const id = `asetTetap_custom_${i}`;
+            const newRow = document.createElement('tr');
+            newRow.id = `row_${id}`;
+            newRow.innerHTML = `
+                <td class="ps-4" id="label_${id}">${item.label}</td>
+                <td class="text-end" id="${id}">Rp ${item.value.toLocaleString('id-ID')}</td>
+                <td colspan="2"></td>
+            `;
+            document.getElementById('asetTetapEnd').before(newRow);
+        });
+        
+        // Load kewajiban lancar custom
+        customItems.kewajibanLancar?.forEach((item, index) => {
+            const i = index + 1;
+            const id = `kewajibanLancar_custom_${i}`;
+            const targetRow = document.getElementById('kewajibanLancarEnd').parentElement;
+            const existingRowspan = parseInt(document.getElementById('kewajibanLancarEnd').getAttribute('rowspan') || '1');
+            document.getElementById('kewajibanLancarEnd').setAttribute('rowspan', existingRowspan + 1);
+            
+            const newRow = document.createElement('tr');
+            newRow.id = `row_${id}`;
+            newRow.innerHTML = `
+                <td colspan="2"></td>
+                <td class="ps-4" id="label_${id}">${item.label}</td>
+                <td class="text-end" id="${id}">Rp ${item.value.toLocaleString('id-ID')}</td>
+            `;
+            targetRow.after(newRow);
+        });
+        
+        // Load ekuitas custom
+        customItems.ekuitas?.forEach((item, index) => {
+            const i = index + 1;
+            const id = `ekuitas_custom_${i}`;
+            const targetRow = document.getElementById('label_shuTahunBerjalan').parentElement;
+            const existingRowspan = parseInt(document.getElementById('label_shuTahunBerjalan').getAttribute('rowspan') || '1');
+            document.getElementById('label_shuTahunBerjalan').setAttribute('rowspan', existingRowspan + 1);
+            
+            const newRow = document.createElement('tr');
+            newRow.id = `row_${id}`;
+            newRow.innerHTML = `
+                <td colspan="2"></td>
+                <td class="ps-4" id="label_${id}">${item.label}</td>
+                <td class="text-end" id="${id}">Rp ${item.value.toLocaleString('id-ID')}</td>
+            `;
+            targetRow.after(newRow);
+        });
+    }
+    
+    // Hitung ulang total setelah semua item di-load
+    if (savedData || savedCustomItems) {
+        // Hitung total dari text content (bukan input)
+        let totalAsetLancar = 0;
+        ['kas', 'bank', 'piutangAnggota', 'perlengkapan'].forEach(field => {
+            const el = document.getElementById(field);
+            if (el) {
+                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                totalAsetLancar += parseFloat(text) || 0;
+            }
+        });
+        // Tambahkan custom aset lancar
+        for (let i = 1; i <= itemCounter.asetLancar; i++) {
+            const el = document.getElementById(`asetLancar_custom_${i}`);
+            if (el) {
+                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                totalAsetLancar += parseFloat(text) || 0;
+            }
+        }
+        
+        let totalAsetTetap = 0;
+        ['tanah', 'bangunan', 'kendaraan', 'peralatan'].forEach(field => {
+            const el = document.getElementById(field);
+            if (el) {
+                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                totalAsetTetap += parseFloat(text) || 0;
+            }
+        });
+        // Tambahkan custom aset tetap
+        for (let i = 1; i <= itemCounter.asetTetap; i++) {
+            const el = document.getElementById(`asetTetap_custom_${i}`);
+            if (el) {
+                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                totalAsetTetap += parseFloat(text) || 0;
+            }
+        }
+        
+        let totalKewajibanLancar = 0;
+        ['hutangUsaha', 'hutangBunga', 'simpananAnggota'].forEach(field => {
+            const el = document.getElementById(field);
+            if (el) {
+                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                totalKewajibanLancar += parseFloat(text) || 0;
+            }
+        });
+        // Tambahkan custom kewajiban lancar
+        for (let i = 1; i <= itemCounter.kewajibanLancar; i++) {
+            const el = document.getElementById(`kewajibanLancar_custom_${i}`);
+            if (el) {
+                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                totalKewajibanLancar += parseFloat(text) || 0;
+            }
+        }
+        
+        let totalEkuitas = 0;
+        ['simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'].forEach(field => {
+            const el = document.getElementById(field);
+            if (el) {
+                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                totalEkuitas += parseFloat(text) || 0;
+            }
+        });
+        // Tambahkan custom ekuitas
+        for (let i = 1; i <= itemCounter.ekuitas; i++) {
+            const el = document.getElementById(`ekuitas_custom_${i}`);
+            if (el) {
+                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                totalEkuitas += parseFloat(text) || 0;
+            }
+        }
+        
+        document.getElementById('totalAsetLancar').textContent = 'Rp ' + totalAsetLancar.toLocaleString('id-ID');
+        document.getElementById('totalAsetTetap').textContent = 'Rp ' + totalAsetTetap.toLocaleString('id-ID');
+        document.getElementById('totalAset').textContent = 'Rp ' + (totalAsetLancar + totalAsetTetap).toLocaleString('id-ID');
+        document.getElementById('totalKewajibanLancar').textContent = 'Rp ' + totalKewajibanLancar.toLocaleString('id-ID');
+        document.getElementById('totalEkuitas').textContent = 'Rp ' + totalEkuitas.toLocaleString('id-ID');
+        document.getElementById('totalKewajibanEkuitas').textContent = 'Rp ' + (totalKewajibanLancar + totalEkuitas).toLocaleString('id-ID');
+    }
+    
+    // Reorganisasi rows setelah load data
+    if (savedDeleted && deletedItems.length > 0) {
+        compactNeracaRows();
+    }
 });
 </script>
 

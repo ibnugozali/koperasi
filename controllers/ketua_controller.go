@@ -224,6 +224,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 	format := c.DefaultQuery("format", "excel")
 	bulan := c.Query("bulan")
 	tahun := c.Query("tahun")
+	tipeLaporan := c.DefaultQuery("tipe_laporan", "bulanan")
 
 	// Ambil path kop dari session (jika ada)
 	session := sessions.Default(c)
@@ -233,10 +234,15 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		absKopPath, _ = filepath.Abs(kopPath)
 	}
 
+	// Jika laporan tahunan, bulan tidak diperlukan
+	bulanInt := 0
+	if tipeLaporan == "bulanan" {
+		bulanInt, _ = strconv.Atoi(bulan)
+	}
+
 	switch format {
 	case "excel":
 		// Ambil data laporan keuangan
-		bulanInt, _ := strconv.Atoi(bulan)
 		tahunInt, _ := strconv.Atoi(tahun)
 		report, err := repository.GetLaporanKeuangan(bulanInt, tahunInt)
 		if err != nil {
@@ -264,7 +270,11 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			}
 		}
 		// Header judul
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset), "LAPORAN KEUANGAN KOPERASI")
+		if tipeLaporan == "tahunan" {
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset), "LAPORAN KEUANGAN TAHUNAN KOPERASI")
+		} else {
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset), "LAPORAN KEUANGAN BULANAN KOPERASI")
+		}
 		// Tanggal cetak dan periode
 		var waktuCetak time.Time
 		var tanggalCetak string
@@ -273,9 +283,13 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		waktuCetak = time.Now()
 		tanggalCetak = waktuCetak.Format("2 Januari 2006")
 		jamCetak = waktuCetak.Format("15.04")
-		namaBulan = []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
 		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+1), "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak)
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+2), fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt))
+		if tipeLaporan == "tahunan" {
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+2), fmt.Sprintf("Periode: Tahun %d", tahunInt))
+		} else {
+			namaBulan = []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+2), fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt))
+		}
 		// Header tabel
 		f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+4), "Keterangan")
 		f.SetCellValue(sheet, fmt.Sprintf("B%d", rowOffset+4), "Jumlah")
@@ -324,42 +338,191 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				potonganBulanIni = make(map[string]float64)
 			}
 			startRow := rowOffset + 5 + len(dataRows) + 2
-			f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Keuangan")
-			// Header
-			headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
-			cols := []string{"A", "B", "C", "D", "E"}
-			for i, h := range headers {
-				col := cols[i]
-				f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow), h)
-			}
-			// Data
-			for idx, anggota := range anggotas {
-				row := startRow + 1 + idx
-				nohp := anggota.NoTelepon
-				if !strings.HasPrefix(nohp, "+62") {
-					nohp = "+62" + strings.TrimLeft(nohp, "0")
+
+			// Jika laporan tahunan, buat 5 tabel terpisah
+			if tipeLaporan == "tahunan" {
+				// Tabel 1: Simpanan Wajib
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Simpanan Wajib Tahunan")
+				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+				cols := []string{"A", "B", "C", "D", "E"}
+				for i, h := range headers {
+					col := cols[i]
+					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow), h)
 				}
-				sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-				unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
-				f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
-				f.SetCellValue(sheet, fmt.Sprintf("C%d", row), unitKerjaName)
-				f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
-				f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+				for idx, anggota := range anggotas {
+					row := startRow + 1 + idx
+					nohp := anggota.NoTelepon
+					if !strings.HasPrefix(nohp, "+62") {
+						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					}
+					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+					unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), unitKerjaName)
+					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+				}
+
+				// Style untuk tabel simpanan wajib
+				rincianHeaderStyle1, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#0d6efd"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+				})
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("E%d", startRow), rincianHeaderStyle1)
+
+				// Tabel 2: Simpanan Sukarela
+				startRow2 := startRow + len(anggotas) + 3
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow2-1), "Rincian Simpanan Sukarela Tahunan")
+				for i, h := range headers {
+					col := cols[i]
+					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow2), h)
+				}
+				for idx, anggota := range anggotas {
+					row := startRow2 + 1 + idx
+					nohp := anggota.NoTelepon
+					if !strings.HasPrefix(nohp, "+62") {
+						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					}
+					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
+					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+				}
+				rincianHeaderStyle2, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#0dcaf0"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+				})
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow2), fmt.Sprintf("E%d", startRow2), rincianHeaderStyle2)
+
+				// Tabel 3: Pinjaman
+				startRow3 := startRow2 + len(anggotas) + 3
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow3-1), "Rincian Pinjaman Tahunan")
+				for i, h := range headers {
+					col := cols[i]
+					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow3), h)
+				}
+				for idx, anggota := range anggotas {
+					row := startRow3 + 1 + idx
+					nohp := anggota.NoTelepon
+					if !strings.HasPrefix(nohp, "+62") {
+						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					}
+					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
+					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+				}
+				rincianHeaderStyle3, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#dc3545"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+				})
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow3), fmt.Sprintf("E%d", startRow3), rincianHeaderStyle3)
+
+				// Tabel 4: Angsuran
+				startRow4 := startRow3 + len(anggotas) + 3
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow4-1), "Rincian Angsuran Tahunan")
+				for i, h := range headers {
+					col := cols[i]
+					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow4), h)
+				}
+				for idx, anggota := range anggotas {
+					row := startRow4 + 1 + idx
+					nohp := anggota.NoTelepon
+					if !strings.HasPrefix(nohp, "+62") {
+						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					}
+					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
+					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+				}
+				rincianHeaderStyle4, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#198754"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+				})
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow4), fmt.Sprintf("E%d", startRow4), rincianHeaderStyle4)
+
+				// Tabel 5: Pengambilan
+				startRow5 := startRow4 + len(anggotas) + 3
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow5-1), "Rincian Pengambilan Tahunan")
+				for i, h := range headers {
+					col := cols[i]
+					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow5), h)
+				}
+				for idx, anggota := range anggotas {
+					row := startRow5 + 1 + idx
+					nohp := anggota.NoTelepon
+					if !strings.HasPrefix(nohp, "+62") {
+						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					}
+					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
+					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+				}
+				rincianHeaderStyle5, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#000000"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#ffc107"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+				})
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow5), fmt.Sprintf("E%d", startRow5), rincianHeaderStyle5)
+			} else {
+				// Laporan bulanan - 1 tabel saja
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Keuangan")
+				// Header
+				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+				cols := []string{"A", "B", "C", "D", "E"}
+				for i, h := range headers {
+					col := cols[i]
+					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow), h)
+				}
+				// Data
+				for idx, anggota := range anggotas {
+					row := startRow + 1 + idx
+					nohp := anggota.NoTelepon
+					if !strings.HasPrefix(nohp, "+62") {
+						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					}
+					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+					unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), unitKerjaName)
+					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+				}
+				// Style header rincian
+				rincianHeaderStyle, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#2ecc71"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+				})
+				rincianDataStyle, _ := f.NewStyle(&excelize.Style{
+					Alignment: &excelize.Alignment{Horizontal: "left"},
+					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+				})
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("E%d", startRow), rincianHeaderStyle)
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow+1), fmt.Sprintf("E%d", startRow+len(anggotas)), rincianDataStyle)
 			}
-			// Style header rincian
-			rincianHeaderStyle, _ := f.NewStyle(&excelize.Style{
-				Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
-				Fill:      excelize.Fill{Type: "pattern", Color: []string{"#2ecc71"}, Pattern: 1},
-				Alignment: &excelize.Alignment{Horizontal: "center"},
-				Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-			})
-			rincianDataStyle, _ := f.NewStyle(&excelize.Style{
-				Alignment: &excelize.Alignment{Horizontal: "left"},
-				Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-			})
-			f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("E%d", startRow), rincianHeaderStyle)
-			f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow+1), fmt.Sprintf("E%d", startRow+len(anggotas)), rincianDataStyle)
 			f.SetColWidth(sheet, "A", "E", 22)
 		}
 		// Set header untuk download
@@ -371,7 +534,6 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		}
 		return
 	case "pdf":
-		bulanInt, _ := strconv.Atoi(bulan)
 		tahunInt, _ := strconv.Atoi(tahun)
 		report, err := repository.GetLaporanKeuangan(bulanInt, tahunInt)
 		if err != nil {
@@ -380,8 +542,11 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		}
 
 		// Convert bulan to nama bulan
-		namaBulan := []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-			"Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
+		var namaBulan string
+		if tipeLaporan == "bulanan" && bulanInt > 0 && bulanInt <= 12 {
+			namaBulan = []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+				"Juli", "Agustus", "September", "Oktober", "November", "Desember"}[bulanInt]
+		}
 		// Format tanggal cetak
 		waktuCetak := time.Now()
 		tanggalCetak := waktuCetak.Format("2 Januari 2006")
@@ -438,11 +603,19 @@ func KetuaDownloadLaporan(c *gin.Context) {
 
 		// PDF header, keterangan, dan data laporan
 		pdf.SetFont("Arial", "B", 16)
-		pdf.CellFormat(190, 10, "LAPORAN KEUANGAN KOPERASI", "0", 1, "C", false, 0, "")
+		if tipeLaporan == "tahunan" {
+			pdf.CellFormat(190, 10, "LAPORAN KEUANGAN TAHUNAN KOPERASI", "0", 1, "C", false, 0, "")
+		} else {
+			pdf.CellFormat(190, 10, "LAPORAN KEUANGAN BULANAN KOPERASI", "0", 1, "C", false, 0, "")
+		}
 		pdf.Ln(3)
 		pdf.SetFont("Arial", "", 10)
 		pdf.CellFormat(190, 6, "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak, "0", 1, "C", false, 0, "")
-		pdf.CellFormat(190, 6, fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt), "0", 1, "C", false, 0, "")
+		if tipeLaporan == "tahunan" {
+			pdf.CellFormat(190, 6, fmt.Sprintf("Periode: Tahun %d", tahunInt), "0", 1, "C", false, 0, "")
+		} else {
+			pdf.CellFormat(190, 6, fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt), "0", 1, "C", false, 0, "")
+		}
 		pdf.Ln(10)
 
 		// Data rows dan header, lebar kolom dinamis
@@ -518,33 +691,76 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			if err != nil {
 				potonganBulanIni = make(map[string]float64)
 			}
-			pdf.Ln(6)
-			pdf.SetFont("Arial", "B", 12)
-			pdf.CellFormat(190, 8, "Rincian Laporan Keuangan", "0", 1, "L", false, 0, "")
-			pdf.Ln(1)
-			headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
-			pdf.SetFont("Arial", "B", 10)
-			for _, h := range headers {
-				pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
-			}
-			pdf.Ln(-1)
-			pdf.SetFont("Arial", "", 10)
-			for _, anggota := range anggotas {
-				nohp := anggota.NoTelepon
-				if !strings.HasPrefix(nohp, "+62") {
-					nohp = "+62" + strings.TrimLeft(nohp, "0")
+
+			if tipeLaporan == "tahunan" {
+				// Laporan tahunan: 5 tabel terpisah
+				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+				tableNames := []string{
+					"Rincian Simpanan Wajib Tahunan",
+					"Rincian Simpanan Sukarela Tahunan",
+					"Rincian Pinjaman Tahunan",
+					"Rincian Angsuran Tahunan",
+					"Rincian Pengambilan Tahunan",
 				}
-				sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-				pdf.CellFormat(38, 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
-				pdf.CellFormat(38, 7, nohp, "1", 0, "L", false, 0, "")
-				pdf.CellFormat(38, 7, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "L", false, 0, "")
-				pdf.CellFormat(38, 7, fmt.Sprintf("%d", anggota.GajiBulanan), "1", 0, "L", false, 0, "")
-				pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 1, "L", false, 0, "")
+
+				for _, tableName := range tableNames {
+					pdf.Ln(6)
+					pdf.SetFont("Arial", "B", 12)
+					pdf.CellFormat(190, 8, tableName, "0", 1, "L", false, 0, "")
+					pdf.Ln(1)
+					pdf.SetFont("Arial", "B", 10)
+					for _, h := range headers {
+						pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
+					}
+					pdf.Ln(-1)
+					pdf.SetFont("Arial", "", 10)
+					for _, anggota := range anggotas {
+						nohp := anggota.NoTelepon
+						if !strings.HasPrefix(nohp, "+62") {
+							nohp = "+62" + strings.TrimLeft(nohp, "0")
+						}
+						sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+						pdf.CellFormat(38, 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
+						pdf.CellFormat(38, 7, nohp, "1", 0, "L", false, 0, "")
+						pdf.CellFormat(38, 7, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "L", false, 0, "")
+						pdf.CellFormat(38, 7, fmt.Sprintf("%d", anggota.GajiBulanan), "1", 0, "L", false, 0, "")
+						pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 1, "L", false, 0, "")
+					}
+				}
+			} else {
+				// Laporan bulanan: 1 tabel saja
+				pdf.Ln(6)
+				pdf.SetFont("Arial", "B", 12)
+				pdf.CellFormat(190, 8, "Rincian Laporan Keuangan", "0", 1, "L", false, 0, "")
+				pdf.Ln(1)
+				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+				pdf.SetFont("Arial", "B", 10)
+				for _, h := range headers {
+					pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
+				}
+				pdf.Ln(-1)
+				pdf.SetFont("Arial", "", 10)
+				for _, anggota := range anggotas {
+					nohp := anggota.NoTelepon
+					if !strings.HasPrefix(nohp, "+62") {
+						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					}
+					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+					pdf.CellFormat(38, 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
+					pdf.CellFormat(38, 7, nohp, "1", 0, "L", false, 0, "")
+					pdf.CellFormat(38, 7, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "L", false, 0, "")
+					pdf.CellFormat(38, 7, fmt.Sprintf("%d", anggota.GajiBulanan), "1", 0, "L", false, 0, "")
+					pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 1, "L", false, 0, "")
+				}
 			}
 		}
 		// Set header untuk download
 		c.Header("Content-Type", "application/pdf")
-		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi_"+fmt.Sprintf("%02d_%d", bulanInt, tahunInt)+".pdf")
+		if tipeLaporan == "tahunan" {
+			c.Header("Content-Disposition", "attachment; filename=laporan_koperasi_tahunan_"+fmt.Sprintf("%d", tahunInt)+".pdf")
+		} else {
+			c.Header("Content-Disposition", "attachment; filename=laporan_koperasi_"+fmt.Sprintf("%02d_%d", bulanInt, tahunInt)+".pdf")
+		}
 		err = pdf.Output(c.Writer)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Gagal membuat file PDF")
