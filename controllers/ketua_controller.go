@@ -1448,7 +1448,7 @@ func KetuaGetNeraca(c *gin.Context) {
 
 	// Parse JSON strings back to objects
 	var data2024, data2023, customItems map[string]interface{}
-	var labels, noPerkiraan map[string]string
+	var labels, noPerkiraan, headerData map[string]string
 	var itemCounter map[string]int
 	var deletedItems []string
 
@@ -1459,6 +1459,7 @@ func KetuaGetNeraca(c *gin.Context) {
 	json.Unmarshal([]byte(neraca.CustomItems), &customItems)
 	json.Unmarshal([]byte(neraca.ItemCounter), &itemCounter)
 	json.Unmarshal([]byte(neraca.DeletedItems), &deletedItems)
+	json.Unmarshal([]byte(neraca.HeaderData), &headerData)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -1470,6 +1471,7 @@ func KetuaGetNeraca(c *gin.Context) {
 			"custom_items":     customItems,
 			"item_counter":     itemCounter,
 			"deleted_items":    deletedItems,
+			"header_data":      headerData,
 			"last_modified_at": neraca.LastModifiedAt,
 		},
 	})

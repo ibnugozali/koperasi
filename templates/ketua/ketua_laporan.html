@@ -510,7 +510,7 @@
                             <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center" id="neracaCardHeader">
                                 <span><i class="fa-solid fa-money-bill-transfer"></i> Neraca Koprasi Simpan Pinjam</span>
                                 <div class="btn-group" id="neracaButtonGroup">
-                                <button class="btn btn-sm btn-primary" id="btnEditNeraca" type="button">
+                                <button class="btn btn-sm btn-primary" id="btnEditNeraca" type="button" onclick="editNeraca()">
                                     <i class="fas fa-edit"></i> Edit Neraca
                                 </button>
                                 </div>
@@ -521,27 +521,27 @@
                                         <colgroup>
                                             <col style="width: 8%;">
                                             <col style="width: 17%;">
-                                            <col style="width: 12%;">
-                                            <col style="width: 12%;">
+                                            <col style="width: 12.5%;">
+                                            <col style="width: 12.5%;">
                                             <col style="width: 8%;">
                                             <col style="width: 17%;">
-                                            <col style="width: 12%;">
-                                            <col style="width: 12%;">
+                                            <col style="width: 12.5%;">
+                                            <col style="width: 12.5%;">
                                         </colgroup>
                                         <thead class="table-dark">
                                             <tr>
-                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;">No<br>Perkiraan</th>
-                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;">Perkiraan</th>
-                                                <th colspan="2" class="text-center" style="background-color: #0d6efd; color: white;"><strong>ASET</strong></th>
-                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;">No<br>Perkiraan</th>
-                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;">Perkiraan</th>
-                                                <th colspan="2" class="text-center" style="background-color: #198754; color: white;"><strong>KEWAJIBAN & EKUITAS</strong></th>
+                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;" id="header_no_perkiraan_kiri">No<br>Perkiraan</th>
+                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;" id="header_perkiraan_kiri">Perkiraan</th>
+                                                <th colspan="2" class="text-center" style="background-color: #0d6efd; color: white;" id="header_aset"><strong>ASET</strong></th>
+                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;" id="header_no_perkiraan_kanan">No<br>Perkiraan</th>
+                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;" id="header_perkiraan_kanan">Perkiraan</th>
+                                                <th colspan="2" class="text-center" style="background-color: #198754; color: white;" id="header_kewajiban_ekuitas"><strong>KEWAJIBAN & EKUITAS</strong></th>
                                             </tr>
                                             <tr>
-                                                <th class="text-center" style="background-color: #0d6efd; color: white;">2024 (Rp)</th>
-                                                <th class="text-center" style="background-color: #0d6efd; color: white;">2023 (Rp)</th>
-                                                <th class="text-center" style="background-color: #198754; color: white;">2024 (Rp)</th>
-                                                <th class="text-center" style="background-color: #198754; color: white;">2023 (Rp)</th>
+                                                <th class="text-center" style="background-color: #0d6efd; color: white;" id="header_tahun_2024_kiri">2024 (Rp)</th>
+                                                <th class="text-center" style="background-color: #0d6efd; color: white;" id="header_tahun_2023_kiri">2023 (Rp)</th>
+                                                <th class="text-center" style="background-color: #198754; color: white;" id="header_tahun_2024_kanan">2024 (Rp)</th>
+                                                <th class="text-center" style="background-color: #198754; color: white;" id="header_tahun_2023_kanan">2023 (Rp)</th>
                                             </tr>
                                         </thead>
                                         <tbody id="neracaTableBody">
@@ -723,7 +723,8 @@ const editableRows = [
 // Flag untuk mencegah double execution
 let isEditMode = false;
 
-window.editNeraca = function() {
+// Define functions in global scope first
+function editNeraca() {
     console.log('=== editNeraca() DIPANGGIL ===');
     console.log('Stack trace:', new Error().stack);
     
@@ -755,6 +756,35 @@ window.editNeraca = function() {
     // Set edit mode flag
     localStorage.setItem('editMode', 'true');
     
+    // Buat header tabel editable
+    const headers = [
+        { id: 'header_no_perkiraan_kiri', defaultText: 'No<br>Perkiraan' },
+        { id: 'header_perkiraan_kiri', defaultText: 'Perkiraan' },
+        { id: 'header_aset', defaultText: '<strong>ASET</strong>' },
+        { id: 'header_no_perkiraan_kanan', defaultText: 'No<br>Perkiraan' },
+        { id: 'header_perkiraan_kanan', defaultText: 'Perkiraan' },
+        { id: 'header_kewajiban_ekuitas', defaultText: '<strong>KEWAJIBAN & EKUITAS</strong>' },
+        { id: 'header_tahun_2024_kiri', defaultText: '2024 (Rp)' },
+        { id: 'header_tahun_2023_kiri', defaultText: '2023 (Rp)' },
+        { id: 'header_tahun_2024_kanan', defaultText: '2024 (Rp)' },
+        { id: 'header_tahun_2023_kanan', defaultText: '2023 (Rp)' }
+    ];
+    
+    headers.forEach(header => {
+        const element = document.getElementById(header.id);
+        if (element) {
+            // Cek apakah sudah ada input
+            if (element.querySelector('input')) return;
+            
+            const currentText = element.innerHTML.replace(/<strong>|<\/strong>/g, '').replace(/<br>/g, '\n').trim();
+            const style = header.id.includes('aset') || header.id.includes('kewajiban') ? 
+                'font-weight: bold;' : '';
+            element.innerHTML = `<input type="text" class="form-control form-control-sm text-center" 
+                                  id="input_${header.id}" value="${currentText}" 
+                                  style="color: white; background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); ${style}">`;
+        }
+    });
+    
     const fields = [
         'kas', 'bank', 'piutangAnggota', 'perlengkapan',
         'tanah', 'bangunan', 'kendaraan', 'peralatan',
@@ -785,26 +815,28 @@ window.editNeraca = function() {
         
         const currentValue = td.textContent.replace('Rp ', '').replace(/\./g, '').trim();
         td.innerHTML = `
-            <div class="d-flex gap-1 align-items-center">
-                <input type="number" class="form-control form-control-sm text-end" 
-                       id="input_${field}" value="${currentValue}" 
-                       onchange="updateNeraca()" style="flex: 1;">
-                <button class="btn btn-sm btn-danger" onclick="hapusItem('${field}')" 
-                        style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
-                        title="Hapus seluruh item ini">
-                    <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
-                </button>
-            </div>
+            <input type="number" class="form-control form-control-sm text-end"
+                   id="input_${field}" value="${currentValue}"
+                   onchange="updateNeraca()"
+                   aria-label="Nilai ${field} 2024">
         `;
         
-        // Konversi nilai 2023 ke input (tanpa button hapus)
+        // Konversi nilai 2023 ke input dengan button hapus
         const td2023 = document.getElementById(field + '_2023');
         if (td2023) {
             const currentValue2023 = td2023.textContent.replace('Rp ', '').replace(/\./g, '').trim();
             td2023.innerHTML = `
-                <input type="number" class="form-control form-control-sm text-end" 
-                       id="input_${field}_2023" value="${currentValue2023}" 
-                       onchange="updateNeraca()">
+                <div class="d-flex gap-1 align-items-center">
+                    <input type="number" class="form-control form-control-sm text-end"
+                           id="input_${field}_2023" value="${currentValue2023}"
+                           onchange="updateNeraca()" style="flex: 1;"
+                           aria-label="Nilai ${field} 2023">
+                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${field}')"
+                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;"
+                            title="Hapus seluruh item ini">
+                        <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
+                    </button>
+                </div>
             `;
         }
         
@@ -855,7 +887,7 @@ window.editNeraca = function() {
             if (row.cells[colNo]) {
                 const currentNo = row.cells[colNo].textContent.trim();
                 row.cells[colNo].innerHTML = `<input type="text" class="form-control form-control-sm text-center"
-                                id="input_no_${itemId}" value="${currentNo}" style="width: 80px;">`;
+                                id="input_no_${itemId}" value="${currentNo}" style="width: 80px;" aria-label="No Perkiraan ${itemId}">`;
                 row.cells[colNo].className = 'text-center';
             }
 
@@ -863,17 +895,28 @@ window.editNeraca = function() {
             if (row.cells[colLabel]) {
                 const currentLabel = row.cells[colLabel].textContent.trim();
                 row.cells[colLabel].innerHTML = `<input type="text" class="form-control form-control-sm ps-4"
-                                id="input_label_${itemId}" value="${currentLabel}">`;
+                                id="input_label_${itemId}" value="${currentLabel}" aria-label="Label ${itemId}">`;
                 row.cells[colLabel].className = 'ps-4';
             }
 
-            // Konversi Nilai 2024 dengan button hapus
+            // Konversi Nilai 2024 tanpa button hapus
             if (row.cells[colValue]) {
                 const currentValue = row.cells[colValue].textContent.replace('Rp ', '').replace(/\./g, '').trim();
                 row.cells[colValue].innerHTML = `
+                    <input type="number" class="form-control form-control-sm text-end"
+                           id="input_${itemId}" value="${currentValue}"
+                           onchange="updateNeraca()" aria-label="Nilai ${itemId} 2024">
+                `;
+                row.cells[colValue].className = 'text-end';
+            }
+
+            // Konversi Nilai 2023 dengan button hapus
+            if (row.cells[colValue2023]) {
+                const currentValue2023 = row.cells[colValue2023].textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                row.cells[colValue2023].innerHTML = `
                     <div class="d-flex gap-1 align-items-center">
                         <input type="number" class="form-control form-control-sm text-end"
-                               id="input_${itemId}" value="${currentValue}"
+                               id="input_${itemId}_2023" value="${currentValue2023}"
                                onchange="updateNeraca()" style="flex: 1;">
                         <button class="btn btn-sm btn-danger" onclick="hapusItem('${itemId}')"
                                 style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;"
@@ -882,15 +925,6 @@ window.editNeraca = function() {
                         </button>
                     </div>
                 `;
-                row.cells[colValue].className = 'text-end';
-            }
-
-            // Konversi Nilai 2023
-            if (row.cells[colValue2023]) {
-                const currentValue2023 = row.cells[colValue2023].textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                row.cells[colValue2023].innerHTML = `<input type="number" class="form-control form-control-sm text-end"
-                               id="input_${itemId}_2023" value="${currentValue2023}"
-                               onchange="updateNeraca()">`;
                 row.cells[colValue2023].className = 'text-end';
             }
         }
@@ -908,6 +942,23 @@ window.editNeraca = function() {
     if (btnAddEkuitas) btnAddEkuitas.classList.remove('d-none');
     
     console.log('Button + ditampilkan');
+    
+    // Tampilkan button hapus untuk semua field default
+    const defaultFields = [
+        'kas', 'bank', 'piutangAnggota', 'perlengkapan',
+        'tanah', 'bangunan', 'kendaraan', 'peralatan',
+        'hutangUsaha', 'hutangBunga', 'simpananAnggota',
+        'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'
+    ];
+    
+    defaultFields.forEach(field => {
+        const btnDelete = document.getElementById(`btnDelete_${field}`);
+        if (btnDelete) {
+            btnDelete.classList.remove('d-none');
+        }
+    });
+    
+    console.log('Button hapus untuk field default ditampilkan');
     
     // Ganti button Edit dengan button Simpan dan Batal
     const btnEdit = document.getElementById('btnEditNeraca');
@@ -1122,13 +1173,9 @@ $(document).ready(function() {
     if (tahunEl) tahunEl.addEventListener('change', updateDownloadLinks);
     if (tipeLaporanEl) tipeLaporanEl.addEventListener('change', updateDownloadLinks);
 
-    // Set initial onclick for Edit Neraca button (akan diset ulang setelah load data)
-    const btnEditNeraca = document.getElementById('btnEditNeraca');
-    if (btnEditNeraca && !btnEditNeraca.onclick) {
-        btnEditNeraca.onclick = function() {
-            editNeraca();
-        };
-    }
+    // Button Edit Neraca sudah memiliki onclick="editNeraca()" di HTML
+    // Tidak perlu addEventListener lagi untuk menghindari double execution
+    console.log('Button Edit Neraca menggunakan inline onclick handler');
     
     // Initialize DataTable only if table has valid data rows
     {{ if and (not .Error) .Anggotas }}
@@ -1211,7 +1258,8 @@ function tambahItem(kategori) {
     
     let newRow;
     if (kategori === 'asetLancar' || kategori === 'asetTetap') {
-        // Cari row kosong di kolom kiri terlebih dahulu
+        // Cari row dengan colspan="4" di kolom kiri terlebih dahulu
+        console.log(`🔍 Mencari row kosong untuk ${kategori}...`);
         const tbody = document.getElementById('neracaTableBody');
         const rows = Array.from(tbody.querySelectorAll('tr'));
         let targetRow = null;
@@ -1219,7 +1267,7 @@ function tambahItem(kategori) {
         let endId = kategori === 'asetLancar' ? 'asetLancarEnd' : 'asetTetapEnd';
         let foundSection = false;
         
-        // Cari row yang kolom kiri kosong
+        // Cari row yang punya <td colspan="4"> di kolom kiri atau row dengan 4 kolom kosong
         for (let row of rows) {
             if (row.textContent.includes(sectionName)) {
                 foundSection = true;
@@ -1230,20 +1278,67 @@ function tambahItem(kategori) {
                 break;
             }
             
+            // Prioritas 1: Cari row dengan cell pertama colspan 4
+            if (foundSection && row.cells.length > 0 && row.cells[0].colSpan === 4) {
+                targetRow = row;
+                console.log(`✓ Menemukan row dengan colspan="4" di kolom kiri (row id: ${row.id || 'no-id'})`);
+                break;
+            }
+            
+            // Prioritas 2: Cari row dengan 4 kolom normal yang kosong
             if (foundSection && row.cells.length >= 4) {
-                const leftLabel = row.cells[1].textContent.trim();
-                const leftValue = row.cells[2].textContent.trim();
-                const hasLeftInput = row.cells[1].querySelector('input') || row.cells[2].querySelector('input');
+                // Cek apakah kolom kiri (0-3) benar-benar kosong
+                const cell0 = row.cells[0];
+                const cell1 = row.cells[1]; 
+                const cell2 = row.cells[2];
+                const cell3 = row.cells[3];
                 
-                // Cek jika kolom kiri kosong
-                if (!leftLabel && !leftValue && !hasLeftInput) {
-                    targetRow = row;
-                    break;
+                // Cek apakah cell ada dan bukan colspan
+                if (cell0 && cell1 && cell2 && cell3 && 
+                    cell0.colSpan === 1 && cell1.colSpan === 1 && cell2.colSpan === 1 && cell3.colSpan === 1) {
+                    
+                    // Ambil text content atau value dari input jika ada
+                    const getText = (cell) => {
+                        const input = cell.querySelector('input[type="text"], input[type="number"]');
+                        if (input) {
+                            return input.value.trim();
+                        }
+                        return cell.textContent.trim();
+                    };
+                    
+                    const val0 = getText(cell0);
+                    const val1 = getText(cell1);
+                    const val2 = getText(cell2);
+                    const val3 = getText(cell3);
+                    
+                    // Jika semua cell kosong atau hanya berisi "Rp 0"
+                    const isEmpty = (val) => !val || val === '' || val === 'Rp 0' || val === '0';
+                    
+                    if (isEmpty(val0) && isEmpty(val1) && isEmpty(val2) && isEmpty(val3)) {
+                        targetRow = row;
+                        console.log(`✓ Menemukan row kosong di kolom kiri (row id: ${row.id || 'no-id'})`);
+                        break;
+                    }
                 }
             }
         }
         
         if (targetRow) {
+            console.log('✓ Menggunakan row kosong yang ada');
+            
+            // Jika row punya colspan, perlu replace dengan 4 cell normal
+            if (targetRow.cells[0] && targetRow.cells[0].colSpan === 4) {
+                console.log('✓ Row memiliki colspan="4", akan di-replace dengan 4 cell normal');
+                // Hapus cell colspan
+                targetRow.innerHTML = '';
+                // Buat 4 cell baru untuk kolom kiri + 4 cell untuk kolom kanan
+                for (let i = 0; i < 8; i++) {
+                    const td = document.createElement('td');
+                    if (i >= 4) td.innerHTML = '&nbsp;'; // Kolom kanan tetap kosong
+                    targetRow.appendChild(td);
+                }
+            }
+            
             // Gunakan row kosong yang ada
             // cells[0] = No Perkiraan, cells[1] = Label, cells[2] = Value 2024, cells[3] = Value 2023
             targetRow.cells[0].innerHTML = `<input type="text" class="form-control form-control-sm text-center" id="input_no_${id}" placeholder="No">`;
@@ -1254,19 +1349,21 @@ function tambahItem(kategori) {
             targetRow.cells[1].id = `label_${id}`;
             
             targetRow.cells[2].innerHTML = `
+                <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" aria-label="Nilai ${id} 2024">
+            `;
+            targetRow.cells[2].className = 'text-end';
+            targetRow.cells[2].id = id;
+            
+            targetRow.cells[3].innerHTML = `
                 <div class="d-flex gap-1 align-items-center">
-                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" style="flex: 1;">
-                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
-                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()" style="flex: 1;">
+                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')"
+                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;"
                             title="Hapus seluruh item ini">
                         <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                     </button>
                 </div>
             `;
-            targetRow.cells[2].className = 'text-end';
-            targetRow.cells[2].id = id;
-            
-            targetRow.cells[3].innerHTML = `<input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()">`;
             targetRow.cells[3].className = 'text-end';
             targetRow.cells[3].id = `${id}_2023`;
             
@@ -1276,6 +1373,7 @@ function tambahItem(kategori) {
             }
         } else {
             // Buat row baru jika tidak ada row kosong
+            console.log('ℹ️ Tidak ada row kosong, membuat row baru');
             newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
             newRow.innerHTML = `
@@ -1284,17 +1382,17 @@ function tambahItem(kategori) {
                     <input type="text" class="form-control form-control-sm" id="input_label_${id}" placeholder="Nama Item">
                 </td>
                 <td class="text-end" id="${id}">
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
+                </td>
+                <td class="text-end" id="${id}_2023">
                     <div class="d-flex gap-1 align-items-center">
-                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" style="flex: 1;">
+                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()" style="flex: 1;">
                         <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
                                 style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
                                 title="Hapus seluruh item ini">
                             <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                         </button>
                     </div>
-                </td>
-                <td class="text-end" id="${id}_2023">
-                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()">
                 </td>
                 <td colspan="4"></td>
             `;
@@ -1304,7 +1402,8 @@ function tambahItem(kategori) {
             }
         }
     } else if (kategori === 'kewajibanLancar' || kategori === 'ekuitas') {
-        // Cari row kosong di kolom kanan terlebih dahulu
+        // Cari row dengan colspan="4" di kolom kanan terlebih dahulu
+        console.log(`🔍 Mencari row kosong untuk ${kategori}...`);
         const tbody = document.getElementById('neracaTableBody');
         const rows = Array.from(tbody.querySelectorAll('tr'));
         let targetRow = null;
@@ -1312,6 +1411,7 @@ function tambahItem(kategori) {
         let foundSection = false;
         
         for (let row of rows) {
+            // Gunakan includes untuk menangani "Ekuitas/Modal" dan "Ekuitas"
             if (row.textContent.includes(sectionName)) {
                 foundSection = true;
                 continue;
@@ -1321,50 +1421,107 @@ function tambahItem(kategori) {
                 break;
             }
             
-            if (foundSection && row.cells.length >= 8) {
-                const rightNoPerkiraan = row.cells[4].textContent.trim();
-                const rightLabel = row.cells[5].textContent.trim();
-                const rightValue = row.cells[6].textContent.trim();
-                const hasRightInput = row.cells[5].querySelector('input') || row.cells[6].querySelector('input');
-                const isColspan = row.cells[4].colSpan > 1 || row.cells[5].colSpan > 1;
-                
-                // Cek jika kolom kanan kosong
-                if (!rightNoPerkiraan && !rightLabel && !rightValue && !hasRightInput && !isColspan) {
+            // Prioritas 1: Cari row dengan <td colspan="4"> di posisi kolom kanan
+            // Biasanya row ini punya struktur: [4 cell untuk kiri] + [1 cell colspan 4 untuk kanan]
+            if (foundSection && row.cells.length === 5) {
+                // Cek apakah cell terakhir adalah colspan 4
+                const lastCell = row.cells[row.cells.length - 1];
+                if (lastCell.colSpan === 4) {
                     targetRow = row;
+                    console.log(`✓ Menemukan row dengan colspan="4" di kolom kanan (row id: ${row.id || 'no-id'})`);
                     break;
+                }
+            }
+            
+            // Prioritas 2: Cari row dengan 8 kolom normal yang kolom kanannya kosong
+            if (foundSection && row.cells.length === 8) {
+                // Cek apakah kolom kanan (4-7) benar-benar kosong (tidak peduli kolom kiri 0-3)
+                const cell4 = row.cells[4];
+                const cell5 = row.cells[5];
+                const cell6 = row.cells[6];
+                const cell7 = row.cells[7];
+                
+                // Pastikan cell ada dan bukan colspan (colspan === 1 atau undefined)
+                if (cell4 && cell5 && cell6 && cell7 &&
+                    (!cell4.colSpan || cell4.colSpan === 1) && 
+                    (!cell5.colSpan || cell5.colSpan === 1) && 
+                    (!cell6.colSpan || cell6.colSpan === 1) && 
+                    (!cell7.colSpan || cell7.colSpan === 1)) {
+                    
+                    // Ambil text content atau value dari input jika ada
+                    const getText = (cell) => {
+                        const input = cell.querySelector('input[type="text"], input[type="number"]');
+                        if (input) {
+                            return input.value.trim();
+                        }
+                        return cell.textContent.trim();
+                    };
+                    
+                    const val4 = getText(cell4);
+                    const val5 = getText(cell5);
+                    const val6 = getText(cell6);
+                    const val7 = getText(cell7);
+                    
+                    // Jika semua cell kosong atau hanya berisi "Rp 0"
+                    const isEmpty = (val) => !val || val === '' || val === 'Rp 0' || val === '0';
+                    
+                    // Jika kolom kanan (4-7) kosong semua, gunakan row ini (tidak peduli kolom kiri)
+                    if (isEmpty(val4) && isEmpty(val5) && isEmpty(val6) && isEmpty(val7)) {
+                        targetRow = row;
+                        const leftInfo = row.cells[0] ? getText(row.cells[0]).substring(0, 20) : '';
+                        console.log(`✓ Menemukan row kosong di kolom kanan | Kolom kiri: "${leftInfo}..." | Row id: ${row.id || 'no-id'}`);
+                        break;
+                    }
                 }
             }
         }
         
         if (targetRow) {
+            console.log('✓ Menggunakan row kosong yang ada');
+            
+            // Jika row punya colspan di kolom kanan, perlu replace cell terakhir dengan 4 cell normal
+            if (targetRow.cells.length === 5 && targetRow.cells[4].colSpan === 4) {
+                console.log('✓ Row memiliki colspan="4" di kolom kanan, akan di-replace dengan 4 cell normal');
+                // Hapus cell colspan terakhir
+                targetRow.removeChild(targetRow.cells[4]);
+                // Buat 4 cell baru untuk kolom kanan
+                for (let i = 0; i < 4; i++) {
+                    const td = document.createElement('td');
+                    targetRow.appendChild(td);
+                }
+            }
+            
             // Gunakan row kosong yang ada
             // cells[4] = No Perkiraan, cells[5] = Label, cells[6] = Value 2024, cells[7] = Value 2023
             targetRow.cells[4].innerHTML = `<input type="text" class="form-control form-control-sm text-center" id="input_no_${id}" placeholder="No">`;
             targetRow.cells[4].className = 'text-center';
             
-            targetRow.cells[5].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${id}" placeholder="Nama Item">`;
+            targetRow.cells[5].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${id}" placeholder="Nama Item" aria-label="Label ${id}">`;
             targetRow.cells[5].className = 'ps-4';
             targetRow.cells[5].colSpan = 1;
             targetRow.cells[5].id = `label_${id}`;
-            
+
             targetRow.cells[6].innerHTML = `
+                <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" aria-label="Nilai ${id} 2024">
+            `;
+            targetRow.cells[6].className = 'text-end';
+            targetRow.cells[6].id = id;
+
+            targetRow.cells[7].innerHTML = `
                 <div class="d-flex gap-1 align-items-center">
-                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" style="flex: 1;">
-                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
-                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()" style="flex: 1;" aria-label="Nilai ${id} 2023">
+                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')"
+                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;"
                             title="Hapus seluruh item ini">
                         <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                     </button>
                 </div>
             `;
-            targetRow.cells[6].className = 'text-end';
-            targetRow.cells[6].id = id;
-            
-            targetRow.cells[7].innerHTML = `<input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()">`;
             targetRow.cells[7].className = 'text-end';
             targetRow.cells[7].id = `${id}_2023`;
         } else {
             // Buat row baru jika tidak ada row kosong
+            console.log('ℹ️ Tidak ada row kosong, membuat row baru');
             newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
             newRow.innerHTML = `
@@ -1374,17 +1531,17 @@ function tambahItem(kategori) {
                     <input type="text" class="form-control form-control-sm" id="input_label_${id}" placeholder="Nama Item">
                 </td>
                 <td class="text-end" id="${id}">
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
+                </td>
+                <td class="text-end" id="${id}_2023">
                     <div class="d-flex gap-1 align-items-center">
-                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" style="flex: 1;">
+                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()" style="flex: 1;">
                         <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
                                 style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
                                 title="Hapus seluruh item ini">
                             <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                         </button>
                     </div>
-                </td>
-                <td class="text-end" id="${id}_2023">
-                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()">
                 </td>
             `;
             
@@ -2010,45 +2167,40 @@ function saveNeraca() {
     // Jika validasi lolos, lanjutkan proses simpan
     console.log('✓ Validasi lolos, memulai pengambilan data dari form...');
     
-    // STRATEGI BARU: Load data lama dari server terlebih dahulu
-    // Kemudian gabungkan dengan data baru (update hanya field yang diedit)
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🔍 Mengambil data lama dari server untuk digabung...');
+    // Ambil data header yang diedit
+    const headerData = {};
+    const headerIds = [
+        'header_no_perkiraan_kiri', 'header_perkiraan_kiri', 'header_aset',
+        'header_no_perkiraan_kanan', 'header_perkiraan_kanan', 'header_kewajiban_ekuitas',
+        'header_tahun_2024_kiri', 'header_tahun_2023_kiri',
+        'header_tahun_2024_kanan', 'header_tahun_2023_kanan'
+    ];
     
-    fetch('/ketua/laporan/get-neraca')
-        .then(response => response.json())
-        .then(result => {
-            console.log('✓ Data lama diterima dari server');
-            
-            // Inisialisasi dengan data lama (jika ada)
-            const neracaData = (result.success && result.data?.data_2024) ? {...result.data.data_2024} : {};
-            const neracaData2023 = (result.success && result.data?.data_2023) ? {...result.data.data_2023} : {};
-            const neracaLabels = (result.success && result.data?.labels) ? {...result.data.labels} : {};
-            const neracaNoPerkiraan = (result.success && result.data?.no_perkiraan) ? {...result.data.no_perkiraan} : {};
-            const customItems = (result.success && result.data?.custom_items) ? {
-                asetLancar: [...(result.data.custom_items.asetLancar || [])],
-                asetTetap: [...(result.data.custom_items.asetTetap || [])],
-                kewajibanLancar: [...(result.data.custom_items.kewajibanLancar || [])],
-                ekuitas: [...(result.data.custom_items.ekuitas || [])]
-            } : {
-                asetLancar: [],
-                asetTetap: [],
-                kewajibanLancar: [],
-                ekuitas: []
-            };
-            
-            console.log('📊 Data lama:', {
-                data_2024_keys: Object.keys(neracaData).length,
-                data_2023_keys: Object.keys(neracaData2023).length,
-                labels_keys: Object.keys(neracaLabels).length,
-                custom_items_total: customItems.asetLancar.length + customItems.asetTetap.length + customItems.kewajibanLancar.length + customItems.ekuitas.length
-            });
-            
-            // UPDATE: Ambil nilai yang diedit dari form (hanya yang berubah)
-            console.log('🔄 Mengupdate dengan data dari form...');
+    headerIds.forEach(headerId => {
+        const inputElement = document.getElementById(`input_${headerId}`);
+        if (inputElement) {
+            headerData[headerId] = inputElement.value.trim();
+            console.log(`📝 Header ${headerId}:`, headerData[headerId]);
+        }
+    });
+    
+    // STRATEGI: Ambil semua data dari form yang sedang dalam mode edit
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📝 Mengambil data dari form edit...');
+    
+    // Inisialisasi objek data kosong
+    const neracaData = {};
+    const neracaData2023 = {};
+    const neracaLabels = {};
+    const neracaNoPerkiraan = {};
+    const customItems = {
+        asetLancar: [],
+        asetTetap: [],
+        kewajibanLancar: [],
+        ekuitas: []
+    };
     
     // Ambil semua nilai dan label untuk field default
-    // PENTING: Hanya update field yang benar-benar ada di halaman (input atau text dengan konten)
     fields.forEach(field => {
         // Skip jika item sudah dihapus
         if (deletedItems.includes(field)) {
@@ -2056,79 +2208,80 @@ function saveNeraca() {
             return;
         }
         
-        // Ambil nilai 2024 - PRIORITAS: dari input (jika dalam mode edit), lalu dari text
+        // Ambil nilai 2024 - coba dari input dulu, jika tidak ada ambil dari text
         const inputField = document.getElementById('input_' + field);
         if (inputField) {
-            // Mode edit: ambil dari input dan UPDATE data lama
             neracaData[field] = parseFloat(inputField.value) || 0;
-            console.log(`✏️ ${field} (2024) UPDATE dari input:`, neracaData[field]);
+            console.log(`✏️ ${field} (2024) dari input:`, neracaData[field]);
         } else {
-            // Mode view: ambil dari text yang sudah ada (jika ada)
+            // Fallback: ambil dari text yang ditampilkan
             const td = document.getElementById(field);
-            if (td && td.textContent.trim() && td.textContent.trim() !== '-') {
+            if (td && td.textContent) {
                 const text = td.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim();
-                const value = parseFloat(text) || 0;
-                // HANYA update jika ada konten atau jika belum ada di data lama
-                if (value !== 0 || !neracaData.hasOwnProperty(field)) {
-                    neracaData[field] = value;
-                    console.log(`📄 ${field} (2024) dari text:`, neracaData[field]);
-                } else {
-                    console.log(`⏩ ${field} (2024) skip (value=0, pakai data lama)`);
-                }
+                neracaData[field] = parseFloat(text) || 0;
+                console.log(`📄 ${field} (2024) dari text:`, neracaData[field]);
             } else {
-                console.log(`⏩ ${field} (2024) tidak ada di halaman (pakai data lama)`);
+                neracaData[field] = 0;
+                console.log(`⚠️ ${field} (2024) default ke 0`);
             }
         }
         
-        // Ambil nilai 2023 - PRIORITAS: dari input (jika dalam mode edit), lalu dari text
+        // Ambil nilai 2023 - coba dari input dulu, jika tidak ada ambil dari text
         const inputField2023 = document.getElementById('input_' + field + '_2023');
         if (inputField2023) {
-            // Mode edit: ambil dari input dan UPDATE data lama
             neracaData2023[field] = parseFloat(inputField2023.value) || 0;
-            console.log(`✏️ ${field} (2023) UPDATE dari input:`, neracaData2023[field]);
+            console.log(`✏️ ${field} (2023) dari input:`, neracaData2023[field]);
         } else {
-            // Mode view: ambil dari text yang sudah ada (jika ada)
+            // Fallback: ambil dari text yang ditampilkan
             const td2023 = document.getElementById(field + '_2023');
-            if (td2023 && td2023.textContent.trim() && td2023.textContent.trim() !== '-') {
+            if (td2023 && td2023.textContent) {
                 const text = td2023.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim();
-                const value = parseFloat(text) || 0;
-                // HANYA update jika ada konten atau jika belum ada di data lama
-                if (value !== 0 || !neracaData2023.hasOwnProperty(field)) {
-                    neracaData2023[field] = value;
-                    console.log(`📄 ${field} (2023) dari text:`, neracaData2023[field]);
-                } else {
-                    console.log(`⏩ ${field} (2023) skip (value=0, pakai data lama)`);
-                }
+                neracaData2023[field] = parseFloat(text) || 0;
+                console.log(`📄 ${field} (2023) dari text:`, neracaData2023[field]);
             } else {
-                console.log(`⏩ ${field} (2023) tidak ada di halaman (pakai data lama)`);
+                neracaData2023[field] = 0;
+                console.log(`⚠️ ${field} (2023) default ke 0`);
             }
         }
         
-        // Ambil label - PRIORITAS: dari input (jika dalam mode edit), lalu dari text
+        // Ambil label - coba dari input dulu, jika tidak ada ambil dari text
         const labelInput = document.getElementById('input_label_' + field);
         if (labelInput) {
-            // Mode edit: ambil dari input dan UPDATE data lama
             neracaLabels[field] = labelInput.value.trim();
-            console.log(`✏️ ${field} label UPDATE dari input:`, neracaLabels[field]);
+            console.log(`✏️ ${field} label dari input:`, neracaLabels[field]);
         } else {
-            // Mode view: ambil dari text yang sudah ada (jika ada konten)
+            // Fallback: ambil dari text yang ditampilkan
             const labelTd = document.getElementById('label_' + field);
-            if (labelTd && labelTd.textContent.trim()) {
-                // HANYA update jika belum ada di data lama
-                if (!neracaLabels.hasOwnProperty(field)) {
-                    neracaLabels[field] = labelTd.textContent.trim();
-                    console.log(`📄 ${field} label dari text:`, neracaLabels[field]);
-                } else {
-                    console.log(`⏩ ${field} label skip (pakai data lama)`);
-                }
+            if (labelTd && labelTd.textContent) {
+                neracaLabels[field] = labelTd.textContent.trim();
+                console.log(`📄 ${field} label dari text:`, neracaLabels[field]);
             } else {
-                console.log(`⏩ ${field} label tidak ada di halaman (pakai data lama)`);
+                // Default label jika tidak ada
+                const defaultLabels = {
+                    kas: 'Kas',
+                    bank: 'Bank',
+                    piutangAnggota: 'Piutang Anggota',
+                    perlengkapan: 'Perlengkapan',
+                    tanah: 'Tanah',
+                    bangunan: 'Bangunan',
+                    kendaraan: 'Kendaraan',
+                    peralatan: 'Peralatan',
+                    hutangUsaha: 'Hutang Usaha',
+                    hutangBunga: 'Hutang Bunga',
+                    simpananAnggota: 'Simpanan Anggota',
+                    simpananPokok: 'Simpanan Pokok',
+                    simpananWajib: 'Simpanan Wajib',
+                    cadangan: 'Cadangan',
+                    shuTahunBerjalan: 'SHU Tahun Berjalan'
+                };
+                neracaLabels[field] = defaultLabels[field] || field;
+                console.log(`⚠️ ${field} label default:`, neracaLabels[field]);
             }
         }
     });
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 DATA FINAL SETELAH MERGE:');
+    console.log('📊 DATA DARI FORM:');
     console.log('Total fields data_2024:', Object.keys(neracaData).length);
     console.log('Total fields data_2023:', Object.keys(neracaData2023).length);
     console.log('Total fields labels:', Object.keys(neracaLabels).length);
@@ -2136,33 +2289,26 @@ function saveNeraca() {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // Simpan data No Perkiraan dari setiap row
-    // Gunakan editableRows yang sudah didefinisikan di global scope
     editableRows.forEach(rowConfig => {
         const row = document.getElementById(rowConfig.id);
         if (!row) return;
         
         const cell = row.cells[rowConfig.col];
         
-        // Simpan nilai No Perkiraan sebelum di-convert
+        // Ambil nilai No Perkiraan - coba dari input dulu, jika tidak ada ambil dari text
         if (cell && cell.querySelector('input')) {
             const input = cell.querySelector('input');
             neracaNoPerkiraan[rowConfig.field] = input.value.trim();
-            // Kembalikan ke text
-            cell.innerHTML = input.value;
-            cell.className = 'text-center';
+            console.log(`✏️ No Perkiraan ${rowConfig.field} dari input:`, neracaNoPerkiraan[rowConfig.field]);
         } else if (cell) {
-            // Jika bukan input, ambil text yang ada
+            // Fallback: ambil dari text yang ditampilkan
             neracaNoPerkiraan[rowConfig.field] = cell.textContent.trim();
+            console.log(`📄 No Perkiraan ${rowConfig.field} dari text:`, neracaNoPerkiraan[rowConfig.field]);
         }
     });
     
-    // Ambil semua custom items dari form (input atau text yang ada di halaman)
-    // PRIORITAS: dari input (jika dalam mode edit), lalu dari text yang ditampilkan
-    
+    // Ambil semua custom items dari form
     ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
-        // Inisialisasi array untuk kategori ini
-        customItems[kategori] = [];
-        
         // Ambil SEMUA item yang ada di form saat ini
         for (let i = 1; i <= itemCounter[kategori]; i++) {
             const itemId = `${kategori}_custom_${i}`;
@@ -2173,15 +2319,16 @@ function saveNeraca() {
                 continue;
             }
             
-            // Cek apakah item ini ada di form (sebagai input atau text)
+            // Coba ambil dari input dulu (mode edit)
             const noInput = document.getElementById(`input_no_${itemId}`);
             const labelInput = document.getElementById(`input_label_${itemId}`);
             const valueInput = document.getElementById(`input_${itemId}`);
             const value2023Input = document.getElementById(`input_${itemId}_2023`);
             
-            // Mode edit: ambil dari input
             if (valueInput) {
+                // Mode edit: ambil dari input
                 const itemData = {
+                    id: itemId,  // PENTING: Simpan ID
                     no: noInput ? noInput.value.trim() : '',
                     label: labelInput ? labelInput.value.trim() : '',
                     value: parseFloat(valueInput.value) || 0,
@@ -2197,12 +2344,13 @@ function saveNeraca() {
                 const valueTd = document.getElementById(itemId);
                 const value2023Td = document.getElementById(itemId + '_2023');
                 
-                // Hanya proses jika cell ada dan punya konten
-                if (valueTd && valueTd.textContent.trim()) {
+                // Hanya proses jika ada konten
+                if (valueTd && valueTd.textContent) {
                     const text = valueTd.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim();
                     const text2023 = value2023Td ? value2023Td.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim() : '0';
                     
                     const itemData = {
+                        id: itemId,  // PENTING: Simpan ID
                         no: noTd ? noTd.textContent.trim() : '',
                         label: labelTd ? labelTd.textContent.trim() : '',
                         value: parseFloat(text) || 0,
@@ -2218,37 +2366,6 @@ function saveNeraca() {
         console.log(`📊 Total custom items ${kategori}:`, customItems[kategori].length);
     });
     
-    // Simpan ke localStorage untuk persistensi (backup)
-    localStorage.setItem('neracaData', JSON.stringify(neracaData));
-    localStorage.setItem('neracaData2023', JSON.stringify(neracaData2023));
-    localStorage.setItem('neracaLabels', JSON.stringify(neracaLabels));
-    localStorage.setItem('neracaNoPerkiraan', JSON.stringify(neracaNoPerkiraan));
-    localStorage.setItem('neracaCustomItems', JSON.stringify(customItems));
-    localStorage.setItem('itemCounter', JSON.stringify(itemCounter));
-    localStorage.setItem('deletedItems', JSON.stringify(deletedItems));
-
-    console.log('✓ Data disimpan ke localStorage:', {
-        neracaData,
-        neracaData2023,
-        neracaLabels,
-        neracaNoPerkiraan,
-        customItems,
-        itemCounter,
-        deletedItems
-    });
-
-    // PENTING: Bersihkan deleted items dari field default sebelum menyimpan
-    const defaultFields = ['kas', 'bank', 'piutangAnggota', 'perlengkapan', 'tanah', 'bangunan', 'kendaraan', 'peralatan', 
-                          'hutangUsaha', 'hutangBunga', 'simpananAnggota', 'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'];
-    
-    const cleanedDeletedItems = deletedItems.filter(itemId => !defaultFields.includes(itemId));
-    
-    if (deletedItems.length !== cleanedDeletedItems.length) {
-        console.log('⚠️ DIBERSIHKAN: Field default yang tidak boleh dihapus:', 
-                   deletedItems.filter(itemId => defaultFields.includes(itemId)));
-        deletedItems = cleanedDeletedItems;
-    }
-
     // Siapkan payload untuk dikirim ke server
     const payload = {
         data_2024: neracaData,
@@ -2257,7 +2374,8 @@ function saveNeraca() {
         no_perkiraan: neracaNoPerkiraan,
         custom_items: customItems,
         item_counter: itemCounter,
-        deleted_items: deletedItems
+        deleted_items: deletedItems,
+        header_data: headerData  // Tambahkan data header
     };
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -2288,6 +2406,15 @@ function saveNeraca() {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            console.error('❌ Response is not JSON! Content-Type:', contentType);
+            return response.text().then(text => {
+                console.error('❌ Response body:', text.substring(0, 500));
+                throw new Error('Server returned non-JSON response');
+            });
+        }
         return response.json();
     })
     .then(data => {
@@ -2304,6 +2431,27 @@ function saveNeraca() {
             
             // SETELAH SAVE BERHASIL: Update tampilan (convert input ke text)
             console.log('🎨 Mengupdate tampilan UI...');
+            
+            // Update tampilan header kembali ke text
+            headerIds.forEach(headerId => {
+                const element = document.getElementById(headerId);
+                const inputElement = document.getElementById(`input_${headerId}`);
+                if (element && inputElement) {
+                    const newValue = inputElement.value.trim();
+                    // Format ulang untuk ASET dan KEWAJIBAN & EKUITAS dengan bold
+                    if (headerId === 'header_aset') {
+                        element.innerHTML = `<strong>${newValue}</strong>`;
+                    } else if (headerId === 'header_kewajiban_ekuitas') {
+                        element.innerHTML = `<strong>${newValue}</strong>`;
+                    } else if (headerId.includes('no_perkiraan') || headerId.includes('perkiraan_')) {
+                        // Untuk No Perkiraan dan Perkiraan, ganti \n dengan <br>
+                        element.innerHTML = newValue.replace(/\n/g, '<br>');
+                    } else {
+                        element.textContent = newValue;
+                    }
+                    console.log(`✅ Header ${headerId} updated`);
+                }
+            });
             
             // Update tampilan nilai 2024 dengan nilai baru (hilangkan input dan tombol hapus)
             Object.keys(neracaData).forEach(key => {
@@ -2355,15 +2503,17 @@ function saveNeraca() {
                                     <td class="ps-4" id="label_${itemId}">${label}</td>
                                     <td class="text-end" id="${itemId}">Rp ${value.toLocaleString('id-ID')}</td>
                                     <td class="text-end" id="${itemId}_2023">Rp ${value2023.toLocaleString('id-ID')}</td>
-                                    <td colspan="4"></td>
+                                    <td></td>
+                                    <td colspan="5"></td>
                                 `;
                             } else {
                                 row.innerHTML = `
-                                    <td colspan="4"></td>
+                                    <td colspan="5"></td>
                                     <td class="text-center">${no}</td>
                                     <td class="ps-4" id="label_${itemId}">${label}</td>
                                     <td class="text-end" id="${itemId}">Rp ${value.toLocaleString('id-ID')}</td>
                                     <td class="text-end" id="${itemId}_2023">Rp ${value2023.toLocaleString('id-ID')}</td>
+                                    <td></td>
                                 `;
                             }
                         }
@@ -2379,6 +2529,21 @@ function saveNeraca() {
             document.getElementById('btnAddAsetTetap').classList.add('d-none');
             document.getElementById('btnAddKewajibanLancar').classList.add('d-none');
             document.getElementById('btnAddEkuitas').classList.add('d-none');
+            
+            // Sembunyikan button hapus untuk field default
+            const defaultFields = [
+                'kas', 'bank', 'piutangAnggota', 'perlengkapan',
+                'tanah', 'bangunan', 'kendaraan', 'peralatan',
+                'hutangUsaha', 'hutangBunga', 'simpananAnggota',
+                'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'
+            ];
+            
+            defaultFields.forEach(field => {
+                const btnDelete = document.getElementById(`btnDelete_${field}`);
+                if (btnDelete) {
+                    btnDelete.classList.add('d-none');
+                }
+            });
             
             // Reset button ke Edit Neraca
             const btnEdit = document.getElementById('btnEditNeraca');
@@ -2419,33 +2584,54 @@ function saveNeraca() {
         console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         alert('❌ Error koneksi!\n\n' + error.message + '\n\nPastikan server masih berjalan.');
     });
-        }) // Tutup fetch get-neraca pertama
-        .catch(error => {
-            console.error('❌ Error mengambil data lama:', error);
-            alert('❌ Gagal mengambil data lama dari server!');
-        });
 }
 window.saveNeraca = saveNeraca;
 
 // Load data dari database atau localStorage saat halaman dimuat
 window.addEventListener('load', function() {
     console.log('🔄 Window load event - Memuat data neraca...');
-    
+
     // Coba load dari database terlebih dahulu
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🔍 MEMUAT DATA DARI SERVER');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Fetching: /ketua/laporan/get-neraca');
-    
-    fetch('/ketua/laporan/get-neraca')
+
+    fetch('/ketua/laporan/get-neraca', {
+        method: 'GET',
+        credentials: 'same-origin'
+    })
         .then(response => {
             console.log('📥 Response HTTP status:', response.status, response.statusText);
+            console.log('📥 Response content-type:', response.headers.get('content-type'));
+
+            // Check if response is HTML (login page) - redirect immediately
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                console.warn('⚠️ Server returned HTML (login page), redirecting to login...');
+                window.location.href = '/login';
+                throw new Error('Redirecting to login');
+            }
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            // Check if response is JSON
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('❌ Response is not JSON! Content-Type:', contentType);
+                return response.text().then(text => {
+                    console.error('❌ Response body:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response');
+                });
             }
             return response.json();
         })
         .then(result => {
+            // Guard against undefined result
+            if (!result) {
+                console.log('No result data, skipping...');
+                return;
+            }
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.log('📥 DATA DITERIMA DARI SERVER');
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -2453,21 +2639,31 @@ window.addEventListener('load', function() {
             
             if (result.success && result.data) {
                 console.log('%c✅ Data ditemukan di database!', 'color: green; font-weight: bold; font-size: 14px;');
-                console.log('Data 2024 (contoh kas):', result.data.data_2024?.kas);
-                console.log('Data 2023 (contoh kas):', result.data.data_2023?.kas);
-                console.log('Labels:', result.data.labels);
-                console.log('Custom items:', result.data.custom_items);
+                console.log('Data 2024 lengkap:', result.data.data_2024);
+                console.log('Data 2023 lengkap:', result.data.data_2023);
+                console.log('Labels lengkap:', result.data.labels);
+                console.log('No Perkiraan lengkap:', result.data.no_perkiraan);
+                console.log('Custom items lengkap:', result.data.custom_items);
                 console.log('Item counter:', result.data.item_counter);
                 console.log('Deleted items:', result.data.deleted_items);
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                
+                // Hapus localStorage karena data sudah dimuat dari database
+                localStorage.removeItem('neracaData');
+                localStorage.removeItem('neracaData2023');
+                localStorage.removeItem('neracaLabels');
+                localStorage.removeItem('neracaNoPerkiraan');
+                localStorage.removeItem('neracaCustomItems');
+                localStorage.removeItem('itemCounter');
+                localStorage.removeItem('deletedItems');
+                console.log('✓ localStorage dibersihkan (data dari database digunakan)');
                 
                 loadNeracaData(result.data);
             } else {
                 console.log('%c⚠️ Tidak ada data di database', 'color: orange; font-weight: bold; font-size: 14px;');
                 console.log('Result:', result);
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                console.log('🔄 Mencoba load dari localStorage...');
-                loadFromLocalStorage();
+                console.log('� Halaman akan menampilkan data default (Rp 0)');
             }
         })
         .catch(error => {
@@ -2476,41 +2672,9 @@ window.addEventListener('load', function() {
             console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.error('Error detail:', error);
             console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('🔄 Fallback ke localStorage...');
-            loadFromLocalStorage();
+            console.log('📄 Halaman akan menampilkan data default (Rp 0)');
         });
 });
-
-// Function to load from localStorage
-function loadFromLocalStorage() {
-    const savedData = localStorage.getItem('neracaData');
-    const savedData2023 = localStorage.getItem('neracaData2023');
-    const savedLabels = localStorage.getItem('neracaLabels');
-    const savedNoPerkiraan = localStorage.getItem('neracaNoPerkiraan');
-    const savedCustomItems = localStorage.getItem('neracaCustomItems');
-    const savedCounter = localStorage.getItem('itemCounter');
-    const savedDeleted = localStorage.getItem('deletedItems');
-    
-    console.log('Data yang ditemukan di localStorage:', {
-        savedData: savedData ? 'Ada' : 'Tidak ada',
-        savedData2023: savedData2023 ? 'Ada' : 'Tidak ada',
-        savedLabels: savedLabels ? 'Ada' : 'Tidak ada',
-        savedNoPerkiraan: savedNoPerkiraan ? 'Ada' : 'Tidak ada',
-        savedCustomItems: savedCustomItems ? JSON.parse(savedCustomItems) : 'Tidak ada',
-        savedCounter: savedCounter ? JSON.parse(savedCounter) : 'Tidak ada',
-        savedDeleted: savedDeleted ? JSON.parse(savedDeleted) : 'Tidak ada'
-    });
-    
-    loadNeracaData({
-        data_2024: savedData ? JSON.parse(savedData) : null,
-        data_2023: savedData2023 ? JSON.parse(savedData2023) : null,
-        labels: savedLabels ? JSON.parse(savedLabels) : null,
-        no_perkiraan: savedNoPerkiraan ? JSON.parse(savedNoPerkiraan) : null,
-        custom_items: savedCustomItems ? JSON.parse(savedCustomItems) : null,
-        item_counter: savedCounter ? JSON.parse(savedCounter) : null,
-        deleted_items: savedDeleted ? JSON.parse(savedDeleted) : null
-    });
-}
 
 // Function to load neraca data into the page
 function loadNeracaData(data) {
@@ -2525,6 +2689,40 @@ function loadNeracaData(data) {
         return;
     }
     
+    // Load header data jika ada
+    if (data.header_data) {
+        console.log('✓ Memuat header data:', data.header_data);
+        Object.keys(data.header_data).forEach(headerId => {
+            const element = document.getElementById(headerId);
+            if (element) {
+                const value = data.header_data[headerId];
+                // Format sesuai jenis header
+                if (headerId === 'header_aset' || headerId === 'header_kewajiban_ekuitas') {
+                    element.innerHTML = `<strong>${value}</strong>`;
+                } else if (headerId.includes('no_perkiraan') || headerId.includes('perkiraan_')) {
+                    element.innerHTML = value.replace(/\n/g, '<br>');
+                } else {
+                    element.textContent = value;
+                }
+                console.log(`✅ Header ${headerId} loaded:`, value);
+            }
+        });
+    }
+    
+    // PERTAMA: Pastikan semua row default terlihat dulu (reset display)
+    const allDefaultFields = ['kas', 'bank', 'piutangAnggota', 'perlengkapan', 'tanah', 'bangunan', 
+                              'kendaraan', 'peralatan', 'hutangUsaha', 'hutangBunga', 'simpananAnggota', 
+                              'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'];
+    allDefaultFields.forEach(field => {
+        const td = document.getElementById(field);
+        if (td) {
+            const row = td.closest('tr');
+            if (row) {
+                row.style.display = ''; // Reset display ke default (visible)
+            }
+        }
+    });
+    
     // Load counter
     if (data.item_counter) {
         console.log('✓ Memuat item counter:', data.item_counter);
@@ -2532,20 +2730,13 @@ function loadNeracaData(data) {
     }
     
     // Load deleted items
-    if (data.deleted_items) {
-        // PENTING: Filter deleted items - HANYA custom items yang bisa dihapus
-        // Field default (kas, bank, dll) TIDAK BOLEH ada di deleted items
-        const defaultFields = ['kas', 'bank', 'piutangAnggota', 'perlengkapan', 'tanah', 'bangunan', 'kendaraan', 'peralatan', 
-                              'hutangUsaha', 'hutangBunga', 'simpananAnggota', 'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'];
+    if (data.deleted_items && Array.isArray(data.deleted_items)) {
+        // Load deleted items as-is (termasuk field default jika dihapus)
+        deletedItems = data.deleted_items;
         
-        // Bersihkan deleted items dari field default
-        deletedItems = data.deleted_items.filter(itemId => !defaultFields.includes(itemId));
+        console.log('✓ Deleted items:', deletedItems);
         
-        console.log('✓ Deleted items (setelah filter):', deletedItems);
-        console.log('⚠️ Field default yang sempat di deleted_items (DIBERSIHKAN):', 
-                   data.deleted_items.filter(itemId => defaultFields.includes(itemId)));
-        
-        // Hapus atau kosongkan cell untuk item yang dihapus (HANYA custom items)
+        // Hapus atau kosongkan cell untuk item yang dihapus
         deletedItems.forEach(itemId => {
             const labelTd = document.getElementById('label_' + itemId);
             const valueTd = document.getElementById(itemId);
@@ -2575,39 +2766,119 @@ function loadNeracaData(data) {
                 }
             }
         });
+    } else {
+        console.log('✓ Tidak ada deleted items');
+        deletedItems = [];
     }
     
     // Load data default 2024
     if (data.data_2024) {
         const neracaData = data.data_2024;
+        console.log('Loading data_2024, total keys:', Object.keys(neracaData).length);
+        console.log('Data 2024 yang akan di-load:', neracaData);
+        
         Object.keys(neracaData).forEach(key => {
             const td = document.getElementById(key);
             if (td && !deletedItems.includes(key)) {
-                td.textContent = 'Rp ' + neracaData[key].toLocaleString('id-ID');
+                const value = neracaData[key];
+                td.textContent = 'Rp ' + (value || 0).toLocaleString('id-ID');
+                console.log(`✓ Set ${key} = Rp ${(value || 0).toLocaleString('id-ID')}`);
+            } else if (!td) {
+                console.warn(`⚠️ Element #${key} tidak ditemukan`);
+            } else {
+                console.warn(`⚠️ ${key} ada di deleted items, skip render`);
+                // Sembunyikan row yang dihapus
+                const row = td.closest('tr');
+                if (row) {
+                    row.style.display = 'none';
+                    console.log(`  → Row ${key} disembunyikan`);
+                }
             }
         });
+    } else {
+        console.log('⚠️ Tidak ada data_2024 di database - menggunakan default Rp 0');
     }
     
     // Load data default 2023
     if (data.data_2023) {
         const neracaData2023 = data.data_2023;
+        console.log('Loading data_2023, total keys:', Object.keys(neracaData2023).length);
+        
         Object.keys(neracaData2023).forEach(key => {
             const td2023 = document.getElementById(key + '_2023');
             if (td2023 && !deletedItems.includes(key)) {
-                td2023.textContent = 'Rp ' + neracaData2023[key].toLocaleString('id-ID');
+                const value = neracaData2023[key];
+                td2023.textContent = 'Rp ' + (value || 0).toLocaleString('id-ID');
+                console.log(`✓ Set ${key}_2023 = Rp ${(value || 0).toLocaleString('id-ID')}`);
+            } else if (deletedItems.includes(key)) {
+                // Sembunyikan row yang dihapus (untuk backward compatibility jika belum hidden dari data_2024)
+                const row = td2023?.closest('tr');
+                if (row) {
+                    row.style.display = 'none';
+                }
             }
         });
+    } else {
+        console.log('⚠️ Tidak ada data_2023 di database - menggunakan default Rp 0');
     }
+    
+    // Sembunyikan row field default yang ada di deletedItems (meskipun tidak ada di data_2024)
+    // Menggunakan ulang variabel allDefaultFields yang sudah dideklarasikan di atas
+   
+    allDefaultFields.forEach(field => {
+        if (deletedItems.includes(field)) {
+            const td = document.getElementById(field);
+            if (td) {
+                const row = td.closest('tr');
+                if (row) {
+                    row.style.display = 'none';
+                    console.log(`✓ Field default ${field} disembunyikan (ada di deletedItems)`);
+                }
+            }
+        }
+    });
     
     // Load labels default
     if (data.labels) {
         const neracaLabels = data.labels;
+        console.log('Loading labels, total keys:', Object.keys(neracaLabels).length);
+        
+        // Default labels untuk reset jika corrupt
+        const defaultLabels = {
+            kas: 'Kas',
+            bank: 'Bank',
+            piutangAnggota: 'Piutang Anggota',
+            perlengkapan: 'Perlengkapan',
+            tanah: 'Tanah',
+            bangunan: 'Bangunan',
+            kendaraan: 'Kendaraan',
+            peralatan: 'Peralatan',
+            hutangUsaha: 'Hutang Usaha',
+            hutangBunga: 'Hutang Bunga',
+            simpananAnggota: 'Simpanan Anggota',
+            simpananPokok: 'Simpanan Pokok',
+            simpananWajib: 'Simpanan Wajib',
+            cadangan: 'Cadangan',
+            shuTahunBerjalan: 'SHU Tahun Berjalan'
+        };
+        
         Object.keys(neracaLabels).forEach(key => {
             const labelTd = document.getElementById('label_' + key);
             if (labelTd && !deletedItems.includes(key)) {
-                labelTd.textContent = neracaLabels[key];
+                let labelText = neracaLabels[key];
+                
+                // Validasi: Jika label adalah angka saja (corrupt), gunakan default
+                if (/^\d+$/.test(labelText)) {
+                    console.warn(`⚠️ Label corrupt untuk ${key}: "${labelText}" - direset ke default`);
+                    labelText = defaultLabels[key] || key;
+                }
+                
+                labelTd.textContent = labelText;
+                console.log(`✓ Set label_${key} = ${labelText}`);
             }
         });
+    } else {
+        console.log('⚠️ Tidak ada labels di database - menggunakan label default HTML');
     }
     
     // Load No Perkiraan default
@@ -2665,8 +2936,15 @@ function loadNeracaData(data) {
         
         // Load aset lancar custom
         customItems.asetLancar?.forEach((item, index) => {
-            const i = index + 1;
-            const id = `asetLancar_custom_${i}`;
+            // Gunakan ID dari data jika ada, fallback ke index untuk backward compatibility
+            const id = item.id || `asetLancar_custom_${index + 1}`;
+            
+            // Skip jika item ini sudah dihapus
+            if (deletedItems.includes(id)) {
+                console.log(`⏩ Skip render ${id} (sudah dihapus)`);
+                return;
+            }
+            
             const migratedItem = migrateItem(item);
             const newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
@@ -2684,8 +2962,15 @@ function loadNeracaData(data) {
         
         // Load aset tetap custom
         customItems.asetTetap?.forEach((item, index) => {
-            const i = index + 1;
-            const id = `asetTetap_custom_${i}`;
+            // Gunakan ID dari data jika ada, fallback ke index untuk backward compatibility
+            const id = item.id || `asetTetap_custom_${index + 1}`;
+            
+            // Skip jika item ini sudah dihapus
+            if (deletedItems.includes(id)) {
+                console.log(`⏩ Skip render ${id} (sudah dihapus)`);
+                return;
+            }
+            
             const migratedItem = migrateItem(item);
             const newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
@@ -2705,8 +2990,15 @@ function loadNeracaData(data) {
         // Cari row tempat meletakkan kewajiban lancar custom (sebelum row total kewajiban lancar)
         const totalKewajibanLancarRow = document.getElementById('totalKewajibanLancar')?.closest('tr');
         customItems.kewajibanLancar?.forEach((item, index) => {
-            const i = index + 1;
-            const id = `kewajibanLancar_custom_${i}`;
+            // Gunakan ID dari data jika ada, fallback ke index untuk backward compatibility
+            const id = item.id || `kewajibanLancar_custom_${index + 1}`;
+            
+            // Skip jika item ini sudah dihapus
+            if (deletedItems.includes(id)) {
+                console.log(`⏩ Skip render ${id} (sudah dihapus)`);
+                return;
+            }
+            
             const migratedItem = migrateItem(item);
             const no = migratedItem.no || '-';
             const value2023 = migratedItem.value2023;
@@ -2729,8 +3021,15 @@ function loadNeracaData(data) {
         // Cari row tempat meletakkan ekuitas custom (sebelum row total ekuitas)
         const totalEkuitasRow = document.getElementById('totalEkuitas')?.closest('tr');
         customItems.ekuitas?.forEach((item, index) => {
-            const i = index + 1;
-            const id = `ekuitas_custom_${i}`;
+            // Gunakan ID dari data jika ada, fallback ke index untuk backward compatibility
+            const id = item.id || `ekuitas_custom_${index + 1}`;
+            
+            // Skip jika item ini sudah dihapus
+            if (deletedItems.includes(id)) {
+                console.log(`⏩ Skip render ${id} (sudah dihapus)`);
+                return;
+            }
+            
             const migratedItem = migrateItem(item);
             const no = migratedItem.no || '-';
             const value2023 = migratedItem.value2023;
@@ -2848,10 +3147,11 @@ function loadNeracaData(data) {
         // Reset button ke state awal Edit Neraca
         btnEdit.className = 'btn btn-sm btn-primary';
         btnEdit.innerHTML = '<i class="fas fa-edit"></i> Edit Neraca';
-        btnEdit.onclick = function() {
-            console.log('Button Edit Neraca clicked - calling editNeraca()');
-            editNeraca();
-        };
+        // Jangan override onclick karena sudah ada inline onclick
+        // Cukup pastikan attr onclick ada
+        if (!btnEdit.hasAttribute('onclick')) {
+            btnEdit.setAttribute('onclick', 'editNeraca()');
+        }
         console.log('Button Edit Neraca telah di-reset ke mode default');
     }
     
@@ -2867,10 +3167,25 @@ function loadNeracaData(data) {
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('%c✅ DATA BERHASIL DIMUAT KE HALAMAN!', 'color: green; font-weight: bold; font-size: 14px;');
-    console.log('Total Aset Lancar:', totalAsetLancar);
-    console.log('Total Aset Tetap:', totalAsetTetap);
-    console.log('Total Kewajiban Lancar:', totalKewajibanLancar);
-    console.log('Total Ekuitas:', totalEkuitas);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 RINGKASAN DATA:');
+    console.log('• Total Aset Lancar: Rp ' + totalAsetLancar.toLocaleString('id-ID'));
+    console.log('• Total Aset Tetap: Rp ' + totalAsetTetap.toLocaleString('id-ID'));
+    console.log('• TOTAL ASET: Rp ' + (totalAsetLancar + totalAsetTetap).toLocaleString('id-ID'));
+    console.log('• Total Kewajiban Lancar: Rp ' + totalKewajibanLancar.toLocaleString('id-ID'));
+    console.log('• Total Ekuitas: Rp ' + totalEkuitas.toLocaleString('id-ID'));
+    console.log('• TOTAL KEWAJIBAN & EKUITAS: Rp ' + (totalKewajibanLancar + totalEkuitas).toLocaleString('id-ID'));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📝 DATA SOURCE:');
+    console.log('• Data 2024:', data.data_2024 ? 'Ada (' + Object.keys(data.data_2024).length + ' items)' : 'Tidak ada');
+    console.log('• Data 2023:', data.data_2023 ? 'Ada (' + Object.keys(data.data_2023).length + ' items)' : 'Tidak ada');
+    console.log('• Labels:', data.labels ? 'Ada (' + Object.keys(data.labels).length + ' items)' : 'Tidak ada');
+    console.log('• Custom Items Aset Lancar:', data.custom_items?.asetLancar ? data.custom_items.asetLancar.length + ' items' : '0 items');
+    console.log('• Custom Items Aset Tetap:', data.custom_items?.asetTetap ? data.custom_items.asetTetap.length + ' items' : '0 items');
+    console.log('• Custom Items Kewajiban Lancar:', data.custom_items?.kewajibanLancar ? data.custom_items.kewajibanLancar.length + ' items' : '0 items');
+    console.log('• Custom Items Ekuitas:', data.custom_items?.ekuitas ? data.custom_items.ekuitas.length + ' items' : '0 items');
+    console.log('• Deleted Items:', deletedItems.length + ' items');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Button Edit Neraca onclick:', btnEdit ? (typeof btnEdit.onclick) : 'tidak ada');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }

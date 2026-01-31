@@ -13,6 +13,7 @@ type Neraca struct {
 	CustomItems    string    `json:"custom_items"`     // JSON string of customItems
 	ItemCounter    string    `json:"item_counter"`     // JSON string of itemCounter
 	DeletedItems   string    `json:"deleted_items"`    // JSON string of deletedItems
+	HeaderData     string    `json:"header_data"`      // JSON string of headerData
 	CreatedBy      int       `json:"created_by"`       // User ID yang membuat
 	LastModifiedBy int       `json:"last_modified_by"` // User ID yang terakhir edit
 	CreatedAt      time.Time `json:"created_at"`
@@ -28,4 +29,5 @@ type NeracaRequest struct {
 	CustomItems  map[string]interface{} `json:"custom_items"`
 	ItemCounter  map[string]int         `json:"item_counter"`
 	DeletedItems []string               `json:"deleted_items"`
+	HeaderData   map[string]string      `json:"header_data"`
 }

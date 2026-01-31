@@ -26,6 +26,7 @@ func (r *NeracaRepository) SaveNeraca(req *models.NeracaRequest, userID int) err
 	customItems, _ := json.Marshal(req.CustomItems)
 	itemCounter, _ := json.Marshal(req.ItemCounter)
 	deletedItems, _ := json.Marshal(req.DeletedItems)
+	headerData, _ := json.Marshal(req.HeaderData)
 
 	// Check if neraca already exists for this user
 	var exists bool
@@ -44,9 +45,10 @@ func (r *NeracaRepository) SaveNeraca(req *models.NeracaRequest, userID int) err
 			custom_items = $5,
 			item_counter = $6,
 			deleted_items = $7,
-			last_modified_by = $8,
-			last_modified_at = $9
-			WHERE user_id = $10`
+			header_data = $8,
+			last_modified_by = $9,
+			last_modified_at = $10
+			WHERE user_id = $11`
 
 		_, err = r.DB.Exec(query,
 			string(data2024),
@@ -56,6 +58,7 @@ func (r *NeracaRepository) SaveNeraca(req *models.NeracaRequest, userID int) err
 			string(customItems),
 			string(itemCounter),
 			string(deletedItems),
+			string(headerData),
 			userID,
 			time.Now(),
 			userID,
@@ -65,8 +68,8 @@ func (r *NeracaRepository) SaveNeraca(req *models.NeracaRequest, userID int) err
 
 	// Insert new neraca
 	query := `INSERT INTO neraca
-		(user_id, data_2024, data_2023, labels, no_perkiraan, custom_items, item_counter, deleted_items, created_by, last_modified_by, created_at, last_modified_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+		(user_id, data_2024, data_2023, labels, no_perkiraan, custom_items, item_counter, deleted_items, header_data, created_by, last_modified_by, created_at, last_modified_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
 	_, err = r.DB.Exec(query,
 		userID,
@@ -77,6 +80,7 @@ func (r *NeracaRepository) SaveNeraca(req *models.NeracaRequest, userID int) err
 		string(customItems),
 		string(itemCounter),
 		string(deletedItems),
+		string(headerData),
 		userID,
 		userID,
 		time.Now(),
@@ -87,7 +91,7 @@ func (r *NeracaRepository) SaveNeraca(req *models.NeracaRequest, userID int) err
 
 // GetNeraca retrieves neraca data for a specific user
 func (r *NeracaRepository) GetNeraca(userID int) (*models.Neraca, error) {
-	query := `SELECT id, user_id, data_2024, data_2023, labels, no_perkiraan, custom_items, item_counter, deleted_items, 
+	query := `SELECT id, user_id, data_2024, data_2023, labels, no_perkiraan, custom_items, item_counter, deleted_items, header_data,
 		created_by, last_modified_by, created_at, last_modified_at 
 		FROM neraca 
 		WHERE user_id = $1
@@ -105,6 +109,7 @@ func (r *NeracaRepository) GetNeraca(userID int) (*models.Neraca, error) {
 		&neraca.CustomItems,
 		&neraca.ItemCounter,
 		&neraca.DeletedItems,
+		&neraca.HeaderData,
 		&neraca.CreatedBy,
 		&neraca.LastModifiedBy,
 		&neraca.CreatedAt,

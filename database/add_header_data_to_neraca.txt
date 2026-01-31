@@ -1,0 +1,5 @@
+-- Add header_data column to neraca table
+ALTER TABLE neraca ADD COLUMN IF NOT EXISTS header_data TEXT DEFAULT '{}';
+
+-- Add comment
+COMMENT ON COLUMN neraca.header_data IS 'JSON string containing header data for the neraca table';
