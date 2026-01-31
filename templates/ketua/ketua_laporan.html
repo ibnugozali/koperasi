@@ -81,9 +81,9 @@
                                     <option value="tahunan" {{if eq .TipeLaporan "tahunan"}}selected{{end}}>Tahunan</option>
                                 </select>
                             </div>
-                            <div class="col-md-2" id="bulanField">
+                            <div class="col-md-2" id="bulanField" style="display: {{if eq .TipeLaporan "tahunan"}}none{{else}}block{{end}};">
                                 <label for="bulan" class="form-label">Bulan</label>
-                                <select class="form-control" id="bulan" name="bulan">
+                                <select class="form-control" id="bulan" name="bulan" {{if eq .TipeLaporan "tahunan"}}disabled{{end}}>
                                     <option value="1" {{if eq .Bulan 1}}selected{{end}}>Januari</option>
                                     <option value="2" {{if eq .Bulan 2}}selected{{end}}>Februari</option>
                                     <option value="3" {{if eq .Bulan 3}}selected{{end}}>Maret</option>
@@ -191,7 +191,7 @@
             </div>
 
             <!-- Tabel Rincian Laporan Keuangan - Bulanan -->
-            <div class="row mt-4" id="rincianBulanan">
+            <div class="row mt-4" id="rincianBulanan" style="display: {{if eq .TipeLaporan "tahunan"}}none{{else}}block{{end}};">
                 <div class="col-12">
                     <div class="card shadow-sm">
                         <div class="card-header bg-info text-white">
@@ -278,7 +278,7 @@
             </div>
 
             <!-- Tabel Rincian Laporan Keuangan - Tahunan (5 Tabel) -->
-            <div id="rincianTahunan" style="display: none;">
+            <div id="rincianTahunan" style="display: {{if eq .TipeLaporan "tahunan"}}block{{else}}none{{end}};">
                 <!-- Tabel 1:Daftar Simpanan Anggota -->
                 <div class="row mt-4">
                     <div class="col-12">
@@ -509,98 +509,154 @@
                         <div class="card shadow-sm">
                             <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center" id="neracaCardHeader">
                                 <span><i class="fa-solid fa-money-bill-transfer"></i> Neraca Koprasi Simpan Pinjam</span>
-                                <div class="btn-group">
-                                    <button class="btn btn-sm btn-primary" id="btnEditNeraca" onclick="editNeraca()">
-                                        <i class="fas fa-edit"></i> Edit Neraca
-                                    </button>
+                                <div class="btn-group" id="neracaButtonGroup">
+                                <button class="btn btn-sm btn-primary" id="btnEditNeraca" type="button">
+                                    <i class="fas fa-edit"></i> Edit Neraca
+                                </button>
                                 </div>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
-                                    <table class="table table-bordered">
+                                    <table class="table table-bordered table-hover" style="font-size: 0.9rem;">
+                                        <colgroup>
+                                            <col style="width: 8%;">
+                                            <col style="width: 17%;">
+                                            <col style="width: 12%;">
+                                            <col style="width: 12%;">
+                                            <col style="width: 8%;">
+                                            <col style="width: 17%;">
+                                            <col style="width: 12%;">
+                                            <col style="width: 12%;">
+                                        </colgroup>
                                         <thead class="table-dark">
                                             <tr>
-                                                <th colspan="2" class="text-center">ASET</th>
-                                                <th colspan="2" class="text-center">KEWAJIBAN & EKUITAS</th>
+                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;">No<br>Perkiraan</th>
+                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;">Perkiraan</th>
+                                                <th colspan="2" class="text-center" style="background-color: #0d6efd; color: white;"><strong>ASET</strong></th>
+                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;">No<br>Perkiraan</th>
+                                                <th rowspan="2" class="text-center align-middle" style="vertical-align: middle;">Perkiraan</th>
+                                                <th colspan="2" class="text-center" style="background-color: #198754; color: white;"><strong>KEWAJIBAN & EKUITAS</strong></th>
+                                            </tr>
+                                            <tr>
+                                                <th class="text-center" style="background-color: #0d6efd; color: white;">2024 (Rp)</th>
+                                                <th class="text-center" style="background-color: #0d6efd; color: white;">2023 (Rp)</th>
+                                                <th class="text-center" style="background-color: #198754; color: white;">2024 (Rp)</th>
+                                                <th class="text-center" style="background-color: #198754; color: white;">2023 (Rp)</th>
                                             </tr>
                                         </thead>
                                         <tbody id="neracaTableBody">
-                                            <tr>
-                                                <td><strong>Aset Lancar</strong></td>
-                                                <td><button class="btn btn-sm btn-success d-none" id="btnAddAsetLancar" onclick="tambahItem('asetLancar')"><i class="fas fa-plus"></i></button></td>
-                                                <td><strong>Kewajiban Lancar</strong></td>
-                                                <td><button class="btn btn-sm btn-success d-none" id="btnAddKewajibanLancar" onclick="tambahItem('kewajibanLancar')"><i class="fas fa-plus"></i></button></td>
+                                            <tr class="table-primary">
+                                                <td colspan="2" class="fw-bold" style="background-color: #cfe2ff;"><i class="fas fa-folder-open me-2"></i>Aset Lancar</td>
+                                                <td colspan="2" style="background-color: #cfe2ff;"><button class="btn btn-sm btn-success d-none" id="btnAddAsetLancar" onclick="tambahItem('asetLancar')"><i class="fas fa-plus"></i></button></td>
+                                                <td colspan="2" class="fw-bold" style="background-color: #d1e7dd;"><i class="fas fa-folder-open me-2"></i>Kewajiban Lancar</td>
+                                                <td colspan="2" style="background-color: #d1e7dd;"><button class="btn btn-sm btn-success d-none" id="btnAddKewajibanLancar" onclick="tambahItem('kewajibanLancar')"><i class="fas fa-plus"></i></button></td>
                                             </tr>
                                             <tr id="row_kas">
+                                                <td class="text-center">1.1.01</td>
                                                 <td class="ps-4" id="label_kas">Kas</td>
                                                 <td class="text-end" id="kas">Rp 0</td>
+                                                <td class="text-end" id="kas_2023">Rp 0</td>
+                                                <td class="text-center">2.1.01</td>
                                                 <td class="ps-4" id="label_hutangUsaha">Hutang Usaha</td>
                                                 <td class="text-end" id="hutangUsaha">Rp 0</td>
+                                                <td class="text-end" id="hutangUsaha_2023">Rp 0</td>
                                             </tr>
                                             <tr id="row_bank">
+                                                <td class="text-center">1.1.02</td>
                                                 <td class="ps-4" id="label_bank">Bank</td>
                                                 <td class="text-end" id="bank">Rp 0</td>
+                                                <td class="text-end" id="bank_2023">Rp 0</td>
+                                                <td class="text-center">2.1.02</td>
                                                 <td class="ps-4" id="label_hutangBunga">Hutang Bunga</td>
                                                 <td class="text-end" id="hutangBunga">Rp 0</td>
+                                                <td class="text-end" id="hutangBunga_2023">Rp 0</td>
                                             </tr>
                                             <tr id="row_piutangAnggota">
+                                                <td class="text-center">1.1.03</td>
                                                 <td class="ps-4" id="label_piutangAnggota">Piutang Anggota</td>
                                                 <td class="text-end" id="piutangAnggota">Rp 0</td>
+                                                <td class="text-end" id="piutangAnggota_2023">Rp 0</td>
+                                                <td class="text-center">2.1.03</td>
                                                 <td class="ps-4" id="label_simpananAnggota">Simpanan Anggota</td>
                                                 <td class="text-end" id="simpananAnggota">Rp 0</td>
+                                                <td class="text-end" id="simpananAnggota_2023">Rp 0</td>
                                             </tr>
                                             <tr id="asetLancarEnd">
+                                                <td class="text-center">1.1.04</td>
                                                 <td class="ps-4" id="label_perlengkapan">Perlengkapan</td>
                                                 <td class="text-end" id="perlengkapan">Rp 0</td>
-                                                <td colspan="2" id="kewajibanLancarEnd"></td>
+                                                <td class="text-end" id="perlengkapan_2023">Rp 0</td>
+                                                <td colspan="4" id="kewajibanLancarEnd"></td>
                                             </tr>
-                                            <tr>
-                                                <td class="fw-bold">Total Aset Lancar</td>
-                                                <td class="text-end fw-bold" id="totalAsetLancar">Rp 0</td>
-                                                <td class="fw-bold">Total Kewajiban Lancar</td>
-                                                <td class="text-end fw-bold" id="totalKewajibanLancar">Rp 0</td>
+                                            <tr class="table-light" style="border-top: 2px solid #000;">
+                                                <td colspan="2" class="fw-bold text-start ps-3" style="background-color: #e7f1ff;">Total Aset Lancar</td>
+                                                <td class="text-end fw-bold" id="totalAsetLancar" style="background-color: #e7f1ff;">Rp 0</td>
+                                                <td class="text-end fw-bold" id="totalAsetLancar_2023" style="background-color: #e7f1ff;">Rp 0</td>
+                                                <td colspan="2" class="fw-bold text-start ps-3" style="background-color: #d4edda;">Total Kewajiban Lancar</td>
+                                                <td class="text-end fw-bold" id="totalKewajibanLancar" style="background-color: #d4edda;">Rp 0</td>
+                                                <td class="text-end fw-bold" id="totalKewajibanLancar_2023" style="background-color: #d4edda;">Rp 0</td>
                                             </tr>
-                                            <tr>
-                                                <td><strong>Aset Tetap</strong></td>
-                                                <td><button class="btn btn-sm btn-success d-none" id="btnAddAsetTetap" onclick="tambahItem('asetTetap')"><i class="fas fa-plus"></i></button></td>
-                                                <td><strong>Ekuitas/Modal</strong></td>
-                                                <td><button class="btn btn-sm btn-success d-none" id="btnAddEkuitas" onclick="tambahItem('ekuitas')"><i class="fas fa-plus"></i></button></td>
+                                            <tr class="table-primary">
+                                                <td colspan="2" class="fw-bold" style="background-color: #cfe2ff;"><i class="fas fa-building me-2"></i>Aset Tetap</td>
+                                                <td colspan="2" style="background-color: #cfe2ff;"><button class="btn btn-sm btn-success d-none" id="btnAddAsetTetap" onclick="tambahItem('asetTetap')"><i class="fas fa-plus"></i></button></td>
+                                                <td colspan="2" class="fw-bold" style="background-color: #d1e7dd;"><i class="fas fa-coins me-2"></i>Ekuitas/Modal</td>
+                                                <td colspan="2" style="background-color: #d1e7dd;"><button class="btn btn-sm btn-success d-none" id="btnAddEkuitas" onclick="tambahItem('ekuitas')"><i class="fas fa-plus"></i></button></td>
                                             </tr>
                                             <tr id="row_tanah">
+                                                <td class="text-center">1.2.01</td>
                                                 <td class="ps-4" id="label_tanah">Tanah</td>
                                                 <td class="text-end" id="tanah">Rp 0</td>
+                                                <td class="text-end" id="tanah_2023">Rp 0</td>
+                                                <td class="text-center">3.1.01</td>
                                                 <td class="ps-4" id="label_simpananPokok">Simpanan Pokok</td>
                                                 <td class="text-end" id="simpananPokok">Rp 0</td>
+                                                <td class="text-end" id="simpananPokok_2023">Rp 0</td>
                                             </tr>
                                             <tr id="row_bangunan">
+                                                <td class="text-center">1.2.02</td>
                                                 <td class="ps-4" id="label_bangunan">Bangunan</td>
                                                 <td class="text-end" id="bangunan">Rp 0</td>
+                                                <td class="text-end" id="bangunan_2023">Rp 0</td>
+                                                <td class="text-center">3.1.02</td>
                                                 <td class="ps-4" id="label_simpananWajib">Simpanan Wajib</td>
                                                 <td class="text-end" id="simpananWajib">Rp 0</td>
+                                                <td class="text-end" id="simpananWajib_2023">Rp 0</td>
                                             </tr>
                                             <tr id="row_kendaraan">
+                                                <td class="text-center">1.2.03</td>
                                                 <td class="ps-4" id="label_kendaraan">Kendaraan</td>
                                                 <td class="text-end" id="kendaraan">Rp 0</td>
+                                                <td class="text-end" id="kendaraan_2023">Rp 0</td>
+                                                <td class="text-center">3.1.03</td>
                                                 <td class="ps-4" id="label_cadangan">Cadangan</td>
                                                 <td class="text-end" id="cadangan">Rp 0</td>
+                                                <td class="text-end" id="cadangan_2023">Rp 0</td>
                                             </tr>
                                             <tr id="asetTetapEnd">
+                                                <td class="text-center">1.2.04</td>
                                                 <td class="ps-4" id="label_peralatan">Peralatan</td>
                                                 <td class="text-end" id="peralatan">Rp 0</td>
-                                                <td class="ps-4" id="label_shuTahunBerjalan" rowspan="1">SHU Tahun Berjalan</td>
+                                                <td class="text-end" id="peralatan_2023">Rp 0</td>
+                                                <td class="text-center">3.1.04</td>
+                                                <td class="ps-4" id="label_shuTahunBerjalan">SHU Tahun Berjalan</td>
                                                 <td class="text-end" id="shuTahunBerjalan">Rp 0</td>
+                                                <td class="text-end" id="shuTahunBerjalan_2023">Rp 0</td>
                                             </tr>
-                                            <tr>
-                                                <td class="fw-bold">Total Aset Tetap</td>
-                                                <td class="text-end fw-bold" id="totalAsetTetap">Rp 0</td>
-                                                <td class="fw-bold">Total Ekuitas</td>
-                                                <td class="text-end fw-bold" id="totalEkuitas">Rp 0</td>
+                                            <tr class="table-light" style="border-top: 2px solid #000;">
+                                                <td colspan="2" class="fw-bold text-start ps-3" style="background-color: #e7f1ff;">Total Aset Tetap</td>
+                                                <td class="text-end fw-bold" id="totalAsetTetap" style="background-color: #e7f1ff;">Rp 0</td>
+                                                <td class="text-end fw-bold" id="totalAsetTetap_2023" style="background-color: #e7f1ff;">Rp 0</td>
+                                                <td colspan="2" class="fw-bold text-start ps-3" style="background-color: #d4edda;">Total Ekuitas</td>
+                                                <td class="text-end fw-bold" id="totalEkuitas" style="background-color: #d4edda;">Rp 0</td>
+                                                <td class="text-end fw-bold" id="totalEkuitas_2023" style="background-color: #d4edda;">Rp 0</td>
                                             </tr>
-                                            <tr class="table-info fw-bold">
-                                                <td>TOTAL ASET</td>
-                                                <td class="text-end" id="totalAset">Rp 0</td>
-                                                <td>TOTAL KEWAJIBAN & EKUITAS</td>
-                                                <td class="text-end" id="totalKewajibanEkuitas">Rp 0</td>
+                                            <tr class="table-warning fw-bold" style="border-top: 3px double #000; border-bottom: 3px double #000; font-size: 1.05rem;">
+                                                <td colspan="2" class="text-start ps-3" style="background-color: #fff3cd;"><i class="fas fa-calculator me-2"></i>TOTAL ASET</td>
+                                                <td class="text-end" id="totalAset" style="background-color: #fff3cd;">Rp 0</td>
+                                                <td class="text-end" id="totalAset_2023" style="background-color: #fff3cd;">Rp 0</td>
+                                                <td colspan="2" class="text-start ps-3" style="background-color: #fff3cd;"><i class="fas fa-calculator me-2"></i>TOTAL KEWAJIBAN & EKUITAS</td>
+                                                <td class="text-end" id="totalKewajibanEkuitas" style="background-color: #fff3cd;">Rp 0</td>
+                                                <td class="text-end" id="totalKewajibanEkuitas_2023" style="background-color: #fff3cd;">Rp 0</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -626,6 +682,280 @@
 <script src="/static/js/ketua_navbar.js"></script>
 
 <script>
+// ============================================
+// GLOBAL VARIABLES
+// ============================================
+// Counter untuk item tambahan
+let itemCounter = {
+    asetLancar: 0,
+    asetTetap: 0,
+    kewajibanLancar: 0,
+    ekuitas: 0
+};
+
+// Array untuk menyimpan item yang dihapus
+let deletedItems = [];
+
+// Mapping row untuk field default neraca
+const editableRows = [
+    { id: 'row_kas', field: 'kas', col: 0 },
+    { id: 'row_bank', field: 'bank', col: 0 },
+    { id: 'row_piutangAnggota', field: 'piutangAnggota', col: 0 },
+    { id: 'row_perlengkapan', field: 'perlengkapan', col: 0 },
+    { id: 'row_tanah', field: 'tanah', col: 0 },
+    { id: 'row_bangunan', field: 'bangunan', col: 0 },
+    { id: 'row_kendaraan', field: 'kendaraan', col: 0 },
+    { id: 'row_peralatan', field: 'peralatan', col: 0 },
+    { id: 'row_hutangUsaha', field: 'hutangUsaha', col: 4 },
+    { id: 'row_hutangBunga', field: 'hutangBunga', col: 4 },
+    { id: 'row_simpananAnggota', field: 'simpananAnggota', col: 4 },
+    { id: 'row_simpananPokok', field: 'simpananPokok', col: 4 },
+    { id: 'row_simpananWajib', field: 'simpananWajib', col: 4 },
+    { id: 'row_cadangan', field: 'cadangan', col: 4 },
+    { id: 'row_shuTahunBerjalan', field: 'shuTahunBerjalan', col: 4 }
+];
+
+// ============================================
+// DEFINE GLOBAL FUNCTIONS UNTUK NERACA
+// ============================================
+// Define directly in global scope (window) agar bisa dipanggil dari onclick
+
+// Flag untuk mencegah double execution
+let isEditMode = false;
+
+window.editNeraca = function() {
+    console.log('=== editNeraca() DIPANGGIL ===');
+    console.log('Stack trace:', new Error().stack);
+    
+    // Cek apakah sudah dalam edit mode
+    if (isEditMode) {
+        console.warn('⚠️ Sudah dalam edit mode, skip execution');
+        return;
+    }
+
+    const btnEditNeraca = document.getElementById('btnEditNeraca');
+    if (!btnEditNeraca) {
+        console.error('Button btnEditNeraca tidak ditemukan!');
+        return;
+    }
+    
+    // Cek apakah sudah ada input (tanda sudah dalam edit mode)
+    const firstInput = document.getElementById('input_kas') || document.getElementById('input_tanah');
+    if (firstInput) {
+        console.warn('⚠️ Input sudah ada, sudah dalam edit mode. Skip.');
+        return;
+    }
+
+    console.log('Current button text:', btnEditNeraca.innerHTML);
+    console.log('Current button class:', btnEditNeraca.className);
+    
+    // Set flag edit mode
+    isEditMode = true;
+
+    // Set edit mode flag
+    localStorage.setItem('editMode', 'true');
+    
+    const fields = [
+        'kas', 'bank', 'piutangAnggota', 'perlengkapan',
+        'tanah', 'bangunan', 'kendaraan', 'peralatan',
+        'hutangUsaha', 'hutangBunga', 'simpananAnggota',
+        'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'
+    ];
+
+    // Filter out deleted fields to avoid warnings
+    const activeFields = fields.filter(field => !deletedItems.includes(field));
+
+    console.log('Processing', activeFields.length, 'active fields...');
+
+    // Konversi semua field nilai ke input dengan tombol hapus
+    console.log('Converting fields to inputs...');
+    activeFields.forEach(field => {
+        const td = document.getElementById(field);
+        if (!td) {
+            console.warn('Element not found:', field);
+            return;
+        }
+        
+        // Periksa apakah sudah ada input (untuk menghindari duplikasi)
+        const existingInput = document.getElementById(`input_${field}`);
+        if (existingInput) {
+            console.log(`⏩ Skip ${field} - input sudah ada`);
+            return;
+        }
+        
+        const currentValue = td.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+        td.innerHTML = `
+            <div class="d-flex gap-1 align-items-center">
+                <input type="number" class="form-control form-control-sm text-end" 
+                       id="input_${field}" value="${currentValue}" 
+                       onchange="updateNeraca()" style="flex: 1;">
+                <button class="btn btn-sm btn-danger" onclick="hapusItem('${field}')" 
+                        style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
+                        title="Hapus seluruh item ini">
+                    <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
+                </button>
+            </div>
+        `;
+        
+        // Konversi nilai 2023 ke input (tanpa button hapus)
+        const td2023 = document.getElementById(field + '_2023');
+        if (td2023) {
+            const currentValue2023 = td2023.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            td2023.innerHTML = `
+                <input type="number" class="form-control form-control-sm text-end" 
+                       id="input_${field}_2023" value="${currentValue2023}" 
+                       onchange="updateNeraca()">
+            `;
+        }
+        
+        // Konversi label/keterangan ke input text
+        const labelTd = document.getElementById('label_' + field);
+        if (labelTd) {
+            const currentLabel = labelTd.textContent.trim();
+            labelTd.innerHTML = `<input type="text" class="form-control form-control-sm ps-4" 
+                            id="input_label_${field}" value="${currentLabel}">`;
+        }
+    });
+    
+    // Konversi No Perkiraan untuk field default menggunakan mapping yang tepat
+    // Gunakan editableRows yang sudah didefinisikan di global scope
+    editableRows.forEach(rowConfig => {
+        if (deletedItems.includes(rowConfig.field)) return;
+        
+        const row = document.getElementById(rowConfig.id);
+        if (row && row.cells[rowConfig.col]) {
+            const cell = row.cells[rowConfig.col];
+            const currentNo = cell.textContent.trim();
+            if (currentNo) {
+                cell.innerHTML = `<input type="text" class="form-control form-control-sm text-center" 
+                                id="input_no_${rowConfig.field}" value="${currentNo}" style="width: 80px;">`;
+            }
+        }
+    });
+    
+    // Konversi custom items ke input dengan tombol hapus
+    ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
+        for (let i = 1; i <= itemCounter[kategori]; i++) {
+            const itemId = `${kategori}_custom_${i}`;
+            if (deletedItems.includes(itemId)) continue;
+
+            const row = document.getElementById(`row_${itemId}`);
+            if (!row) continue;
+
+            // Tentukan kolom mana yang berisi data berdasarkan kategori
+            // asetLancar dan asetTetap: kolom 0-3 (no, label, value2024, value2023)
+            // kewajibanLancar dan ekuitas: kolom 4-7 (no, label, value2024, value2023)
+            const isLeftSide = (kategori === 'asetLancar' || kategori === 'asetTetap');
+            const colNo = isLeftSide ? 0 : 4;
+            const colLabel = isLeftSide ? 1 : 5;
+            const colValue = isLeftSide ? 2 : 6;
+            const colValue2023 = isLeftSide ? 3 : 7;
+
+            // Konversi No Perkiraan
+            if (row.cells[colNo]) {
+                const currentNo = row.cells[colNo].textContent.trim();
+                row.cells[colNo].innerHTML = `<input type="text" class="form-control form-control-sm text-center"
+                                id="input_no_${itemId}" value="${currentNo}" style="width: 80px;">`;
+                row.cells[colNo].className = 'text-center';
+            }
+
+            // Konversi Label
+            if (row.cells[colLabel]) {
+                const currentLabel = row.cells[colLabel].textContent.trim();
+                row.cells[colLabel].innerHTML = `<input type="text" class="form-control form-control-sm ps-4"
+                                id="input_label_${itemId}" value="${currentLabel}">`;
+                row.cells[colLabel].className = 'ps-4';
+            }
+
+            // Konversi Nilai 2024 dengan button hapus
+            if (row.cells[colValue]) {
+                const currentValue = row.cells[colValue].textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                row.cells[colValue].innerHTML = `
+                    <div class="d-flex gap-1 align-items-center">
+                        <input type="number" class="form-control form-control-sm text-end"
+                               id="input_${itemId}" value="${currentValue}"
+                               onchange="updateNeraca()" style="flex: 1;">
+                        <button class="btn btn-sm btn-danger" onclick="hapusItem('${itemId}')"
+                                style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;"
+                                title="Hapus seluruh item ini">
+                            <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
+                        </button>
+                    </div>
+                `;
+                row.cells[colValue].className = 'text-end';
+            }
+
+            // Konversi Nilai 2023
+            if (row.cells[colValue2023]) {
+                const currentValue2023 = row.cells[colValue2023].textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                row.cells[colValue2023].innerHTML = `<input type="number" class="form-control form-control-sm text-end"
+                               id="input_${itemId}_2023" value="${currentValue2023}"
+                               onchange="updateNeraca()">`;
+                row.cells[colValue2023].className = 'text-end';
+            }
+        }
+    });
+
+    // Tampilkan button tambah untuk setiap kategori
+    const btnAddAsetLancar = document.getElementById('btnAddAsetLancar');
+    const btnAddAsetTetap = document.getElementById('btnAddAsetTetap');
+    const btnAddKewajibanLancar = document.getElementById('btnAddKewajibanLancar');
+    const btnAddEkuitas = document.getElementById('btnAddEkuitas');
+
+    if (btnAddAsetLancar) btnAddAsetLancar.classList.remove('d-none');
+    if (btnAddAsetTetap) btnAddAsetTetap.classList.remove('d-none');
+    if (btnAddKewajibanLancar) btnAddKewajibanLancar.classList.remove('d-none');
+    if (btnAddEkuitas) btnAddEkuitas.classList.remove('d-none');
+    
+    console.log('Button + ditampilkan');
+    
+    // Ganti button Edit dengan button Simpan dan Batal
+    const btnEdit = document.getElementById('btnEditNeraca');
+    if (btnEdit) {
+        btnEdit.className = 'btn btn-sm btn-success';
+        btnEdit.innerHTML = '<i class="fas fa-save"></i> Simpan';
+        btnEdit.onclick = function() {
+            saveNeraca();
+        };
+
+        // Tambahkan button Batal
+        const btnBatal = document.createElement('button');
+        btnBatal.className = 'btn btn-sm btn-secondary ms-2';
+        btnBatal.innerHTML = '<i class="fas fa-times"></i> Batal';
+        btnBatal.onclick = function() {
+            cancelNeraca();
+        };
+
+        // Tambahkan button Batal ke button group
+        const buttonGroup = document.getElementById('neracaButtonGroup');
+        if (buttonGroup) {
+            buttonGroup.appendChild(btnBatal);
+        }
+
+        console.log('Button berhasil diubah menjadi Simpan dan Batal');
+    } else {
+        console.error('Button btnEditNeraca tidak ditemukan!');
+    }
+}
+
+// Fungsi untuk membatalkan edit neraca
+window.cancelNeraca = function() {
+    console.log('=== cancelNeraca() DIPANGGIL ===');
+    
+    // Reset flag edit mode
+    isEditMode = false;
+    localStorage.removeItem('editMode');
+
+    // Reload halaman untuk membatalkan semua perubahan
+    if (confirm('Yakin ingin membatalkan semua perubahan?')) {
+        window.location.reload();
+    }
+}
+
+console.log('editNeraca and cancelNeraca loaded successfully');
+console.log('editNeraca type:', typeof window.editNeraca);
+console.log('cancelNeraca type:', typeof window.cancelNeraca);
+
 // Variable untuk zoom level
 let currentZoom = 1;
 const minZoom = 0.5;
@@ -674,26 +1004,48 @@ function previewKop(event) {
 
 // Fungsi untuk toggle field bulan berdasarkan tipe laporan
 function togglePeriode() {
-    const tipeLaporan = document.getElementById('tipe_laporan').value;
+    const tipeLaporan = document.getElementById('tipe_laporan');
     const bulanField = document.getElementById('bulanField');
     const bulanSelect = document.getElementById('bulan');
     const rincianBulanan = document.getElementById('rincianBulanan');
     const rincianTahunan = document.getElementById('rincianTahunan');
     const tahunInput = document.getElementById('tahun');
     
+    if (!tipeLaporan) {
+        console.error('Tipe laporan element not found');
+        return;
+    }
+    
+    const tipeValue = tipeLaporan.value;
+    console.log('Toggle periode called, tipe:', tipeValue);
+    
     // Update download button links
     updateDownloadLinks();
     
-    if (tipeLaporan === 'tahunan') {
-        bulanField.style.display = 'none';
-        bulanSelect.removeAttribute('required');
-        rincianBulanan.style.display = 'none';
-        rincianTahunan.style.display = 'block';
+    if (tipeValue === 'tahunan') {
+        // Hide bulan field untuk laporan tahunan
+        if (bulanField) {
+            bulanField.style.display = 'none';
+            console.log('Bulan field hidden');
+        }
+        if (bulanSelect) {
+            bulanSelect.removeAttribute('required');
+            bulanSelect.disabled = true; // Disable juga agar tidak tersubmit
+        }
+        if (rincianBulanan) rincianBulanan.style.display = 'none';
+        if (rincianTahunan) rincianTahunan.style.display = 'block';
     } else {
-        bulanField.style.display = 'block';
-        bulanSelect.setAttribute('required', 'required');
-        rincianBulanan.style.display = 'block';
-        rincianTahunan.style.display = 'none';
+        // Show bulan field untuk laporan bulanan
+        if (bulanField) {
+            bulanField.style.display = 'block';
+            console.log('Bulan field shown');
+        }
+        if (bulanSelect) {
+            bulanSelect.setAttribute('required', 'required');
+            bulanSelect.disabled = false; // Enable kembali
+        }
+        if (rincianBulanan) rincianBulanan.style.display = 'block';
+        if (rincianTahunan) rincianTahunan.style.display = 'none';
     }
 }
 
@@ -722,16 +1074,63 @@ function updateDownloadLinks() {
     downloadPdfBtn.href = pdfUrl;
 }
 
-$(document).ready(function() {
+// Initialize on page load
+window.addEventListener('load', function() {
     // Toggle bulan field saat halaman load
-    togglePeriode();
+    console.log('Page loaded, calling togglePeriode');
+    setTimeout(function() {
+        togglePeriode();
+    }, 100);
+
+    // DISABLE auto-restore edit mode untuk mencegah duplikasi
+    // Biarkan user klik Edit Neraca manual setelah page load
+    localStorage.removeItem('editMode');
+
+    // Verify functions are defined
+    console.log('Checking functions:');
+    console.log('editNeraca:', typeof editNeraca);
+    console.log('saveNeraca:', typeof saveNeraca);
+    console.log('updateNeraca:', typeof updateNeraca);
+
+    const btnElement = document.getElementById('btnEditNeraca');
+    console.log('Button element:', btnElement);
+    if (btnElement) {
+        console.log('Button onclick:', btnElement.onclick);
+        console.log('Button onclick attribute:', btnElement.getAttribute('onclick'));
+
+        // Test manual click
+        console.log('Testing manual click...');
+        btnElement.addEventListener('click', function() {
+            console.log('Button clicked via addEventListener!');
+        });
+    }
+});
+
+$(document).ready(function() {
+    // Call togglePeriode saat document ready juga
+    console.log('Document ready, calling togglePeriode');
+    setTimeout(function() {
+        togglePeriode();
+    }, 50);
     
     // Add event listeners untuk update download links saat nilai berubah
-    document.getElementById('bulan').addEventListener('change', updateDownloadLinks);
-    document.getElementById('tahun').addEventListener('change', updateDownloadLinks);
-    document.getElementById('tipe_laporan').addEventListener('change', updateDownloadLinks);
+    const bulanEl = document.getElementById('bulan');
+    const tahunEl = document.getElementById('tahun');
+    const tipeLaporanEl = document.getElementById('tipe_laporan');
+
+    if (bulanEl) bulanEl.addEventListener('change', updateDownloadLinks);
+    if (tahunEl) tahunEl.addEventListener('change', updateDownloadLinks);
+    if (tipeLaporanEl) tipeLaporanEl.addEventListener('change', updateDownloadLinks);
+
+    // Set initial onclick for Edit Neraca button (akan diset ulang setelah load data)
+    const btnEditNeraca = document.getElementById('btnEditNeraca');
+    if (btnEditNeraca && !btnEditNeraca.onclick) {
+        btnEditNeraca.onclick = function() {
+            editNeraca();
+        };
+    }
     
-    // Initialize DataTable only if table has valid data rows (sama seperti bendahara_laporan.html)
+    // Initialize DataTable only if table has valid data rows
     {{ if and (not .Error) .Anggotas }}
     $('#riwayatTable').DataTable({
             "language": {
@@ -791,17 +1190,6 @@ $(document).ready(function() {
     {{ end }}
 });
 
-// Counter untuk item tambahan
-let itemCounter = {
-    asetLancar: 0,
-    asetTetap: 0,
-    kewajibanLancar: 0,
-    ekuitas: 0
-};
-
-// Array untuk menyimpan item yang dihapus
-let deletedItems = [];
-
 // Fungsi untuk tambah item baru
 function tambahItem(kategori) {
     console.log('tambahItem dipanggil dengan kategori:', kategori);
@@ -810,6 +1198,16 @@ function tambahItem(kategori) {
     const id = `${kategori}_custom_${itemCounter[kategori]}`;
     
     console.log('ID baru:', id);
+    
+    // PENTING: Cek apakah row/input dengan ID ini sudah ada (untuk menghindari duplikasi)
+    const existingRow = document.getElementById(`row_${id}`);
+    const existingInput = document.getElementById(`input_${id}`);
+    
+    if (existingRow || existingInput) {
+        console.warn(`⚠️ Element dengan ID ${id} sudah ada! Skip pembuatan.`);
+        itemCounter[kategori]--; // Rollback counter
+        return;
+    }
     
     let newRow;
     if (kategori === 'asetLancar' || kategori === 'asetTetap') {
@@ -833,9 +1231,9 @@ function tambahItem(kategori) {
             }
             
             if (foundSection && row.cells.length >= 4) {
-                const leftLabel = row.cells[0].textContent.trim();
-                const leftValue = row.cells[1].textContent.trim();
-                const hasLeftInput = row.cells[0].querySelector('input') || row.cells[1].querySelector('input');
+                const leftLabel = row.cells[1].textContent.trim();
+                const leftValue = row.cells[2].textContent.trim();
+                const hasLeftInput = row.cells[1].querySelector('input') || row.cells[2].querySelector('input');
                 
                 // Cek jika kolom kiri kosong
                 if (!leftLabel && !leftValue && !hasLeftInput) {
@@ -847,20 +1245,30 @@ function tambahItem(kategori) {
         
         if (targetRow) {
             // Gunakan row kosong yang ada
-            targetRow.cells[0].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${id}" placeholder="Nama Item">`;
-            targetRow.cells[0].className = 'ps-4';
-            targetRow.cells[0].id = `label_${id}`;
+            // cells[0] = No Perkiraan, cells[1] = Label, cells[2] = Value 2024, cells[3] = Value 2023
+            targetRow.cells[0].innerHTML = `<input type="text" class="form-control form-control-sm text-center" id="input_no_${id}" placeholder="No">`;
+            targetRow.cells[0].className = 'text-center';
             
-            targetRow.cells[1].innerHTML = `
-                <div class="d-flex gap-1">
-                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
-                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')">
-                        <i class="fas fa-trash"></i>
+            targetRow.cells[1].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${id}" placeholder="Nama Item">`;
+            targetRow.cells[1].className = 'ps-4';
+            targetRow.cells[1].id = `label_${id}`;
+            
+            targetRow.cells[2].innerHTML = `
+                <div class="d-flex gap-1 align-items-center">
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" style="flex: 1;">
+                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
+                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
+                            title="Hapus seluruh item ini">
+                        <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                     </button>
                 </div>
             `;
-            targetRow.cells[1].className = 'text-end';
-            targetRow.cells[1].id = id;
+            targetRow.cells[2].className = 'text-end';
+            targetRow.cells[2].id = id;
+            
+            targetRow.cells[3].innerHTML = `<input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()">`;
+            targetRow.cells[3].className = 'text-end';
+            targetRow.cells[3].id = `${id}_2023`;
             
             // Update row id jika perlu
             if (!targetRow.id || targetRow.id.includes('row_')) {
@@ -871,18 +1279,24 @@ function tambahItem(kategori) {
             newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
             newRow.innerHTML = `
+                <td class="text-center"><input type="text" class="form-control form-control-sm text-center" id="input_no_${id}" placeholder="No"></td>
                 <td class="ps-4" id="label_${id}">
                     <input type="text" class="form-control form-control-sm" id="input_label_${id}" placeholder="Nama Item">
                 </td>
                 <td class="text-end" id="${id}">
-                    <div class="d-flex gap-1">
-                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
-                        <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')">
-                            <i class="fas fa-trash"></i>
+                    <div class="d-flex gap-1 align-items-center">
+                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" style="flex: 1;">
+                        <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
+                                style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
+                                title="Hapus seluruh item ini">
+                            <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                         </button>
                     </div>
                 </td>
-                <td colspan="2"></td>
+                <td class="text-end" id="${id}_2023">
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()">
+                </td>
+                <td colspan="4"></td>
             `;
             const endRow = document.getElementById(endId);
             if (endRow) {
@@ -907,14 +1321,15 @@ function tambahItem(kategori) {
                 break;
             }
             
-            if (foundSection && row.cells.length >= 4) {
-                const rightLabel = row.cells[2].textContent.trim();
-                const rightValue = row.cells[3].textContent.trim();
-                const hasRightInput = row.cells[2].querySelector('input') || row.cells[3].querySelector('input');
-                const isColspan = row.cells[2].colSpan > 1;
+            if (foundSection && row.cells.length >= 8) {
+                const rightNoPerkiraan = row.cells[4].textContent.trim();
+                const rightLabel = row.cells[5].textContent.trim();
+                const rightValue = row.cells[6].textContent.trim();
+                const hasRightInput = row.cells[5].querySelector('input') || row.cells[6].querySelector('input');
+                const isColspan = row.cells[4].colSpan > 1 || row.cells[5].colSpan > 1;
                 
                 // Cek jika kolom kanan kosong
-                if (!rightLabel && !rightValue && !hasRightInput && !isColspan) {
+                if (!rightNoPerkiraan && !rightLabel && !rightValue && !hasRightInput && !isColspan) {
                     targetRow = row;
                     break;
                 }
@@ -923,37 +1338,53 @@ function tambahItem(kategori) {
         
         if (targetRow) {
             // Gunakan row kosong yang ada
-            targetRow.cells[2].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${id}" placeholder="Nama Item">`;
-            targetRow.cells[2].className = 'ps-4';
-            targetRow.cells[2].colSpan = 1;
-            targetRow.cells[2].id = `label_${id}`;
+            // cells[4] = No Perkiraan, cells[5] = Label, cells[6] = Value 2024, cells[7] = Value 2023
+            targetRow.cells[4].innerHTML = `<input type="text" class="form-control form-control-sm text-center" id="input_no_${id}" placeholder="No">`;
+            targetRow.cells[4].className = 'text-center';
             
-            targetRow.cells[3].innerHTML = `
-                <div class="d-flex gap-1">
-                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
-                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')">
-                        <i class="fas fa-trash"></i>
+            targetRow.cells[5].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${id}" placeholder="Nama Item">`;
+            targetRow.cells[5].className = 'ps-4';
+            targetRow.cells[5].colSpan = 1;
+            targetRow.cells[5].id = `label_${id}`;
+            
+            targetRow.cells[6].innerHTML = `
+                <div class="d-flex gap-1 align-items-center">
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" style="flex: 1;">
+                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
+                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
+                            title="Hapus seluruh item ini">
+                        <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                     </button>
                 </div>
             `;
-            targetRow.cells[3].className = 'text-end';
-            targetRow.cells[3].id = id;
+            targetRow.cells[6].className = 'text-end';
+            targetRow.cells[6].id = id;
+            
+            targetRow.cells[7].innerHTML = `<input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()">`;
+            targetRow.cells[7].className = 'text-end';
+            targetRow.cells[7].id = `${id}_2023`;
         } else {
             // Buat row baru jika tidak ada row kosong
             newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
             newRow.innerHTML = `
-                <td colspan="2"></td>
+                <td colspan="4"></td>
+                <td class="text-center"><input type="text" class="form-control form-control-sm text-center" id="input_no_${id}" placeholder="No"></td>
                 <td class="ps-4" id="label_${id}">
                     <input type="text" class="form-control form-control-sm" id="input_label_${id}" placeholder="Nama Item">
                 </td>
                 <td class="text-end" id="${id}">
-                    <div class="d-flex gap-1">
-                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
-                        <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')">
-                            <i class="fas fa-trash"></i>
+                    <div class="d-flex gap-1 align-items-center">
+                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" style="flex: 1;">
+                        <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
+                                style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
+                                title="Hapus seluruh item ini">
+                            <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                         </button>
                     </div>
+                </td>
+                <td class="text-end" id="${id}_2023">
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()">
                 </td>
             `;
             
@@ -1090,6 +1521,7 @@ function compactNeracaRows() {
         }
     }
 }
+window.tambahItem = tambahItem;
 
 // Fungsi untuk hapus item
 function hapusItem(itemId) {
@@ -1101,10 +1533,12 @@ function hapusItem(itemId) {
     
     const labelTd = document.getElementById('label_' + itemId);
     const valueTd = document.getElementById(itemId);
+    const valueTd2023 = document.getElementById(itemId + '_2023');
     
-    if (!labelTd || !valueTd) {
+    // Cek minimal ada valueTd (kolom nilai), labelTd boleh tidak ada
+    if (!valueTd) {
         console.error('Item tidak ditemukan:', itemId);
-        console.log('Mencoba mencari dengan ID:', 'label_' + itemId, 'dan', itemId);
+        console.log('Mencoba mencari dengan ID:', itemId);
         return;
     }
     
@@ -1116,28 +1550,47 @@ function hapusItem(itemId) {
     }
     
     // Kosongkan cell alih-alih menghapus row
-    labelTd.innerHTML = '';
+    if (labelTd) {
+        labelTd.innerHTML = '';
+    }
     valueTd.innerHTML = '';
+    if (valueTd2023) {
+        valueTd2023.innerHTML = '';
+    }
     
-    // Row hanya dihapus jika SEMUA 4 kolom benar-benar kosong
-    const row = labelTd.parentElement;
-    if (row) {
-        const allCells = Array.from(row.cells);
-        const allEmpty = allCells.every(cell => {
-            const text = cell.textContent.trim();
-            const hasContent = text !== '' && text !== undefined && text !== null;
-            const hasVisibleChildren = cell.querySelector('input, button, select, textarea') !== null;
-            return !hasContent && !hasVisibleChildren;
-        });
-        
-        console.log('Semua cell kosong?', allEmpty);
-        
-        // Hanya hapus row jika benar-benar semua kolom kosong
-        if (allEmpty) {
+    // Untuk custom item, langsung hapus row-nya
+    if (itemId.includes('_custom_')) {
+        const row = valueTd.parentElement;
+        if (row) {
             row.remove();
-            console.log('Row dihapus');
-        } else {
-            console.log('Row dipertahankan karena masih ada data di kolom lain');
+            console.log('Row custom item dihapus');
+        }
+    } else {
+        // Untuk item default, periksa apakah seluruh row kosong
+        const row = valueTd.parentElement;
+        if (row) {
+            const allCells = Array.from(row.cells);
+            const allEmpty = allCells.every(cell => {
+                const text = cell.textContent.trim();
+                const hasContent = text !== '' && text !== undefined && text !== null;
+                const hasVisibleChildren = cell.querySelector('input, button, select, textarea') !== null;
+                return !hasContent && !hasVisibleChildren;
+            });
+            
+            console.log('Semua cell kosong?', allEmpty);
+            
+            // Hanya hapus row jika benar-benar semua kolom kosong
+            if (allEmpty) {
+                row.remove();
+                console.log('Row dihapus');
+            } else {
+                console.log('Row dipertahankan karena masih ada data di kolom lain');
+                // Tambahkan colspan untuk cell yang dikosongkan agar tetap rapih
+                const noPerkiraan = row.cells[0] || row.cells[4];
+                if (noPerkiraan && !noPerkiraan.textContent.trim()) {
+                    noPerkiraan.innerHTML = '';
+                }
+            }
         }
     }
     
@@ -1145,188 +1598,231 @@ function hapusItem(itemId) {
     
     console.log('Item berhasil dihapus');
 }
-
-// Fungsi untuk edit Neraca
-function editNeraca() {
-    console.log('editNeraca() dipanggil');
-    
-    const fields = [
-        'kas', 'bank', 'piutangAnggota', 'perlengkapan',
-        'tanah', 'bangunan', 'kendaraan', 'peralatan',
-        'hutangUsaha', 'hutangBunga', 'simpananAnggota',
-        'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'
-    ];
-    
-    // Konversi semua field nilai ke input dengan tombol hapus
-    fields.forEach(field => {
-        const td = document.getElementById(field);
-        if (!td) {
-            console.warn('Element not found:', field);
-            return;
-        }
-        const currentValue = td.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-        td.innerHTML = `
-            <div class="d-flex gap-1">
-                <input type="number" class="form-control form-control-sm text-end" 
-                       id="input_${field}" value="${currentValue}" 
-                       onchange="updateNeraca()">
-                <button class="btn btn-sm btn-danger" onclick="hapusItem('${field}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
-        
-        // Konversi label/keterangan ke input text
-        const labelTd = document.getElementById('label_' + field);
-        if (labelTd) {
-            const currentLabel = labelTd.textContent.trim();
-            labelTd.innerHTML = `<input type="text" class="form-control form-control-sm ps-4" 
-                            id="input_label_${field}" value="${currentLabel}">`;
-        }
-    });
-    
-    // Tambahkan button delete untuk custom items
-    ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
-        for (let i = 1; i <= itemCounter[kategori]; i++) {
-            const row = document.getElementById(`row_${kategori}_custom_${i}`);
-            if (row) {
-                const cells = row.cells;
-                if (cells.length >= 2) {
-                    // Cari cell yang berisi label dan value
-                    let labelCell, valueCell;
-                    if (kategori === 'asetLancar' || kategori === 'asetTetap') {
-                        labelCell = cells[0];
-                        valueCell = cells[1];
-                    } else {
-                        labelCell = cells[2];
-                        valueCell = cells[3];
-                    }
-                    
-                    // Tambahkan button delete di cell value
-                    const currentLabel = labelCell.textContent.trim();
-                    const currentValue = valueCell.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                    
-                    labelCell.innerHTML = `<input type="text" class="form-control form-control-sm ps-4" 
-                                           id="input_label_${kategori}_custom_${i}" value="${currentLabel}">`;
-                    valueCell.innerHTML = `
-                        <div class="d-flex gap-1">
-                            <input type="number" class="form-control form-control-sm text-end" 
-                                   id="input_${kategori}_custom_${i}" value="${currentValue}" 
-                                   onchange="updateNeraca()">
-                            <button class="btn btn-sm btn-danger" onclick="hapusItem('${kategori}_custom_${i}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    `;
-                    valueCell.className = 'text-end';
-                }
-            }
-        }
-    });
-    
-    // Tampilkan button tambah item
-    const btnAddAsetLancar = document.getElementById('btnAddAsetLancar');
-    const btnAddAsetTetap = document.getElementById('btnAddAsetTetap');
-    const btnAddKewajibanLancar = document.getElementById('btnAddKewajibanLancar');
-    const btnAddEkuitas = document.getElementById('btnAddEkuitas');
-    
-    if (btnAddAsetLancar) btnAddAsetLancar.classList.remove('d-none');
-    if (btnAddAsetTetap) btnAddAsetTetap.classList.remove('d-none');
-    if (btnAddKewajibanLancar) btnAddKewajibanLancar.classList.remove('d-none');
-    if (btnAddEkuitas) btnAddEkuitas.classList.remove('d-none');
-    
-    console.log('Button + ditampilkan:', {
-        asetLancar: btnAddAsetLancar ? 'OK' : 'NOT FOUND',
-        asetTetap: btnAddAsetTetap ? 'OK' : 'NOT FOUND',
-        kewajibanLancar: btnAddKewajibanLancar ? 'OK' : 'NOT FOUND',
-        ekuitas: btnAddEkuitas ? 'OK' : 'NOT FOUND'
-    });
-    
-    // Ganti button Edit dengan button Simpan
-    const btnEdit = document.getElementById('btnEditNeraca');
-    console.log('Button ditemukan:', btnEdit);
-    if (btnEdit) {
-        btnEdit.className = 'btn btn-sm btn-success';
-        btnEdit.innerHTML = '<i class="fas fa-save"></i> Simpan';
-        btnEdit.onclick = function() { saveNeraca(); };
-        console.log('Button berhasil diubah menjadi Simpan');
-    } else {
-        console.error('Button btnEditNeraca tidak ditemukan!');
-    }
-}
+window.hapusItem = hapusItem;
 
 // Fungsi untuk update perhitungan Neraca saat ada perubahan (dari input)
 function updateNeraca() {
-    // Hitung Aset Lancar (termasuk item custom)
+    // Hitung Aset Lancar (termasuk item custom) - 2024
     let totalAsetLancar = 0;
-    totalAsetLancar += parseFloat(document.getElementById('input_kas')?.value) || 0;
-    totalAsetLancar += parseFloat(document.getElementById('input_bank')?.value) || 0;
-    totalAsetLancar += parseFloat(document.getElementById('input_piutangAnggota')?.value) || 0;
-    totalAsetLancar += parseFloat(document.getElementById('input_perlengkapan')?.value) || 0;
+    if (!deletedItems.includes('kas')) {
+        totalAsetLancar += parseFloat(document.getElementById('input_kas')?.value) || 0;
+    }
+    if (!deletedItems.includes('bank')) {
+        totalAsetLancar += parseFloat(document.getElementById('input_bank')?.value) || 0;
+    }
+    if (!deletedItems.includes('piutangAnggota')) {
+        totalAsetLancar += parseFloat(document.getElementById('input_piutangAnggota')?.value) || 0;
+    }
+    if (!deletedItems.includes('perlengkapan')) {
+        totalAsetLancar += parseFloat(document.getElementById('input_perlengkapan')?.value) || 0;
+    }
     
     // Tambahkan custom aset lancar
     for (let i = 1; i <= itemCounter.asetLancar; i++) {
-        const customInput = document.getElementById(`input_asetLancar_custom_${i}`);
-        if (customInput) {
-            totalAsetLancar += parseFloat(customInput.value) || 0;
+        const itemId = `asetLancar_custom_${i}`;
+        if (!deletedItems.includes(itemId)) {
+            const customInput = document.getElementById(`input_${itemId}`);
+            if (customInput) {
+                totalAsetLancar += parseFloat(customInput.value) || 0;
+            }
         }
     }
     document.getElementById('totalAsetLancar').textContent = 'Rp ' + totalAsetLancar.toLocaleString('id-ID');
     
-    // Hitung Aset Tetap (termasuk item custom)
+    // Hitung Aset Lancar - 2023
+    let totalAsetLancar2023 = 0;
+    if (!deletedItems.includes('kas')) {
+        totalAsetLancar2023 += parseFloat(document.getElementById('input_kas_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('bank')) {
+        totalAsetLancar2023 += parseFloat(document.getElementById('input_bank_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('piutangAnggota')) {
+        totalAsetLancar2023 += parseFloat(document.getElementById('input_piutangAnggota_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('perlengkapan')) {
+        totalAsetLancar2023 += parseFloat(document.getElementById('input_perlengkapan_2023')?.value) || 0;
+    }
+    
+    for (let i = 1; i <= itemCounter.asetLancar; i++) {
+        const itemId = `asetLancar_custom_${i}`;
+        if (!deletedItems.includes(itemId)) {
+            const customInput = document.getElementById(`input_${itemId}_2023`);
+            if (customInput) {
+                totalAsetLancar2023 += parseFloat(customInput.value) || 0;
+            }
+        }
+    }
+    document.getElementById('totalAsetLancar_2023').textContent = 'Rp ' + totalAsetLancar2023.toLocaleString('id-ID');
+    
+    // Hitung Aset Tetap (termasuk item custom) - 2024
     let totalAsetTetap = 0;
-    totalAsetTetap += parseFloat(document.getElementById('input_tanah')?.value) || 0;
-    totalAsetTetap += parseFloat(document.getElementById('input_bangunan')?.value) || 0;
-    totalAsetTetap += parseFloat(document.getElementById('input_kendaraan')?.value) || 0;
-    totalAsetTetap += parseFloat(document.getElementById('input_peralatan')?.value) || 0;
+    if (!deletedItems.includes('tanah')) {
+        totalAsetTetap += parseFloat(document.getElementById('input_tanah')?.value) || 0;
+    }
+    if (!deletedItems.includes('bangunan')) {
+        totalAsetTetap += parseFloat(document.getElementById('input_bangunan')?.value) || 0;
+    }
+    if (!deletedItems.includes('kendaraan')) {
+        totalAsetTetap += parseFloat(document.getElementById('input_kendaraan')?.value) || 0;
+    }
+    if (!deletedItems.includes('peralatan')) {
+        totalAsetTetap += parseFloat(document.getElementById('input_peralatan')?.value) || 0;
+    }
     
     // Tambahkan custom aset tetap
     for (let i = 1; i <= itemCounter.asetTetap; i++) {
-        const customInput = document.getElementById(`input_asetTetap_custom_${i}`);
-        if (customInput) {
-            totalAsetTetap += parseFloat(customInput.value) || 0;
+        const itemId = `asetTetap_custom_${i}`;
+        if (!deletedItems.includes(itemId)) {
+            const customInput = document.getElementById(`input_${itemId}`);
+            if (customInput) {
+                totalAsetTetap += parseFloat(customInput.value) || 0;
+            }
         }
     }
     document.getElementById('totalAsetTetap').textContent = 'Rp ' + totalAsetTetap.toLocaleString('id-ID');
     
-    // Hitung Total Aset
+    // Hitung Aset Tetap - 2023
+    let totalAsetTetap2023 = 0;
+    if (!deletedItems.includes('tanah')) {
+        totalAsetTetap2023 += parseFloat(document.getElementById('input_tanah_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('bangunan')) {
+        totalAsetTetap2023 += parseFloat(document.getElementById('input_bangunan_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('kendaraan')) {
+        totalAsetTetap2023 += parseFloat(document.getElementById('input_kendaraan_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('peralatan')) {
+        totalAsetTetap2023 += parseFloat(document.getElementById('input_peralatan_2023')?.value) || 0;
+    }
+    
+    for (let i = 1; i <= itemCounter.asetTetap; i++) {
+        const itemId = `asetTetap_custom_${i}`;
+        if (!deletedItems.includes(itemId)) {
+            const customInput = document.getElementById(`input_${itemId}_2023`);
+            if (customInput) {
+                totalAsetTetap2023 += parseFloat(customInput.value) || 0;
+            }
+        }
+    }
+    document.getElementById('totalAsetTetap_2023').textContent = 'Rp ' + totalAsetTetap2023.toLocaleString('id-ID');
+    
+    // Hitung Total Aset - 2024
     const totalAset = totalAsetLancar + totalAsetTetap;
     document.getElementById('totalAset').textContent = 'Rp ' + totalAset.toLocaleString('id-ID');
     
-    // Hitung Kewajiban Lancar (termasuk item custom)
+    // Hitung Total Aset - 2023
+    const totalAset2023 = totalAsetLancar2023 + totalAsetTetap2023;
+    document.getElementById('totalAset_2023').textContent = 'Rp ' + totalAset2023.toLocaleString('id-ID');
+    
+    // Hitung Kewajiban Lancar (termasuk item custom) - 2024
     let totalKewajibanLancar = 0;
-    totalKewajibanLancar += parseFloat(document.getElementById('input_hutangUsaha')?.value) || 0;
-    totalKewajibanLancar += parseFloat(document.getElementById('input_hutangBunga')?.value) || 0;
-    totalKewajibanLancar += parseFloat(document.getElementById('input_simpananAnggota')?.value) || 0;
+    if (!deletedItems.includes('hutangUsaha')) {
+        totalKewajibanLancar += parseFloat(document.getElementById('input_hutangUsaha')?.value) || 0;
+    }
+    if (!deletedItems.includes('hutangBunga')) {
+        totalKewajibanLancar += parseFloat(document.getElementById('input_hutangBunga')?.value) || 0;
+    }
+    if (!deletedItems.includes('simpananAnggota')) {
+        totalKewajibanLancar += parseFloat(document.getElementById('input_simpananAnggota')?.value) || 0;
+    }
     
     // Tambahkan custom kewajiban lancar
     for (let i = 1; i <= itemCounter.kewajibanLancar; i++) {
-        const customInput = document.getElementById(`input_kewajibanLancar_custom_${i}`);
-        if (customInput) {
-            totalKewajibanLancar += parseFloat(customInput.value) || 0;
+        const itemId = `kewajibanLancar_custom_${i}`;
+        if (!deletedItems.includes(itemId)) {
+            const customInput = document.getElementById(`input_${itemId}`);
+            if (customInput) {
+                totalKewajibanLancar += parseFloat(customInput.value) || 0;
+            }
         }
     }
     document.getElementById('totalKewajibanLancar').textContent = 'Rp ' + totalKewajibanLancar.toLocaleString('id-ID');
     
-    // Hitung Ekuitas (termasuk item custom)
+    // Hitung Kewajiban Lancar - 2023
+    let totalKewajibanLancar2023 = 0;
+    if (!deletedItems.includes('hutangUsaha')) {
+        totalKewajibanLancar2023 += parseFloat(document.getElementById('input_hutangUsaha_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('hutangBunga')) {
+        totalKewajibanLancar2023 += parseFloat(document.getElementById('input_hutangBunga_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('simpananAnggota')) {
+        totalKewajibanLancar2023 += parseFloat(document.getElementById('input_simpananAnggota_2023')?.value) || 0;
+    }
+    
+    for (let i = 1; i <= itemCounter.kewajibanLancar; i++) {
+        const itemId = `kewajibanLancar_custom_${i}`;
+        if (!deletedItems.includes(itemId)) {
+            const customInput = document.getElementById(`input_${itemId}_2023`);
+            if (customInput) {
+                totalKewajibanLancar2023 += parseFloat(customInput.value) || 0;
+            }
+        }
+    }
+    document.getElementById('totalKewajibanLancar_2023').textContent = 'Rp ' + totalKewajibanLancar2023.toLocaleString('id-ID');
+    
+    // Hitung Ekuitas (termasuk item custom) - 2024
     let totalEkuitas = 0;
-    totalEkuitas += parseFloat(document.getElementById('input_simpananPokok')?.value) || 0;
-    totalEkuitas += parseFloat(document.getElementById('input_simpananWajib')?.value) || 0;
-    totalEkuitas += parseFloat(document.getElementById('input_cadangan')?.value) || 0;
-    totalEkuitas += parseFloat(document.getElementById('input_shuTahunBerjalan')?.value) || 0;
+    if (!deletedItems.includes('simpananPokok')) {
+        totalEkuitas += parseFloat(document.getElementById('input_simpananPokok')?.value) || 0;
+    }
+    if (!deletedItems.includes('simpananWajib')) {
+        totalEkuitas += parseFloat(document.getElementById('input_simpananWajib')?.value) || 0;
+    }
+    if (!deletedItems.includes('cadangan')) {
+        totalEkuitas += parseFloat(document.getElementById('input_cadangan')?.value) || 0;
+    }
+    if (!deletedItems.includes('shuTahunBerjalan')) {
+        totalEkuitas += parseFloat(document.getElementById('input_shuTahunBerjalan')?.value) || 0;
+    }
     
     // Tambahkan custom ekuitas
     for (let i = 1; i <= itemCounter.ekuitas; i++) {
-        const customInput = document.getElementById(`input_ekuitas_custom_${i}`);
-        if (customInput) {
-            totalEkuitas += parseFloat(customInput.value) || 0;
+        const itemId = `ekuitas_custom_${i}`;
+        if (!deletedItems.includes(itemId)) {
+            const customInput = document.getElementById(`input_${itemId}`);
+            if (customInput) {
+                totalEkuitas += parseFloat(customInput.value) || 0;
+            }
         }
     }
     document.getElementById('totalEkuitas').textContent = 'Rp ' + totalEkuitas.toLocaleString('id-ID');
     
-    // Hitung Total Kewajiban & Ekuitas
+    // Hitung Ekuitas - 2023
+    let totalEkuitas2023 = 0;
+    if (!deletedItems.includes('simpananPokok')) {
+        totalEkuitas2023 += parseFloat(document.getElementById('input_simpananPokok_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('simpananWajib')) {
+        totalEkuitas2023 += parseFloat(document.getElementById('input_simpananWajib_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('cadangan')) {
+        totalEkuitas2023 += parseFloat(document.getElementById('input_cadangan_2023')?.value) || 0;
+    }
+    if (!deletedItems.includes('shuTahunBerjalan')) {
+        totalEkuitas2023 += parseFloat(document.getElementById('input_shuTahunBerjalan_2023')?.value) || 0;
+    }
+    
+    for (let i = 1; i <= itemCounter.ekuitas; i++) {
+        const itemId = `ekuitas_custom_${i}`;
+        if (!deletedItems.includes(itemId)) {
+            const customInput = document.getElementById(`input_${itemId}_2023`);
+            if (customInput) {
+                totalEkuitas2023 += parseFloat(customInput.value) || 0;
+            }
+        }
+    }
+    document.getElementById('totalEkuitas_2023').textContent = 'Rp ' + totalEkuitas2023.toLocaleString('id-ID');
+    
+    // Hitung Total Kewajiban & Ekuitas - 2024
     const totalKewajibanEkuitas = totalKewajibanLancar + totalEkuitas;
     document.getElementById('totalKewajibanEkuitas').textContent = 'Rp ' + totalKewajibanEkuitas.toLocaleString('id-ID');
+    
+    // Hitung Total Kewajiban & Ekuitas - 2023
+    const totalKewajibanEkuitas2023 = totalKewajibanLancar2023 + totalEkuitas2023;
+    document.getElementById('totalKewajibanEkuitas_2023').textContent = 'Rp ' + totalKewajibanEkuitas2023.toLocaleString('id-ID');
 }
 
 // Fungsi untuk menghitung total dari text content (bukan input)
@@ -1407,9 +1903,16 @@ function calculateTotalsFromText() {
     document.getElementById('totalEkuitas').textContent = 'Rp ' + totalEkuitas.toLocaleString('id-ID');
     document.getElementById('totalKewajibanEkuitas').textContent = 'Rp ' + (totalKewajibanLancar + totalEkuitas).toLocaleString('id-ID');
 }
+window.updateNeraca = updateNeraca;
 
 // Fungsi untuk simpan Neraca
 function saveNeraca() {
+    console.log('=== saveNeraca() DIPANGGIL ===');
+    console.log('Memulai proses penyimpanan data neraca...');
+    
+    // VALIDASI: Cek apakah semua kolom sudah diisi
+    const emptyFields = [];
+    
     const fields = [
         'kas', 'bank', 'piutangAnggota', 'perlengkapan',
         'tanah', 'bangunan', 'kendaraan', 'peralatan',
@@ -1417,156 +1920,642 @@ function saveNeraca() {
         'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'
     ];
     
-    const neracaData = {};
-    const neracaLabels = {};
-    const customItems = {};
-    
-    // Ambil semua nilai dan label untuk field default
+    // Validasi field default yang tidak dihapus
     fields.forEach(field => {
-        const inputField = document.getElementById('input_' + field);
-        if (inputField) {
-            neracaData[field] = parseFloat(inputField.value) || 0;
-        } else {
-            // Jika tidak ada input, ambil dari text content
-            const td = document.getElementById(field);
-            if (td) {
-                const text = td.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                neracaData[field] = parseFloat(text) || 0;
-            } else {
-                neracaData[field] = 0;
-            }
+        if (deletedItems.includes(field)) {
+            return; // Skip field yang sudah dihapus
         }
         
-        const labelInput = document.getElementById('input_label_' + field);
-        if (labelInput) {
-            neracaLabels[field] = labelInput.value.trim();
-        } else {
+        // Cek input nilai 2024
+        const inputField = document.getElementById('input_' + field);
+        if (inputField && inputField.value.trim() === '') {
             const labelTd = document.getElementById('label_' + field);
-            if (labelTd) {
-                neracaLabels[field] = labelTd.textContent.trim();
+            const labelText = labelTd ? labelTd.textContent || labelTd.value : field;
+            emptyFields.push(`${labelText} (2024)`);
+        }
+        
+        // Cek input nilai 2023
+        const inputField2023 = document.getElementById('input_' + field + '_2023');
+        if (inputField2023 && inputField2023.value.trim() === '') {
+            const labelTd = document.getElementById('label_' + field);
+            const labelText = labelTd ? labelTd.textContent || labelTd.value : field;
+            emptyFields.push(`${labelText} (2023)`);
+        }
+        
+        // Cek input label
+        const labelInput = document.getElementById('input_label_' + field);
+        if (labelInput && labelInput.value.trim() === '') {
+            emptyFields.push(`Label ${field}`);
+        }
+    });
+    
+    // Validasi No Perkiraan untuk field default
+    // Gunakan editableRows yang sudah didefinisikan di global scope
+    editableRows.forEach(rowConfig => {
+        if (deletedItems.includes(rowConfig.field)) {
+            return; // Skip field yang sudah dihapus
+        }
+        
+        const row = document.getElementById(rowConfig.id);
+        if (row && row.cells[rowConfig.col]) {
+            const cell = row.cells[rowConfig.col];
+            const input = cell.querySelector('input');
+            if (input && input.value.trim() === '') {
+                const labelTd = document.getElementById('label_' + rowConfig.field);
+                const labelText = labelTd ? labelTd.textContent || labelTd.value : rowConfig.field;
+                emptyFields.push(`No Perkiraan ${labelText}`);
             }
         }
     });
     
-    // Ambil semua custom items
+    // Validasi custom items
     ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
-        customItems[kategori] = [];
         for (let i = 1; i <= itemCounter[kategori]; i++) {
-            const labelInput = document.getElementById(`input_label_${kategori}_custom_${i}`);
-            const valueInput = document.getElementById(`input_${kategori}_custom_${i}`);
-            if (labelInput && valueInput) {
-                customItems[kategori].push({
-                    label: labelInput.value.trim(),
-                    value: parseFloat(valueInput.value) || 0
-                });
+            const itemId = `${kategori}_custom_${i}`;
+            
+            // Skip jika item sudah dihapus
+            if (deletedItems.includes(itemId)) {
+                continue;
             }
-        }
-    });
-    
-    // Update tampilan nilai default dengan nilai baru (hilangkan input dan tombol hapus)
-    Object.keys(neracaData).forEach(key => {
-        const td = document.getElementById(key);
-        if (td && !deletedItems.includes(key)) {
-            td.textContent = 'Rp ' + neracaData[key].toLocaleString('id-ID');
-            td.className = 'text-end'; // Restore class
-        }
-    });
-    
-    // Update tampilan label default dengan label baru (hilangkan input)
-    Object.keys(neracaLabels).forEach(key => {
-        const labelTd = document.getElementById('label_' + key);
-        if (labelTd && !deletedItems.includes(key)) {
-            labelTd.textContent = neracaLabels[key];
-            labelTd.className = 'ps-4'; // Restore class
-        }
-    });
-    
-    // Konversi custom items dari input ke tampilan read-only
-    ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
-        for (let i = 1; i <= itemCounter[kategori]; i++) {
-            const row = document.getElementById(`row_${kategori}_custom_${i}`);
-            if (row) {
-                const labelInput = document.getElementById(`input_label_${kategori}_custom_${i}`);
-                const valueInput = document.getElementById(`input_${kategori}_custom_${i}`);
-                
-                if (labelInput && valueInput) {
-                    const label = labelInput.value.trim();
-                    const value = parseFloat(valueInput.value) || 0;
-                    
-                    if (kategori === 'asetLancar' || kategori === 'asetTetap') {
-                        row.innerHTML = `
-                            <td class="ps-4" id="label_${kategori}_custom_${i}">${label}</td>
-                            <td class="text-end" id="${kategori}_custom_${i}">Rp ${value.toLocaleString('id-ID')}</td>
-                            <td colspan="2"></td>
-                        `;
-                    } else {
-                        row.innerHTML = `
-                            <td colspan="2"></td>
-                            <td class="ps-4" id="label_${kategori}_custom_${i}">${label}</td>
-                            <td class="text-end" id="${kategori}_custom_${i}">Rp ${value.toLocaleString('id-ID')}</td>
-                        `;
-                    }
+            
+            const noInput = document.getElementById(`input_no_${itemId}`);
+            const labelInput = document.getElementById(`input_label_${itemId}`);
+            const valueInput = document.getElementById(`input_${itemId}`);
+            const value2023Input = document.getElementById(`input_${itemId}_2023`);
+            
+            // Jika ada input (berarti dalam mode edit), validasi
+            if (valueInput) {
+                if (noInput && noInput.value.trim() === '') {
+                    emptyFields.push(`No Perkiraan item custom ${kategori} #${i}`);
+                }
+                if (labelInput && labelInput.value.trim() === '') {
+                    emptyFields.push(`Label item custom ${kategori} #${i}`);
+                }
+                if (valueInput.value.trim() === '') {
+                    emptyFields.push(`Nilai 2024 item custom ${kategori} #${i}`);
+                }
+                if (value2023Input && value2023Input.value.trim() === '') {
+                    emptyFields.push(`Nilai 2023 item custom ${kategori} #${i}`);
                 }
             }
         }
     });
     
-    // Hitung ulang total dari text content (bukan input)
-    calculateTotalsFromText();
-    
-    // Sembunyikan button tambah item
-    document.getElementById('btnAddAsetLancar').classList.add('d-none');
-    document.getElementById('btnAddAsetTetap').classList.add('d-none');
-    document.getElementById('btnAddKewajibanLancar').classList.add('d-none');
-    document.getElementById('btnAddEkuitas').classList.add('d-none');
-    
-    // Ganti button Simpan dengan button Edit
-    const btnEdit = document.getElementById('btnEditNeraca');
-    console.log('Setelah save, button ditemukan:', btnEdit);
-    if (btnEdit) {
-        btnEdit.className = 'btn btn-sm btn-primary';
-        btnEdit.innerHTML = '<i class="fas fa-edit"></i> Edit Neraca';
-        btnEdit.onclick = function() { editNeraca(); };
-        console.log('Button berhasil dikembalikan ke Edit Neraca');
-    } else {
-        console.error('Button btnEditNeraca tidak ditemukan setelah save!');
+    // Jika ada field yang kosong, tampilkan peringatan dan batalkan simpan
+    if (emptyFields.length > 0) {
+        alert('PERINGATAN: Semua kolom harus diisi!\n\nKolom yang masih kosong:\n- ' + emptyFields.join('\n- '));
+        return; // Batalkan proses simpan
     }
     
-    // Simpan ke localStorage untuk persistensi
+    // Jika validasi lolos, lanjutkan proses simpan
+    console.log('✓ Validasi lolos, memulai pengambilan data dari form...');
+    
+    // STRATEGI BARU: Load data lama dari server terlebih dahulu
+    // Kemudian gabungkan dengan data baru (update hanya field yang diedit)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 Mengambil data lama dari server untuk digabung...');
+    
+    fetch('/ketua/laporan/get-neraca')
+        .then(response => response.json())
+        .then(result => {
+            console.log('✓ Data lama diterima dari server');
+            
+            // Inisialisasi dengan data lama (jika ada)
+            const neracaData = (result.success && result.data?.data_2024) ? {...result.data.data_2024} : {};
+            const neracaData2023 = (result.success && result.data?.data_2023) ? {...result.data.data_2023} : {};
+            const neracaLabels = (result.success && result.data?.labels) ? {...result.data.labels} : {};
+            const neracaNoPerkiraan = (result.success && result.data?.no_perkiraan) ? {...result.data.no_perkiraan} : {};
+            const customItems = (result.success && result.data?.custom_items) ? {
+                asetLancar: [...(result.data.custom_items.asetLancar || [])],
+                asetTetap: [...(result.data.custom_items.asetTetap || [])],
+                kewajibanLancar: [...(result.data.custom_items.kewajibanLancar || [])],
+                ekuitas: [...(result.data.custom_items.ekuitas || [])]
+            } : {
+                asetLancar: [],
+                asetTetap: [],
+                kewajibanLancar: [],
+                ekuitas: []
+            };
+            
+            console.log('📊 Data lama:', {
+                data_2024_keys: Object.keys(neracaData).length,
+                data_2023_keys: Object.keys(neracaData2023).length,
+                labels_keys: Object.keys(neracaLabels).length,
+                custom_items_total: customItems.asetLancar.length + customItems.asetTetap.length + customItems.kewajibanLancar.length + customItems.ekuitas.length
+            });
+            
+            // UPDATE: Ambil nilai yang diedit dari form (hanya yang berubah)
+            console.log('🔄 Mengupdate dengan data dari form...');
+    
+    // Ambil semua nilai dan label untuk field default
+    // PENTING: Hanya update field yang benar-benar ada di halaman (input atau text dengan konten)
+    fields.forEach(field => {
+        // Skip jika item sudah dihapus
+        if (deletedItems.includes(field)) {
+            console.log(`⏩ Skip ${field} (deleted)`);
+            return;
+        }
+        
+        // Ambil nilai 2024 - PRIORITAS: dari input (jika dalam mode edit), lalu dari text
+        const inputField = document.getElementById('input_' + field);
+        if (inputField) {
+            // Mode edit: ambil dari input dan UPDATE data lama
+            neracaData[field] = parseFloat(inputField.value) || 0;
+            console.log(`✏️ ${field} (2024) UPDATE dari input:`, neracaData[field]);
+        } else {
+            // Mode view: ambil dari text yang sudah ada (jika ada)
+            const td = document.getElementById(field);
+            if (td && td.textContent.trim() && td.textContent.trim() !== '-') {
+                const text = td.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim();
+                const value = parseFloat(text) || 0;
+                // HANYA update jika ada konten atau jika belum ada di data lama
+                if (value !== 0 || !neracaData.hasOwnProperty(field)) {
+                    neracaData[field] = value;
+                    console.log(`📄 ${field} (2024) dari text:`, neracaData[field]);
+                } else {
+                    console.log(`⏩ ${field} (2024) skip (value=0, pakai data lama)`);
+                }
+            } else {
+                console.log(`⏩ ${field} (2024) tidak ada di halaman (pakai data lama)`);
+            }
+        }
+        
+        // Ambil nilai 2023 - PRIORITAS: dari input (jika dalam mode edit), lalu dari text
+        const inputField2023 = document.getElementById('input_' + field + '_2023');
+        if (inputField2023) {
+            // Mode edit: ambil dari input dan UPDATE data lama
+            neracaData2023[field] = parseFloat(inputField2023.value) || 0;
+            console.log(`✏️ ${field} (2023) UPDATE dari input:`, neracaData2023[field]);
+        } else {
+            // Mode view: ambil dari text yang sudah ada (jika ada)
+            const td2023 = document.getElementById(field + '_2023');
+            if (td2023 && td2023.textContent.trim() && td2023.textContent.trim() !== '-') {
+                const text = td2023.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim();
+                const value = parseFloat(text) || 0;
+                // HANYA update jika ada konten atau jika belum ada di data lama
+                if (value !== 0 || !neracaData2023.hasOwnProperty(field)) {
+                    neracaData2023[field] = value;
+                    console.log(`📄 ${field} (2023) dari text:`, neracaData2023[field]);
+                } else {
+                    console.log(`⏩ ${field} (2023) skip (value=0, pakai data lama)`);
+                }
+            } else {
+                console.log(`⏩ ${field} (2023) tidak ada di halaman (pakai data lama)`);
+            }
+        }
+        
+        // Ambil label - PRIORITAS: dari input (jika dalam mode edit), lalu dari text
+        const labelInput = document.getElementById('input_label_' + field);
+        if (labelInput) {
+            // Mode edit: ambil dari input dan UPDATE data lama
+            neracaLabels[field] = labelInput.value.trim();
+            console.log(`✏️ ${field} label UPDATE dari input:`, neracaLabels[field]);
+        } else {
+            // Mode view: ambil dari text yang sudah ada (jika ada konten)
+            const labelTd = document.getElementById('label_' + field);
+            if (labelTd && labelTd.textContent.trim()) {
+                // HANYA update jika belum ada di data lama
+                if (!neracaLabels.hasOwnProperty(field)) {
+                    neracaLabels[field] = labelTd.textContent.trim();
+                    console.log(`📄 ${field} label dari text:`, neracaLabels[field]);
+                } else {
+                    console.log(`⏩ ${field} label skip (pakai data lama)`);
+                }
+            } else {
+                console.log(`⏩ ${field} label tidak ada di halaman (pakai data lama)`);
+            }
+        }
+    });
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 DATA FINAL SETELAH MERGE:');
+    console.log('Total fields data_2024:', Object.keys(neracaData).length);
+    console.log('Total fields data_2023:', Object.keys(neracaData2023).length);
+    console.log('Total fields labels:', Object.keys(neracaLabels).length);
+    console.log('Sample data_2024:', neracaData);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Simpan data No Perkiraan dari setiap row
+    // Gunakan editableRows yang sudah didefinisikan di global scope
+    editableRows.forEach(rowConfig => {
+        const row = document.getElementById(rowConfig.id);
+        if (!row) return;
+        
+        const cell = row.cells[rowConfig.col];
+        
+        // Simpan nilai No Perkiraan sebelum di-convert
+        if (cell && cell.querySelector('input')) {
+            const input = cell.querySelector('input');
+            neracaNoPerkiraan[rowConfig.field] = input.value.trim();
+            // Kembalikan ke text
+            cell.innerHTML = input.value;
+            cell.className = 'text-center';
+        } else if (cell) {
+            // Jika bukan input, ambil text yang ada
+            neracaNoPerkiraan[rowConfig.field] = cell.textContent.trim();
+        }
+    });
+    
+    // Ambil semua custom items dari form (input atau text yang ada di halaman)
+    // PRIORITAS: dari input (jika dalam mode edit), lalu dari text yang ditampilkan
+    
+    ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
+        // Inisialisasi array untuk kategori ini
+        customItems[kategori] = [];
+        
+        // Ambil SEMUA item yang ada di form saat ini
+        for (let i = 1; i <= itemCounter[kategori]; i++) {
+            const itemId = `${kategori}_custom_${i}`;
+            
+            // Skip jika item sudah dihapus
+            if (deletedItems.includes(itemId)) {
+                console.log(`⏩ Skip item ${itemId} (deleted)`);
+                continue;
+            }
+            
+            // Cek apakah item ini ada di form (sebagai input atau text)
+            const noInput = document.getElementById(`input_no_${itemId}`);
+            const labelInput = document.getElementById(`input_label_${itemId}`);
+            const valueInput = document.getElementById(`input_${itemId}`);
+            const value2023Input = document.getElementById(`input_${itemId}_2023`);
+            
+            // Mode edit: ambil dari input
+            if (valueInput) {
+                const itemData = {
+                    no: noInput ? noInput.value.trim() : '',
+                    label: labelInput ? labelInput.value.trim() : '',
+                    value: parseFloat(valueInput.value) || 0,
+                    value2023: value2023Input ? (parseFloat(value2023Input.value) || 0) : 0
+                };
+                
+                customItems[kategori].push(itemData);
+                console.log(`📝 Custom item ${itemId} dari input:`, itemData);
+            } else {
+                // Mode view: ambil dari text yang ditampilkan
+                const noTd = document.getElementById(`no_${itemId}`);
+                const labelTd = document.getElementById(`label_${itemId}`);
+                const valueTd = document.getElementById(itemId);
+                const value2023Td = document.getElementById(itemId + '_2023');
+                
+                // Hanya proses jika cell ada dan punya konten
+                if (valueTd && valueTd.textContent.trim()) {
+                    const text = valueTd.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim();
+                    const text2023 = value2023Td ? value2023Td.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim() : '0';
+                    
+                    const itemData = {
+                        no: noTd ? noTd.textContent.trim() : '',
+                        label: labelTd ? labelTd.textContent.trim() : '',
+                        value: parseFloat(text) || 0,
+                        value2023: parseFloat(text2023) || 0
+                    };
+                    
+                    customItems[kategori].push(itemData);
+                    console.log(`📄 Custom item ${itemId} dari text:`, itemData);
+                }
+            }
+        }
+        
+        console.log(`📊 Total custom items ${kategori}:`, customItems[kategori].length);
+    });
+    
+    // Simpan ke localStorage untuk persistensi (backup)
     localStorage.setItem('neracaData', JSON.stringify(neracaData));
+    localStorage.setItem('neracaData2023', JSON.stringify(neracaData2023));
     localStorage.setItem('neracaLabels', JSON.stringify(neracaLabels));
+    localStorage.setItem('neracaNoPerkiraan', JSON.stringify(neracaNoPerkiraan));
     localStorage.setItem('neracaCustomItems', JSON.stringify(customItems));
     localStorage.setItem('itemCounter', JSON.stringify(itemCounter));
     localStorage.setItem('deletedItems', JSON.stringify(deletedItems));
-    
-    alert('Data neraca berhasil disimpan!');
-}
 
-// Load data dari localStorage saat halaman dimuat
+    console.log('✓ Data disimpan ke localStorage:', {
+        neracaData,
+        neracaData2023,
+        neracaLabels,
+        neracaNoPerkiraan,
+        customItems,
+        itemCounter,
+        deletedItems
+    });
+
+    // PENTING: Bersihkan deleted items dari field default sebelum menyimpan
+    const defaultFields = ['kas', 'bank', 'piutangAnggota', 'perlengkapan', 'tanah', 'bangunan', 'kendaraan', 'peralatan', 
+                          'hutangUsaha', 'hutangBunga', 'simpananAnggota', 'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'];
+    
+    const cleanedDeletedItems = deletedItems.filter(itemId => !defaultFields.includes(itemId));
+    
+    if (deletedItems.length !== cleanedDeletedItems.length) {
+        console.log('⚠️ DIBERSIHKAN: Field default yang tidak boleh dihapus:', 
+                   deletedItems.filter(itemId => defaultFields.includes(itemId)));
+        deletedItems = cleanedDeletedItems;
+    }
+
+    // Siapkan payload untuk dikirim ke server
+    const payload = {
+        data_2024: neracaData,
+        data_2023: neracaData2023,
+        labels: neracaLabels,
+        no_perkiraan: neracaNoPerkiraan,
+        custom_items: customItems,
+        item_counter: itemCounter,
+        deleted_items: deletedItems
+    };
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📤 MENGIRIM DATA KE SERVER');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Payload lengkap:', payload);
+    console.log('Data 2024 (contoh kas):', payload.data_2024.kas);
+    console.log('Data 2023 (contoh kas):', payload.data_2023.kas);
+    console.log('Jumlah custom items:', {
+        asetLancar: payload.custom_items.asetLancar?.length || 0,
+        asetTetap: payload.custom_items.asetTetap?.length || 0,
+        kewajibanLancar: payload.custom_items.kewajibanLancar?.length || 0,
+        ekuitas: payload.custom_items.ekuitas?.length || 0
+    });
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    // Simpan ke database via API
+    fetch('/ketua/laporan/save-neraca', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(payload)
+    })
+    .then(response => {
+        console.log('📥 Response HTTP status:', response.status, response.statusText);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📥 RESPONSE DARI SERVER');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('Response data:', data);
+        console.log('Success:', data.success);
+        console.log('Message:', data.message);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        if (data.success) {
+            console.log('%c✅ SUKSES! Data berhasil disimpan ke database!', 'color: green; font-weight: bold; font-size: 14px;');
+            
+            // SETELAH SAVE BERHASIL: Update tampilan (convert input ke text)
+            console.log('🎨 Mengupdate tampilan UI...');
+            
+            // Update tampilan nilai 2024 dengan nilai baru (hilangkan input dan tombol hapus)
+            Object.keys(neracaData).forEach(key => {
+                const td = document.getElementById(key);
+                if (td && !deletedItems.includes(key)) {
+                    td.textContent = 'Rp ' + neracaData[key].toLocaleString('id-ID');
+                    td.className = 'text-end';
+                }
+            });
+            
+            // Update tampilan nilai 2023 dengan nilai baru (hilangkan input)
+            Object.keys(neracaData2023).forEach(key => {
+                const td2023 = document.getElementById(key + '_2023');
+                if (td2023 && !deletedItems.includes(key)) {
+                    td2023.textContent = 'Rp ' + neracaData2023[key].toLocaleString('id-ID');
+                    td2023.className = 'text-end';
+                }
+            });
+            
+            // Update tampilan label default dengan label baru (hilangkan input)
+            Object.keys(neracaLabels).forEach(key => {
+                const labelTd = document.getElementById('label_' + key);
+                if (labelTd && !deletedItems.includes(key)) {
+                    labelTd.textContent = neracaLabels[key];
+                    labelTd.className = 'ps-4';
+                }
+            });
+            
+            // Konversi custom items dari input ke tampilan read-only
+            ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
+                for (let i = 1; i <= itemCounter[kategori]; i++) {
+                    const itemId = `${kategori}_custom_${i}`;
+                    const row = document.getElementById(`row_${itemId}`);
+                    if (row) {
+                        const noInput = document.getElementById(`input_no_${itemId}`);
+                        const labelInput = document.getElementById(`input_label_${itemId}`);
+                        const valueInput = document.getElementById(`input_${itemId}`);
+                        const value2023Input = document.getElementById(`input_${itemId}_2023`);
+                        
+                        if (valueInput) {
+                            const no = noInput ? noInput.value.trim() : '-';
+                            const label = labelInput ? labelInput.value.trim() : '';
+                            const value = parseFloat(valueInput.value) || 0;
+                            const value2023 = value2023Input ? (parseFloat(value2023Input.value) || 0) : 0;
+                            
+                            if (kategori === 'asetLancar' || kategori === 'asetTetap') {
+                                row.innerHTML = `
+                                    <td class="text-center">${no}</td>
+                                    <td class="ps-4" id="label_${itemId}">${label}</td>
+                                    <td class="text-end" id="${itemId}">Rp ${value.toLocaleString('id-ID')}</td>
+                                    <td class="text-end" id="${itemId}_2023">Rp ${value2023.toLocaleString('id-ID')}</td>
+                                    <td colspan="4"></td>
+                                `;
+                            } else {
+                                row.innerHTML = `
+                                    <td colspan="4"></td>
+                                    <td class="text-center">${no}</td>
+                                    <td class="ps-4" id="label_${itemId}">${label}</td>
+                                    <td class="text-end" id="${itemId}">Rp ${value.toLocaleString('id-ID')}</td>
+                                    <td class="text-end" id="${itemId}_2023">Rp ${value2023.toLocaleString('id-ID')}</td>
+                                `;
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Hitung ulang total dari text content (bukan input)
+            calculateTotalsFromText();
+            
+            // Sembunyikan button tambah item
+            document.getElementById('btnAddAsetLancar').classList.add('d-none');
+            document.getElementById('btnAddAsetTetap').classList.add('d-none');
+            document.getElementById('btnAddKewajibanLancar').classList.add('d-none');
+            document.getElementById('btnAddEkuitas').classList.add('d-none');
+            
+            // Reset button ke Edit Neraca
+            const btnEdit = document.getElementById('btnEditNeraca');
+            if (btnEdit) {
+                btnEdit.className = 'btn btn-sm btn-primary';
+                btnEdit.innerHTML = '<i class="fas fa-edit"></i> Edit Neraca';
+                btnEdit.onclick = function() {
+                    editNeraca();
+                };
+            }
+
+            // Hapus button Batal
+            const buttonGroup = document.getElementById('neracaButtonGroup');
+            if (buttonGroup) {
+                const batalButton = buttonGroup.querySelector('.btn-secondary');
+                if (batalButton) {
+                    batalButton.remove();
+                }
+            }
+            
+            // Reset flag edit mode
+            isEditMode = false;
+            localStorage.removeItem('editMode');
+            
+            console.log('✓ UI berhasil direset ke mode read-only');
+            alert('✅ Data berhasil disimpan!\n\nData Anda sudah aman di database.\nSaat refresh atau login kembali, data akan dimuat otomatis.');
+        } else {
+            console.error('%c❌ GAGAL! Server menolak data', 'color: red; font-weight: bold; font-size: 14px;');
+            console.error('Error dari server:', data.error);
+            alert('❌ Gagal menyimpan!\n\n' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('❌ ERROR KONEKSI KE SERVER');
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('Error detail:', error);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        alert('❌ Error koneksi!\n\n' + error.message + '\n\nPastikan server masih berjalan.');
+    });
+        }) // Tutup fetch get-neraca pertama
+        .catch(error => {
+            console.error('❌ Error mengambil data lama:', error);
+            alert('❌ Gagal mengambil data lama dari server!');
+        });
+}
+window.saveNeraca = saveNeraca;
+
+// Load data dari database atau localStorage saat halaman dimuat
 window.addEventListener('load', function() {
+    console.log('🔄 Window load event - Memuat data neraca...');
+    
+    // Coba load dari database terlebih dahulu
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 MEMUAT DATA DARI SERVER');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Fetching: /ketua/laporan/get-neraca');
+    
+    fetch('/ketua/laporan/get-neraca')
+        .then(response => {
+            console.log('📥 Response HTTP status:', response.status, response.statusText);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(result => {
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('📥 DATA DITERIMA DARI SERVER');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('Result lengkap:', result);
+            
+            if (result.success && result.data) {
+                console.log('%c✅ Data ditemukan di database!', 'color: green; font-weight: bold; font-size: 14px;');
+                console.log('Data 2024 (contoh kas):', result.data.data_2024?.kas);
+                console.log('Data 2023 (contoh kas):', result.data.data_2023?.kas);
+                console.log('Labels:', result.data.labels);
+                console.log('Custom items:', result.data.custom_items);
+                console.log('Item counter:', result.data.item_counter);
+                console.log('Deleted items:', result.data.deleted_items);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                
+                loadNeracaData(result.data);
+            } else {
+                console.log('%c⚠️ Tidak ada data di database', 'color: orange; font-weight: bold; font-size: 14px;');
+                console.log('Result:', result);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('🔄 Mencoba load dari localStorage...');
+                loadFromLocalStorage();
+            }
+        })
+        .catch(error => {
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('❌ ERROR LOADING DATA');
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('Error detail:', error);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🔄 Fallback ke localStorage...');
+            loadFromLocalStorage();
+        });
+});
+
+// Function to load from localStorage
+function loadFromLocalStorage() {
     const savedData = localStorage.getItem('neracaData');
+    const savedData2023 = localStorage.getItem('neracaData2023');
     const savedLabels = localStorage.getItem('neracaLabels');
+    const savedNoPerkiraan = localStorage.getItem('neracaNoPerkiraan');
     const savedCustomItems = localStorage.getItem('neracaCustomItems');
     const savedCounter = localStorage.getItem('itemCounter');
     const savedDeleted = localStorage.getItem('deletedItems');
     
+    console.log('Data yang ditemukan di localStorage:', {
+        savedData: savedData ? 'Ada' : 'Tidak ada',
+        savedData2023: savedData2023 ? 'Ada' : 'Tidak ada',
+        savedLabels: savedLabels ? 'Ada' : 'Tidak ada',
+        savedNoPerkiraan: savedNoPerkiraan ? 'Ada' : 'Tidak ada',
+        savedCustomItems: savedCustomItems ? JSON.parse(savedCustomItems) : 'Tidak ada',
+        savedCounter: savedCounter ? JSON.parse(savedCounter) : 'Tidak ada',
+        savedDeleted: savedDeleted ? JSON.parse(savedDeleted) : 'Tidak ada'
+    });
+    
+    loadNeracaData({
+        data_2024: savedData ? JSON.parse(savedData) : null,
+        data_2023: savedData2023 ? JSON.parse(savedData2023) : null,
+        labels: savedLabels ? JSON.parse(savedLabels) : null,
+        no_perkiraan: savedNoPerkiraan ? JSON.parse(savedNoPerkiraan) : null,
+        custom_items: savedCustomItems ? JSON.parse(savedCustomItems) : null,
+        item_counter: savedCounter ? JSON.parse(savedCounter) : null,
+        deleted_items: savedDeleted ? JSON.parse(savedDeleted) : null
+    });
+}
+
+// Function to load neraca data into the page
+function loadNeracaData(data) {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 MEMUAT DATA KE HALAMAN');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Data yang akan dimuat:', data);
+    
+    if (!data) {
+        console.warn('%c⚠️ loadNeracaData: data kosong atau null', 'color: orange; font-weight: bold;');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        return;
+    }
+    
     // Load counter
-    if (savedCounter) {
-        itemCounter = JSON.parse(savedCounter);
+    if (data.item_counter) {
+        console.log('✓ Memuat item counter:', data.item_counter);
+        itemCounter = data.item_counter;
     }
     
     // Load deleted items
-    if (savedDeleted) {
-        deletedItems = JSON.parse(savedDeleted);
-        // Hapus atau kosongkan cell untuk item yang dihapus
+    if (data.deleted_items) {
+        // PENTING: Filter deleted items - HANYA custom items yang bisa dihapus
+        // Field default (kas, bank, dll) TIDAK BOLEH ada di deleted items
+        const defaultFields = ['kas', 'bank', 'piutangAnggota', 'perlengkapan', 'tanah', 'bangunan', 'kendaraan', 'peralatan', 
+                              'hutangUsaha', 'hutangBunga', 'simpananAnggota', 'simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'];
+        
+        // Bersihkan deleted items dari field default
+        deletedItems = data.deleted_items.filter(itemId => !defaultFields.includes(itemId));
+        
+        console.log('✓ Deleted items (setelah filter):', deletedItems);
+        console.log('⚠️ Field default yang sempat di deleted_items (DIBERSIHKAN):', 
+                   data.deleted_items.filter(itemId => defaultFields.includes(itemId)));
+        
+        // Hapus atau kosongkan cell untuk item yang dihapus (HANYA custom items)
         deletedItems.forEach(itemId => {
             const labelTd = document.getElementById('label_' + itemId);
             const valueTd = document.getElementById(itemId);
+            const valueTd2023 = document.getElementById(itemId + '_2023');
             
             if (labelTd && valueTd) {
                 // Kosongkan cell saja, jangan hapus row
                 labelTd.innerHTML = '';
                 valueTd.innerHTML = '';
+                if (valueTd2023) valueTd2023.innerHTML = '';
                 
                 // Check apakah seluruh row kosong dengan logika yang benar
                 const row = labelTd.parentElement;
@@ -1588,9 +2577,9 @@ window.addEventListener('load', function() {
         });
     }
     
-    // Load data default
-    if (savedData) {
-        const neracaData = JSON.parse(savedData);
+    // Load data default 2024
+    if (data.data_2024) {
+        const neracaData = data.data_2024;
         Object.keys(neracaData).forEach(key => {
             const td = document.getElementById(key);
             if (td && !deletedItems.includes(key)) {
@@ -1599,9 +2588,20 @@ window.addEventListener('load', function() {
         });
     }
     
+    // Load data default 2023
+    if (data.data_2023) {
+        const neracaData2023 = data.data_2023;
+        Object.keys(neracaData2023).forEach(key => {
+            const td2023 = document.getElementById(key + '_2023');
+            if (td2023 && !deletedItems.includes(key)) {
+                td2023.textContent = 'Rp ' + neracaData2023[key].toLocaleString('id-ID');
+            }
+        });
+    }
+    
     // Load labels default
-    if (savedLabels) {
-        const neracaLabels = JSON.parse(savedLabels);
+    if (data.labels) {
+        const neracaLabels = data.labels;
         Object.keys(neracaLabels).forEach(key => {
             const labelTd = document.getElementById('label_' + key);
             if (labelTd && !deletedItems.includes(key)) {
@@ -1610,20 +2610,74 @@ window.addEventListener('load', function() {
         });
     }
     
+    // Load No Perkiraan default
+    if (data.no_perkiraan) {
+        const neracaNoPerkiraan = data.no_perkiraan;
+        const rowMapping = [
+            { id: 'row_kas', field: 'kas', col: 0 },
+            { id: 'row_bank', field: 'bank', col: 0 },
+            { id: 'row_piutangAnggota', field: 'piutangAnggota', col: 0 },
+            { id: 'row_perlengkapan', field: 'perlengkapan', col: 0 },
+            { id: 'row_tanah', field: 'tanah', col: 0 },
+            { id: 'row_bangunan', field: 'bangunan', col: 0 },
+            { id: 'row_kendaraan', field: 'kendaraan', col: 0 },
+            { id: 'row_peralatan', field: 'peralatan', col: 0 },
+            { id: 'row_hutangUsaha', field: 'hutangUsaha', col: 4 },
+            { id: 'row_hutangBunga', field: 'hutangBunga', col: 4 },
+            { id: 'row_simpananAnggota', field: 'simpananAnggota', col: 4 },
+            { id: 'row_simpananPokok', field: 'simpananPokok', col: 4 },
+            { id: 'row_simpananWajib', field: 'simpananWajib', col: 4 },
+            { id: 'row_cadangan', field: 'cadangan', col: 4 },
+            { id: 'row_shuTahunBerjalan', field: 'shuTahunBerjalan', col: 4 }
+        ];
+        
+        rowMapping.forEach(rowConfig => {
+            if (neracaNoPerkiraan[rowConfig.field]) {
+                const row = document.getElementById(rowConfig.id);
+                if (row && row.cells[rowConfig.col]) {
+                    row.cells[rowConfig.col].textContent = neracaNoPerkiraan[rowConfig.field];
+                }
+            }
+        });
+    }
+    
     // Load custom items
-    if (savedCustomItems) {
-        const customItems = JSON.parse(savedCustomItems);
+    if (data.custom_items) {
+        const customItems = data.custom_items;
+        
+        // Hapus semua custom items yang sudah ada untuk menghindari duplikasi
+        // Hapus row custom yang lama
+        ['asetLancar', 'asetTetap', 'kewajibanLancar', 'ekuitas'].forEach(kategori => {
+            // Hapus semua row yang mengandung custom items untuk kategori ini
+            const existingRows = document.querySelectorAll(`tr[id^="row_${kategori}_custom_"]`);
+            existingRows.forEach(row => row.remove());
+        });
+        
+        // Migrasi data lama: jika item tidak punya field 'no' atau 'value2023', tambahkan default
+        const migrateItem = (item) => {
+            return {
+                no: item.no !== undefined ? item.no : '',
+                label: item.label || '',
+                value: item.value || 0,
+                value2023: item.value2023 !== undefined ? item.value2023 : 0
+            };
+        };
         
         // Load aset lancar custom
         customItems.asetLancar?.forEach((item, index) => {
             const i = index + 1;
             const id = `asetLancar_custom_${i}`;
+            const migratedItem = migrateItem(item);
             const newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
+            const no = migratedItem.no || '-';
+            const value2023 = migratedItem.value2023;
             newRow.innerHTML = `
-                <td class="ps-4" id="label_${id}">${item.label}</td>
-                <td class="text-end" id="${id}">Rp ${item.value.toLocaleString('id-ID')}</td>
-                <td colspan="2"></td>
+                <td class="text-center">${no}</td>
+                <td class="ps-4" id="label_${id}">${migratedItem.label}</td>
+                <td class="text-end" id="${id}">Rp ${migratedItem.value.toLocaleString('id-ID')}</td>
+                <td class="text-end" id="${id}_2023">Rp ${value2023.toLocaleString('id-ID')}</td>
+                <td colspan="4"></td>
             `;
             document.getElementById('asetLancarEnd').before(newRow);
         });
@@ -1632,137 +2686,199 @@ window.addEventListener('load', function() {
         customItems.asetTetap?.forEach((item, index) => {
             const i = index + 1;
             const id = `asetTetap_custom_${i}`;
+            const migratedItem = migrateItem(item);
             const newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
+            const no = migratedItem.no || '-';
+            const value2023 = migratedItem.value2023;
             newRow.innerHTML = `
-                <td class="ps-4" id="label_${id}">${item.label}</td>
-                <td class="text-end" id="${id}">Rp ${item.value.toLocaleString('id-ID')}</td>
-                <td colspan="2"></td>
+                <td class="text-center">${no}</td>
+                <td class="ps-4" id="label_${id}">${migratedItem.label}</td>
+                <td class="text-end" id="${id}">Rp ${migratedItem.value.toLocaleString('id-ID')}</td>
+                <td class="text-end" id="${id}_2023">Rp ${value2023.toLocaleString('id-ID')}</td>
+                <td colspan="4"></td>
             `;
             document.getElementById('asetTetapEnd').before(newRow);
         });
         
         // Load kewajiban lancar custom
+        // Cari row tempat meletakkan kewajiban lancar custom (sebelum row total kewajiban lancar)
+        const totalKewajibanLancarRow = document.getElementById('totalKewajibanLancar')?.closest('tr');
         customItems.kewajibanLancar?.forEach((item, index) => {
             const i = index + 1;
             const id = `kewajibanLancar_custom_${i}`;
-            const targetRow = document.getElementById('kewajibanLancarEnd').parentElement;
-            const existingRowspan = parseInt(document.getElementById('kewajibanLancarEnd').getAttribute('rowspan') || '1');
-            document.getElementById('kewajibanLancarEnd').setAttribute('rowspan', existingRowspan + 1);
+            const migratedItem = migrateItem(item);
+            const no = migratedItem.no || '-';
+            const value2023 = migratedItem.value2023;
             
             const newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
             newRow.innerHTML = `
-                <td colspan="2"></td>
-                <td class="ps-4" id="label_${id}">${item.label}</td>
-                <td class="text-end" id="${id}">Rp ${item.value.toLocaleString('id-ID')}</td>
+                <td colspan="4"></td>
+                <td class="text-center">${no}</td>
+                <td class="ps-4" id="label_${id}">${migratedItem.label}</td>
+                <td class="text-end" id="${id}">Rp ${migratedItem.value.toLocaleString('id-ID')}</td>
+                <td class="text-end" id="${id}_2023">Rp ${value2023.toLocaleString('id-ID')}</td>
             `;
-            targetRow.after(newRow);
+            if (totalKewajibanLancarRow) {
+                totalKewajibanLancarRow.before(newRow);
+            }
         });
         
         // Load ekuitas custom
+        // Cari row tempat meletakkan ekuitas custom (sebelum row total ekuitas)
+        const totalEkuitasRow = document.getElementById('totalEkuitas')?.closest('tr');
         customItems.ekuitas?.forEach((item, index) => {
             const i = index + 1;
             const id = `ekuitas_custom_${i}`;
-            const targetRow = document.getElementById('label_shuTahunBerjalan').parentElement;
-            const existingRowspan = parseInt(document.getElementById('label_shuTahunBerjalan').getAttribute('rowspan') || '1');
-            document.getElementById('label_shuTahunBerjalan').setAttribute('rowspan', existingRowspan + 1);
+            const migratedItem = migrateItem(item);
+            const no = migratedItem.no || '-';
+            const value2023 = migratedItem.value2023;
             
             const newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
             newRow.innerHTML = `
-                <td colspan="2"></td>
-                <td class="ps-4" id="label_${id}">${item.label}</td>
-                <td class="text-end" id="${id}">Rp ${item.value.toLocaleString('id-ID')}</td>
+                <td colspan="4"></td>
+                <td class="text-center">${no}</td>
+                <td class="ps-4" id="label_${id}">${migratedItem.label}</td>
+                <td class="text-end" id="${id}">Rp ${migratedItem.value.toLocaleString('id-ID')}</td>
+                <td class="text-end" id="${id}_2023">Rp ${value2023.toLocaleString('id-ID')}</td>
             `;
-            targetRow.after(newRow);
+            if (totalEkuitasRow) {
+                totalEkuitasRow.before(newRow);
+            }
         });
     }
     
     // Hitung ulang total setelah semua item di-load
-    if (savedData || savedCustomItems) {
-        // Hitung total dari text content (bukan input)
-        let totalAsetLancar = 0;
-        ['kas', 'bank', 'piutangAnggota', 'perlengkapan'].forEach(field => {
-            const el = document.getElementById(field);
-            if (el) {
-                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                totalAsetLancar += parseFloat(text) || 0;
-            }
-        });
-        // Tambahkan custom aset lancar
-        for (let i = 1; i <= itemCounter.asetLancar; i++) {
-            const el = document.getElementById(`asetLancar_custom_${i}`);
-            if (el) {
-                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                totalAsetLancar += parseFloat(text) || 0;
-            }
+    // Hitung total dari text content (bukan input)
+    let totalAsetLancar = 0;
+    ['kas', 'bank', 'piutangAnggota', 'perlengkapan'].forEach(field => {
+        const el = document.getElementById(field);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetLancar += parseFloat(text) || 0;
         }
-        
-        let totalAsetTetap = 0;
-        ['tanah', 'bangunan', 'kendaraan', 'peralatan'].forEach(field => {
-            const el = document.getElementById(field);
-            if (el) {
-                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                totalAsetTetap += parseFloat(text) || 0;
-            }
-        });
-        // Tambahkan custom aset tetap
-        for (let i = 1; i <= itemCounter.asetTetap; i++) {
-            const el = document.getElementById(`asetTetap_custom_${i}`);
-            if (el) {
-                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                totalAsetTetap += parseFloat(text) || 0;
-            }
+    });
+    // Tambahkan custom aset lancar
+    for (let i = 1; i <= itemCounter.asetLancar; i++) {
+        const el = document.getElementById(`asetLancar_custom_${i}`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetLancar += parseFloat(text) || 0;
         }
-        
-        let totalKewajibanLancar = 0;
-        ['hutangUsaha', 'hutangBunga', 'simpananAnggota'].forEach(field => {
-            const el = document.getElementById(field);
-            if (el) {
-                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                totalKewajibanLancar += parseFloat(text) || 0;
-            }
-        });
-        // Tambahkan custom kewajiban lancar
-        for (let i = 1; i <= itemCounter.kewajibanLancar; i++) {
-            const el = document.getElementById(`kewajibanLancar_custom_${i}`);
-            if (el) {
-                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                totalKewajibanLancar += parseFloat(text) || 0;
-            }
-        }
-        
-        let totalEkuitas = 0;
-        ['simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'].forEach(field => {
-            const el = document.getElementById(field);
-            if (el) {
-                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                totalEkuitas += parseFloat(text) || 0;
-            }
-        });
-        // Tambahkan custom ekuitas
-        for (let i = 1; i <= itemCounter.ekuitas; i++) {
-            const el = document.getElementById(`ekuitas_custom_${i}`);
-            if (el) {
-                const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-                totalEkuitas += parseFloat(text) || 0;
-            }
-        }
-        
-        document.getElementById('totalAsetLancar').textContent = 'Rp ' + totalAsetLancar.toLocaleString('id-ID');
-        document.getElementById('totalAsetTetap').textContent = 'Rp ' + totalAsetTetap.toLocaleString('id-ID');
-        document.getElementById('totalAset').textContent = 'Rp ' + (totalAsetLancar + totalAsetTetap).toLocaleString('id-ID');
-        document.getElementById('totalKewajibanLancar').textContent = 'Rp ' + totalKewajibanLancar.toLocaleString('id-ID');
-        document.getElementById('totalEkuitas').textContent = 'Rp ' + totalEkuitas.toLocaleString('id-ID');
-        document.getElementById('totalKewajibanEkuitas').textContent = 'Rp ' + (totalKewajibanLancar + totalEkuitas).toLocaleString('id-ID');
     }
+
+    let totalAsetTetap = 0;
+    ['tanah', 'bangunan', 'kendaraan', 'peralatan'].forEach(field => {
+        const el = document.getElementById(field);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetTetap += parseFloat(text) || 0;
+        }
+    });
+    // Tambahkan custom aset tetap
+    for (let i = 1; i <= itemCounter.asetTetap; i++) {
+        const el = document.getElementById(`asetTetap_custom_${i}`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetTetap += parseFloat(text) || 0;
+        }
+    }
+
+    let totalKewajibanLancar = 0;
+    ['hutangUsaha', 'hutangBunga', 'simpananAnggota'].forEach(field => {
+        const el = document.getElementById(field);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalKewajibanLancar += parseFloat(text) || 0;
+        }
+    });
+    // Tambahkan custom kewajiban lancar
+    for (let i = 1; i <= itemCounter.kewajibanLancar; i++) {
+        const el = document.getElementById(`kewajibanLancar_custom_${i}`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalKewajibanLancar += parseFloat(text) || 0;
+        }
+    }
+
+    let totalEkuitas = 0;
+    ['simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'].forEach(field => {
+        const el = document.getElementById(field);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalEkuitas += parseFloat(text) || 0;
+        }
+    });
+    // Tambahkan custom ekuitas
+    for (let i = 1; i <= itemCounter.ekuitas; i++) {
+        const el = document.getElementById(`ekuitas_custom_${i}`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalEkuitas += parseFloat(text) || 0;
+        }
+    }
+
+    document.getElementById('totalAsetLancar').textContent = 'Rp ' + totalAsetLancar.toLocaleString('id-ID');
+    document.getElementById('totalAsetTetap').textContent = 'Rp ' + totalAsetTetap.toLocaleString('id-ID');
+    document.getElementById('totalAset').textContent = 'Rp ' + (totalAsetLancar + totalAsetTetap).toLocaleString('id-ID');
+    document.getElementById('totalKewajibanLancar').textContent = 'Rp ' + totalKewajibanLancar.toLocaleString('id-ID');
+    document.getElementById('totalEkuitas').textContent = 'Rp ' + totalEkuitas.toLocaleString('id-ID');
+    document.getElementById('totalKewajibanEkuitas').textContent = 'Rp ' + (totalKewajibanLancar + totalEkuitas).toLocaleString('id-ID');
     
     // Reorganisasi rows setelah load data
-    if (savedDeleted && deletedItems.length > 0) {
+    if (data && data.deleted_items && data.deleted_items.length > 0) {
         compactNeracaRows();
     }
-});
+    
+    // Pastikan UI dalam mode read-only setelah load data
+    // Sembunyikan semua button "Tambah Item"
+    const addButtons = ['btnAddAsetLancar', 'btnAddAsetTetap', 'btnAddKewajibanLancar', 'btnAddEkuitas'];
+    addButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.classList.add('d-none');
+        }
+    });
+    
+    // Pastikan button Edit Neraca ada dan dalam kondisi normal (BUKAN Simpan)
+    const btnEdit = document.getElementById('btnEditNeraca');
+    if (btnEdit) {
+        // Reset button ke state awal Edit Neraca
+        btnEdit.className = 'btn btn-sm btn-primary';
+        btnEdit.innerHTML = '<i class="fas fa-edit"></i> Edit Neraca';
+        btnEdit.onclick = function() {
+            console.log('Button Edit Neraca clicked - calling editNeraca()');
+            editNeraca();
+        };
+        console.log('Button Edit Neraca telah di-reset ke mode default');
+    }
+    
+    // Hapus button Batal jika ada
+    const buttonGroup = document.getElementById('neracaButtonGroup');
+    if (buttonGroup) {
+        const batalButton = buttonGroup.querySelector('.btn-secondary');
+        if (batalButton) {
+            batalButton.remove();
+            console.log('✓ Button Batal dihapus');
+        }
+    }
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('%c✅ DATA BERHASIL DIMUAT KE HALAMAN!', 'color: green; font-weight: bold; font-size: 14px;');
+    console.log('Total Aset Lancar:', totalAsetLancar);
+    console.log('Total Aset Tetap:', totalAsetTetap);
+    console.log('Total Kewajiban Lancar:', totalKewajibanLancar);
+    console.log('Total Ekuitas:', totalEkuitas);
+    console.log('Button Edit Neraca onclick:', btnEdit ? (typeof btnEdit.onclick) : 'tidak ada');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+}
+
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('%c🚀 SCRIPT NERACA READY!', 'color: blue; font-weight: bold; font-size: 16px;');
+console.log('Fungsi tersedia: editNeraca(), saveNeraca(), loadNeracaData()');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 </script>
 
 </body>

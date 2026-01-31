@@ -220,6 +220,8 @@ func SetupRouter() *gin.Engine {
 		ketuaRoutes.GET("/laporan", controllers.KetuaLaporan)
 		ketuaRoutes.GET("/laporan/download", controllers.KetuaDownloadLaporan)
 		ketuaRoutes.POST("/laporan/upload-kop", controllers.KetuaUploadKop)
+		ketuaRoutes.POST("/laporan/save-neraca", controllers.KetuaSaveNeraca)
+		ketuaRoutes.GET("/laporan/get-neraca", controllers.KetuaGetNeraca)
 		ketuaRoutes.GET("/ketua-pengaturan", controllers.KetuaPengaturan)
 		ketuaRoutes.GET("/lihat-persyaratan-pinjaman/:id", controllers.KetuaLihatPersyaratanPinjaman)
 		ketuaRoutes.GET("/detail-angsuran/:id", controllers.KetuaDetailAngsuran)

@@ -1,7 +1,8 @@
 -- Tambahan agar /pelayanan/pinjaman dan /pelayanan/angsuran tidak 404
 INSERT INTO halaman (slug, judul, kategori, konten) VALUES
 ('pinjaman', 'Pinjaman', 'pelayanan', '{"judul":"Pinjaman","deskripsi":"Informasi dan pengajuan pinjaman koperasi."}'),
-('angsuran', 'Angsuran', 'pelayanan', '{"judul":"Angsuran","deskripsi":"Informasi dan pembayaran angsuran pinjaman."}');
+('angsuran', 'Angsuran', 'pelayanan', '{"judul":"Angsuran","deskripsi":"Informasi dan pembayaran angsuran pinjaman."}')
+ON CONFLICT (slug) DO NOTHING;
 
 -- SQLBook: Code
 -- Active: 1716903284734@@127.0.0.1@5432@postgres
@@ -20,6 +21,7 @@ DROP TABLE IF EXISTS anggota CASCADE;
 DROP TABLE IF EXISTS halaman CASCADE;
 DROP TABLE IF EXISTS konfigurasi_simpanan_wajib CASCADE;
 DROP TABLE IF EXISTS login_history CASCADE;
+DROP TABLE IF EXISTS neraca CASCADE;
 
 -- =================================================================
 -- BAGIAN 1: PEMBUATAN STRUKTUR TABEL
@@ -267,24 +269,17 @@ INSERT INTO simpanan (jenis_simpanan) VALUES
 
 
 -- Pastikan data dashboard_anggota ada (otomatis insert jika belum ada, update jika sudah ada)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM halaman WHERE slug = 'dashboard_anggota') THEN
-    UPDATE halaman
-    SET judul = 'Dashboard Anggota',
-      kategori = 'tentang',
-      konten = '{"welcome":"Selamat Datang di Koperasi KOPMA","slogan":"Dari Anggota, Oleh Anggota, dan Untuk Anggota","teks":"Selamat datang di dashboard anggota.","gambar":"/static/images/placeholder.png"}'
-    WHERE slug = 'dashboard_anggota';
-  ELSE
-    INSERT INTO halaman (slug, judul, kategori, konten)
-    VALUES (
-      'dashboard_anggota',
-      'Dashboard Anggota',
-      'tentang',
-      '{"welcome":"Selamat Datang di Koperasi KOPMA","slogan":"Dari Anggota, Oleh Anggota, dan Untuk Anggota","teks":"Selamat datang di dashboard anggota.","gambar":"/static/images/placeholder.png"}'
-    );
-  END IF;
-END $$;
+INSERT INTO halaman (slug, judul, kategori, konten)
+VALUES (
+  'dashboard_anggota',
+  'Dashboard Anggota',
+  'tentang',
+  '{"welcome":"Selamat Datang di Koperasi KOPMA","slogan":"Dari Anggota, Oleh Anggota, dan Untuk Anggota","teks":"Selamat datang di dashboard anggota.","gambar":"/static/images/placeholder.png"}'
+)
+ON CONFLICT (slug) DO UPDATE SET
+  judul = EXCLUDED.judul,
+  kategori = EXCLUDED.kategori,
+  konten = EXCLUDED.konten;
 
 -- =================================================================
 -- BAGIAN 3: PEMBUATAN INDEX UNTUK OPTIMASI PERFORMA
@@ -358,7 +353,8 @@ INSERT INTO halaman (slug, judul, kategori, konten) VALUES
       "Membangun kemitraan dengan stakeholder untuk kemajuan bersama"
     ]
   }'
-);
+)
+ON CONFLICT (slug) DO NOTHING;
 
 
 
@@ -445,7 +441,7 @@ UPDATE anggota SET nomor_urut = NULL WHERE status != 'aktif';
 -- TRIGGER: Auto-generate nomor_urut & id_anggota saat konfirmasi
 -- =============================================
 CREATE OR REPLACE FUNCTION anggota_generate_id()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $anggota_func$
 DECLARE
 
   max_urut INTEGER;
@@ -458,19 +454,45 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$anggota_func$ LANGUAGE plpgsql;
 
 
 -- Hapus trigger jika sudah ada, agar tidak error saat migrasi ulang
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM pg_trigger WHERE tgname = 'anggota_generate_id_trigger'
-    ) THEN
-        EXECUTE 'DROP TRIGGER anggota_generate_id_trigger ON anggota';
-    END IF;
-    CREATE TRIGGER anggota_generate_id_trigger
-      BEFORE INSERT OR UPDATE ON anggota
-      FOR EACH ROW
-      EXECUTE FUNCTION anggota_generate_id();
-END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS anggota_generate_id_trigger ON anggota;
+CREATE TRIGGER anggota_generate_id_trigger
+  BEFORE INSERT OR UPDATE ON anggota
+  FOR EACH ROW
+  EXECUTE FUNCTION anggota_generate_id();
+
+-- =================================================================
+-- TABEL NERACA (Untuk menyimpan data Neraca Koperasi)
+-- =================================================================
+CREATE TABLE IF NOT EXISTS neraca (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES pengelola(id_pengelola),
+  data_2024 TEXT NOT NULL,
+  data_2023 TEXT NOT NULL,
+  labels TEXT NOT NULL,
+  no_perkiraan TEXT,
+  custom_items TEXT,
+  item_counter TEXT,
+  deleted_items TEXT,
+  created_by INT REFERENCES pengelola(id_pengelola),
+  last_modified_by INT REFERENCES pengelola(id_pengelola),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_modified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Migration: Add user_id column to neraca table if not exists (for existing databases)
+ALTER TABLE neraca ADD COLUMN IF NOT EXISTS user_id INT;
+
+-- Set default value for existing rows (if any)
+UPDATE neraca SET user_id = created_by WHERE user_id IS NULL;
+
+-- Add foreign key constraint (drop first if exists, then recreate)
+ALTER TABLE neraca DROP CONSTRAINT IF EXISTS fk_neraca_user;
+ALTER TABLE neraca ADD CONSTRAINT fk_neraca_user FOREIGN KEY (user_id) REFERENCES pengelola(id_pengelola);
+
+-- Add unique constraint (akan otomatis membuat index)
+-- Only add if it doesn't already exist
+ALTER TABLE neraca DROP CONSTRAINT IF EXISTS unique_neraca_user_id CASCADE;

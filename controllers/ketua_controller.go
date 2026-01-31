@@ -1385,3 +1385,92 @@ func KetuaUploadKop(c *gin.Context) {
 	session.Save()
 	c.Redirect(http.StatusFound, "/ketua/laporan?success=Kop surat berhasil diupload")
 }
+
+// KetuaSaveNeraca saves neraca data to database
+func KetuaSaveNeraca(c *gin.Context) {
+	session := sessions.Default(c)
+	userID := session.Get("user_id")
+	if userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var req models.NeracaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+
+	db := config.GetDB()
+	neracaRepo := repository.NewNeracaRepository(db)
+
+	userIDInt := userID.(int)
+	err := neracaRepo.SaveNeraca(&req, userIDInt)
+	if err != nil {
+		log.Printf("Error saving neraca: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save neraca: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Data neraca berhasil disimpan ke database",
+	})
+}
+
+// KetuaGetNeraca retrieves neraca data from database
+func KetuaGetNeraca(c *gin.Context) {
+	session := sessions.Default(c)
+	userID := session.Get("user_id")
+	if userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	db := config.GetDB()
+	neracaRepo := repository.NewNeracaRepository(db)
+
+	userIDInt := userID.(int)
+	neraca, err := neracaRepo.GetNeraca(userIDInt)
+	if err != nil {
+		log.Printf("Error getting neraca: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get neraca: " + err.Error()})
+		return
+	}
+
+	if neraca == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    nil,
+		})
+		return
+	}
+
+	// Parse JSON strings back to objects
+	var data2024, data2023, customItems map[string]interface{}
+	var labels, noPerkiraan map[string]string
+	var itemCounter map[string]int
+	var deletedItems []string
+
+	json.Unmarshal([]byte(neraca.Data2024), &data2024)
+	json.Unmarshal([]byte(neraca.Data2023), &data2023)
+	json.Unmarshal([]byte(neraca.Labels), &labels)
+	json.Unmarshal([]byte(neraca.NoPerkiraan), &noPerkiraan)
+	json.Unmarshal([]byte(neraca.CustomItems), &customItems)
+	json.Unmarshal([]byte(neraca.ItemCounter), &itemCounter)
+	json.Unmarshal([]byte(neraca.DeletedItems), &deletedItems)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"data_2024":        data2024,
+			"data_2023":        data2023,
+			"labels":           labels,
+			"no_perkiraan":     noPerkiraan,
+			"custom_items":     customItems,
+			"item_counter":     itemCounter,
+			"deleted_items":    deletedItems,
+			"last_modified_at": neraca.LastModifiedAt,
+		},
+	})
+}
