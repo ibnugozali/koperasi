@@ -216,8 +216,8 @@
                                             <th>Pokok Pinjaman</th>
                                             <th>Jasa</th>
                                             <th>Jumlah</th>
-                                            <th>Angsuran ke-1</th>
-                                            <th>Angsuran ke-2</th>
+                                            <th>Angsuran</th>
+                                            <th>Sisa Angsuran</th>
                                             <th>Sisa Pinjaman</th>
                                             <th>Pokok</th>
                                             <th>Wajib</th>
@@ -1984,7 +1984,7 @@ function updateNeraca() {
 
 // Fungsi untuk menghitung total dari text content (bukan input)
 function calculateTotalsFromText() {
-    // Hitung Aset Lancar
+    // Hitung Aset Lancar - 2024
     let totalAsetLancar = 0;
     ['kas', 'bank', 'piutangAnggota', 'perlengkapan'].forEach(field => {
         const el = document.getElementById(field);
@@ -2001,7 +2001,24 @@ function calculateTotalsFromText() {
         }
     }
     
-    // Hitung Aset Tetap
+    // Hitung Aset Lancar - 2023
+    let totalAsetLancar_2023 = 0;
+    ['kas', 'bank', 'piutangAnggota', 'perlengkapan'].forEach(field => {
+        const el = document.getElementById(field + '_2023');
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetLancar_2023 += parseFloat(text) || 0;
+        }
+    });
+    for (let i = 1; i <= itemCounter.asetLancar; i++) {
+        const el = document.getElementById(`asetLancar_custom_${i}_2023`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetLancar_2023 += parseFloat(text) || 0;
+        }
+    }
+    
+    // Hitung Aset Tetap - 2024
     let totalAsetTetap = 0;
     ['tanah', 'bangunan', 'kendaraan', 'peralatan'].forEach(field => {
         const el = document.getElementById(field);
@@ -2018,7 +2035,24 @@ function calculateTotalsFromText() {
         }
     }
     
-    // Hitung Kewajiban Lancar
+    // Hitung Aset Tetap - 2023
+    let totalAsetTetap_2023 = 0;
+    ['tanah', 'bangunan', 'kendaraan', 'peralatan'].forEach(field => {
+        const el = document.getElementById(field + '_2023');
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetTetap_2023 += parseFloat(text) || 0;
+        }
+    });
+    for (let i = 1; i <= itemCounter.asetTetap; i++) {
+        const el = document.getElementById(`asetTetap_custom_${i}_2023`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetTetap_2023 += parseFloat(text) || 0;
+        }
+    }
+    
+    // Hitung Kewajiban Lancar - 2024
     let totalKewajibanLancar = 0;
     ['hutangUsaha', 'hutangBunga', 'simpananAnggota'].forEach(field => {
         const el = document.getElementById(field);
@@ -2035,7 +2069,24 @@ function calculateTotalsFromText() {
         }
     }
     
-    // Hitung Ekuitas
+    // Hitung Kewajiban Lancar - 2023
+    let totalKewajibanLancar_2023 = 0;
+    ['hutangUsaha', 'hutangBunga', 'simpananAnggota'].forEach(field => {
+        const el = document.getElementById(field + '_2023');
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalKewajibanLancar_2023 += parseFloat(text) || 0;
+        }
+    });
+    for (let i = 1; i <= itemCounter.kewajibanLancar; i++) {
+        const el = document.getElementById(`kewajibanLancar_custom_${i}_2023`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalKewajibanLancar_2023 += parseFloat(text) || 0;
+        }
+    }
+    
+    // Hitung Ekuitas - 2024
     let totalEkuitas = 0;
     ['simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'].forEach(field => {
         const el = document.getElementById(field);
@@ -2052,13 +2103,38 @@ function calculateTotalsFromText() {
         }
     }
     
-    // Update tampilan total
+    // Hitung Ekuitas - 2023
+    let totalEkuitas_2023 = 0;
+    ['simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'].forEach(field => {
+        const el = document.getElementById(field + '_2023');
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalEkuitas_2023 += parseFloat(text) || 0;
+        }
+    });
+    for (let i = 1; i <= itemCounter.ekuitas; i++) {
+        const el = document.getElementById(`ekuitas_custom_${i}_2023`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalEkuitas_2023 += parseFloat(text) || 0;
+        }
+    }
+    
+    // Update tampilan total - 2024
     document.getElementById('totalAsetLancar').textContent = 'Rp ' + totalAsetLancar.toLocaleString('id-ID');
     document.getElementById('totalAsetTetap').textContent = 'Rp ' + totalAsetTetap.toLocaleString('id-ID');
     document.getElementById('totalAset').textContent = 'Rp ' + (totalAsetLancar + totalAsetTetap).toLocaleString('id-ID');
     document.getElementById('totalKewajibanLancar').textContent = 'Rp ' + totalKewajibanLancar.toLocaleString('id-ID');
     document.getElementById('totalEkuitas').textContent = 'Rp ' + totalEkuitas.toLocaleString('id-ID');
     document.getElementById('totalKewajibanEkuitas').textContent = 'Rp ' + (totalKewajibanLancar + totalEkuitas).toLocaleString('id-ID');
+    
+    // Update tampilan total - 2023
+    document.getElementById('totalAsetLancar_2023').textContent = 'Rp ' + totalAsetLancar_2023.toLocaleString('id-ID');
+    document.getElementById('totalAsetTetap_2023').textContent = 'Rp ' + totalAsetTetap_2023.toLocaleString('id-ID');
+    document.getElementById('totalAset_2023').textContent = 'Rp ' + (totalAsetLancar_2023 + totalAsetTetap_2023).toLocaleString('id-ID');
+    document.getElementById('totalKewajibanLancar_2023').textContent = 'Rp ' + totalKewajibanLancar_2023.toLocaleString('id-ID');
+    document.getElementById('totalEkuitas_2023').textContent = 'Rp ' + totalEkuitas_2023.toLocaleString('id-ID');
+    document.getElementById('totalKewajibanEkuitas_2023').textContent = 'Rp ' + (totalKewajibanLancar_2023 + totalEkuitas_2023).toLocaleString('id-ID');
 }
 window.updateNeraca = updateNeraca;
 
@@ -3050,7 +3126,7 @@ function loadNeracaData(data) {
     }
     
     // Hitung ulang total setelah semua item di-load
-    // Hitung total dari text content (bukan input)
+    // Hitung total dari text content (bukan input) - UNTUK 2024
     let totalAsetLancar = 0;
     ['kas', 'bank', 'piutangAnggota', 'perlengkapan'].forEach(field => {
         const el = document.getElementById(field);
@@ -3119,12 +3195,90 @@ function loadNeracaData(data) {
         }
     }
 
+    // HITUNG TOTAL UNTUK 2023
+    let totalAsetLancar_2023 = 0;
+    ['kas', 'bank', 'piutangAnggota', 'perlengkapan'].forEach(field => {
+        const el = document.getElementById(field + '_2023');
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetLancar_2023 += parseFloat(text) || 0;
+        }
+    });
+    // Tambahkan custom aset lancar 2023
+    for (let i = 1; i <= itemCounter.asetLancar; i++) {
+        const el = document.getElementById(`asetLancar_custom_${i}_2023`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetLancar_2023 += parseFloat(text) || 0;
+        }
+    }
+
+    let totalAsetTetap_2023 = 0;
+    ['tanah', 'bangunan', 'kendaraan', 'peralatan'].forEach(field => {
+        const el = document.getElementById(field + '_2023');
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetTetap_2023 += parseFloat(text) || 0;
+        }
+    });
+    // Tambahkan custom aset tetap 2023
+    for (let i = 1; i <= itemCounter.asetTetap; i++) {
+        const el = document.getElementById(`asetTetap_custom_${i}_2023`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalAsetTetap_2023 += parseFloat(text) || 0;
+        }
+    }
+
+    let totalKewajibanLancar_2023 = 0;
+    ['hutangUsaha', 'hutangBunga', 'simpananAnggota'].forEach(field => {
+        const el = document.getElementById(field + '_2023');
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalKewajibanLancar_2023 += parseFloat(text) || 0;
+        }
+    });
+    // Tambahkan custom kewajiban lancar 2023
+    for (let i = 1; i <= itemCounter.kewajibanLancar; i++) {
+        const el = document.getElementById(`kewajibanLancar_custom_${i}_2023`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalKewajibanLancar_2023 += parseFloat(text) || 0;
+        }
+    }
+
+    let totalEkuitas_2023 = 0;
+    ['simpananPokok', 'simpananWajib', 'cadangan', 'shuTahunBerjalan'].forEach(field => {
+        const el = document.getElementById(field + '_2023');
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalEkuitas_2023 += parseFloat(text) || 0;
+        }
+    });
+    // Tambahkan custom ekuitas 2023
+    for (let i = 1; i <= itemCounter.ekuitas; i++) {
+        const el = document.getElementById(`ekuitas_custom_${i}_2023`);
+        if (el) {
+            const text = el.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            totalEkuitas_2023 += parseFloat(text) || 0;
+        }
+    }
+
+    // Update tampilan total untuk 2024
     document.getElementById('totalAsetLancar').textContent = 'Rp ' + totalAsetLancar.toLocaleString('id-ID');
     document.getElementById('totalAsetTetap').textContent = 'Rp ' + totalAsetTetap.toLocaleString('id-ID');
     document.getElementById('totalAset').textContent = 'Rp ' + (totalAsetLancar + totalAsetTetap).toLocaleString('id-ID');
     document.getElementById('totalKewajibanLancar').textContent = 'Rp ' + totalKewajibanLancar.toLocaleString('id-ID');
     document.getElementById('totalEkuitas').textContent = 'Rp ' + totalEkuitas.toLocaleString('id-ID');
     document.getElementById('totalKewajibanEkuitas').textContent = 'Rp ' + (totalKewajibanLancar + totalEkuitas).toLocaleString('id-ID');
+    
+    // Update tampilan total untuk 2023
+    document.getElementById('totalAsetLancar_2023').textContent = 'Rp ' + totalAsetLancar_2023.toLocaleString('id-ID');
+    document.getElementById('totalAsetTetap_2023').textContent = 'Rp ' + totalAsetTetap_2023.toLocaleString('id-ID');
+    document.getElementById('totalAset_2023').textContent = 'Rp ' + (totalAsetLancar_2023 + totalAsetTetap_2023).toLocaleString('id-ID');
+    document.getElementById('totalKewajibanLancar_2023').textContent = 'Rp ' + totalKewajibanLancar_2023.toLocaleString('id-ID');
+    document.getElementById('totalEkuitas_2023').textContent = 'Rp ' + totalEkuitas_2023.toLocaleString('id-ID');
+    document.getElementById('totalKewajibanEkuitas_2023').textContent = 'Rp ' + (totalKewajibanLancar_2023 + totalEkuitas_2023).toLocaleString('id-ID');
     
     // Reorganisasi rows setelah load data
     if (data && data.deleted_items && data.deleted_items.length > 0) {
