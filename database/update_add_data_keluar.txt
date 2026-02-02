@@ -1,0 +1,39 @@
+-- SQL untuk menambahkan kolom data_keluar ke tabel anggota yang sudah ada
+-- Jalankan SQL ini jika database sudah dibuat sebelumnya
+
+-- Tambahkan kolom data_keluar jika belum ada
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'anggota' AND column_name = 'data_keluar'
+    ) THEN
+        ALTER TABLE anggota ADD COLUMN data_keluar JSONB DEFAULT NULL;
+        RAISE NOTICE 'Kolom data_keluar berhasil ditambahkan';
+    ELSE
+        RAISE NOTICE 'Kolom data_keluar sudah ada';
+    END IF;
+END $$;
+
+-- Tambahkan comment untuk dokumentasi
+COMMENT ON COLUMN anggota.data_keluar IS 'Data JSON untuk pengajuan keluar: simpanan_wajib, simpanan_lainnya, biaya_admin, alasan, tanggal_pengajuan';
+
+-- Verifikasi kolom berhasil ditambahkan
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'anggota' 
+  AND column_name IN ('status_anggota', 'data_keluar')
+ORDER BY column_name;
+
+-- Contoh query untuk melihat anggota yang mengajukan keluar
+-- SELECT 
+--     id_anggota, 
+--     nama_anggota, 
+--     status_anggota,
+--     data_keluar->>'simpanan_wajib' as simpanan_wajib,
+--     data_keluar->>'simpanan_lainnya' as simpanan_lainnya,
+--     data_keluar->>'biaya_admin' as biaya_admin,
+--     data_keluar->>'alasan' as alasan,
+--     data_keluar->>'tanggal_pengajuan' as tanggal_pengajuan
+-- FROM anggota 
+-- WHERE status_anggota = 'pending_keluar';

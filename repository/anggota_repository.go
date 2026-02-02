@@ -131,6 +131,31 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 	return anggotas, nil
 }
 
+// GetPendingAnggotaKeluar mengambil anggota yang mengajukan keluar (status_anggota = 'pending_keluar')
+func GetPendingAnggotaKeluar() ([]models.Anggota, error) {
+	db := config.GetDB()
+	var anggotas []models.Anggota
+
+	rows, err := db.Query(`SELECT id_anggota, nama_anggota, username, nik_ktp, no_telepon, 
+		tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, ''), status, status_anggota 
+		FROM anggota WHERE status_anggota = 'pending_keluar' ORDER BY tgl_gabung DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var a models.Anggota
+		if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.NikKTP, &a.NoTelepon,
+			&a.TglGabung, &a.UnitKerja, &a.FakultasCode, &a.Fakultas, &a.Status, &a.StatusAnggota); err != nil {
+			return nil, err
+		}
+		anggotas = append(anggotas, a)
+	}
+
+	return anggotas, nil
+}
+
 // Update status anggota dan tambahkan kode anggota
 func UpdateAnggotaStatusWithCode(id string, newStatus string, memberCode string) error {
 	db := config.GetDB()

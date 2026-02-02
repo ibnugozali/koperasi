@@ -164,6 +164,15 @@
             </div>
             {{ end }}
 
+            <!-- Pesan Success -->
+            {{ if .SuccessMessage }}
+            <div class="alert alert-success" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ .SuccessMessage }}
+            </div>
+            {{ end }}
+
+            <!-- Section: Konfirmasi Anggota Baru -->
+            <h4 class="mb-3"><i class="fas fa-user-plus me-2"></i>Konfirmasi Anggota Baru</h4>
             <!-- Pending Members List -->
             <div class="row">
                 {{ if .PendingMembers }}
@@ -242,6 +251,77 @@
                 {{ end }}
             </div>
 
+            <!-- Section: Konfirmasi Anggota Keluar -->
+            <h4 class="mb-3 mt-5"><i class="fas fa-user-times me-2"></i>Konfirmasi Anggota Keluar</h4>
+            <div class="row">
+                {{ if .PendingKeluar }}
+                    {{ range .PendingKeluar }}
+                    <div class="col-lg-6 col-md-6 col-12">
+                        <div class="anggota-card" style="border-left: 4px solid #f56565;">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="mb-0">{{ .NamaAnggota }}</h5>
+                                <span class="badge" style="background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); color: white; padding: 6px 15px; border-radius: 20px;">
+                                    <i class="fas fa-door-open me-1"></i>Pengajuan Keluar
+                                </span>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-label"><i class="fas fa-id-badge me-2"></i>ID Anggota:</span>
+                                <span class="info-value"><strong>{{ .IDAnggota }}</strong></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label"><i class="fas fa-id-card me-2"></i>NIK:</span>
+                                <span class="info-value">{{ .NikKTP }}</span>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-label"><i class="fas fa-phone me-2"></i>Telepon:</span>
+                                <span class="info-value">+62{{ .NoTelepon }}</span>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-label"><i class="fas fa-building me-2"></i>Fakultas:</span>
+                                <span class="info-value">{{ .Fakultas }}</span>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-label"><i class="fas fa-calendar me-2"></i>Tanggal Gabung:</span>
+                                <span class="info-value">{{ .TglGabung.Format "02 Jan 2006" }}</span>
+                            </div>
+
+                            <hr>
+
+                            <div class="d-flex gap-2 justify-content-end">
+                                <a href="/ketua/anggota/keluar/view/{{ .IDAnggota }}" class="btn btn-view btn-sm">
+                                    <i class="fas fa-eye me-2"></i>Lihat Detail
+                                </a>
+                                <form action="/ketua/approve-keluar/{{ .IDAnggota }}" method="POST" style="display: inline;" 
+                                      onsubmit="return confirm('Setujui permohonan keluar dari {{ .NamaAnggota }}?')">
+                                    <button type="submit" class="btn btn-confirm btn-sm">
+                                        <i class="fas fa-check me-2"></i>Setujui
+                                    </button>
+                                </form>
+                                <form action="/ketua/reject-keluar/{{ .IDAnggota }}" method="POST" style="display: inline;"
+                                      onsubmit="return confirm('Tolak permohonan keluar dari {{ .NamaAnggota }}?')">
+                                    <button type="submit" class="btn btn-reject btn-sm">
+                                        <i class="fas fa-times me-2"></i>Tolak
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {{ end }}
+                {{ else }}
+                    <div class="col-12">
+                        <div class="empty-state">
+                            <i class="fas fa-user-times"></i>
+                            <h4>Tidak Ada Permohonan Keluar</h4>
+                            <p>Tidak ada anggota yang mengajukan permohonan keluar</p>
+                        </div>
+                    </div>
+                {{ end }}
+            </div>
+
             <!-- Info Card -->
             <div class="row mt-4">
                 <div class="col-12">
@@ -261,7 +341,7 @@
     <script>
         // Trigger pengecekan pemotongan otomatis setelah konfirmasi anggota
         // Set flag di localStorage untuk trigger check di halaman data anggota
-        const confirmButtons = document.querySelectorAll('form[action*="/confirm/"]');
+        const confirmButtons = document.querySelectorAll('form[action*="/confirm/"], form[action*="/approve-keluar/"]');
         confirmButtons.forEach(form => {
             form.addEventListener('submit', function(e) {
                 console.log('✅ Anggota dikonfirmasi! Set trigger untuk pengecekan pemotongan...');

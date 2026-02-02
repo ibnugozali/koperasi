@@ -19,21 +19,21 @@
                         {{ end }}
                         <form action="/register" method="POST" enctype="multipart/form-data">
                             <div class="mb-3">
-                                <label for="nama_anggota" class="form-label">Nama Lengkap</label>
+                                <label for="register_nama_anggota" class="form-label">Nama Lengkap</label>
                                 <input type="text" class="form-control" id="register_nama_anggota" name="NamaAnggota" required>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="username" class="form-label">Nama Pengguna</label>
+                                    <label for="register_username" class="form-label">Nama Pengguna</label>
                                     <input type="text" class="form-control" id="register_username" name="Username" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="password" class="form-label">Kata Sandi</label>
+                                    <label for="register_password" class="form-label">Kata Sandi</label>
                                     <input type="password" class="form-control" id="register_password" name="Password" required>
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="no_telepon" class="form-label">No. Telepon</label>
+                                <label for="register_no_telepon" class="form-label">No. Telepon</label>
                                 <div class="input-group">
                                     <span class="input-group-text">+62</span>
                                     <input type="text" class="form-control" id="register_no_telepon" name="NoTelepon" required pattern="[1-9][0-9]{8,12}" maxlength="13" inputmode="numeric" title="Nomor telepon Indonesia, 9-13 digit, tidak boleh diawali 0" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^0+/, '').slice(0, 13)">
@@ -42,12 +42,12 @@
                             </div>
                              <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="tgl_lahir" class="form-label">Tanggal Lahir</label>
+                                    <label for="register_tgl_lahir" class="form-label">Tanggal Lahir</label>
                                     <input type="date" class="form-control" id="register_tgl_lahir" name="TglLahir" required>
                                     <small class="form-text text-muted">Minimal usia 18 tahun</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="jenis_kelamin" class="form-label">Jenis Kelamin</label>
+                                    <label for="register_jenis_kelamin" class="form-label">Jenis Kelamin</label>
                                     <select class="form-select" id="register_jenis_kelamin" name="JenisKelamin">
                                         <option value="Laki-laki">Laki-laki</option>
                                         <option value="Perempuan">Perempuan</option>
@@ -57,7 +57,7 @@
 
                            <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="status_anggota" class="form-label">Unit Kerja</label>
+                                    <label for="register_status_anggota" class="form-label">Unit Kerja</label>
                                     <select class="form-select" id="register_status_anggota" name="StatusAnggota" required>
                                         <option value="">Pilih Status</option>
                                         <option value="dosen">Dosen</option>
@@ -66,7 +66,7 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="fakultas" class="form-label">Fakultas</label>
+                                    <label for="register_fakultas" class="form-label">Fakultas</label>
                                     <select class="form-select" id="register_fakultas" required>
                                         <option value="">Pilih Fakultas</option>
                                         <option value="Fakultas Agama Islam (FAI)">Fakultas Agama Islam (FAI)</option>
@@ -83,12 +83,12 @@
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="gaji_bulanan" class="form-label">Gaji Bulanan</label>
+                                <label for="register_gaji_bulanan" class="form-label">Gaji Bulanan</label>
                                 <input type="number" class="form-control" id="register_gaji_bulanan" name="GajiBulanan" placeholder="Contoh: 5000000" min="0" step="1000">
                                 <small class="form-text text-muted">Masukkan gaji bulanan dalam Rupiah (tanpa titik atau koma)</small>
                             </div>
                             <div class="mb-3">
-                                <label for="bukti_transfer" class="form-label">Bukti Transfer Simpanan Pokok Wajib Rp. {{ .NominalSimpanan }},-</label>
+                                <label for="register_bukti_transfer" class="form-label">Bukti Transfer Simpanan Pokok Wajib Rp. {{ .NominalSimpanan }},-</label>
                                 <input type="file" class="form-control" id="register_bukti_transfer" name="BuktiTransfer" accept="image/*,.pdf" required>
                                 <small class="form-text text-muted">
                                     Upload bukti transfer/pembayaran (format gambar) | 
@@ -96,7 +96,7 @@
                                 </small>
                             </div>
                             <div class="mb-3">
-                                <label for="alamat" class="form-label">Alamat</label>
+                                <label for="register_alamat" class="form-label">Alamat</label>
                                 <input type="text" class="form-control" id="register_alamat" name="Alamat" required>
                             </div>
                             <div class="d-grid mt-4">

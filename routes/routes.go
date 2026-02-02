@@ -38,7 +38,22 @@ func SetupRouter() *gin.Engine {
 
 	// PERBAIKAN: Gunakan baris ini untuk memuat semua file .html dari folder templates dan semua subfoldernya.
 	router.SetFuncMap(template.FuncMap{
-		"add": func(a, b int) int { return a + b },
+		"add": func(nums ...interface{}) float64 {
+			sum := 0.0
+			for _, num := range nums {
+				switch v := num.(type) {
+				case int:
+					sum += float64(v)
+				case int64:
+					sum += float64(v)
+				case float64:
+					sum += v
+				case float32:
+					sum += float64(v)
+				}
+			}
+			return sum
+		},
 		"json": func(v interface{}) template.JS {
 			a, _ := json.Marshal(v)
 			return template.JS(a)
@@ -211,9 +226,13 @@ func SetupRouter() *gin.Engine {
 		ketuaRoutes.GET("/konfirmasi", controllers.KetuaKonfirmasiAnggota)
 		ketuaRoutes.POST("/confirm/:id", controllers.KetuaConfirmMembership)
 		ketuaRoutes.POST("/reject/:id", controllers.KetuaRejectMembership)
+		ketuaRoutes.POST("/approve-keluar/:id", controllers.KetuaApproveAnggotaKeluar)
+		ketuaRoutes.POST("/reject-keluar/:id", controllers.KetuaRejectAnggotaKeluar)
 		ketuaRoutes.GET("/konfirmasi-transaksi", controllers.KetuaKonfirmasiTransaksi)
 		ketuaRoutes.GET("/anggota", controllers.KetuaDataAnggota)
 		ketuaRoutes.GET("/ketua-data-anggota", controllers.KetuaDataAnggota)
+		ketuaRoutes.GET("/anggota/keluar", controllers.KetuaListAnggotaKeluar)
+		ketuaRoutes.GET("/anggota/keluar/view/:id", controllers.KetuaViewAnggotaKeluar)
 		ketuaRoutes.GET("/ketua-riwayat-login", controllers.KetuaRiwayat)
 		ketuaRoutes.GET("/riwayat", controllers.KetuaRiwayat)
 		ketuaRoutes.GET("/ketua-laporan", controllers.KetuaLaporan)

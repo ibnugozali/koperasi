@@ -23,6 +23,9 @@
 
 {{ template "navbar.html" . }}
 <main class="container py-4">
+    <!-- Alert Success -->
+    <div class="row" id="alertContainer"></div>
+    
     <div class="row">
         <div class="col-md-8 mx-auto">
             <div class="card">
@@ -294,30 +297,201 @@ document.addEventListener("DOMContentLoaded", function(){
       }
     });
   });
+  
+  // Show success/error message from URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const success = urlParams.get('success');
+  const error = urlParams.get('error');
+  
+  if (success) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'col-12';
+    alertDiv.innerHTML = `
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>${success}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+    document.getElementById('alertContainer').appendChild(alertDiv);
+  }
+  
+  if (error) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'col-12';
+    alertDiv.innerHTML = `
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>${error}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+    document.getElementById('alertContainer').appendChild(alertDiv);
+  }
 });
 </script>
 
 <!-- Modal Konfirmasi Keluar -->
 <div class="modal fade" id="keluarModal" tabindex="-1" aria-labelledby="keluarModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="keluarModalLabel">Konfirmasi Keluar</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="keluarModalLabel">
+                    <i class="bi bi-door-open me-2"></i>Pengajuan Keluar dari Koperasi
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                Apakah Anda yakin ingin keluar dari koperasi?
-                <p>Simpanan wajib dan sukarela dapat dikembalikan sesuai ketentuan. Simpanan pokok tidak dikembalikan. Pengembalian dilakukan setelah kewajiban selesai.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <form method="POST" action="/anggota/keluar" style="display: inline;">
-                    <button type="submit" class="btn btn-danger">Ya, Keluar</button>
-                </form>
-            </div>
+            <form method="POST" action="/anggota/keluar" id="formKeluar">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Perhatian!</strong> Pengajuan keluar akan diproses setelah mendapat persetujuan dari Ketua.
+                        Mohon isi data pengembalian simpanan dengan benar.
+                    </div>
+
+                    <!-- Informasi Saldo Saat Ini -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">
+                            <strong>Informasi Saldo Simpanan Anda</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-6"><strong>Simpanan Pokok:</strong></div>
+                                <div class="col-6 text-end">Rp {{ printf "%.0f" .SimpananPokok }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-6"><strong>Simpanan Wajib:</strong></div>
+                                <div class="col-6 text-end">Rp {{ printf "%.0f" .SimpananWajib }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-6"><strong>Simpanan Sukarela:</strong></div>
+                                <div class="col-6 text-end">Rp {{ printf "%.0f" .SimpananSukarela }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-6"><strong>Simpanan Hari Raya:</strong></div>
+                                <div class="col-6 text-end">Rp {{ printf "%.0f" .SimpananHariRaya }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-6"><strong>Simpanan Umroh/Haji:</strong></div>
+                                <div class="col-6 text-end">Rp {{ printf "%.0f" .SimpananUmrohHaji }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-6"><strong>Simpanan Qurban:</strong></div>
+                                <div class="col-6 text-end">Rp {{ printf "%.0f" .SimpananQurban }}</div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-6"><strong>Total Simpanan:</strong></div>
+                                <div class="col-6 text-end"><strong class="text-success">Rp {{ printf "%.0f" .TotalSimpanan }}</strong></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Input Pengembalian -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <strong>Data Pengembalian Simpanan</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="simpanan_wajib" class="form-label">
+                                    <i class="bi bi-cash-stack me-2"></i>Jumlah Simpanan Wajib yang Dikembalikan
+                                    <small class="text-muted">(maksimal Rp {{ printf "%.0f" .SimpananWajib }})</small>
+                                </label>
+                                <input type="number" class="form-control" id="simpanan_wajib" name="simpanan_wajib" 
+                                       value="{{ printf "%.0f" .SimpananWajib }}" min="0" max="{{ printf "%.0f" .SimpananWajib }}" required>
+                                <small class="form-text text-muted">Simpanan wajib yang akan dikembalikan setelah disetujui</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="simpanan_lainnya" class="form-label">
+                                    <i class="bi bi-wallet2 me-2"></i>Jumlah Simpanan Lainnya yang Dikembalikan
+                                    <small class="text-muted">(Sukarela + Hari Raya + Umroh/Haji + Qurban, maksimal Rp {{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }})</small>
+                                </label>
+                                <input type="number" class="form-control" id="simpanan_lainnya" name="simpanan_lainnya" 
+                                       value="{{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }}" 
+                                       min="0" max="{{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }}" required>
+                                <small class="form-text text-muted">Total simpanan lainnya yang akan dikembalikan (simpanan pokok tidak dikembalikan)</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="biaya_admin" class="form-label">
+                                    <i class="bi bi-receipt me-2"></i>Biaya Administrasi
+                                </label>
+                                <input type="number" class="form-control" id="biaya_admin" name="biaya_admin" 
+                                       value="0" min="0" required>
+                                <small class="form-text text-muted">Biaya administrasi untuk proses keluar koperasi (jika ada)</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="alasan_keluar" class="form-label">
+                                    <i class="bi bi-chat-left-text me-2"></i>Alasan Keluar <span class="text-danger">*</span>
+                                </label>
+                                <textarea class="form-control" id="alasan_keluar" name="alasan_keluar" rows="3" required placeholder="Jelaskan alasan Anda ingin keluar dari koperasi..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Catatan Penting:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Simpanan pokok <strong>tidak dapat dikembalikan</strong> sesuai ketentuan koperasi</li>
+                            <li>Pengembalian simpanan dilakukan setelah semua kewajiban diselesaikan</li>
+                            <li>Pengajuan akan diproses setelah mendapat persetujuan Ketua</li>
+                            <li>Anda dapat membatalkan pengajuan sebelum disetujui</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Batal
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-send me-2"></i>Ajukan Keluar
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+// Validasi form sebelum submit
+document.getElementById('formKeluar').addEventListener('submit', function(e) {
+    const simpananWajib = parseFloat(document.getElementById('simpanan_wajib').value) || 0;
+    const simpananLainnya = parseFloat(document.getElementById('simpanan_lainnya').value) || 0;
+    const biayaAdmin = parseFloat(document.getElementById('biaya_admin').value) || 0;
+    const alasan = document.getElementById('alasan_keluar').value.trim();
+    
+    if (alasan === '') {
+        e.preventDefault();
+        alert('Alasan keluar harus diisi!');
+        return false;
+    }
+    
+    if (simpananWajib < 0 || simpananLainnya < 0 || biayaAdmin < 0) {
+        e.preventDefault();
+        alert('Jumlah tidak boleh negatif!');
+        return false;
+    }
+    
+    const maxSimpananWajib = {{ printf "%.0f" .SimpananWajib }};
+    const maxSimpananLainnya = {{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }};
+    
+    if (simpananWajib > maxSimpananWajib) {
+        e.preventDefault();
+        alert('Jumlah simpanan wajib melebihi saldo yang tersedia!');
+        return false;
+    }
+    
+    if (simpananLainnya > maxSimpananLainnya) {
+        e.preventDefault();
+        alert('Jumlah simpanan lainnya melebihi saldo yang tersedia!');
+        return false;
+    }
+    
+    return confirm('Apakah Anda yakin ingin mengajukan keluar dari koperasi? Pengajuan ini akan diproses oleh Ketua.');
+});
+</script>
 
   {{ template "footer.html" . }}
 </body>

@@ -420,7 +420,7 @@ func GantiPasswordPost(c *gin.Context) {
 	})
 }
 
-// KeluarKoperasi handles the POST request for exiting the cooperative.
+// KeluarKoperasi handles pengajuan keluar dari koperasi
 func KeluarKoperasi(c *gin.Context) {
 	session := sessions.Default(c)
 	userID, ok := session.Get("user_id").(string)
@@ -429,27 +429,65 @@ func KeluarKoperasi(c *gin.Context) {
 		return
 	}
 
-	// Ambil data anggota untuk error handling
-	anggota, err := repository.GetAnggotaByID(userID)
+	// Ambil data dari form
+	simpananWajibStr := c.PostForm("simpanan_wajib")
+	simpananLainnyaStr := c.PostForm("simpanan_lainnya")
+	biayaAdminStr := c.PostForm("biaya_admin")
+	alasanKeluar := c.PostForm("alasan_keluar")
+
+	// Convert string to float64
+	simpananWajib, err := strconv.ParseFloat(simpananWajibStr, 64)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/login")
+		c.Redirect(http.StatusFound, "/anggota/profil?error=Format simpanan wajib tidak valid")
 		return
 	}
 
-	// Update status anggota ke 'keluar'
-	err = repository.UpdateAnggotaStatus(userID, "keluar")
+	simpananLainnya, err := strconv.ParseFloat(simpananLainnyaStr, 64)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "anggota_profil.html", gin.H{
-			"Anggota": anggota,
-			"Error":   "Gagal keluar dari koperasi.",
-		})
+		c.Redirect(http.StatusFound, "/anggota/profil?error=Format simpanan lainnya tidak valid")
 		return
 	}
 
-	// Clear session dan redirect ke login
-	session.Clear()
-	session.Save()
-	c.Redirect(http.StatusFound, "/login?message=Anda telah keluar dari koperasi.")
+	biayaAdmin, err := strconv.ParseFloat(biayaAdminStr, 64)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/anggota/profil?error=Format biaya admin tidak valid")
+		return
+	}
+
+	// Validasi alasan keluar tidak kosong
+	if strings.TrimSpace(alasanKeluar) == "" {
+		c.Redirect(http.StatusFound, "/anggota/profil?error=Alasan keluar harus diisi")
+		return
+	}
+
+	// Update status anggota menjadi 'pending_keluar' dan simpan data pengajuan
+	db := config.GetDB()
+
+	// Update status dan simpan data pengembalian simpanan
+	updateQuery := `
+		UPDATE anggota 
+		SET status_anggota = 'pending_keluar',
+		    data_keluar = jsonb_build_object(
+		        'simpanan_wajib', $1::numeric,
+		        'simpanan_lainnya', $2::numeric,
+		        'biaya_admin', $3::numeric,
+		        'alasan', $4,
+		        'tanggal_pengajuan', NOW()
+		    )
+		WHERE id_anggota = $5
+	`
+
+	_, err = db.Exec(updateQuery, simpananWajib, simpananLainnya, biayaAdmin, alasanKeluar, userID)
+	if err != nil {
+		fmt.Printf("[ERROR] Gagal update status keluar: %v\n", err)
+		c.Redirect(http.StatusFound, "/anggota/profil?error=Gagal mengajukan keluar dari koperasi")
+		return
+	}
+
+	fmt.Printf("✓ Anggota %s mengajukan keluar dari koperasi\n", userID)
+
+	// Redirect dengan pesan sukses
+	c.Redirect(http.StatusFound, "/anggota/profil?success=Pengajuan keluar berhasil diajukan. Menunggu persetujuan Ketua.")
 }
 
 // AjukanPinjaman menampilkan form pengajuan pinjaman

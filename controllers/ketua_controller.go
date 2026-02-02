@@ -757,29 +757,40 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			}
 		}
 
-		pdf := gofpdf.New("P", "mm", "A4", "")
+		// Set orientation based on report type
+		var orientation string
+		var pageWidth float64
+		if tipeLaporan == "bulanan" {
+			orientation = "L" // Landscape for monthly reports
+			pageWidth = 277
+		} else {
+			orientation = "P" // Portrait for annual reports
+			pageWidth = 190
+		}
+
+		pdf := gofpdf.New(orientation, "mm", "A4", "")
 		pdf.AddPage()
 
 		// Jika ada kop gambar, sisipkan di bagian atas
 		if kopPath != "" {
-			pdf.ImageOptions(kopPath, 10, 10, 190, 0, false, gofpdf.ImageOptions{ImageType: ""}, 0, "")
+			pdf.ImageOptions(kopPath, 10, 10, pageWidth, 0, false, gofpdf.ImageOptions{ImageType: ""}, 0, "")
 			pdf.Ln(45) // Tambah jarak agar data tidak bertumpuk dengan kop surat
 		}
 
 		// PDF header, keterangan, dan data laporan
 		pdf.SetFont("Arial", "B", 16)
 		if tipeLaporan == "tahunan" {
-			pdf.CellFormat(190, 10, "LAPORAN KEUANGAN TAHUNAN KOPERASI", "0", 1, "C", false, 0, "")
+			pdf.CellFormat(pageWidth, 10, "LAPORAN KEUANGAN TAHUNAN KOPERASI", "0", 1, "C", false, 0, "")
 		} else {
-			pdf.CellFormat(190, 10, "LAPORAN KEUANGAN BULANAN KOPERASI", "0", 1, "C", false, 0, "")
+			pdf.CellFormat(pageWidth, 10, "LAPORAN KEUANGAN BULANAN KOPERASI", "0", 1, "C", false, 0, "")
 		}
 		pdf.Ln(3)
 		pdf.SetFont("Arial", "", 10)
-		pdf.CellFormat(190, 6, "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak, "0", 1, "C", false, 0, "")
+		pdf.CellFormat(pageWidth, 6, "Dicetak pada: "+tanggalCetak+" pukul "+jamCetak, "0", 1, "C", false, 0, "")
 		if tipeLaporan == "tahunan" {
-			pdf.CellFormat(190, 6, fmt.Sprintf("Periode: Tahun %d", tahunInt), "0", 1, "C", false, 0, "")
+			pdf.CellFormat(pageWidth, 6, fmt.Sprintf("Periode: Tahun %d", tahunInt), "0", 1, "C", false, 0, "")
 		} else {
-			pdf.CellFormat(190, 6, fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt), "0", 1, "C", false, 0, "")
+			pdf.CellFormat(pageWidth, 6, fmt.Sprintf("Periode: %s %d", namaBulan, tahunInt), "0", 1, "C", false, 0, "")
 		}
 		pdf.Ln(10)
 
@@ -813,10 +824,10 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		maxLabelWidth += 10
 		maxValueWidth += 10
 		totalWidth := maxLabelWidth + maxValueWidth
-		// Jika totalWidth < 190, distribusikan sisa ke label
-		if totalWidth < 190 {
-			maxLabelWidth += 190 - totalWidth
-			totalWidth = 190
+		// Jika totalWidth < pageWidth, distribusikan sisa ke label
+		if totalWidth < pageWidth {
+			maxLabelWidth += pageWidth - totalWidth
+			totalWidth = pageWidth
 		}
 		// Header tabel
 		pdf.SetFont("Arial", "B", 11)
@@ -883,13 +894,13 @@ func KetuaDownloadLaporan(c *gin.Context) {
 					pdf.CellFormat(190, 7, "Tidak ada data anggota", "1", 1, "C", false, 0, "")
 				}
 			} else {
-				// Laporan bulanan: Tabel Rincian Laporan Bulanan
-				pdf.AddPage()
+				// Laporan bulanan: Tabel Rincian Laporan Bulanan (already in landscape)
+				pdf.Ln(10)
 				pdf.SetFont("Arial", "B", 12)
-				pdf.CellFormat(277, 8, "Rincian Laporan Bulanan", "0", 1, "L", false, 0, "")
+				pdf.CellFormat(pageWidth, 8, "Rincian Laporan Bulanan", "0", 1, "L", false, 0, "")
 				pdf.Ln(2)
 				pdf.SetFont("Arial", "", 10)
-				pdf.CellFormat(277, 7, "Tidak ada data anggota", "1", 1, "C", false, 0, "")
+				pdf.CellFormat(pageWidth, 7, "Tidak ada data anggota", "1", 1, "C", false, 0, "")
 			}
 		} else {
 			// Ada data anggota
@@ -930,10 +941,10 @@ func KetuaDownloadLaporan(c *gin.Context) {
 					}
 				}
 			} else {
-				// Laporan bulanan: Tabel Rincian Laporan Bulanan dengan landscape orientation
-				pdf.AddPage()
+				// Laporan bulanan: Tabel Rincian Laporan Bulanan (already in landscape mode)
+				pdf.Ln(10)
 				pdf.SetFont("Arial", "B", 14)
-				pdf.CellFormat(277, 10, "Rincian Laporan Bulanan", "0", 1, "C", false, 0, "")
+				pdf.CellFormat(pageWidth, 10, "Rincian Laporan Bulanan", "0", 1, "C", false, 0, "")
 				pdf.Ln(2)
 
 				// Header baris 1 dengan merged cells
@@ -1216,6 +1227,98 @@ func KetuaDataAnggota(c *gin.Context) {
 		"Anggotas":    anggotas,
 		"ActivePage":  "anggota",
 		"CurrentLogo": latestLogo,
+	})
+}
+
+// KetuaListAnggotaKeluar menampilkan daftar anggota yang sudah keluar
+func KetuaListAnggotaKeluar(c *gin.Context) {
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" &&
+				(name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) ||
+				name == "logo.png" {
+
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	// Ambil data anggota keluar
+	anggotas, err := repository.GetAnggotaByStatus("keluar")
+	if err != nil {
+		c.HTML(http.StatusOK, "ketua_data_anggota_keluar.html", gin.H{
+			"Anggotas":    []models.Anggota{},
+			"ActivePage":  "anggota_keluar",
+			"CurrentLogo": latestLogo,
+			"Title":       "Data Anggota Keluar",
+			"Error":       "Gagal mengambil data anggota keluar",
+		})
+		return
+	}
+
+	// Render normal
+	c.HTML(http.StatusOK, "ketua_data_anggota_keluar.html", gin.H{
+		"Anggotas":    anggotas,
+		"ActivePage":  "anggota_keluar",
+		"CurrentLogo": latestLogo,
+		"Title":       "Data Anggota Keluar",
+	})
+}
+
+// KetuaViewAnggotaKeluar menampilkan detail anggota yang sudah keluar
+func KetuaViewAnggotaKeluar(c *gin.Context) {
+	idAnggota := c.Param("id")
+	anggota, err := repository.GetAnggotaByID(idAnggota)
+	if err != nil || anggota.Status != "keluar" {
+		c.Redirect(http.StatusFound, "/ketua/anggota/keluar?error=Anggota keluar tidak ditemukan")
+		return
+	}
+
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "ketua_view_anggota_keluar.html", gin.H{
+		"Anggota":     anggota,
+		"ActivePage":  "anggota_keluar",
+		"CurrentLogo": latestLogo,
+		"Title":       "Detail Anggota Keluar",
 	})
 }
 
@@ -1531,6 +1634,12 @@ func KetuaKonfirmasiAnggota(c *gin.Context) {
 		return
 	}
 
+	// Ambil anggota yang mengajukan keluar
+	pendingKeluar, err := repository.GetPendingAnggotaKeluar()
+	if err != nil {
+		pendingKeluar = []models.Anggota{} // Set empty jika error
+	}
+
 	// Cari logo terbaru di static/images
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
@@ -1556,51 +1665,120 @@ func KetuaKonfirmasiAnggota(c *gin.Context) {
 
 	// Ambil pesan error dari query string jika ada
 	errorMsg := c.Query("error")
+	successMsg := c.Query("success")
 	c.HTML(http.StatusOK, "ketua_anggota_konfirmasi.html", gin.H{
 		"PendingMembers": pendingMembers,
+		"PendingKeluar":  pendingKeluar,
 		"ActivePage":     "konfirmasi_anggota",
 		"CurrentLogo":    latestLogo,
 		"Title":          "Konfirmasi Anggota",
 		"ErrorMessage":   errorMsg,
+		"SuccessMessage": successMsg,
 	})
 }
 
 // KetuaConfirmMembership mengkonfirmasi anggota
 func KetuaConfirmMembership(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+	// Ambil id anggota dari URL (ini masih TEMP id)
+	tempID := c.Param("id")
+
+	// Ambil data anggota untuk mendapatkan informasi unit_kerja, fakultas, dan tahun
+	anggota, err := repository.GetAnggotaByID(tempID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		// Log error detail ke terminal/server log
+		fmt.Printf("[ERROR] Gagal mengambil data anggota dengan id %s: %v\n", tempID, err)
+		// Redirect ke halaman konfirmasi dengan pesan error
+		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal mengambil data anggota")
 		return
 	}
 
-	// Update status anggota menjadi 'approved'
-	err = repository.UpdateAnggotaStatus(strconv.Itoa(id), "approved")
+	// Generate ID anggota yang benar berdasarkan unit_kerja, fakultas_code, tahun konfirmasi, dan nomor urut
+	db := config.GetDB()
+
+	// Ambil tahun konfirmasi saat ini
+	tahunKonfirmasi := time.Now().Format("2006")
+
+	// Ambil nomor urut terakhir secara global (tidak direset per kombinasi)
+	var lastNumber int
+	query := `SELECT COALESCE(MAX(CAST(nomor_urut AS INTEGER)), 0) FROM anggota WHERE id_anggota NOT LIKE 'TEMP%'`
+	err = db.QueryRow(query).Scan(&lastNumber)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengonfirmasi anggota"})
+		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal generate nomor urut")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Anggota berhasil dikonfirmasi"})
+	// Nomor urut berikutnya (4 digit)
+	newNumber := lastNumber + 1
+	nomorUrut := fmt.Sprintf("%04d", newNumber)
+
+	// Generate ID anggota baru: {unit_kerja}{fakultas_code}{tahun}{nomor_urut}
+	newIDAnggota := fmt.Sprintf("%s%s%s%s", anggota.UnitKerja, anggota.FakultasCode, tahunKonfirmasi, nomorUrut)
+
+	// Update id_anggota, status, tahun, dan nomor_urut
+	updateQuery := `UPDATE anggota 
+	                SET id_anggota = $1, status = $2, tahun = $3, nomor_urut = $4 
+	                WHERE id_anggota = $5`
+
+	_, err = db.Exec(updateQuery, newIDAnggota, "aktif", tahunKonfirmasi, nomorUrut, tempID)
+	if err != nil {
+		// Log error detail ke terminal/server log
+		fmt.Printf("[CONFIRM ANGGOTA ERROR] update anggota: %v\n", err)
+		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal mengkonfirmasi anggota")
+		return
+	}
+
+	fmt.Printf("✓ Anggota dengan ID %s berhasil dikonfirmasi dan aktif\n", newIDAnggota)
+
+	c.Redirect(http.StatusFound, "/ketua/konfirmasi?success=Anggota berhasil dikonfirmasi")
 }
 
 // KetuaRejectMembership menolak anggota
 func KetuaRejectMembership(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+	// Ambil id anggota dari URL (ini masih TEMP id)
+	tempID := c.Param("id")
+
+	// Hapus anggota dari database
+	db := config.GetDB()
+	deleteQuery := `DELETE FROM anggota WHERE id_anggota = $1`
+
+	_, err := db.Exec(deleteQuery, tempID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal menolak pendaftaran anggota")
 		return
 	}
 
-	// Update status anggota menjadi 'rejected'
-	err = repository.UpdateAnggotaStatus(strconv.Itoa(id), "rejected")
+	// Arahkan kembali ke halaman konfirmasi ketua
+	c.Redirect(http.StatusFound, "/ketua/konfirmasi?success=Pendaftaran anggota berhasil ditolak")
+}
+
+// KetuaApproveAnggotaKeluar menyetujui permohonan anggota keluar
+func KetuaApproveAnggotaKeluar(c *gin.Context) {
+	idAnggota := c.Param("id")
+
+	db := config.GetDB()
+	// Update status anggota menjadi 'keluar' dan set tanggal keluar
+	_, err := db.Exec("UPDATE anggota SET status = 'keluar', status_anggota = 'keluar', tgl_keluar = NOW() WHERE id_anggota = $1", idAnggota)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menolak anggota"})
+		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal menyetujui permohonan keluar")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Anggota berhasil ditolak"})
+	c.Redirect(http.StatusFound, "/ketua/konfirmasi?success=Permohonan keluar berhasil disetujui")
+}
+
+// KetuaRejectAnggotaKeluar menolak permohonan anggota keluar
+func KetuaRejectAnggotaKeluar(c *gin.Context) {
+	idAnggota := c.Param("id")
+
+	db := config.GetDB()
+	// Kembalikan status_anggota menjadi kosong/null (batalkan permohonan keluar)
+	_, err := db.Exec("UPDATE anggota SET status_anggota = NULL WHERE id_anggota = $1", idAnggota)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal menolak permohonan keluar")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/ketua/konfirmasi?success=Permohonan keluar berhasil ditolak")
 }
 
 // KetuaUploadKop handles kop surat upload for ketua

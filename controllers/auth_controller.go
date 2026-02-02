@@ -150,28 +150,32 @@ func Register(c *gin.Context) {
 	newAnggota.Password = c.PostForm("Password")
 	newAnggota.TglLahir = c.PostForm("TglLahir")
 	newAnggota.NikKTP = c.PostForm("NikKTP")
+	// Jika NikKTP kosong, gunakan username sebagai default
+	if newAnggota.NikKTP == "" {
+		newAnggota.NikKTP = newAnggota.Username
+	}
 	newAnggota.NoTelepon = c.PostForm("NoTelepon")
 	newAnggota.Alamat = c.PostForm("Alamat")
 	newAnggota.JenisKelamin = c.PostForm("JenisKelamin")
 	newAnggota.StatusAnggota = c.PostForm("StatusAnggota")
 	newAnggota.Fakultas = c.PostForm("Fakultas")
 
-	// Validasi: Username, NIK KTP, dan No. Telepon tidak boleh sama satu sama lain
-	if newAnggota.Username == newAnggota.NikKTP || newAnggota.Username == newAnggota.NoTelepon || newAnggota.NikKTP == newAnggota.NoTelepon {
+	// Validasi: Username dan No. Telepon tidak boleh sama
+	if newAnggota.Username == newAnggota.NoTelepon {
 		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Nama Pengguna, NIK KTP, dan No. Telepon tidak boleh sama satu sama lain.",
+			"error":           "Nama Pengguna dan No. Telepon tidak boleh sama.",
 			"NomorRekening":   nomorRekening,
 			"NominalSimpanan": nominalSimpanan,
 		})
 		return
 	}
 
-	// Validasi: Username, NIK KTP, dan No. Telepon tidak boleh sama dengan anggota lain
+	// Validasi: Username dan No. Telepon tidak boleh sama dengan anggota lain
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR nik_ktp = $2 OR no_telepon = $3", newAnggota.Username, newAnggota.NikKTP, newAnggota.NoTelepon).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2", newAnggota.Username, newAnggota.NoTelepon).Scan(&count)
 	if err == nil && count > 0 {
 		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Data yang Anda masukkan sudah terdaftar. Silakan periksa kembali atau gunakan data lain.",
+			"error":           "Nama Pengguna atau No. Telepon sudah terdaftar. Silakan gunakan data lain.",
 			"NomorRekening":   nomorRekening,
 			"NominalSimpanan": nominalSimpanan,
 		})
@@ -217,7 +221,7 @@ func Register(c *gin.Context) {
 
 	// Validate required fields
 	if newAnggota.NamaAnggota == "" || newAnggota.Username == "" || newAnggota.Password == "" ||
-		newAnggota.TglLahir == "" || newAnggota.NikKTP == "" || newAnggota.NoTelepon == "" ||
+		newAnggota.TglLahir == "" || newAnggota.NoTelepon == "" ||
 		newAnggota.Alamat == "" || newAnggota.JenisKelamin == "" || newAnggota.StatusAnggota == "" ||
 		newAnggota.Fakultas == "" {
 		c.HTML(http.StatusBadRequest, "register.html", gin.H{
