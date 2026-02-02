@@ -32,10 +32,24 @@
 
     <!-- Menu Pesan dihapus sesuai permintaan -->
     <a href="/admin/pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
-    <a href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
+    <a href="#" onclick="handleLogout(event)"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
 </div>
 
 <script>
+    function handleLogout(event) {
+        event.preventDefault();
+        fetch('/logout', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect;
+            }
+        });
+    }
+
     // Fungsi untuk toggle sidebar responsive
     function toggleSidebar() {
         var sidebar = document.getElementById('sidebar');

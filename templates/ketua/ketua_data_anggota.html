@@ -39,19 +39,20 @@
                             <thead>
                                 <tr>
                                     <th>No</th>
+                                    <th>ID Anggota</th>
                                     <th>Nama</th>
-                                    <th>NIK</th>
                                     <th>Alamat</th>
                                     <th>No. HP</th>
                                     <th>Status</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {{ range $i, $anggota := .Anggotas }}
                                 <tr>
                                     <td>{{ add $i 1 }}</td>
+                                    <td><strong>{{ if $anggota.IDAnggota }}{{ $anggota.IDAnggota }}{{ else }}-{{ end }}</strong></td>
                                     <td>{{ $anggota.NamaAnggota }}</td>
-                                    <td>{{ $anggota.NikKTP }}</td>
                                     <td>{{ $anggota.Alamat }}</td>
                                     <td>{{ $anggota.NoTelepon }}</td>
                                     <td>
@@ -72,6 +73,23 @@
                                                 <i class="fas fa-times-circle me-1"></i>Tidak Aktif
                                             </span>
                                         {{ end }}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            {{ if eq $anggota.Status "keluar" }}
+                                                <a href="/ketua/anggota/keluar/view/{{ $anggota.IDAnggota }}" 
+                                                   class="btn btn-action btn-view btn-sm" 
+                                                   title="Lihat Anggota Keluar">
+                                                    <i class="fas fa-eye me-1"></i>Lihat
+                                                </a>
+                                            {{ else }}
+                                                <a href="/ketua/anggota/{{ $anggota.IDAnggota }}" 
+                                                   class="btn btn-action btn-view btn-sm" 
+                                                   title="Lihat Detail">
+                                                    <i class="fas fa-eye me-1"></i>Lihat
+                                                </a>
+                                            {{ end }}
+                                        </div>
                                     </td>
                                 </tr>
                                 {{ end }}

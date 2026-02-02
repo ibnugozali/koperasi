@@ -396,9 +396,9 @@ document.addEventListener("DOMContentLoaded", function(){
                                     <i class="bi bi-cash-stack me-2"></i>Jumlah Simpanan Wajib yang Dikembalikan
                                     <small class="text-muted">(maksimal Rp {{ printf "%.0f" .SimpananWajib }})</small>
                                 </label>
-                                <input type="number" class="form-control" id="simpanan_wajib" name="simpanan_wajib" 
-                                       value="{{ printf "%.0f" .SimpananWajib }}" min="0" max="{{ printf "%.0f" .SimpananWajib }}" required>
-                                <small class="form-text text-muted">Simpanan wajib yang akan dikembalikan setelah disetujui</small>
+                                <input type="number" class="form-control bg-light" id="simpanan_wajib" name="simpanan_wajib" 
+                                       value="{{ printf "%.0f" .SimpananWajib }}" min="0" max="{{ printf "%.0f" .SimpananWajib }}" readonly required>
+                                <small class="form-text text-muted">Simpanan wajib yang akan dikembalikan setelah disetujui (otomatis dari saldo)</small>
                             </div>
 
                             <div class="mb-3">
@@ -406,10 +406,10 @@ document.addEventListener("DOMContentLoaded", function(){
                                     <i class="bi bi-wallet2 me-2"></i>Jumlah Simpanan Lainnya yang Dikembalikan
                                     <small class="text-muted">(Sukarela + Hari Raya + Umroh/Haji + Qurban, maksimal Rp {{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }})</small>
                                 </label>
-                                <input type="number" class="form-control" id="simpanan_lainnya" name="simpanan_lainnya" 
+                                <input type="number" class="form-control bg-light" id="simpanan_lainnya" name="simpanan_lainnya" 
                                        value="{{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }}" 
-                                       min="0" max="{{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }}" required>
-                                <small class="form-text text-muted">Total simpanan lainnya yang akan dikembalikan (simpanan pokok tidak dikembalikan)</small>
+                                       min="0" max="{{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }}" readonly required>
+                                <small class="form-text text-muted">Total simpanan lainnya yang akan dikembalikan (otomatis dari saldo, simpanan pokok tidak dikembalikan)</small>
                             </div>
 
                             <div class="mb-3">
@@ -417,8 +417,21 @@ document.addEventListener("DOMContentLoaded", function(){
                                     <i class="bi bi-receipt me-2"></i>Biaya Administrasi
                                 </label>
                                 <input type="number" class="form-control" id="biaya_admin" name="biaya_admin" 
-                                       value="0" min="0" required>
+                                       value="0" min="0" required oninput="hitungTotalPengembalian()">
                                 <small class="form-text text-muted">Biaya administrasi untuk proses keluar koperasi (jika ada)</small>
+                            </div>
+
+                            <hr>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-calculator me-2"></i>Total yang Akan Diterima
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-success text-white">Rp</span>
+                                    <input type="text" class="form-control bg-light fw-bold text-success" id="total_pengembalian" readonly>
+                                </div>
+                                <small class="form-text text-muted">Total = (Simpanan Wajib + Simpanan Lainnya) - Biaya Administrasi</small>
                             </div>
 
                             <div class="mb-3">
@@ -455,6 +468,23 @@ document.addEventListener("DOMContentLoaded", function(){
 </div>
 
 <script>
+// Fungsi untuk menghitung total pengembalian
+function hitungTotalPengembalian() {
+    const simpananWajib = parseFloat(document.getElementById('simpanan_wajib').value) || 0;
+    const simpananLainnya = parseFloat(document.getElementById('simpanan_lainnya').value) || 0;
+    const biayaAdmin = parseFloat(document.getElementById('biaya_admin').value) || 0;
+    
+    const total = simpananWajib + simpananLainnya - biayaAdmin;
+    
+    // Format dengan pemisah ribuan
+    document.getElementById('total_pengembalian').value = total.toLocaleString('id-ID');
+}
+
+// Hitung total saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+    hitungTotalPengembalian();
+});
+
 // Validasi form sebelum submit
 document.getElementById('formKeluar').addEventListener('submit', function(e) {
     const simpananWajib = parseFloat(document.getElementById('simpanan_wajib').value) || 0;
@@ -468,24 +498,16 @@ document.getElementById('formKeluar').addEventListener('submit', function(e) {
         return false;
     }
     
-    if (simpananWajib < 0 || simpananLainnya < 0 || biayaAdmin < 0) {
+    if (biayaAdmin < 0) {
         e.preventDefault();
-        alert('Jumlah tidak boleh negatif!');
+        alert('Biaya administrasi tidak boleh negatif!');
         return false;
     }
     
-    const maxSimpananWajib = {{ printf "%.0f" .SimpananWajib }};
-    const maxSimpananLainnya = {{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }};
-    
-    if (simpananWajib > maxSimpananWajib) {
+    const total = simpananWajib + simpananLainnya - biayaAdmin;
+    if (total < 0) {
         e.preventDefault();
-        alert('Jumlah simpanan wajib melebihi saldo yang tersedia!');
-        return false;
-    }
-    
-    if (simpananLainnya > maxSimpananLainnya) {
-        e.preventDefault();
-        alert('Jumlah simpanan lainnya melebihi saldo yang tersedia!');
+        alert('Total pengembalian tidak boleh negatif! Biaya administrasi terlalu besar.');
         return false;
     }
     

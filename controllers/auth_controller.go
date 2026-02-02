@@ -319,16 +319,23 @@ func Login(c *gin.Context) {
 			}
 			repository.CreateLoginHistory(loginHistory)
 
+			var redirectURL string
 			switch pengelola.Level {
 			case "admin":
-				c.Redirect(http.StatusFound, "/admin/dashboard")
+				redirectURL = "/admin/dashboard"
 			case "bendahara":
-				c.Redirect(http.StatusFound, "/bendahara/dashboard")
+				redirectURL = "/bendahara/dashboard"
 			case "ketua":
-				c.Redirect(http.StatusFound, "/ketua/dashboard")
+				redirectURL = "/ketua/dashboard"
 			default:
-				c.Redirect(http.StatusFound, "/")
+				redirectURL = "/"
 			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"success":  true,
+				"message":  "Login berhasil",
+				"redirect": redirectURL,
+			})
 			return
 		}
 	}
@@ -354,7 +361,11 @@ func Login(c *gin.Context) {
 			}
 			repository.CreateLoginHistory(loginHistory)
 
-			c.Redirect(http.StatusFound, "/anggota/dashboard")
+			c.JSON(http.StatusOK, gin.H{
+				"success":  true,
+				"message":  "Login berhasil",
+				"redirect": "/anggota/dashboard",
+			})
 			return
 		}
 	}
@@ -368,6 +379,15 @@ func Login(c *gin.Context) {
 		Status:    "failed",
 	}
 	repository.CreateLoginHistory(loginHistory)
+
+	// Check if request expects JSON (AJAX request)
+	if c.GetHeader("Accept") == "application/json" || c.ContentType() == "application/x-www-form-urlencoded" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "Username atau password salah.",
+		})
+		return
+	}
 
 	// Cari logo terbaru di static/images untuk ditampilkan saat error login
 	dirFiles, errLogo := os.ReadDir("static/images")
@@ -412,5 +432,10 @@ func Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
 	session.Save()
-	c.Redirect(http.StatusFound, "/login")
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":  true,
+		"message":  "Logout berhasil",
+		"redirect": "/login",
+	})
 }

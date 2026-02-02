@@ -70,7 +70,6 @@
                                                 <table class="table table-hover table-striped table-bordered align-middle">
                                                     <thead>
                                                         <tr>
-                                                            <th style="width:5%" class="text-center">No</th>
                                                             <th>Nama Anggota</th>
                                                             <th>Jenis Simpanan</th>
                                                             <th class="text-end">Jumlah</th>
@@ -81,7 +80,6 @@
                                                     <tbody>
                                                         {{range .PendingSimpanan}}
                                                         <tr>
-                                                            <td class="text-center">{{.No}}</td>
                                                             <td>{{.NamaAnggota}}</td>
                                                             <td>{{.Simpanan.JenisSimpanan}}</td>
                                                             <td class="text-end">Rp {{printf "%.0f" .JumlahSimpanan}}</td>
@@ -112,7 +110,6 @@
                                                 <table class="table table-hover table-striped table-bordered align-middle">
                                                     <thead>
                                                         <tr>
-                                                            <th style="width:5%" class="text-center">No</th>
                                                             <th>Nama Anggota</th>
                                                             <th class="text-end">Jumlah</th>
                                                             <th class="text-center">Jangka Waktu</th>
@@ -125,7 +122,6 @@
                                                     <tbody>
                                                         {{range .PendingPinjaman}}
                                                         <tr>
-                                                            <td class="text-center">{{.No}}</td>
                                                             <td>{{.NamaAnggota}}</td>
                                                             <td class="text-end">Rp {{printf "%.0f" .JumlahPinjaman}}</td>
                                                             <td class="text-center">{{.JangkaWaktu}} bulan</td>
@@ -198,7 +194,6 @@
                                                 <table class="table table-hover table-striped table-bordered align-middle">
                                                     <thead>
                                                         <tr>
-                                                            <th style="width:5%" class="text-center">No</th>
                                                             <th>Nama Anggota</th>
                                                             <th>Jenis Simpanan</th>
                                                             <th class="text-end">Jumlah</th>
@@ -210,7 +205,6 @@
                                                     <tbody>
                                                         {{range .PendingPengambilan}}
                                                         <tr>
-                                                            <td class="text-center">{{.No}}</td>
                                                             <td>{{.NamaAnggota}}</td>
                                                             <td>{{.JenisSimpanan}}</td>
                                                             <td class="text-end">Rp {{printf "%.0f" .Jumlah}}</td>

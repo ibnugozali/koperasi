@@ -123,16 +123,19 @@ func AnggotaProfil(c *gin.Context) {
 	if err != nil {
 		// Jika gagal, buat map kosong
 		simpananByJenis = map[string]float64{
-			"pokok":     0,
-			"wajib":     0,
-			"sukarela":  0,
-			"hari_raya": 0,
+			"pokok":      0,
+			"wajib":      0,
+			"sukarela":   0,
+			"hari_raya":  0,
+			"umroh_haji": 0,
+			"qurban":     0,
 		}
 	}
 
 	// Hitung Total Simpanan dari semua simpanan yang ada di anggota_profil
 	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
-		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"]
+		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
+		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
 
 	// Ambil total pinjaman
 	_, totalPinjaman, _, err := repository.GetSaldoAnggota(userID)
@@ -180,14 +183,16 @@ func AnggotaProfil(c *gin.Context) {
 
 	// Render halaman profil dan kirim data anggota, saldo, dan logo ke sana
 	c.HTML(http.StatusOK, "anggota_profil.html", gin.H{
-		"Anggota":          anggota,
-		"TotalSimpanan":    totalSimpanan,
-		"TotalPinjaman":    totalPinjaman,
-		"SimpananPokok":    simpananByJenis["pokok"],
-		"SimpananWajib":    simpananByJenis["wajib"],
-		"SimpananSukarela": simpananByJenis["sukarela"],
-		"SimpananHariRaya": simpananByJenis["hari_raya"],
-		"CurrentLogo":      latestLogo,
+		"Anggota":           anggota,
+		"TotalSimpanan":     totalSimpanan,
+		"TotalPinjaman":     totalPinjaman,
+		"SimpananPokok":     simpananByJenis["pokok"],
+		"SimpananWajib":     simpananByJenis["wajib"],
+		"SimpananSukarela":  simpananByJenis["sukarela"],
+		"SimpananHariRaya":  simpananByJenis["hari_raya"],
+		"SimpananUmrohHaji": simpananByJenis["umroh_haji"],
+		"SimpananQurban":    simpananByJenis["qurban"],
+		"CurrentLogo":       latestLogo,
 	})
 }
 
@@ -435,27 +440,34 @@ func KeluarKoperasi(c *gin.Context) {
 	biayaAdminStr := c.PostForm("biaya_admin")
 	alasanKeluar := c.PostForm("alasan_keluar")
 
+	fmt.Printf("[DEBUG] Form data: simpanan_wajib=%s, simpanan_lainnya=%s, biaya_admin=%s, alasan=%s\n",
+		simpananWajibStr, simpananLainnyaStr, biayaAdminStr, alasanKeluar)
+
 	// Convert string to float64
 	simpananWajib, err := strconv.ParseFloat(simpananWajibStr, 64)
 	if err != nil {
+		fmt.Printf("[ERROR] Parse simpanan_wajib: %v\n", err)
 		c.Redirect(http.StatusFound, "/anggota/profil?error=Format simpanan wajib tidak valid")
 		return
 	}
 
 	simpananLainnya, err := strconv.ParseFloat(simpananLainnyaStr, 64)
 	if err != nil {
+		fmt.Printf("[ERROR] Parse simpanan_lainnya: %v\n", err)
 		c.Redirect(http.StatusFound, "/anggota/profil?error=Format simpanan lainnya tidak valid")
 		return
 	}
 
 	biayaAdmin, err := strconv.ParseFloat(biayaAdminStr, 64)
 	if err != nil {
+		fmt.Printf("[ERROR] Parse biaya_admin: %v\n", err)
 		c.Redirect(http.StatusFound, "/anggota/profil?error=Format biaya admin tidak valid")
 		return
 	}
 
 	// Validasi alasan keluar tidak kosong
 	if strings.TrimSpace(alasanKeluar) == "" {
+		fmt.Printf("[ERROR] Alasan keluar kosong\n")
 		c.Redirect(http.StatusFound, "/anggota/profil?error=Alasan keluar harus diisi")
 		return
 	}
@@ -463,28 +475,36 @@ func KeluarKoperasi(c *gin.Context) {
 	// Update status anggota menjadi 'pending_keluar' dan simpan data pengajuan
 	db := config.GetDB()
 
+	fmt.Printf("[DEBUG] Executing update query for user %s\n", userID)
+
+	// Buat JSON string untuk data_keluar
+	dataKeluarJSON := fmt.Sprintf(`{
+		"simpanan_wajib": %.2f,
+		"simpanan_lainnya": %.2f,
+		"biaya_admin": %.2f,
+		"alasan": "%s",
+		"tanggal_pengajuan": "%s"
+	}`, simpananWajib, simpananLainnya, biayaAdmin,
+		strings.ReplaceAll(alasanKeluar, `"`, `\"`),
+		time.Now().Format(time.RFC3339))
+
 	// Update status dan simpan data pengembalian simpanan
 	updateQuery := `
 		UPDATE anggota 
 		SET status_anggota = 'pending_keluar',
-		    data_keluar = jsonb_build_object(
-		        'simpanan_wajib', $1::numeric,
-		        'simpanan_lainnya', $2::numeric,
-		        'biaya_admin', $3::numeric,
-		        'alasan', $4,
-		        'tanggal_pengajuan', NOW()
-		    )
-		WHERE id_anggota = $5
+		    data_keluar = $1::jsonb
+		WHERE id_anggota = $2
 	`
 
-	_, err = db.Exec(updateQuery, simpananWajib, simpananLainnya, biayaAdmin, alasanKeluar, userID)
+	result, err := db.Exec(updateQuery, dataKeluarJSON, userID)
 	if err != nil {
 		fmt.Printf("[ERROR] Gagal update status keluar: %v\n", err)
-		c.Redirect(http.StatusFound, "/anggota/profil?error=Gagal mengajukan keluar dari koperasi")
+		c.Redirect(http.StatusFound, "/anggota/profil?error=Gagal mengajukan keluar dari koperasi: "+err.Error())
 		return
 	}
 
-	fmt.Printf("✓ Anggota %s mengajukan keluar dari koperasi\n", userID)
+	rowsAffected, _ := result.RowsAffected()
+	fmt.Printf("✓ Anggota %s mengajukan keluar dari koperasi (rows affected: %d)\n", userID, rowsAffected)
 
 	// Redirect dengan pesan sukses
 	c.Redirect(http.StatusFound, "/anggota/profil?success=Pengajuan keluar berhasil diajukan. Menunggu persetujuan Ketua.")
@@ -945,6 +965,45 @@ func AnggotaSimpanan(c *gin.Context) {
 	// Cek apakah simpanan wajib sudah ada (lebih dari 0)
 	hasSimpananWajib := simpananByJenis["wajib"] > 0
 
+	// Ambil konfigurasi simpanan wajib untuk validasi
+	configSimpananWajib, err := repository.GetKonfigurasiSimpananWajib()
+	var nominalSimpananWajib float64 = 0
+
+	if err == nil && configSimpananWajib != nil {
+		// PersentasePotong sekarang menyimpan NOMINAL TETAP (bukan persentase lagi)
+		// Karena form sudah diubah menjadi input nominal langsung dalam Rupiah
+		if nominal, ok := configSimpananWajib["PersentasePotong"].(float64); ok {
+			nominalSimpananWajib = nominal
+		}
+	}
+
+	// Cek apakah anggota sudah melakukan simpanan wajib bulan ini
+	// Logika: Cek apakah ada transaksi simpanan wajib (id_simpanan=2) di bulan dan tahun ini
+	now := time.Now()
+	bulanIni := int(now.Month())
+	tahunIni := now.Year()
+
+	var countSimpananBulanIni int
+	querySimpananBulanIni := `
+		SELECT COUNT(*) FROM detail 
+		WHERE id_anggota = $1 
+		AND id_simpanan = 2 
+		AND EXTRACT(MONTH FROM tgl_transaksi) = $2 
+		AND EXTRACT(YEAR FROM tgl_transaksi) = $3
+	`
+	err = db.QueryRow(querySimpananBulanIni, userID, bulanIni, tahunIni).Scan(&countSimpananBulanIni)
+	if err != nil {
+		countSimpananBulanIni = 0
+	}
+
+	sudahSimpananBulanIni := countSimpananBulanIni > 0
+
+	// Cek apakah simpanan wajib sudah sesuai dengan konfigurasi
+	// isLocked akan TRUE jika:
+	// 1. Sudah melakukan simpanan wajib bulan ini, ATAU
+	// 2. Total simpanan wajib sudah >= target DAN sudah pernah simpan bulan ini
+	isLocked := sudahSimpananBulanIni
+
 	// Ambil konten halaman simpanan dari database
 	halaman, err := repository.GetHalamanBySlug("simpanan")
 	var kontenData map[string]interface{}
@@ -976,14 +1035,16 @@ func AnggotaSimpanan(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
-		"Judul":            "Simpanan",
-		"Anggota":          anggota,
-		"Now":              time.Now(),
-		"NomorRekening":    nomorRekening,
-		"Konten":           kontenData,
-		"HasSimpananWajib": hasSimpananWajib,
-		"SimpananWajib":    simpananByJenis["wajib"],
-		"CurrentLogo":      latestLogo,
+		"Judul":                "Simpanan",
+		"Anggota":              anggota,
+		"Now":                  time.Now(),
+		"NomorRekening":        nomorRekening,
+		"Konten":               kontenData,
+		"HasSimpananWajib":     hasSimpananWajib,
+		"SimpananWajib":        simpananByJenis["wajib"],
+		"IsLocked":             isLocked,
+		"NominalSimpananWajib": nominalSimpananWajib,
+		"CurrentLogo":          latestLogo,
 	})
 }
 
@@ -996,17 +1057,12 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Ambil data anggota untuk error handling
-	anggota, err := repository.GetAnggotaByID(userID)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "login.html", gin.H{"error": "Gagal mengambil data pengguna."})
-		return
-	}
-
-	// Ambil input dari form (template mengirim beberapa field: simpanan_wajib, simpanan_sukarela, simpanan_hari_raya, total_simpanan)
+	// Ambil input dari form (template mengirim beberapa field: simpanan_wajib, simpanan_sukarela, simpanan_hari_raya, simpanan_umroh_haji, simpanan_qurban, total_simpanan)
 	wajibStr := c.PostForm("simpanan_wajib")
 	sukarelaStr := c.PostForm("simpanan_sukarela")
 	hariRayaStr := c.PostForm("simpanan_hari_raya")
+	umrohHajiStr := c.PostForm("simpanan_umroh_haji")
+	qurbanStr := c.PostForm("simpanan_qurban")
 	totalStr := c.PostForm("total_simpanan")
 
 	// Set tanggal pengajuan otomatis ke waktu sekarang (atau gunakan yang dikirim jika ada)
@@ -1020,7 +1076,7 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 
 	// Parse values (toleran terhadap empty)
-	var wajib, sukarela, hariRaya float64
+	var wajib, sukarela, hariRaya, umrohHaji, qurban float64
 	if wajibStr != "" {
 		fmt.Sscanf(wajibStr, "%f", &wajib)
 	}
@@ -1030,18 +1086,23 @@ func AnggotaSimpananPost(c *gin.Context) {
 	if hariRayaStr != "" {
 		fmt.Sscanf(hariRayaStr, "%f", &hariRaya)
 	}
+	if umrohHajiStr != "" {
+		fmt.Sscanf(umrohHajiStr, "%f", &umrohHaji)
+	}
+	if qurbanStr != "" {
+		fmt.Sscanf(qurbanStr, "%f", &qurban)
+	}
 	var total float64
 	if totalStr != "" {
 		fmt.Sscanf(totalStr, "%f", &total)
 	} else {
-		total = wajib + sukarela + hariRaya
+		total = wajib + sukarela + hariRaya + umrohHaji + qurban
 	}
 
-	if wajib <= 0 && sukarela <= 0 && hariRaya <= 0 {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Minimal salah satu nilai simpanan harus lebih dari 0.",
+	if wajib <= 0 && sukarela <= 0 && hariRaya <= 0 && umrohHaji <= 0 && qurban <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Minimal salah satu nilai simpanan harus lebih dari 0.",
 		})
 		return
 	}
@@ -1049,10 +1110,9 @@ func AnggotaSimpananPost(c *gin.Context) {
 	// Handle file upload
 	file, err := c.FormFile("bukti")
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Bukti pembayaran wajib diupload.",
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Bukti pembayaran wajib diupload.",
 		})
 		return
 	}
@@ -1061,16 +1121,15 @@ func AnggotaSimpananPost(c *gin.Context) {
 	filename := time.Now().Format("20060102150405") + "_" + file.Filename
 	dst := "./static/uploads/" + filename
 	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.HTML(http.StatusInternalServerError, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Gagal menyimpan file bukti pembayaran.",
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal menyimpan file bukti pembayaran.",
 		})
 		return
 	}
 
 	// Buat entri untuk setiap jenis simpanan yang > 0
-	// IDSimpanan mapping: pokok(1) mungkin tidak ada di form, wajib(2), sukarela(3), hari_raya(4)
+	// IDSimpanan mapping: pokok(1), wajib(2), sukarela(3), hari_raya(4), umroh_haji(5), qurban(6)
 	var errs []error
 	if wajib > 0 {
 		d := models.Detail{
@@ -1114,18 +1173,49 @@ func AnggotaSimpananPost(c *gin.Context) {
 			errs = append(errs, e)
 		}
 	}
+	if umrohHaji > 0 {
+		d := models.Detail{
+			IDAnggota:       userID,
+			IDSimpanan:      5,
+			IDPengelola:     1,
+			TglTransaksi:    tanggalPengajuan,
+			JumlahSimpanan:  umrohHaji,
+			TotalSimpanan:   total,
+			BuktiPembayaran: filename,
+		}
+		if e := repository.CreateSimpanan(d); e != nil {
+			errs = append(errs, e)
+		}
+	}
+	if qurban > 0 {
+		d := models.Detail{
+			IDAnggota:       userID,
+			IDSimpanan:      6,
+			IDPengelola:     1,
+			TglTransaksi:    tanggalPengajuan,
+			JumlahSimpanan:  qurban,
+			TotalSimpanan:   total,
+			BuktiPembayaran: filename,
+		}
+		if e := repository.CreateSimpanan(d); e != nil {
+			errs = append(errs, e)
+		}
+	}
 
 	if len(errs) > 0 {
-		c.HTML(http.StatusInternalServerError, "anggota_simpanan.html", gin.H{
-			"Judul":   "Simpanan",
-			"Anggota": anggota,
-			"Error":   "Gagal menyimpan beberapa data simpanan. Silakan coba lagi.",
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal menyimpan beberapa data simpanan. Silakan coba lagi.",
 		})
 		return
 	}
 
-	// Berhasil, redirect ke riwayat
-	c.Redirect(http.StatusFound, "/anggota/riwayat")
+	// Berhasil, return JSON
+	c.JSON(http.StatusOK, gin.H{
+		"success":  true,
+		"message":  "Simpanan berhasil diajukan!",
+		"redirect": "/anggota/riwayat",
+	})
 }
 
 // AnggotaAngsuran menampilkan halaman angsuran untuk anggota.

@@ -343,11 +343,14 @@
                                     <th>No</th>
                                     <th>ID Anggota</th>
                                     <th>Nama</th>
-                                    <th>NIK</th>
                                     <th>Fakultas</th>
                                     <th>No. Telepon</th>
                                     <th>Gaji Bulanan</th>
-                                    <th>Potongan Bulan Ini</th>
+                                    <th>
+                                        Potongan Bulan Ini
+                                        <i class="fas fa-info-circle ms-1" data-bs-toggle="tooltip" 
+                                           title="Menampilkan potongan aktual jika sudah diproses, atau estimasi berdasarkan konfigurasi simpanan wajib"></i>
+                                    </th>
                                     <th>Sisa Gaji</th>
                                     <th>Simpanan Wajib</th>
                                     <th>Status</th>
@@ -361,7 +364,6 @@
                                     <td>{{ add $index 1 }}</td>
                                     <td><strong>{{ if $anggota.IDAnggota }}{{ $anggota.IDAnggota }}{{ else }}-{{ end }}</strong></td>
                                     <td>{{ $anggota.NamaAnggota }}</td>
-                                    <td>{{ $anggota.NikKTP }}</td>
                                     <td>{{ $anggota.Fakultas }}</td>
                                     <td>+62{{ $anggota.NoTelepon }}</td>
                                     <td>
@@ -508,6 +510,12 @@
 
     <script>
         $(document).ready(function() {
+            // Initialize Bootstrap tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
             // Format gaji bulanan dengan pemisah ribuan
             formatGajiBulanan();
             
@@ -523,7 +531,7 @@
             // Initialize DataTable
             $('#anggotaTable').DataTable({
                 "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json",
+                    "url": "/static/datatables/i18n/id.json",
                     "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
                 },
                 "pageLength": 10,
@@ -587,7 +595,7 @@
             // Count from table rows
             const rows = document.querySelectorAll('#anggotaTable tbody tr');
             rows.forEach(row => {
-                const statusCell = row.querySelector('td:nth-child(11)'); // Updated index karena ada kolom potongan & sisa gaji
+                const statusCell = row.querySelector('td:nth-child(10)'); // Updated index after removing NIK column
                 if (statusCell) {
                     const statusText = statusCell.textContent.trim();
                     if (statusText.includes('Aktif')) {
@@ -598,8 +606,16 @@
                 }
             });
 
-            document.getElementById('anggotaAktif').textContent = totalAktif;
-            document.getElementById('anggotaPending').textContent = totalPending;
+            // Update stats elements only if they exist
+            const anggotaAktifEl = document.getElementById('anggotaAktif');
+            const anggotaPendingEl = document.getElementById('anggotaPending');
+            
+            if (anggotaAktifEl) {
+                anggotaAktifEl.textContent = totalAktif;
+            }
+            if (anggotaPendingEl) {
+                anggotaPendingEl.textContent = totalPending;
+            }
         }
 
         function confirmDelete(idAnggota, namaAnggota) {

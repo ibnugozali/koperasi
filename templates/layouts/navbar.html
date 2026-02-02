@@ -23,10 +23,10 @@
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Pelayanan</a>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="/pelayanan/pinjaman">Pinjaman</a></li>
-            <li><a class="dropdown-item" href="/pelayanan/simpanan">Simpanan</a></li>
+            <li><a class="dropdown-item" href="/anggota/ajukan-pinjaman">Pinjaman</a></li>
+            <li><a class="dropdown-item" href="/anggota/simpanan">Simpanan</a></li>
             <li><a class="dropdown-item" href="/anggota/ajukan-pengambilan-simpanan">Pengambilan Simpanan</a></li>
-            <li><a class="dropdown-item" href="/pelayanan/angsuran">Angsuran</a></li>
+            <li><a class="dropdown-item" href="/anggota/angsuran">Angsuran</a></li>
           </ul>
         </li>
         <li class="nav-item"><a class="nav-link" href="/anggota/riwayat">Riwayat</a></li>
@@ -44,7 +44,7 @@
             <li><a class="dropdown-item" href="/hubungi-kami"><i class="bi bi-telephone me-2"></i>Hubungi Kami</a></li>
             <!-- <li><hr class="dropdown-divider"></li> -->
             <!-- <li> -->
-              <a class="dropdown-item text-danger" href="/logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+              <a class="dropdown-item text-danger" href="#" onclick="handleLogout(event)">
                 <i class="bi bi-box-arrow-right me-2"></i>Keluar
               </a>
             </li>
@@ -55,11 +55,23 @@
       <ul class="navbar-nav ms-auto"><li class="nav-item"><a href="/login" class="btn btn-primary">Login</a></li></ul>
       {{ end }}
 
-    <!-- Form logout tersembunyi agar tombol logout berfungsi di semua halaman -->
-    <form id="logout-form" action="/logout" method="POST" style="display:none;"></form>
   </div>
 </nav>
 
 <script>
+    function handleLogout(event) {
+        event.preventDefault();
+        fetch('/logout', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect;
+            }
+        });
+    }
+
     // Logo navbar otomatis dari backend (CurrentLogo), tidak perlu localStorage
 </script>

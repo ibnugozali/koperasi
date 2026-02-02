@@ -1058,17 +1058,72 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		simpananWajib = make(map[string]float64) // Default ke map kosong jika error
 	}
 
-	// Ambil data pemotongan bulan ini untuk semua anggota
-	potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
-	if err != nil {
-		potonganBulanIni = make(map[string]float64) // Default ke map kosong jika error
+	// Ambil konfigurasi simpanan wajib
+	konfigSimpanan, err := repository.GetKonfigurasiSimpananWajib()
+	var nominalTargetSimpananWajib float64 = 0
+	var tanggalPotong int = 1
+	if err == nil {
+		if val, ok := konfigSimpanan["PersentasePotong"].(float64); ok {
+			nominalTargetSimpananWajib = val
+		}
+		if val, ok := konfigSimpanan["TanggalPotong"].(int); ok {
+			tanggalPotong = val
+		}
+	}
+
+	// Cek apakah sudah waktunya pemotongan (tanggal sekarang >= tanggal potong)
+	now := time.Now()
+	tanggalSekarang := now.Day()
+	bulanSekarang := int(now.Month())
+	tahunSekarang := now.Year()
+
+	// Hitung potongan bulan ini
+	potonganBulanIni := make(map[string]float64)
+
+	// Cek apakah sudah ada log pemotongan bulan ini
+	db := config.GetDB()
+	logQuery := `SELECT id_anggota, jumlah_potong FROM log_pemotongan_simpanan 
+	             WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil' AND id_anggota != 'SYSTEM'`
+	rows, err := db.Query(logQuery, bulanSekarang, tahunSekarang)
+
+	sudahAdaLog := false
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var idAnggota string
+			var jumlahPotong float64
+			if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
+				continue
+			}
+			potonganBulanIni[idAnggota] = jumlahPotong
+			sudahAdaLog = true
+		}
+	}
+
+	// Jika belum ada log dan tanggal sekarang >= tanggal potong, hitung estimasi potongan
+	if !sudahAdaLog && tanggalSekarang >= tanggalPotong {
+		// Hitung potongan berdasarkan kekurangan simpanan wajib
+		for _, anggota := range anggotas {
+			if anggota.GajiBulanan > 0 && anggota.Status == "aktif" {
+				simpananSaatIni := simpananWajib[anggota.IDAnggota]
+				kekurangan := nominalTargetSimpananWajib - simpananSaatIni
+
+				// Jika ada kekurangan, itu yang akan dipotong bulan ini
+				if kekurangan > 0 {
+					potonganBulanIni[anggota.IDAnggota] = kekurangan
+				} else {
+					// Jika sudah cukup atau lebih, tidak ada potongan
+					potonganBulanIni[anggota.IDAnggota] = 0
+				}
+			}
+		}
 	}
 
 	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
 	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
 		potongan := potonganBulanIni[anggota.IDAnggota]
-		// Sisa gaji = Gaji bulanan dikurangi potongan bulan ini
+		// Sisa gaji = Gaji bulanan dikurangi potongan bulan ini saja
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 	}
 
@@ -3697,9 +3752,28 @@ func BendaharaSettingSimpananWajib(c *gin.Context) {
 	config, err := repository.GetKonfigurasiSimpananWajib()
 	if err != nil {
 		log.Printf("⚠️ Error mengambil konfigurasi: %v, menggunakan default", err)
+
+		// Jika tidak ada konfigurasi, coba ambil dari data simpanan wajib yang sudah ada
+		simpananWajibData, errSimpanan := repository.GetSimpananWajibAllAnggota()
+		var avgSimpananWajib float64 = 50000.0 // Default 50k
+
+		if errSimpanan == nil && len(simpananWajibData) > 0 {
+			var total float64
+			var count int
+			for _, nilai := range simpananWajibData {
+				if nilai > 0 {
+					total += nilai
+					count++
+				}
+			}
+			if count > 0 {
+				avgSimpananWajib = total / float64(count)
+			}
+		}
+
 		config = map[string]interface{}{
 			"TanggalPotong":    1,
-			"PersentasePotong": 5.0,
+			"PersentasePotong": avgSimpananWajib,
 			"NominalTetap":     0.0,
 			"TipePemotongan":   "persentase",
 			"StatusAktif":      false,

@@ -107,10 +107,15 @@
 
           <div class="mt-4">
             <h5 class="text-primary mb-3">Formulir Simpanan</h5>
-            {{ if .HasSimpananWajib }}
+            {{ if .IsLocked }}
             <div class="alert alert-info" role="alert">
               <i class="bi bi-info-circle me-2"></i>
-              <strong>Informasi:</strong> Anda sudah memiliki Simpanan Wajib sebesar <strong>Rp {{ printf "%.0f" .SimpananWajib }}</strong>. Input Simpanan Wajib telah dinonaktifkan.
+              <strong>Informasi:</strong> Anda sudah memiliki Simpanan Wajib sebesar <strong>Rp {{ printf "%.0f" .SimpananWajib }}</strong> yang sesuai dengan konfigurasi (Rp {{ printf "%.0f" .NominalSimpananWajib }}). Input Simpanan Wajib telah dikunci.
+            </div>
+            {{ else if .HasSimpananWajib }}
+            <div class="alert alert-warning" role="alert">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <strong>Perhatian:</strong> Simpanan Wajib Anda saat ini <strong>Rp {{ printf "%.0f" .SimpananWajib }}</strong>. Sesuai konfigurasi, Simpanan Wajib yang diharapkan adalah <strong>Rp {{ printf "%.0f" .NominalSimpananWajib }}</strong>. Anda masih dapat menambah simpanan.
             </div>
             {{ end }}
             <form action="/anggota/simpanan" method="post" enctype="multipart/form-data">
@@ -119,11 +124,15 @@
                 <div class="col-sm-8">
                   <div class="input-group">
                     <span class="input-group-text">Rp</span>
-                    <input type="number" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" min="0" value="0" placeholder="0" {{ if .HasSimpananWajib }}readonly disabled{{ end }}>
+                    <input type="number" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" min="0" value="0" placeholder="0" {{ if .IsLocked }}readonly disabled{{ end }}>
                   </div>
-                  {{ if .HasSimpananWajib }}
+                  {{ if .IsLocked }}
                   <div class="form-text text-muted">
-                    <i class="bi bi-lock-fill me-1"></i>Simpanan Wajib sudah terdaftar dan tidak dapat diubah di sini.
+                    <i class="bi bi-lock-fill me-1"></i>Simpanan Wajib sudah sesuai konfigurasi dan telah dikunci.
+                  </div>
+                  {{ else if gt .NominalSimpananWajib 0.0 }}
+                  <div class="form-text text-muted">
+                    <i class="bi bi-info-circle me-1"></i>Nominal yang diharapkan: Rp {{ printf "%.0f" .NominalSimpananWajib }}
                   </div>
                   {{ end }}
                 </div>
@@ -260,6 +269,44 @@ document.addEventListener('DOMContentLoaded', function() {
         wajibInput.style.backgroundColor = '#e9ecef';
         wajibInput.style.cursor = 'not-allowed';
     }
+
+    // Handle form submission dengan AJAX
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        // Disable button dan tampilkan loading
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...';
+        
+        fetch('/anggota/simpanan', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Tampilkan pesan sukses
+                alert(data.message || 'Simpanan berhasil diajukan!');
+                // Redirect ke halaman riwayat
+                window.location.href = data.redirect || '/anggota/riwayat';
+            } else {
+                // Tampilkan pesan error
+                alert(data.message || 'Terjadi kesalahan. Silakan coba lagi.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan saat mengirim data. Silakan coba lagi.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
 });
 </script>
 </body>

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"koperasi-simpan-pinjam/models"
+
 )
 
 type NeracaRepository struct {
@@ -91,7 +92,7 @@ func (r *NeracaRepository) SaveNeraca(req *models.NeracaRequest, userID int) err
 
 // GetNeraca retrieves neraca data for a specific user
 func (r *NeracaRepository) GetNeraca(userID int) (*models.Neraca, error) {
-	query := `SELECT id, user_id, data_2024, data_2023, labels, no_perkiraan, custom_items, item_counter, deleted_items, header_data,
+	query := `SELECT id, user_id, data_2024, data_2023, labels, no_perkiraan, custom_items, item_counter, deleted_items,
 		created_by, last_modified_by, created_at, last_modified_at 
 		FROM neraca 
 		WHERE user_id = $1
@@ -109,12 +110,14 @@ func (r *NeracaRepository) GetNeraca(userID int) (*models.Neraca, error) {
 		&neraca.CustomItems,
 		&neraca.ItemCounter,
 		&neraca.DeletedItems,
-		&neraca.HeaderData,
 		&neraca.CreatedBy,
 		&neraca.LastModifiedBy,
 		&neraca.CreatedAt,
 		&neraca.LastModifiedAt,
 	)
+
+	// Set default empty JSON for HeaderData since column doesn't exist in database
+	neraca.HeaderData = "{}"
 
 	if err == sql.ErrNoRows {
 		return nil, nil // No data found

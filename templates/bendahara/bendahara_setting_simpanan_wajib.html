@@ -272,8 +272,9 @@
                                     <select class="form-select" id="TanggalPotong" name="TanggalPotong" required>
                                         <option value="">Pilih Tanggal</option>
                                         {{ range $i := iterate 31 }}
-                                            <option value="{{ add $i 1 }}" {{ if eq $.Config.TanggalPotong (add $i 1) }}selected{{ end }}>
-                                                Tanggal {{ add $i 1 }}
+                                            {{ $tanggal := add $i 1 }}
+                                            <option value="{{ printf "%.0f" $tanggal }}" {{ if eq (printf "%.0f" $.Config.TanggalPotong) (printf "%.0f" $tanggal) }}selected{{ end }}>
+                                                Tanggal {{ printf "%.0f" $tanggal }}
                                             </option>
                                         {{ end }}
                                     </select>

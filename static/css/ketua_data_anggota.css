@@ -224,3 +224,59 @@ body {
 .empty-state p {
     color: #6b7280;
 }
+
+/* Action Buttons */
+.btn-action {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 0 2px;
+    font-weight: 500;
+}
+
+.btn-view {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.btn-view:hover {
+    background-color: #2563eb !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.btn-edit {
+    background-color: #f59e0b !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.btn-edit:hover {
+    background-color: #d97706 !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+}
+
+.btn-delete {
+    background-color: #ef4444 !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.btn-delete:hover {
+    background-color: #dc2626 !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
+
+.btn-group {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}

@@ -1322,6 +1322,79 @@ func KetuaViewAnggotaKeluar(c *gin.Context) {
 	})
 }
 
+// KetuaViewAnggota menampilkan detail anggota untuk ketua
+func KetuaViewAnggota(c *gin.Context) {
+	idStr := c.Param("id")
+
+	anggota, err := repository.GetAnggotaByID(idStr)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		return
+	}
+
+	// Ambil detail simpanan per jenis
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(idStr)
+	if err != nil {
+		simpananByJenis = map[string]float64{
+			"pokok":      0,
+			"wajib":      0,
+			"sukarela":   0,
+			"hari_raya":  0,
+			"umroh_haji": 0,
+			"qurban":     0,
+		}
+	}
+
+	// Hitung Total Simpanan dari semua simpanan yang ada
+	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
+		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
+		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+
+	// Ambil total pinjaman
+	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
+	if err != nil {
+		totalPinjaman = 0
+	}
+
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "ketua_data_anggota_view.html", gin.H{
+		"Anggota":           anggota,
+		"ActivePage":        "anggota",
+		"CurrentLogo":       latestLogo,
+		"Title":             "Detail Anggota",
+		"SimpananPokok":     simpananByJenis["pokok"],
+		"SimpananWajib":     simpananByJenis["wajib"],
+		"SimpananSukarela":  simpananByJenis["sukarela"],
+		"SimpananHariRaya":  simpananByJenis["hari_raya"],
+		"SimpananUmrohHaji": simpananByJenis["umroh_haji"],
+		"SimpananQurban":    simpananByJenis["qurban"],
+		"TotalSimpanan":     totalSimpanan,
+		"TotalPinjaman":     totalPinjaman,
+	})
+}
+
 // Menampilkan halaman riwayat transaksi
 func KetuaRiwayat(c *gin.Context) {
 	// Ambil semua data riwayat transaksi dari database
@@ -1832,7 +1905,20 @@ func KetuaSaveNeraca(c *gin.Context) {
 	db := config.GetDB()
 	neracaRepo := repository.NewNeracaRepository(db)
 
-	userIDInt := userID.(int)
+	// Convert userID to int safely
+	var userIDInt int
+	switch v := userID.(type) {
+	case int:
+		userIDInt = v
+	case string:
+		// For ketua, user_id is stored as string (id_pengelola)
+		// We can use a default value or fetch from pengelola table
+		userIDInt = 1 // Default ketua ID
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
+		return
+	}
+
 	err := neracaRepo.SaveNeraca(&req, userIDInt)
 	if err != nil {
 		log.Printf("Error saving neraca: %v", err)
@@ -1858,7 +1944,18 @@ func KetuaGetNeraca(c *gin.Context) {
 	db := config.GetDB()
 	neracaRepo := repository.NewNeracaRepository(db)
 
-	userIDInt := userID.(int)
+	// Convert userID to int safely
+	var userIDInt int
+	switch v := userID.(type) {
+	case int:
+		userIDInt = v
+	case string:
+		userIDInt = 1 // Default ketua ID
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
+		return
+	}
+
 	neraca, err := neracaRepo.GetNeraca(userIDInt)
 	if err != nil {
 		log.Printf("Error getting neraca: %v", err)

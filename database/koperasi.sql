@@ -266,7 +266,9 @@ INSERT INTO simpanan (jenis_simpanan) VALUES
 ('pokok'),
 ('wajib'),
 ('sukarela'),
-('hari_raya');
+('hari_raya'),
+('umroh_haji'),
+('qurban');
 
 
 -- Pastikan data dashboard_anggota ada (otomatis insert jika belum ada, update jika sudah ada)

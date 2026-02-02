@@ -401,12 +401,11 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 	}
 
 	// 2. Tambahkan dari detail (konfirmasi manual) - id_simpanan = 2 adalah simpanan wajib
+	// Menggunakan SUM dari jumlah_simpanan, bukan total_simpanan terbaru
 	var totalSimpananWajibDetail float64
-	detailWajibQuery := `SELECT COALESCE(total_simpanan, 0) 
+	detailWajibQuery := `SELECT COALESCE(SUM(jumlah_simpanan), 0) 
 	                     FROM detail 
-	                     WHERE id_anggota = $1 AND id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed'
-	                     ORDER BY tgl_transaksi DESC, id_detail DESC 
-	                     LIMIT 1`
+	                     WHERE id_anggota = $1 AND id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed'`
 	err = db.QueryRow(detailWajibQuery, id).Scan(&totalSimpananWajibDetail)
 	if err != nil {
 		totalSimpananWajibDetail = 0
@@ -414,16 +413,16 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 
 	simpananByJenis["wajib"] = totalSimpananWajib + totalSimpananWajibDetail
 
-	// SIMPANAN SUKARELA DAN HARI RAYA: Ambil dari SUM semua transaksi di detail (sama seperti di anggota_riwayat)
+	// SIMPANAN SUKARELA, HARI RAYA, UMROH/HAJI, DAN QURBAN: Ambil dari SUM semua transaksi di detail (sama seperti di anggota_riwayat)
 	// Tidak menggunakan total_simpanan terbaru, tapi SUM dari jumlah_simpanan semua transaksi
-	// id_simpanan: 3 = sukarela, 4 = hari_raya
+	// id_simpanan: 3 = sukarela, 4 = hari_raya, 5 = umroh_haji, 6 = qurban
 	querySukarelaDanHariRaya := `
 		SELECT s.jenis_simpanan, COALESCE(SUM(d.jumlah_simpanan), 0) as total
 		FROM detail d
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 		WHERE d.id_anggota = $1
 		  AND COALESCE(d.status, 'confirmed') = 'confirmed'
-		  AND s.jenis_simpanan IN ('sukarela', 'hari_raya')
+		  AND s.jenis_simpanan IN ('sukarela', 'hari_raya', 'umroh_haji', 'qurban')
 		GROUP BY s.jenis_simpanan
 	`
 
@@ -507,13 +506,11 @@ func GetSimpananWajibAllAnggota() (map[string]float64, error) {
 
 	// Tambahkan simpanan wajib dari detail (konfirmasi manual oleh bendahara)
 	// id_simpanan = 2 adalah simpanan wajib
-	queryDetail := `SELECT d.id_anggota, COALESCE(d.total_simpanan, 0) as total_simpanan_wajib
-	                FROM (
-	                    SELECT DISTINCT ON (id_anggota) id_anggota, total_simpanan
-	                    FROM detail
-	                    WHERE id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed'
-	                    ORDER BY id_anggota, tgl_transaksi DESC, id_detail DESC
-	                ) d`
+	// Menggunakan SUM dari jumlah_simpanan, bukan total_simpanan terbaru
+	queryDetail := `SELECT id_anggota, COALESCE(SUM(jumlah_simpanan), 0) as total_simpanan_wajib
+	                FROM detail
+	                WHERE id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed'
+	                GROUP BY id_anggota`
 
 	rows2, err := db.Query(queryDetail)
 	if err == nil {
@@ -545,20 +542,8 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 
 	// Get current month and year
 	now := time.Now()
-	tanggalSekarang := now.Day()
 	bulan := int(now.Month())
 	tahun := now.Year()
-
-	tanggalPotong, ok := config["TanggalPotong"].(int)
-	if !ok {
-		return potonganBulanIni, nil // Return map kosong jika tanggal tidak valid
-	}
-
-	// Cek apakah status aktif - HANYA untuk pengecekan apakah akan proses baru
-	statusAktif, ok := config["StatusAktif"].(bool)
-	if !ok {
-		statusAktif = false
-	}
 
 	// Ambil data dari log pemotongan bulan ini (jika sudah diproses sebelumnya)
 	// PENTING: Data yang sudah diproses tetap ditampilkan meskipun status dinonaktifkan
@@ -585,27 +570,31 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 		return potonganBulanIni, nil
 	}
 
-	// Jika belum ada log dan status tidak aktif, return map kosong
-	if !statusAktif {
-		return potonganBulanIni, nil
+	// Jika belum ada log pemotongan, tampilkan estimasi potongan berdasarkan konfigurasi dan gaji bulanan
+	// Ini berguna untuk preview sebelum pemotongan dieksekusi
+	nominalSimpananWajib, ok := config["PersentasePotong"].(float64)
+	if !ok {
+		nominalSimpananWajib = 0
 	}
 
-	// Jika belum ada log, status aktif, DAN tanggal sesuai, tampilkan nominal dari config
-	if tanggalSekarang == tanggalPotong {
-		nominalSimpananWajib := config["PersentasePotong"].(float64)
+	// Query anggota aktif dengan gaji bulanan
+	queryAnggota := `SELECT id_anggota, gaji_bulanan FROM anggota WHERE status = 'aktif' AND gaji_bulanan > 0`
+	rows, err = db.Query(queryAnggota)
+	if err != nil {
+		return potonganBulanIni, nil
+	}
+	defer rows.Close()
 
-		queryAnggota := `SELECT id_anggota FROM anggota WHERE status = 'aktif' AND gaji_bulanan > 0`
-		rows, err = db.Query(queryAnggota)
-		if err != nil {
-			return potonganBulanIni, nil
+	for rows.Next() {
+		var idAnggota string
+		var gajiBulanan int
+		if err := rows.Scan(&idAnggota, &gajiBulanan); err != nil {
+			continue
 		}
-		defer rows.Close()
 
-		for rows.Next() {
-			var idAnggota string
-			if err := rows.Scan(&idAnggota); err != nil {
-				continue
-			}
+		// Gunakan nominal simpanan wajib dari konfigurasi sebagai estimasi potongan
+		// Jika nominal 0, bisa juga hitung dari persentase gaji (tergantung tipe_pemotongan)
+		if nominalSimpananWajib > 0 {
 			potonganBulanIni[idAnggota] = nominalSimpananWajib
 		}
 	}

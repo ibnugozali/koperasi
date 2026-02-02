@@ -17,9 +17,8 @@ import (
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
 
-	// Endpoint Chrome DevTools JSON dengan CORS
+	// Endpoint Chrome DevTools JSON (tanpa CORS header)
 	router.GET("/.well-known/appspecific/com.chrome.devtools.json", func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
 		c.JSON(200, gin.H{
 			"status": "ok",
 		})
@@ -231,6 +230,7 @@ func SetupRouter() *gin.Engine {
 		ketuaRoutes.GET("/konfirmasi-transaksi", controllers.KetuaKonfirmasiTransaksi)
 		ketuaRoutes.GET("/anggota", controllers.KetuaDataAnggota)
 		ketuaRoutes.GET("/ketua-data-anggota", controllers.KetuaDataAnggota)
+		ketuaRoutes.GET("/anggota/:id", controllers.KetuaViewAnggota)
 		ketuaRoutes.GET("/anggota/keluar", controllers.KetuaListAnggotaKeluar)
 		ketuaRoutes.GET("/anggota/keluar/view/:id", controllers.KetuaViewAnggotaKeluar)
 		ketuaRoutes.GET("/ketua-riwayat-login", controllers.KetuaRiwayat)

@@ -701,18 +701,18 @@ const editableRows = [
     { id: 'row_kas', field: 'kas', col: 0 },
     { id: 'row_bank', field: 'bank', col: 0 },
     { id: 'row_piutangAnggota', field: 'piutangAnggota', col: 0 },
-    { id: 'row_perlengkapan', field: 'perlengkapan', col: 0 },
+    { id: 'asetLancarEnd', field: 'perlengkapan', col: 0 },
     { id: 'row_tanah', field: 'tanah', col: 0 },
     { id: 'row_bangunan', field: 'bangunan', col: 0 },
     { id: 'row_kendaraan', field: 'kendaraan', col: 0 },
-    { id: 'row_peralatan', field: 'peralatan', col: 0 },
-    { id: 'row_hutangUsaha', field: 'hutangUsaha', col: 4 },
-    { id: 'row_hutangBunga', field: 'hutangBunga', col: 4 },
-    { id: 'row_simpananAnggota', field: 'simpananAnggota', col: 4 },
-    { id: 'row_simpananPokok', field: 'simpananPokok', col: 4 },
-    { id: 'row_simpananWajib', field: 'simpananWajib', col: 4 },
-    { id: 'row_cadangan', field: 'cadangan', col: 4 },
-    { id: 'row_shuTahunBerjalan', field: 'shuTahunBerjalan', col: 4 }
+    { id: 'asetTetapEnd', field: 'peralatan', col: 0 },
+    { id: 'row_kas', field: 'hutangUsaha', col: 4 },
+    { id: 'row_bank', field: 'hutangBunga', col: 4 },
+    { id: 'row_piutangAnggota', field: 'simpananAnggota', col: 4 },
+    { id: 'row_tanah', field: 'simpananPokok', col: 4 },
+    { id: 'row_bangunan', field: 'simpananWajib', col: 4 },
+    { id: 'row_kendaraan', field: 'cadangan', col: 4 },
+    { id: 'asetTetapEnd', field: 'shuTahunBerjalan', col: 4 }
 ];
 
 // ============================================
@@ -1398,7 +1398,8 @@ function tambahItem(kategori) {
             `;
             const endRow = document.getElementById(endId);
             if (endRow) {
-                endRow.before(newRow);
+                // Untuk semua kategori, insert AFTER endRow (setelah row terakhir)
+                endRow.after(newRow);
             }
         }
     } else if (kategori === 'kewajibanLancar' || kategori === 'ekuitas') {
@@ -1548,7 +1549,8 @@ function tambahItem(kategori) {
             const endId = kategori === 'kewajibanLancar' ? 'asetLancarEnd' : 'asetTetapEnd';
             const endRow = document.getElementById(endId);
             if (endRow) {
-                endRow.before(newRow);
+                // Untuk semua kategori, insert AFTER endRow (setelah row terakhir)
+                endRow.after(newRow);
             }
         }
     }
