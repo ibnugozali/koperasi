@@ -184,6 +184,17 @@
                                         </div>
                                     </div>
                                 </div>
+                                {{if and (not .Report.total_simpanan) (not .Report.total_pinjaman) (not .Report.total_angsuran)}}
+                                <div class="alert alert-warning mt-3" role="alert">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Perhatian!</strong> Belum ada transaksi untuk periode ini.
+                                    <ul class="mb-0 mt-2">
+                                        <li>Pastikan data anggota sudah terdaftar sebagai anggota aktif</li>
+                                        <li>Tambahkan transaksi simpanan atau pinjaman untuk periode yang dipilih</li>
+                                        <li>Atau pilih periode lain yang memiliki data transaksi</li>
+                                    </ul>
+                                </div>
+                                {{end}}
                             </div>
                         </div>
                     </div>
@@ -236,35 +247,36 @@
                                             </td>
                                         </tr>
                                         {{ else }}
-                                        {{ if .Anggotas }}
-                                            {{ range $index, $value := .Anggotas }}
+                                        {{ if .LaporanDetail }}
+                                            {{ range $index, $detail := .LaporanDetail }}
                                             <tr>
                                                 <td style="white-space: nowrap;">{{ add $index 1 }}</td>
-                                                <td style="white-space: nowrap;">{{ $value.IDAnggota }}</td>
-                                                <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
-                                                <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
-                                                <td style="white-space: nowrap;">Rp 0</td>
+                                                <td style="white-space: nowrap;">{{ $detail.id_anggota }}</td>
+                                                <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
+                                                <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.pinjaman_bulanan }}</td>
+                                                <td style="white-space: nowrap;">{{ $detail.jangka_waktu }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.pokok_per_bulan }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jasa_per_bulan }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jumlah_angsuran_per_bulan }}</td>
+                                                <td style="white-space: nowrap;">{{ $detail.total_angsuran_dibayar }}</td>
+                                                <td style="white-space: nowrap;">{{ $detail.sisa_angsuran }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.sisa_pinjaman }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_pokok }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_wajib_bulanan }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_wajib }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_hariraya_bulanan }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_hariraya }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_sukarela_bulanan }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_sukarela }}</td>
+                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_pembayaran }}</td>
                                             </tr>
                                             {{ end }}
                                         {{ else }}
                                             <tr>
                                                 <td colspan="20" class="text-center text-muted">
-                                                    <i class="fas fa-info-circle"></i> Tidak ada data anggota aktif
+                                                    <i class="fas fa-info-circle"></i> Tidak ada data anggota aktif untuk periode ini
+                                                    <br><small>Silakan pilih periode lain atau tambahkan data transaksi terlebih dahulu</small>
                                                 </td>
                                             </tr>
                                         {{ end }}
@@ -311,25 +323,26 @@
                                                 </td>
                                             </tr>
                                             {{ else }}
-                                            {{ if .Anggotas }}
-                                                {{ range $index, $value := .Anggotas }}
+                                            {{ if .LaporanDetail }}
+                                                {{ range $index, $detail := .LaporanDetail }}
                                                 <tr>
                                                     <td style="white-space: nowrap;">{{ add $index 1 }}</td>
-                                                    <td style="white-space: nowrap;">{{ $value.IDAnggota }}</td>
-                                                    <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
-                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
+                                                    <td style="white-space: nowrap;">{{ $detail.id_anggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_pokok }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_wajib }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_hariraya }}</td>
                                                     <td style="white-space: nowrap;">Rp 0</td>
                                                     <td style="white-space: nowrap;">Rp 0</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_sukarela }}</td>
                                                 </tr>
                                                 {{ end }}
                                             {{ else }}
                                                 <tr>
                                                     <td colspan="10" class="text-center text-muted">
-                                                        <i class="fas fa-info-circle"></i> Tidak ada data simpanan wajib tahunan
+                                                        <i class="fas fa-info-circle"></i> Tidak ada data simpanan anggota untuk periode ini
+                                                        <br><small>Pastikan ada anggota aktif dan transaksi simpanan di tahun yang dipilih</small>
                                                     </td>
                                                 </tr>
                                             {{ end }}
@@ -369,20 +382,21 @@
                                                 </td>
                                             </tr>
                                             {{ else }}
-                                            {{ if .Anggotas }}
-                                                {{ range $index, $value := .Anggotas }}
+                                            {{ if .LaporanDetail }}
+                                                {{ range $index, $detail := .LaporanDetail }}
                                                 <tr>
                                                     <td style="white-space: nowrap;">{{ add $index 1 }}</td>
-                                                    <td style="white-space: nowrap;">{{ $value.IDAnggota }}</td>
-                                                    <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
-                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">{{ $detail.id_anggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.sisa_pinjaman }}</td>
                                                 </tr>
                                                 {{ end }}
                                             {{ else }}
                                                 <tr>
                                                     <td colspan="5" class="text-center text-muted">
-                                                        <i class="fas fa-info-circle"></i> Tidak ada data piutang anggota
+                                                        <i class="fas fa-info-circle"></i> Tidak ada data piutang anggota untuk periode ini
+                                                        <br><small>Pastikan ada anggota aktif atau transaksi pinjaman di tahun yang dipilih</small>
                                                     </td>
                                                 </tr>
                                             {{ end }}
@@ -422,20 +436,23 @@
                                                 </td>
                                             </tr>
                                             {{ else }}
-                                            {{ if .Anggotas }}
-                                                {{ range $index, $value := .Anggotas }}
+                                            {{ if .LaporanDetail }}
+                                                {{ range $index, $detail := .LaporanDetail }}
+                                                {{ if gt $detail.sisa_pinjaman 0.0 }}
                                                 <tr>
                                                     <td style="white-space: nowrap;">{{ add $index 1 }}</td>
-                                                    <td style="white-space: nowrap;">{{ $value.IDAnggota }}</td>
-                                                    <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
-                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">{{ $detail.id_anggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.sisa_pinjaman }}</td>
                                                 </tr>
+                                                {{ end }}
                                                 {{ end }}
                                             {{ else }}
                                                 <tr>
                                                     <td colspan="5" class="text-center text-muted">
-                                                        <i class="fas fa-info-circle"></i> Tidak ada data piutang macet anggota
+                                                        <i class="fas fa-info-circle"></i> Tidak ada data piutang macet anggota untuk periode ini
+                                                        <br><small>Pastikan ada pinjaman yang belum lunas melewati jangka waktu di tahun yang dipilih</small>
                                                     </td>
                                                 </tr>
                                             {{ end }}
@@ -476,15 +493,15 @@
                                                 </td>
                                             </tr>
                                             {{ else }}
-                                            {{ if .Anggotas }}
-                                                {{ range $index, $value := .Anggotas }}
+                                            {{ if .LaporanDetail }}
+                                                {{ range $index, $detail := .LaporanDetail }}
                                                 <tr>
                                                     <td style="white-space: nowrap;">{{ add $index 1 }}</td>
-                                                    <td style="white-space: nowrap;">{{ $value.NamaAnggota }}</td>
-                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $value.UnitKerja }}</td>
+                                                    <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jasa_per_bulan }}</td>
                                                     <td style="white-space: nowrap;">Rp 0</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jasa_per_bulan }}</td>
                                                 </tr>
                                                 {{ end }}
                                             {{ else }}
@@ -1177,18 +1194,13 @@ $(document).ready(function() {
     // Tidak perlu addEventListener lagi untuk menghindari double execution
     console.log('Button Edit Neraca menggunakan inline onclick handler');
     
-    // Initialize DataTable only if table has valid data rows
+    // DataTables dinonaktifkan untuk riwayatTable karena struktur header dengan rowspan/colspan
+    // yang kompleks menyebabkan error "Incorrect column count"
+    // Tabel akan menggunakan scroll horizontal biasa
     {{ if and (not .Error) .Anggotas }}
-    $('#riwayatTable').DataTable({
-            "language": {
-                "url": "/static/js/datatables/i18n/id.json",
-                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
-            },
-        "pageLength": 10,
-        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-        "order": [[0, 'desc']],
-        "responsive": true
-    });
+    // $('#riwayatTable').DataTable() - DISABLED due to complex header structure
+    console.log('riwayatTable: DataTables disabled, using native table with horizontal scroll');
+    {{ end }}
     
     // Initialize DataTables for 5 yearly report tables
     $('#simpananWajibTable').DataTable({
@@ -1234,7 +1246,6 @@ $(document).ready(function() {
         "order": [[0, 'desc']],
         "responsive": true
     });
-    {{ end }}
 });
 
 // Fungsi untuk tambah item baru

@@ -346,6 +346,12 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			potonganBulanIni, _ = repository.GetPotonganBulanIniAllAnggota()
 		}
 
+		// Ambil laporan detail per anggota untuk tipe bulanan
+		var laporanDetail []map[string]interface{}
+		if tipeLaporan == "bulanan" {
+			laporanDetail, _ = repository.GetLaporanBulananPerAnggota(bulanInt, tahunInt)
+		}
+
 		// Selalu buat tabel rincian meskipun tidak ada data anggota
 		startRow := rowOffset + 5 + len(dataRows) + 2
 
@@ -631,6 +637,12 @@ func KetuaDownloadLaporan(c *gin.Context) {
 					row := startRow + 2 + idx
 					unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
 
+					// Ambil data detail untuk anggota ini (jika tersedia)
+					var detail map[string]interface{}
+					if idx < len(laporanDetail) {
+						detail = laporanDetail[idx]
+					}
+
 					// Kolom identitas
 					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), idx+1)
 					f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), dataCenterStyle)
@@ -644,27 +656,80 @@ func KetuaDownloadLaporan(c *gin.Context) {
 					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), unitKerjaName)
 					f.SetCellStyle(sheet, fmt.Sprintf("D%d", row), fmt.Sprintf("D%d", row), dataLeftStyle)
 
-					// Kolom Pinjaman (E-L)
-					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Rp 0")
-					f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), dataRightStyle)
+					// Kolom Pinjaman (E-L) - menggunakan data dari laporanDetail
+					if detail != nil {
+						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("Rp %.0f", detail["pinjaman_bulanan"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), dataRightStyle)
 
-					f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "0 bulan")
-					f.SetCellStyle(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("F%d", row), dataCenterStyle)
+						f.SetCellValue(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("%v bulan", detail["jangka_waktu"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("F%d", row), dataCenterStyle)
 
-					for col := 'G'; col <= 'L'; col++ {
-						f.SetCellValue(sheet, fmt.Sprintf("%c%d", col, row), "Rp 0")
-						f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), dataRightStyle)
+						f.SetCellValue(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("Rp %.0f", detail["pokok_per_bulan"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("G%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("H%d", row), fmt.Sprintf("Rp %.0f", detail["jasa_per_bulan"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("H%d", row), fmt.Sprintf("H%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("Rp %.0f", detail["jumlah_angsuran_per_bulan"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("I%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("J%d", row), fmt.Sprintf("%v", detail["total_angsuran_dibayar"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("J%d", row), fmt.Sprintf("J%d", row), dataCenterStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("%v", detail["sisa_angsuran"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("K%d", row), dataCenterStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("L%d", row), fmt.Sprintf("Rp %.0f", detail["sisa_pinjaman"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("L%d", row), fmt.Sprintf("L%d", row), dataRightStyle)
+
+						// Kolom Simpanan (M-S)
+						f.SetCellValue(sheet, fmt.Sprintf("M%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_pokok"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("M%d", row), fmt.Sprintf("M%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("N%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_wajib_bulanan"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("N%d", row), fmt.Sprintf("N%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("O%d", row), fmt.Sprintf("Rp %.0f", detail["total_simpanan_wajib"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("O%d", row), fmt.Sprintf("O%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("P%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_hariraya_bulanan"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("P%d", row), fmt.Sprintf("P%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("Q%d", row), fmt.Sprintf("Rp %.0f", detail["total_simpanan_hariraya"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("Q%d", row), fmt.Sprintf("Q%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("R%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_sukarela_bulanan"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("R%d", row), fmt.Sprintf("R%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("S%d", row), fmt.Sprintf("Rp %.0f", detail["total_simpanan_sukarela"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("S%d", row), fmt.Sprintf("S%d", row), dataRightStyle)
+
+						// Jumlah Pembayaran
+						f.SetCellValue(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("Rp %.0f", detail["total_pembayaran"]))
+						f.SetCellStyle(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("T%d", row), dataRightStyle)
+					} else {
+						// Default values jika tidak ada detail
+						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Rp 0")
+						f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), dataRightStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "0 bulan")
+						f.SetCellStyle(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("F%d", row), dataCenterStyle)
+
+						for col := 'G'; col <= 'L'; col++ {
+							f.SetCellValue(sheet, fmt.Sprintf("%c%d", col, row), "Rp 0")
+							f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), dataRightStyle)
+						}
+
+						// Kolom Simpanan (M-S)
+						for col := 'M'; col <= 'S'; col++ {
+							f.SetCellValue(sheet, fmt.Sprintf("%c%d", col, row), "Rp 0")
+							f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), dataRightStyle)
+						}
+
+						// Jumlah Pembayaran
+						f.SetCellValue(sheet, fmt.Sprintf("T%d", row), "Rp 0")
+						f.SetCellStyle(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("T%d", row), dataRightStyle)
 					}
-
-					// Kolom Simpanan (M-S)
-					for col := 'M'; col <= 'S'; col++ {
-						f.SetCellValue(sheet, fmt.Sprintf("%c%d", col, row), "Rp 0")
-						f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), dataRightStyle)
-					}
-
-					// Jumlah Pembayaran
-					f.SetCellValue(sheet, fmt.Sprintf("T%d", row), "Rp 0")
-					f.SetCellStyle(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("T%d", row), dataRightStyle)
 				}
 				// Style header rincian
 				rincianHeaderStyle, _ := f.NewStyle(&excelize.Style{
@@ -1519,18 +1584,11 @@ func KetuaLaporan(c *gin.Context) {
 		return
 	}
 
-	// Ambil data anggota aktif
+	// Ambil data anggota aktif (untuk tabel tahunan)
 	anggotas, err := repository.GetAllAnggota()
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "ketua_laporan.html", gin.H{
-			"ActivePage":  "laporan",
-			"Error":       "Gagal mengambil data anggota",
-			"CurrentLogo": latestLogo,
-			"Bulan":       bulan,
-			"Tahun":       tahun,
-			"Report":      report,
-		})
-		return
+		log.Printf("Error getting anggotas: %v", err)
+		anggotas = []models.Anggota{}
 	}
 
 	// Ambil data potongan bulan ini untuk semua anggota
@@ -1549,6 +1607,13 @@ func KetuaLaporan(c *gin.Context) {
 	// Ambil pesan success dari query parameter
 	successMsg := c.Query("success")
 
+	// Ambil laporan detail bulanan per anggota
+	laporanDetail, err := repository.GetLaporanBulananPerAnggota(bulan, tahun)
+	if err != nil {
+		log.Printf("Error getting detailed report: %v", err)
+		laporanDetail = []map[string]interface{}{}
+	}
+
 	c.HTML(http.StatusOK, "ketua_laporan.html", gin.H{
 		"ActivePage":       "laporan",
 		"Report":           report,
@@ -1557,16 +1622,10 @@ func KetuaLaporan(c *gin.Context) {
 		"TipeLaporan":      tipeLaporan,
 		"CurrentLogo":      latestLogo,
 		"Anggotas":         anggotas,
+		"LaporanDetail":    laporanDetail,
 		"SisaGaji":         sisaGaji,
 		"GetUnitKerjaName": repository.GetUnitKerjaName,
 		"success":          successMsg,
-		"Error": func() string {
-			if err != nil {
-				return "Gagal mengambil data anggota"
-			} else {
-				return ""
-			}
-		}(),
 	})
 }
 

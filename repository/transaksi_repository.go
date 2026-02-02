@@ -318,11 +318,11 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	db := config.GetDB()
 	report := make(map[string]interface{})
 
-	// Total simpanan bulan ini
+	// Total simpanan bulan ini (atau tahun ini jika bulan = 0)
 	querySimpanan := `
 		SELECT COALESCE(SUM(d.jumlah_simpanan), 0)
 		FROM detail d
-		WHERE EXTRACT(MONTH FROM d.tgl_transaksi) = $1 AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+		WHERE ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
 	`
 	var totalSimpanan float64
 	err := db.QueryRow(querySimpanan, bulan, tahun).Scan(&totalSimpanan)
@@ -331,11 +331,11 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	}
 	report["total_simpanan"] = totalSimpanan
 
-	// Total pinjaman bulan ini
+	// Total pinjaman bulan ini (atau tahun ini jika bulan = 0)
 	queryPinjaman := `
 		SELECT COALESCE(SUM(p.jumlah_pinjaman), 0)
 		FROM pinjaman p
-		WHERE EXTRACT(MONTH FROM p.tgl_pinjaman) = $1 AND EXTRACT(YEAR FROM p.tgl_pinjaman) = $2
+		WHERE ($1 = 0 OR EXTRACT(MONTH FROM p.tgl_pinjaman) = $1) AND EXTRACT(YEAR FROM p.tgl_pinjaman) = $2
 	`
 	var totalPinjaman float64
 	err = db.QueryRow(queryPinjaman, bulan, tahun).Scan(&totalPinjaman)
@@ -344,11 +344,11 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	}
 	report["total_pinjaman"] = totalPinjaman
 
-	// Total angsuran bulan ini
+	// Total angsuran bulan ini (atau tahun ini jika bulan = 0)
 	queryAngsuran := `
 		SELECT COALESCE(SUM(a.sisa_pinjaman), 0)
 		FROM angsuran a
-		WHERE EXTRACT(MONTH FROM a.tgl_bayar) = $1 AND EXTRACT(YEAR FROM a.tgl_bayar) = $2
+		WHERE ($1 = 0 OR EXTRACT(MONTH FROM a.tgl_bayar) = $1) AND EXTRACT(YEAR FROM a.tgl_bayar) = $2
 	`
 	var totalAngsuran float64
 	err = db.QueryRow(queryAngsuran, bulan, tahun).Scan(&totalAngsuran)
@@ -357,11 +357,11 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	}
 	report["total_angsuran"] = totalAngsuran
 
-	// Total pengambilan simpanan bulan ini
+	// Total pengambilan simpanan bulan ini (atau tahun ini jika bulan = 0)
 	queryPengambilan := `
 		SELECT COALESCE(SUM(ps.jumlah), 0)
 		FROM pengambilan_simpanan ps
-		WHERE EXTRACT(MONTH FROM ps.tgl_proses) = $1 AND EXTRACT(YEAR FROM ps.tgl_proses) = $2
+		WHERE ($1 = 0 OR EXTRACT(MONTH FROM ps.tgl_proses) = $1) AND EXTRACT(YEAR FROM ps.tgl_proses) = $2
 		  AND ps.status = 'approved'
 	`
 	var totalPengambilan float64
@@ -853,4 +853,212 @@ func GetRiwayatPengambilanSimpananByAnggotaID(idAnggota string, search string) (
 		pengambilans = append(pengambilans, ps)
 	}
 	return pengambilans, nil
+}
+
+// GetLaporanBulananPerAnggota mengambil laporan detail bulanan per anggota
+func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, error) {
+	db := config.GetDB()
+	var reports []map[string]interface{}
+
+	// Query untuk mendapatkan data per anggota aktif
+	query := `
+		SELECT 
+			a.id_anggota,
+			a.nama_anggota,
+			a.unit_kerja,
+			-- Simpanan Pokok (dari tabel detail dengan jenis Pokok)
+			COALESCE((SELECT SUM(d.jumlah_simpanan) 
+				FROM detail d 
+				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+				WHERE d.id_anggota = a.id_anggota 
+				AND s.jenis_simpanan = 'pokok'
+			), 0) as simpanan_pokok,
+			-- Simpanan Wajib bulan ini
+			COALESCE((SELECT SUM(d.jumlah_simpanan) 
+				FROM detail d 
+				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+				WHERE d.id_anggota = a.id_anggota 
+				AND s.jenis_simpanan = 'wajib'
+				AND ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+			), 0) as simpanan_wajib_bulanan,
+			-- Total Simpanan Wajib sampai saat ini
+			COALESCE((SELECT SUM(d.jumlah_simpanan) 
+				FROM detail d 
+				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+				WHERE d.id_anggota = a.id_anggota 
+				AND s.jenis_simpanan = 'wajib'
+			), 0) as total_simpanan_wajib,
+			-- Simpanan Hari Raya bulan ini
+			COALESCE((SELECT SUM(d.jumlah_simpanan) 
+				FROM detail d 
+				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+				WHERE d.id_anggota = a.id_anggota 
+				AND s.jenis_simpanan = 'hari_raya'
+				AND ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+			), 0) as simpanan_hariraya_bulanan,
+			-- Total Simpanan Hari Raya sampai saat ini
+			COALESCE((SELECT SUM(d.jumlah_simpanan) 
+				FROM detail d 
+				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+				WHERE d.id_anggota = a.id_anggota 
+				AND s.jenis_simpanan = 'hari_raya'
+			), 0) as total_simpanan_hariraya,
+			-- Simpanan Sukarela bulan ini
+			COALESCE((SELECT SUM(d.jumlah_simpanan) 
+				FROM detail d 
+				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+				WHERE d.id_anggota = a.id_anggota 
+				AND s.jenis_simpanan = 'sukarela'
+				AND ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+			), 0) as simpanan_sukarela_bulanan,
+			-- Total Simpanan Sukarela sampai saat ini
+			COALESCE((SELECT SUM(d.jumlah_simpanan) 
+				FROM detail d 
+				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+				WHERE d.id_anggota = a.id_anggota 
+				AND s.jenis_simpanan = 'sukarela'
+			), 0) as total_simpanan_sukarela,
+			-- Pinjaman yang diambil bulan ini
+			COALESCE((SELECT SUM(p.jumlah_pinjaman) 
+				FROM pinjaman p
+				WHERE p.id_anggota = a.id_anggota 
+				AND ($1 = 0 OR EXTRACT(MONTH FROM p.tgl_pinjaman) = $1) AND EXTRACT(YEAR FROM p.tgl_pinjaman) = $2
+			), 0) as pinjaman_bulanan,
+			-- Total Pinjaman Aktif (belum lunas)
+			COALESCE((SELECT SUM(p.jumlah_pinjaman) 
+				FROM pinjaman p
+				WHERE p.id_anggota = a.id_anggota 
+				AND p.status = 'aktif'
+			), 0) as total_pinjaman_aktif,
+			-- Sisa Pinjaman (jumlah pinjaman - total angsuran yang sudah dibayar)
+			COALESCE((SELECT p.jumlah_pinjaman - COALESCE((SELECT SUM(ang.sisa_pinjaman) FROM angsuran ang WHERE ang.id_pinjaman = p.id_pinjaman), 0)
+				FROM pinjaman p
+				WHERE p.id_anggota = a.id_anggota 
+				AND p.status = 'aktif'
+				ORDER BY p.tgl_pinjaman DESC
+				LIMIT 1
+			), 0) as sisa_pinjaman,
+			-- Angsuran bulan ini (total pembayaran angsuran pada bulan ini)
+			COALESCE((SELECT COUNT(*) * (
+				SELECT (p.jumlah_pinjaman / p.jangka_waktu) + ((p.jumlah_pinjaman * p.bunga / 100) / p.jangka_waktu)
+				FROM pinjaman p
+				WHERE p.id_anggota = a.id_anggota 
+				AND p.status = 'aktif'
+				ORDER BY p.tgl_pinjaman DESC
+				LIMIT 1
+			)
+				FROM angsuran ang
+				JOIN pinjaman p ON ang.id_pinjaman = p.id_pinjaman
+				WHERE p.id_anggota = a.id_anggota 
+				AND ($1 = 0 OR EXTRACT(MONTH FROM ang.tgl_bayar) = $1) AND EXTRACT(YEAR FROM ang.tgl_bayar) = $2
+			), 0) as angsuran_bulanan,
+			-- Total Angsuran yang sudah dibayar
+			COALESCE((SELECT COUNT(*) 
+				FROM angsuran ang
+				JOIN pinjaman p ON ang.id_pinjaman = p.id_pinjaman
+				WHERE p.id_anggota = a.id_anggota 
+				AND p.status = 'aktif'
+			), 0) as total_angsuran_dibayar,
+			-- Sisa Angsuran yang belum dibayar
+			COALESCE((
+				SELECT p.jangka_waktu - COUNT(ang.id_angsuran)
+				FROM pinjaman p
+				LEFT JOIN angsuran ang ON p.id_pinjaman = ang.id_pinjaman
+				WHERE p.id_anggota = a.id_anggota 
+				AND p.status = 'aktif'
+				AND p.id_pinjaman = (
+					SELECT id_pinjaman FROM pinjaman 
+					WHERE id_anggota = a.id_anggota AND status = 'aktif' 
+					ORDER BY tgl_pinjaman DESC LIMIT 1
+				)
+				GROUP BY p.jangka_waktu
+			), 0) as sisa_angsuran,
+			-- Jangka Waktu/Tenor (dari pinjaman aktif terbaru)
+			COALESCE((SELECT p.jangka_waktu 
+				FROM pinjaman p
+				WHERE p.id_anggota = a.id_anggota 
+				AND p.status = 'aktif'
+				ORDER BY p.tgl_pinjaman DESC
+				LIMIT 1
+			), 0) as jangka_waktu,
+			-- Pokok Pinjaman per bulan
+			CASE 
+				WHEN (SELECT p.jangka_waktu FROM pinjaman p WHERE p.id_anggota = a.id_anggota AND p.status = 'aktif' ORDER BY p.tgl_pinjaman DESC LIMIT 1) > 0
+				THEN COALESCE((SELECT p.jumlah_pinjaman / p.jangka_waktu FROM pinjaman p WHERE p.id_anggota = a.id_anggota AND p.status = 'aktif' ORDER BY p.tgl_pinjaman DESC LIMIT 1), 0)
+				ELSE 0
+			END as pokok_per_bulan,
+			-- Jasa/Bunga per bulan
+			CASE 
+				WHEN (SELECT p.jangka_waktu FROM pinjaman p WHERE p.id_anggota = a.id_anggota AND p.status = 'aktif' ORDER BY p.tgl_pinjaman DESC LIMIT 1) > 0
+				THEN COALESCE((SELECT (p.jumlah_pinjaman * p.bunga / 100) / p.jangka_waktu FROM pinjaman p WHERE p.id_anggota = a.id_anggota AND p.status = 'aktif' ORDER BY p.tgl_pinjaman DESC LIMIT 1), 0)
+				ELSE 0
+			END as jasa_per_bulan
+		FROM anggota a
+		WHERE a.status_anggota IN ('dosen', 'karyawan')
+		ORDER BY a.id_anggota
+	`
+
+	rows, err := db.Query(query, bulan, tahun)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var report map[string]interface{} = make(map[string]interface{})
+		var idAnggota, unitKerja string
+		var namaAnggota string
+		var simpananPokok, simpananWajibBulanan, totalSimpananWajib float64
+		var simpananHariRayaBulanan, totalSimpananHariRaya float64
+		var simpananSukarelaBulanan, totalSimpananSukarela float64
+		var pinjamanBulanan, totalPinjamanAktif, sisaPinjaman float64
+		var angsuranBulanan float64
+		var totalAngsuranDibayar, sisaAngsuran, jangkaWaktu int
+		var pokokPerBulan, jasaPerBulan float64
+
+		if err := rows.Scan(
+			&idAnggota, &namaAnggota, &unitKerja,
+			&simpananPokok,
+			&simpananWajibBulanan, &totalSimpananWajib,
+			&simpananHariRayaBulanan, &totalSimpananHariRaya,
+			&simpananSukarelaBulanan, &totalSimpananSukarela,
+			&pinjamanBulanan, &totalPinjamanAktif, &sisaPinjaman,
+			&angsuranBulanan, &totalAngsuranDibayar, &sisaAngsuran,
+			&jangkaWaktu, &pokokPerBulan, &jasaPerBulan,
+		); err != nil {
+			return nil, err
+		}
+
+		// Hitung jumlah angsuran per bulan (pokok + jasa)
+		jumlahAngsuranPerBulan := pokokPerBulan + jasaPerBulan
+
+		// Hitung total pembayaran bulan ini (simpanan + angsuran)
+		totalPembayaran := simpananWajibBulanan + simpananHariRayaBulanan + simpananSukarelaBulanan + angsuranBulanan
+
+		report["id_anggota"] = idAnggota
+		report["nama_anggota"] = namaAnggota
+		report["unit_kerja"] = unitKerja
+		report["simpanan_pokok"] = simpananPokok
+		report["simpanan_wajib_bulanan"] = simpananWajibBulanan
+		report["total_simpanan_wajib"] = totalSimpananWajib
+		report["simpanan_hariraya_bulanan"] = simpananHariRayaBulanan
+		report["total_simpanan_hariraya"] = totalSimpananHariRaya
+		report["simpanan_sukarela_bulanan"] = simpananSukarelaBulanan
+		report["total_simpanan_sukarela"] = totalSimpananSukarela
+		report["pinjaman_bulanan"] = pinjamanBulanan
+		report["total_pinjaman_aktif"] = totalPinjamanAktif
+		report["sisa_pinjaman"] = sisaPinjaman
+		report["angsuran_bulanan"] = angsuranBulanan
+		report["total_angsuran_dibayar"] = totalAngsuranDibayar
+		report["sisa_angsuran"] = sisaAngsuran
+		report["jangka_waktu"] = jangkaWaktu
+		report["pokok_per_bulan"] = pokokPerBulan
+		report["jasa_per_bulan"] = jasaPerBulan
+		report["jumlah_angsuran_per_bulan"] = jumlahAngsuranPerBulan
+		report["total_pembayaran"] = totalPembayaran
+
+		reports = append(reports, report)
+	}
+
+	return reports, nil
 }
