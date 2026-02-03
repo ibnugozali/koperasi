@@ -322,7 +322,9 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	querySimpanan := `
 		SELECT COALESCE(SUM(d.jumlah_simpanan), 0)
 		FROM detail d
-		WHERE ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+		WHERE ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) 
+		  AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+		  AND d.status = 'confirmed'
 	`
 	var totalSimpanan float64
 	err := db.QueryRow(querySimpanan, bulan, tahun).Scan(&totalSimpanan)
@@ -335,7 +337,9 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	queryPinjaman := `
 		SELECT COALESCE(SUM(p.jumlah_pinjaman), 0)
 		FROM pinjaman p
-		WHERE ($1 = 0 OR EXTRACT(MONTH FROM p.tgl_pinjaman) = $1) AND EXTRACT(YEAR FROM p.tgl_pinjaman) = $2
+		WHERE ($1 = 0 OR EXTRACT(MONTH FROM p.tgl_pinjaman) = $1) 
+		  AND EXTRACT(YEAR FROM p.tgl_pinjaman) = $2
+		  AND p.status IN ('aktif', 'lunas')
 	`
 	var totalPinjaman float64
 	err = db.QueryRow(queryPinjaman, bulan, tahun).Scan(&totalPinjaman)
@@ -348,7 +352,9 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	queryAngsuran := `
 		SELECT COALESCE(SUM(a.sisa_pinjaman), 0)
 		FROM angsuran a
-		WHERE ($1 = 0 OR EXTRACT(MONTH FROM a.tgl_bayar) = $1) AND EXTRACT(YEAR FROM a.tgl_bayar) = $2
+		WHERE ($1 = 0 OR EXTRACT(MONTH FROM a.tgl_bayar) = $1) 
+		  AND EXTRACT(YEAR FROM a.tgl_bayar) = $2
+		  AND a.status = 'confirmed'
 	`
 	var totalAngsuran float64
 	err = db.QueryRow(queryAngsuran, bulan, tahun).Scan(&totalAngsuran)
@@ -597,14 +603,13 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 		riwayats = append(riwayats, r)
 	}
 
-	// Anggota aktif (untuk menampilkan semua anggota di laporan)
-	queryAnggota := `
-		SELECT '0' as id, a.tgl_gabung as tanggal, 'Pendaftaran' as jenis, 0.0 as jumlah, 'Aktif' as status,
-		       a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
-		FROM anggota a
-		WHERE a.status = 'aktif'
+	// Pengambilan Simpanan
+	queryPengambilan := `
+		SELECT ps.id_pengambilan, ps.tgl_pengajuan, 'Pengambilan' as jenis, ps.jumlah, ps.status, a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
+		FROM pengambilan_simpanan ps
+		JOIN anggota a ON ps.id_anggota = a.id_anggota
 	`
-	rows4, err := db.Query(queryAnggota)
+	rows4, err := db.Query(queryPengambilan)
 	if err != nil {
 		return nil, err
 	}
@@ -613,6 +618,32 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 	for rows4.Next() {
 		var r models.Riwayat
 		if err := rows4.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.UnitKerja, &r.GajiBulanan); err != nil {
+			return nil, err
+		}
+		// Konversi kode unit kerja ke nama readable
+		r.UnitKerja = GetUnitKerjaName(r.UnitKerja)
+		// Hitung sisa gaji: Gaji Bulanan - Potongan Bulan Ini
+		potongan := int(potonganBulanIni[r.IDAnggota])
+		r.SisaGaji = r.GajiBulanan - potongan
+		riwayats = append(riwayats, r)
+	}
+
+	// Anggota aktif (untuk menampilkan semua anggota di laporan)
+	queryAnggota := `
+		SELECT '0' as id, a.tgl_gabung as tanggal, 'Pendaftaran' as jenis, 0.0 as jumlah, 'Aktif' as status,
+		       a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
+		FROM anggota a
+		WHERE a.status = 'aktif'
+	`
+	rows5, err := db.Query(queryAnggota)
+	if err != nil {
+		return nil, err
+	}
+	defer rows5.Close()
+
+	for rows5.Next() {
+		var r models.Riwayat
+		if err := rows5.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.UnitKerja, &r.GajiBulanan); err != nil {
 			return nil, err
 		}
 		// Konversi kode unit kerja ke nama readable
@@ -872,6 +903,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 				WHERE d.id_anggota = a.id_anggota 
 				AND s.jenis_simpanan = 'pokok'
+				AND d.status = 'confirmed'
 			), 0) as simpanan_pokok,
 			-- Simpanan Wajib bulan ini
 			COALESCE((SELECT SUM(d.jumlah_simpanan) 
@@ -880,6 +912,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				WHERE d.id_anggota = a.id_anggota 
 				AND s.jenis_simpanan = 'wajib'
 				AND ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+				AND d.status = 'confirmed'
 			), 0) as simpanan_wajib_bulanan,
 			-- Total Simpanan Wajib sampai saat ini
 			COALESCE((SELECT SUM(d.jumlah_simpanan) 
@@ -887,6 +920,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 				WHERE d.id_anggota = a.id_anggota 
 				AND s.jenis_simpanan = 'wajib'
+				AND d.status = 'confirmed'
 			), 0) as total_simpanan_wajib,
 			-- Simpanan Hari Raya bulan ini
 			COALESCE((SELECT SUM(d.jumlah_simpanan) 
@@ -895,6 +929,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				WHERE d.id_anggota = a.id_anggota 
 				AND s.jenis_simpanan = 'hari_raya'
 				AND ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+				AND d.status = 'confirmed'
 			), 0) as simpanan_hariraya_bulanan,
 			-- Total Simpanan Hari Raya sampai saat ini
 			COALESCE((SELECT SUM(d.jumlah_simpanan) 
@@ -902,6 +937,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 				WHERE d.id_anggota = a.id_anggota 
 				AND s.jenis_simpanan = 'hari_raya'
+				AND d.status = 'confirmed'
 			), 0) as total_simpanan_hariraya,
 			-- Simpanan Sukarela bulan ini
 			COALESCE((SELECT SUM(d.jumlah_simpanan) 
@@ -910,6 +946,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				WHERE d.id_anggota = a.id_anggota 
 				AND s.jenis_simpanan = 'sukarela'
 				AND ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+				AND d.status = 'confirmed'
 			), 0) as simpanan_sukarela_bulanan,
 			-- Total Simpanan Sukarela sampai saat ini
 			COALESCE((SELECT SUM(d.jumlah_simpanan) 
@@ -917,12 +954,14 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 				WHERE d.id_anggota = a.id_anggota 
 				AND s.jenis_simpanan = 'sukarela'
+				AND d.status = 'confirmed'
 			), 0) as total_simpanan_sukarela,
 			-- Pinjaman yang diambil bulan ini
 			COALESCE((SELECT SUM(p.jumlah_pinjaman) 
 				FROM pinjaman p
 				WHERE p.id_anggota = a.id_anggota 
 				AND ($1 = 0 OR EXTRACT(MONTH FROM p.tgl_pinjaman) = $1) AND EXTRACT(YEAR FROM p.tgl_pinjaman) = $2
+				AND p.status IN ('aktif', 'lunas')
 			), 0) as pinjaman_bulanan,
 			-- Total Pinjaman Aktif (belum lunas)
 			COALESCE((SELECT SUM(p.jumlah_pinjaman) 
@@ -951,6 +990,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				JOIN pinjaman p ON ang.id_pinjaman = p.id_pinjaman
 				WHERE p.id_anggota = a.id_anggota 
 				AND ($1 = 0 OR EXTRACT(MONTH FROM ang.tgl_bayar) = $1) AND EXTRACT(YEAR FROM ang.tgl_bayar) = $2
+				AND ang.status = 'confirmed'
 			), 0) as angsuran_bulanan,
 			-- Total Angsuran yang sudah dibayar
 			COALESCE((SELECT COUNT(*) 
@@ -958,12 +998,13 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				JOIN pinjaman p ON ang.id_pinjaman = p.id_pinjaman
 				WHERE p.id_anggota = a.id_anggota 
 				AND p.status = 'aktif'
+				AND ang.status = 'confirmed'
 			), 0) as total_angsuran_dibayar,
-			-- Sisa Angsuran yang belum dibayar
+			-- Sisa Angsuran yang belum dibayar (Tenor - Angsuran yang sudah confirmed)
 			COALESCE((
 				SELECT p.jangka_waktu - COUNT(ang.id_angsuran)
 				FROM pinjaman p
-				LEFT JOIN angsuran ang ON p.id_pinjaman = ang.id_pinjaman
+				LEFT JOIN angsuran ang ON p.id_pinjaman = ang.id_pinjaman AND ang.status = 'confirmed'
 				WHERE p.id_anggota = a.id_anggota 
 				AND p.status = 'aktif'
 				AND p.id_pinjaman = (

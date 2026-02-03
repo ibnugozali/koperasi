@@ -55,11 +55,29 @@ function handleLogout(event) {
 
 // Inisialisasi - pastikan submenu yang tidak aktif tertutup, yang aktif tetap terbuka
 document.addEventListener('DOMContentLoaded', function() {
+    const navbarLogo = document.getElementById('navbarLogo');
+    
+    // Update localStorage dengan logo dari backend
+    if (navbarLogo) {
+        const backendLogo = '{{.CurrentLogo}}';
+        if (backendLogo && backendLogo !== 'undefined' && backendLogo !== '') {
+            localStorage.setItem('currentLogo', backendLogo);
+        }
+        
+        // Pasang error handler untuk logo
+        navbarLogo.onerror = function() {
+            console.warn('Logo failed to load:', navbarLogo.src);
+            localStorage.removeItem('currentLogo');
+            navbarLogo.src = '/static/images/placeholder.png';
+            navbarLogo.onerror = null; // Prevent infinite loop
+        };
+    }
+    
     // Listener untuk update logo otomatis saat diubah di tab lain
     window.addEventListener('storage', function(e) {
         if (e.key === 'currentLogo' && e.newValue) {
             const navbarLogo = document.getElementById('navbarLogo');
-            if (navbarLogo && e.newValue !== '/static/images/placeholder.png') {
+            if (navbarLogo) {
                 navbarLogo.src = e.newValue;
             }
         }

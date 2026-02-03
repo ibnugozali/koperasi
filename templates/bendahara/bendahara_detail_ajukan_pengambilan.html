@@ -3,86 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-       <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
-    <title>KOPMA</title>
+    <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
+    <title>KOPMA - Detail Pengambilan Simpanan</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+    <link href="/static/css/bendahara_navbar.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .main-content {
+            padding: 20px;
+            margin-top: 70px;
+        }
+        @media (min-width: 992px) {
+            .main-content {
+                margin-left: 250px;
+                padding: 30px;
+            }
+        }
+        .detail-card {
+            max-width: 1000px;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            border: none;
+        }
+        .detail-label {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+        .detail-value {
+            padding: 10px 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            background-color: #fff;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+        }
+        .detail-value.textarea {
+            min-height: 100px;
+            align-items: flex-start;
+            padding-top: 12px;
+        }
+        .section-divider {
+            border-top: 2px solid #e9ecef;
+            margin: 25px 0;
+        }
+        .page-title {
+            color: #2c3e50;
+            font-weight: 700;
+            margin-bottom: 30px;
+            font-size: 1.75rem;
+        }
+        .image-preview {
+            max-width: 500px;
+            margin-top: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 10px;
+            background-color: #f8f9fa;
+        }
+    </style>
 </head>
 <body>
     {{ template "bendahara_navbar.html" . }}
-        <div class="container mt-4">
-            <div class="card">
+    <div class="main-content">
+        <div class="container-fluid">
+            <div class="card detail-card">
                 <div class="card-body p-4 p-md-5 bg-white">
-                    <h1 class="card-title mb-4">Detail Pengambilan Simpanan Anggota</h1>
-                    <hr>
-                    <div class="row mb-3">
+                    <h1 class="page-title">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>Detail Pengambilan Simpanan
+                    </h1>
+                    
+                    <div class="section-divider"></div>
+                    
+                    <h5 class="mb-3 text-muted"><i class="fas fa-user me-2"></i>Informasi Anggota</h5>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Nama Anggota</label>
-                            <div class="form-control">{{ .Anggota.NamaAnggota }}</div>
+                            <div class="detail-label">
+                                <i class="fas fa-user-circle me-2"></i>Nama Anggota
+                            </div>
+                            <div class="detail-value">{{ .Anggota.NamaAnggota }}</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">ID Anggota</label>
-                            <div class="form-control">{{ .Anggota.IDAnggota }}</div>
+                            <div class="detail-label">
+                                <i class="fas fa-id-card me-2"></i>ID Anggota
+                            </div>
+                            <div class="detail-value">{{ .Anggota.IDAnggota }}</div>
                         </div>
                     </div>
-                    <div class="row mb-3">
+                    
+                    <div class="section-divider"></div>
+                    
+                    <h5 class="mb-3 text-muted"><i class="fas fa-money-bill-wave me-2"></i>Detail Pengambilan</h5>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Jenis Simpanan</label>
-                            <div class="form-control">{{ .JenisSimpanan }}</div>
+                            <div class="detail-label">
+                                <i class="fas fa-piggy-bank me-2"></i>Jenis Simpanan
+                            </div>
+                            <div class="detail-value">{{ .JenisSimpanan }}</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Jumlah Pengambilan</label>
-                            <div class="form-control">Rp {{ printf "%.0f" .Jumlah }}</div>
+                            <div class="detail-label">
+                                <i class="fas fa-coins me-2"></i>Jumlah Pengambilan
+                            </div>
+                            <div class="detail-value">
+                                <strong class="text-primary">Rp {{ printf "%.0f" .Jumlah }}</strong>
+                            </div>
                         </div>
                     </div>
-                    <div class="row mb-3">
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Metode Pengambilan</label>
-                            <div class="form-control">{{ .MetodePengambilan }}</div>
+                            <div class="detail-label">
+                                <i class="fas fa-exchange-alt me-2"></i>Metode Pengambilan
+                            </div>
+                            <div class="detail-value">
+                                {{if eq .MetodePengambilan "transfer_bank"}}
+                                    <i class="fas fa-university me-2 text-primary"></i>Transfer Bank
+                                {{else if eq .MetodePengambilan "tunai"}}
+                                    <i class="fas fa-money-bill me-2 text-success"></i>Tunai
+                                {{else}}
+                                    {{ .MetodePengambilan }}
+                                {{end}}
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Status</label>
-                            <div class="form-control">{{ .Status }}</div>
+                            <div class="detail-label">
+                                <i class="fas fa-info-circle me-2"></i>Status
+                            </div>
+                            <div class="detail-value">
+                                {{if eq .Status "proses"}}
+                                    <span class="badge bg-warning text-dark px-3 py-2">
+                                        <i class="fas fa-clock me-1"></i>Menunggu Konfirmasi
+                                    </span>
+                                {{else if eq .Status "confirmed"}}
+                                    <span class="badge bg-success px-3 py-2">
+                                        <i class="fas fa-check-circle me-1"></i>Dikonfirmasi
+                                    </span>
+                                {{else if eq .Status "rejected"}}
+                                    <span class="badge bg-danger px-3 py-2">
+                                        <i class="fas fa-times-circle me-1"></i>Ditolak
+                                    </span>
+                                {{else}}
+                                    {{ .Status }}
+                                {{end}}
+                            </div>
                         </div>
                     </div>
-                    <div class="row mb-3">
+                    
+                    <div class="section-divider"></div>
+                    
+                    <h5 class="mb-3 text-muted"><i class="fas fa-university me-2"></i>Informasi Rekening Tujuan</h5>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Nomor Rekening Tujuan</label>
-                            <div class="form-control">{{ .NomorRekening }}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Nama Bank</label>
-                            <div class="form-control">{{ .NamaBank }}</div>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Nama Pemilik Rekening</label>
-                            <div class="form-control">{{ .NamaPemilik }}</div>
+                            <div class="detail-label">
+                                <i class="fas fa-credit-card me-2"></i>Nomor Rekening
+                            </div>
+                            <div class="detail-value">{{ .NomorRekening }}</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Tanggal Pengajuan</label>
-                            <div class="form-control">{{ .TglPengajuan.Format "2006-01-02" }}</div>
+                            <div class="detail-label">
+                                <i class="fas fa-building me-2"></i>Nama Bank
+                            </div>
+                            <div class="detail-value">{{ .NamaBank }}</div>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Alasan Pengambilan</label>
-                        <div class="form-control" style="min-height:80px">{{ .Alasan }}</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Bukti Pengambilan</label>
-                        <div>
-                            {{if .BuktiPengambilan}}
-                                <img src="/uploads/{{.BuktiPengambilan}}" alt="Bukti Pengambilan" class="img-fluid" style="max-width:400px;">
-                            {{else}}
-                                <div class="alert alert-info mt-2">Belum ada bukti pengambilan yang diunggah.</div>
-                            {{end}}
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="detail-label">
+                                <i class="fas fa-user-tag me-2"></i>Nama Pemilik Rekening
+                            </div>
+                            <div class="detail-value">{{ .NamaPemilik }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-label">
+                                <i class="fas fa-calendar-alt me-2"></i>Tanggal Pengajuan
+                            </div>
+                            <div class="detail-value">{{ .TglPengajuan.Format "02 January 2006" }}</div>
                         </div>
                     </div>
-                    <a href="/bendahara/riwayat" class="btn btn-secondary"><i class="bi bi-arrow-left me-2"></i>Kembali ke Riwayat</a>
+                    
+                    <div class="section-divider"></div>
+                    
+                    <h5 class="mb-3 text-muted"><i class="fas fa-comment-dots me-2"></i>Alasan Pengambilan</h5>
+                    <div class="mb-4">
+                        <div class="detail-value textarea">{{ .Alasan }}</div>
+                    </div>
+                    
+                    <div class="section-divider"></div>
+                    
+                    <h5 class="mb-3 text-muted"><i class="fas fa-file-image me-2"></i>Bukti Pengambilan</h5>
+                    <div class="mb-4">
+                        {{if .BuktiPengambilan}}
+                            <div class="image-preview">
+                                <img src="/uploads/{{.BuktiPengambilan}}" alt="Bukti Pengambilan" class="img-fluid rounded shadow-sm" style="width: 100%;">
+                            </div>
+                        {{else}}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>Belum ada bukti pengambilan yang diunggah.
+                            </div>
+                        {{end}}
+                    </div>
+                    
+                    <div class="section-divider"></div>
+                    
+                    <div class="d-flex gap-2 justify-content-start">
+                        <a href="javascript:history.back()" class="btn btn-secondary btn-lg px-4">
+                            <i class="fas fa-arrow-left me-2"></i>Kembali
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

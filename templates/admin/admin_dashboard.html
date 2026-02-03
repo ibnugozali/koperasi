@@ -57,18 +57,18 @@
             </div>
 
             <!-- Aktivitas Terbaru - Grafik -->
-            <div class="row">
+            <div class="row mt-4">
                 <div class="col-12">
                     <div class="card shadow-sm">
                         <div class="card-header bg-primary text-white">
-                            <i class="fa-solid fa-chart-line me-2"></i> Aktivitas Terbaru
+                            <h5 class="mb-0"><i class="fa-solid fa-chart-line me-2"></i>Aktivitas Terbaru</h5>
                         </div>
                         <div class="card-body">
-                            <div class="mb-2 text-center fw-bold" style="font-size: 1.1rem;">
-                                Riwayat Total Anggota, Simpanan, Pinjaman (30 Hari Terakhir)
+                            <div class="mb-3 text-center">
+                                <h6 class="fw-bold text-muted">Riwayat Total Anggota, Simpanan, Pinjaman (30 Hari Terakhir)</h6>
                             </div>
-                            <div class="chart-container-admin" style="position: relative; width: 100%;">
-                                <canvas id="activityChart" style="display: block; width: 100% !important; height: 350px; margin: 0 auto;"></canvas>
+                            <div class="chart-container-admin" style="position: relative; width: 100%; height: 400px;">
+                                <canvas id="activityChart"></canvas>
                             </div>
                         </div>
                     </div>
@@ -121,23 +121,35 @@
                     {
                         label: 'Total Anggota',
                         data: getData('Anggota'),
-                        borderColor: 'blue',
-                        backgroundColor: 'rgba(0,0,255,0.1)',
-                        tension: 0.3
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.4,
+                        fill: true
                     },
                     {
                         label: 'Total Simpanan',
                         data: getData('Simpanan'),
-                        borderColor: 'green',
-                        backgroundColor: 'rgba(0,128,0,0.1)',
-                        tension: 0.3
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.4,
+                        fill: true
                     },
                     {
                         label: 'Total Pinjaman',
                         data: getData('Pinjaman'),
-                        borderColor: 'red',
-                        backgroundColor: 'rgba(255,0,0,0.1)',
-                        tension: 0.3
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.4,
+                        fill: true
                     }
                 ];
                 const ctx = document.getElementById('activityChart').getContext('2d');

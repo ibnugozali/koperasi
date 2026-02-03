@@ -536,9 +536,10 @@ func AdminRiwayat(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin_riwayat.html", gin.H{
-		"ActivePage": "riwayat",
-		"Riwayats":   riwayats,
-		"LogoPath":   c.MustGet("LogoPath"),
+		"ActivePage":  "riwayat",
+		"Riwayats":    riwayats,
+		"LogoPath":    c.MustGet("LogoPath"),
+		"CurrentLogo": c.MustGet("LogoPath"),
 	})
 }
 

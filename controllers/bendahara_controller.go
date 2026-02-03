@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -1788,6 +1789,14 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 func BendaharaLihatDetailSimpanan(c *gin.Context) {
 	id := c.Param("id")
 
+	// Cek apakah ID adalah angka (id_detail) atau string ID anggota
+	// Jika angka, redirect ke view detail simpanan
+	if idNum, err := strconv.Atoi(id); err == nil {
+		// Ini adalah ID detail, redirect ke function view
+		c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/bendahara/view-detail-simpanan/%d", idNum))
+		return
+	}
+
 	// Ambil data anggota
 	anggota, err := repository.GetAnggotaByID(id)
 	if err != nil {
@@ -1865,6 +1874,86 @@ func BendaharaLihatDetailSimpanan(c *gin.Context) {
 		"NomorRekening":   nomorRekening,
 		"BuktiPembayaran": buktiPembayaran,
 		"Judul":           "Detail Simpanan Pending",
+	})
+}
+
+// BendaharaViewDetailSimpanan menampilkan detail transaksi simpanan berdasarkan ID detail (untuk riwayat)
+func BendaharaViewDetailSimpanan(c *gin.Context) {
+	idDetail := c.Param("id")
+
+	db := config.GetDB()
+
+	// Ambil data detail simpanan berdasarkan ID detail
+	var d models.Detail
+	var s models.Simpanan
+	var a models.Anggota
+	var bukti string
+
+	query := `
+		SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.tgl_transaksi, 
+		       d.jumlah_simpanan, d.total_simpanan, s.jenis_simpanan,
+		       COALESCE(d.status, 'confirmed') as status,
+		       COALESCE(d.bukti_pembayaran, '') as bukti_pembayaran,
+		       a.nama_anggota, a.no_telepon
+		FROM detail d
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+		JOIN anggota a ON d.id_anggota = a.id_anggota
+		WHERE d.id_detail = $1
+	`
+
+	err := db.QueryRow(query, idDetail).Scan(
+		&d.IDDetail, &d.IDAnggota, &d.IDSimpanan, &d.TglTransaksi,
+		&d.JumlahSimpanan, &d.TotalSimpanan, &s.JenisSimpanan,
+		&d.Status, &bukti,
+		&a.NamaAnggota, &a.NoTelepon,
+	)
+
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Data simpanan tidak ditemukan"})
+		return
+	}
+
+	d.Simpanan = s
+	d.BuktiPembayaran = bukti
+	a.IDAnggota = d.IDAnggota
+
+	// Ambil nomor rekening koperasi
+	nomorRekening, _ := repository.GetNomorRekening("simpanan")
+
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "bendahara_view_detail_simpanan.html", gin.H{
+		"Anggota":          a,
+		"Detail":           d,
+		"JenisSimpanan":    s.JenisSimpanan,
+		"Jumlah":           d.JumlahSimpanan,
+		"TanggalTransaksi": d.TglTransaksi,
+		"Status":           d.Status,
+		"BuktiPembayaran":  bukti,
+		"NomorRekening":    nomorRekening,
+		"CurrentLogo":      latestLogo,
+		"ActivePage":       "riwayat",
 	})
 }
 
@@ -4108,6 +4197,13 @@ func BendaharaCekDanProsesPemotonganOtomatis(c *gin.Context) {
 func BendaharaDetailAngsuran(c *gin.Context) {
 	id := c.Param("id")
 
+	// Cek apakah ID adalah angka (id_angsuran) atau string ID anggota
+	if idNum, err := strconv.Atoi(id); err == nil {
+		// Ini adalah ID angsuran, redirect ke view detail angsuran
+		c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/bendahara/view-detail-angsuran/%d", idNum))
+		return
+	}
+
 	anggota, err := repository.GetAnggotaByID(id)
 	if err != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
@@ -4191,5 +4287,202 @@ func BendaharaDetailAngsuran(c *gin.Context) {
 		"NomorRekening":  nomorRekening,
 		"Angsurans":      angsurans,
 		"CurrentLogo":    latestLogo,
+	})
+}
+
+// BendaharaViewDetailPinjaman menampilkan detail pinjaman berdasarkan ID pinjaman (untuk riwayat)
+func BendaharaViewDetailPinjaman(c *gin.Context) {
+	idPinjaman := c.Param("id")
+
+	db := config.GetDB()
+	var p models.Pinjaman
+	var a models.Anggota
+
+	query := `
+		SELECT p.id_pinjaman, p.id_anggota, p.tgl_pinjaman, p.jumlah_pinjaman, 
+		       p.jangka_waktu, p.bunga, p.status,
+		       COALESCE(p.metode_pencairan, '') as metode_pencairan,
+		       COALESCE(p.nomor_rekening, '') as nomor_rekening,
+		       COALESCE(p.nama_bank, '') as nama_bank,
+		       COALESCE(p.nama_pemilik_rekening, '') as nama_pemilik_rekening,
+		       COALESCE(p.gaji_bulanan, 0) as gaji_bulanan,
+		       COALESCE(p.tujuan_pinjaman, '') as tujuan_pinjaman,
+		       a.nama_anggota, a.no_telepon, a.nik_ktp, a.username, a.alamat, a.unit_kerja
+		FROM pinjaman p
+		JOIN anggota a ON p.id_anggota = a.id_anggota
+		WHERE p.id_pinjaman = $1
+	`
+
+	err := db.QueryRow(query, idPinjaman).Scan(
+		&p.IDPinjaman, &p.IDAnggota, &p.TglPinjaman, &p.JumlahPinjaman,
+		&p.JangkaWaktu, &p.Bunga, &p.Status,
+		&p.MetodePencairan, &p.NomorRekening, &p.NamaBank, &p.NamaPemilikRekening,
+		&p.GajiBulanan, &p.TujuanPinjaman,
+		&a.NamaAnggota, &a.NoTelepon, &a.NikKTP, &a.Username, &a.Alamat, &a.UnitKerja,
+	)
+
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Data pinjaman tidak ditemukan"})
+		return
+	}
+
+	a.IDAnggota = p.IDAnggota
+	p.NamaAnggota = a.NamaAnggota
+
+	// Hitung total simpanan untuk menampilkan limit
+	totalSimpanan, _, _, err := repository.GetSaldoAnggota(p.IDAnggota)
+	if err != nil {
+		totalSimpanan = 0
+	}
+
+	// Hitung limit pinjaman berdasarkan jenis anggota
+	var jenisAnggota string
+	switch a.UnitKerja {
+	case "03": // Mahasiswa
+		jenisAnggota = "Mahasiswa"
+	case "01", "02": // Dosen/Staff
+		jenisAnggota = "Dosen/Staff"
+	default:
+		jenisAnggota = "Tidak Diketahui"
+	}
+
+	// Cari logo terbaru
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "bendahara_view_detail_pinjaman.html", gin.H{
+		"Anggota":       a,
+		"Pinjaman":      p,
+		"TotalSimpanan": totalSimpanan,
+		"JenisAnggota":  jenisAnggota,
+		"CurrentLogo":   latestLogo,
+		"ActivePage":    "riwayat",
+	})
+}
+
+// BendaharaViewDetailAngsuran menampilkan detail angsuran berdasarkan ID angsuran (untuk riwayat)
+func BendaharaViewDetailAngsuran(c *gin.Context) {
+	idAngsuran := c.Param("id")
+
+	db := config.GetDB()
+	var angsuran models.Angsuran
+	var tglBayar sql.NullTime
+
+	query := `
+		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota,
+		       a.tgl_bayar, a.sisa_pinjaman,
+		       COALESCE(a.bukti_angsuran, '') as bukti_angsuran,
+		       COALESCE(a.status, '') as status,
+		       ang.nama_anggota, ang.no_telepon,
+		       p.jumlah_pinjaman, p.jangka_waktu,
+		       COALESCE(p.metode_pencairan, '') as metode_pencairan
+		FROM angsuran a
+		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
+		JOIN anggota ang ON p.id_anggota = ang.id_anggota
+		WHERE a.id_angsuran = $1
+	`
+
+	var namaAnggota, noTelepon string
+	var jumlahPinjaman float64
+	var jangkaWaktu int
+	var metodePencairan string
+
+	err := db.QueryRow(query, idAngsuran).Scan(
+		&angsuran.IDAngsuran, &angsuran.IDPinjaman, &angsuran.IDAnggota,
+		&tglBayar, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran,
+		&angsuran.Status, &namaAnggota, &noTelepon,
+		&jumlahPinjaman, &jangkaWaktu, &metodePencairan,
+	)
+
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Data angsuran tidak ditemukan"})
+		return
+	}
+
+	if tglBayar.Valid {
+		angsuran.TglBayar = tglBayar.Time
+	}
+	angsuran.NamaAnggota = namaAnggota
+
+	// Hitung angsuran ke berapa
+	var angsuranKe int
+	rows, _ := db.Query(`SELECT id_angsuran FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	defer rows.Close()
+	idx := 1
+	for rows.Next() {
+		var tmpID int
+		rows.Scan(&tmpID)
+		if tmpID == angsuran.IDAngsuran {
+			angsuranKe = idx
+			break
+		}
+		idx++
+	}
+
+	// Ambil semua angsuran untuk riwayat
+	angsurans := []models.Angsuran{}
+	rows2, _ := db.Query(`SELECT id_angsuran, tgl_bayar, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	defer rows2.Close()
+	for rows2.Next() {
+		var a models.Angsuran
+		rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran)
+		angsurans = append(angsurans, a)
+	}
+
+	// Cari logo terbaru
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "bendahara_view_detail_angsuran.html", gin.H{
+		"Anggota": map[string]interface{}{
+			"NamaAnggota": namaAnggota,
+			"IDAnggota":   angsuran.IDAnggota,
+			"NoTelepon":   noTelepon,
+		},
+		"JumlahPinjaman":  jumlahPinjaman,
+		"SisaPinjaman":    angsuran.SisaPinjaman,
+		"AngsuranKe":      angsuranKe,
+		"MetodePencairan": metodePencairan,
+		"Angsurans":       angsurans,
+		"CurrentLogo":     latestLogo,
+		"ActivePage":      "riwayat",
 	})
 }

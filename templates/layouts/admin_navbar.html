@@ -61,23 +61,46 @@
     // Inisialisasi - pastikan submenu yang tidak aktif tertutup, yang aktif tetap terbuka
     document.addEventListener('DOMContentLoaded', function() {
         const navbarLogo = document.getElementById('navbarLogo');
+        
         // Fallback logo dari localStorage jika logo backend gagal dimuat
         function fallbackLogo() {
             const savedLogo = localStorage.getItem('currentLogo');
-            if (savedLogo && navbarLogo.src !== savedLogo) {
+            const backendLogo = '{{.LogoPath}}';
+            
+            // Jika logo dari backend berbeda dengan localStorage, gunakan backend
+            if (backendLogo && backendLogo !== savedLogo) {
+                navbarLogo.src = backendLogo;
+                localStorage.setItem('currentLogo', backendLogo);
+            } else if (savedLogo && navbarLogo.src !== savedLogo) {
+                // Coba gunakan logo dari localStorage
                 navbarLogo.src = savedLogo;
-            } else if (!savedLogo) {
-                // Jika localStorage juga tidak ada, reload halaman untuk mencoba lagi
-                setTimeout(function() { location.reload(); }, 500);
+            } else {
+                // Fallback ke placeholder
+                navbarLogo.src = '/static/images/placeholder.png';
+                localStorage.removeItem('currentLogo');
             }
         }
+        
         if (navbarLogo) {
+            // Update localStorage dengan logo dari backend
+            const backendLogo = '{{.LogoPath}}';
+            if (backendLogo && backendLogo !== 'undefined' && backendLogo !== '') {
+                localStorage.setItem('currentLogo', backendLogo);
+            }
+            
             // Cek jika src kosong, undefined, atau gambar gagal dimuat
             if (!navbarLogo.src || navbarLogo.src.endsWith('/') || navbarLogo.src.includes('undefined')) {
                 fallbackLogo();
             }
             // Selalu pasang fallback jika gambar gagal dimuat
-            navbarLogo.onerror = fallbackLogo;
+            navbarLogo.onerror = function() {
+                console.warn('Logo failed to load:', navbarLogo.src);
+                // Hapus localStorage jika logo gagal dimuat
+                localStorage.removeItem('currentLogo');
+                // Gunakan placeholder
+                navbarLogo.src = '/static/images/placeholder.png';
+                navbarLogo.onerror = null; // Prevent infinite loop
+            };
         }
 
         // Listener untuk update logo otomatis saat diubah di tab lain

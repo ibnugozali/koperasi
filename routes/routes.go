@@ -31,9 +31,19 @@ func SetupRouter() *gin.Engine {
 	store := cookie.NewStore([]byte("kuncirahasia-anda-yang-aman"))
 	router.Use(sessions.Sessions("koperasisession", store))
 
-	// 2. Muat file statis dan template HTML
+	// 2. Middleware untuk disable cache pada static files
+	router.Use(func(c *gin.Context) {
+		if len(c.Request.URL.Path) >= 7 && c.Request.URL.Path[:7] == "/static" {
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+			c.Header("Pragma", "no-cache")
+			c.Header("Expires", "0")
+		}
+		c.Next()
+	})
+
+	// 3. Muat file statis dan template HTML
 	router.Static("/static", "./static")
-	router.StaticFile("/favicon.ico", "./static/images/logo.png")
+	router.StaticFile("/favicon.ico", "./static/images/logo_b930646c-0b96-43a6-a168-7b982a01ba15.png")
 
 	// PERBAIKAN: Gunakan baris ini untuk memuat semua file .html dari folder templates dan semua subfoldernya.
 	router.SetFuncMap(template.FuncMap{
@@ -71,7 +81,60 @@ func SetupRouter() *gin.Engine {
 			return items
 		},
 	})
-	router.LoadHTMLGlob("templates/**/*")
+
+	// Load templates from subdirectories and root templates folder
+	templ := template.Must(template.New("").Funcs(template.FuncMap{
+		"add": func(nums ...interface{}) float64 {
+			sum := 0.0
+			for _, num := range nums {
+				switch v := num.(type) {
+				case int:
+					sum += float64(v)
+				case int64:
+					sum += float64(v)
+				case float64:
+					sum += v
+				case float32:
+					sum += float64(v)
+				}
+			}
+			return sum
+		},
+		"json": func(v interface{}) string {
+			a, _ := json.Marshal(v)
+			return string(a)
+		},
+		"toJson": func(v interface{}) string {
+			b, _ := json.Marshal(v)
+			return string(b)
+		},
+		"now": func() time.Time {
+			return time.Now()
+		},
+		"hasPrefix": func(s, prefix string) bool {
+			return len(s) >= len(prefix) && s[:len(prefix)] == prefix
+		},
+		"iterate": func(count int) []int {
+			var items []int
+			for i := 1; i <= count; i++ {
+				items = append(items, i)
+			}
+			return items
+		},
+	}).ParseGlob("templates/**/*.html"))
+
+	// Load templates from each subfolder explicitly
+	templ = template.Must(templ.ParseGlob("templates/admin/*.html"))
+	templ = template.Must(templ.ParseGlob("templates/anggota/*.html"))
+	templ = template.Must(templ.ParseGlob("templates/bendahara/*.html"))
+	templ = template.Must(templ.ParseGlob("templates/ketua/*.html"))
+	templ = template.Must(templ.ParseGlob("templates/layouts/*.html"))
+	templ = template.Must(templ.ParseGlob("templates/utama/*.html"))
+
+	// Also parse templates in root templates folder
+	templ = template.Must(templ.ParseGlob("templates/*.html"))
+
+	router.SetHTMLTemplate(templ)
 
 	// 3. Definisikan rute dan middleware
 	// --- Rute Publik (tidak perlu login) ---
@@ -160,8 +223,11 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.POST("/reject/:id", controllers.BendaharaRejectMembership)
 		bendaharaRoutes.GET("/konfirmasi-transaksi", controllers.BendaharaKonfirmasiTransaksi)
 		bendaharaRoutes.GET("/lihat-detail-simpanan/:id", controllers.BendaharaLihatDetailSimpanan)
+		bendaharaRoutes.GET("/view-detail-simpanan/:id", controllers.BendaharaViewDetailSimpanan)
 		bendaharaRoutes.GET("/lihat-persyaratan-pinjaman/:id", controllers.BendaharaLihatPersyaratanPinjaman)
+		bendaharaRoutes.GET("/view-detail-pinjaman/:id", controllers.BendaharaViewDetailPinjaman)
 		bendaharaRoutes.GET("/detail-angsuran/:id", controllers.BendaharaDetailAngsuran)
+		bendaharaRoutes.GET("/view-detail-angsuran/:id", controllers.BendaharaViewDetailAngsuran)
 		bendaharaRoutes.GET("/anggota-angsuran/:id", controllers.BendaharaLihatDetailAngsuran)
 		bendaharaRoutes.GET("/detail-ajukan-pengambilan/:id", controllers.BendaharaDetailAjukanPengambilan)
 		bendaharaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.BendaharaKonfirmasiTransaksiPost)
@@ -242,8 +308,10 @@ func SetupRouter() *gin.Engine {
 		ketuaRoutes.POST("/laporan/save-neraca", controllers.KetuaSaveNeraca)
 		ketuaRoutes.GET("/laporan/get-neraca", controllers.KetuaGetNeraca)
 		ketuaRoutes.GET("/ketua-pengaturan", controllers.KetuaPengaturan)
+		ketuaRoutes.GET("/lihat-detail-simpanan/:id", controllers.KetuaLihatDetailSimpanan)
 		ketuaRoutes.GET("/lihat-persyaratan-pinjaman/:id", controllers.KetuaLihatPersyaratanPinjaman)
 		ketuaRoutes.GET("/detail-angsuran/:id", controllers.KetuaDetailAngsuran)
+		ketuaRoutes.GET("/detail-ajukan-pengambilan/:id", controllers.KetuaDetailAjukanPengambilan)
 		ketuaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.KetuaKonfirmasiTransaksiPost)
 		ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
 	}

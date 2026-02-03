@@ -37,7 +37,6 @@
 <option value="">Pilih metode</option>
 <option value="Transfer">Transfer Bank</option>
 <option value="Tunai">Tunai</option>
-<option value="Potong Gaji">Potong Gaji</option>
 </select>
 </div>
 <div style="margin-bottom: 10px;">
@@ -81,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (this.value === 'Transfer') {
         buktiInput.disabled = false;
         buktiInput.required = true;
-      } else if (this.value === 'Tunai' || this.value === 'Potong Gaji') {
+      } else if (this.value === 'Tunai') {
         buktiInput.disabled = true;
         buktiInput.required = false;
         buktiInput.value = '';
@@ -92,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (metodeSelect.value === 'Transfer') {
       buktiInput.disabled = false;
       buktiInput.required = true;
-    } else if (metodeSelect.value === 'Tunai' || metodeSelect.value === 'Potong Gaji') {
+    } else if (metodeSelect.value === 'Tunai') {
       buktiInput.disabled = true;
       buktiInput.required = false;
     }
