@@ -480,6 +480,7 @@ CREATE TABLE IF NOT EXISTS neraca (
   custom_items TEXT,
   item_counter TEXT,
   deleted_items TEXT,
+  header_data TEXT,
   created_by INT REFERENCES pengelola(id_pengelola),
   last_modified_by INT REFERENCES pengelola(id_pengelola),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -488,6 +489,9 @@ CREATE TABLE IF NOT EXISTS neraca (
 
 -- Migration: Add user_id column to neraca table if not exists (for existing databases)
 ALTER TABLE neraca ADD COLUMN IF NOT EXISTS user_id INT;
+
+-- Migration: Add header_data column to neraca table if not exists
+ALTER TABLE neraca ADD COLUMN IF NOT EXISTS header_data TEXT;
 
 -- Set default value for existing rows (if any)
 UPDATE neraca SET user_id = created_by WHERE user_id IS NULL;

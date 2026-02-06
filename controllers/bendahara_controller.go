@@ -4418,10 +4418,8 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 		return
 	}
 
-	if tglBayar.Valid {
-		angsuran.TglBayar = tglBayar.Time
-	}
-	angsuran.NamaAnggota = namaAnggota
+	// Assignment ke angsuran.TglBayar dihapus karena tidak digunakan
+	// Assignment ke angsuran.NamaAnggota dihapus karena tidak digunakan
 
 	// Hitung angsuran ke berapa
 	var angsuranKe int
