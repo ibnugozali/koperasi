@@ -814,40 +814,29 @@ function editNeraca() {
 
     console.log('Processing', activeFields.length, 'active fields...');
 
-    // Konversi semua field nilai ke input dengan tombol hapus
-    console.log('Converting fields to inputs...');
-    activeFields.forEach(field => {
-        const td = document.getElementById(field);
-        if (!td) {
-            console.warn('Element not found:', field);
-            return;
-        }
-        
-        // Periksa apakah sudah ada input (untuk menghindari duplikasi)
-        const existingInput = document.getElementById(`input_${field}`);
-        if (existingInput) {
-            console.log(`⏩ Skip ${field} - input sudah ada`);
-            return;
-        }
-        
-        const currentValue = td.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-        td.innerHTML = `
-            <input type="number" class="form-control form-control-sm text-end"
-                   id="input_${field}" value="${currentValue}"
-                   onchange="updateNeraca()"
-                   aria-label="Nilai ${field} 2024">
-        `;
-        
-        // Konversi nilai 2023 ke input dengan button hapus
-        const td2023 = document.getElementById(field + '_2023');
-        if (td2023) {
-            const currentValue2023 = td2023.textContent.replace('Rp ', '').replace(/\./g, '').trim();
-            td2023.innerHTML = `
+        // Konversi semua field nilai ke input dengan tombol hapus
+        console.log('Converting fields to inputs...');
+        activeFields.forEach(field => {
+            const td = document.getElementById(field);
+            if (!td) {
+                console.warn('Element not found:', field);
+                return;
+            }
+
+            // Periksa apakah sudah ada input (untuk menghindari duplikasi)
+            const existingInput = document.getElementById(`input_${field}`);
+            if (existingInput) {
+                console.log(`⏩ Skip ${field} - input sudah ada`);
+                return;
+            }
+
+            const currentValue = td.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+            td.innerHTML = `
                 <div class="d-flex gap-1 align-items-center">
                     <input type="number" class="form-control form-control-sm text-end"
-                           id="input_${field}_2023" value="${currentValue2023}"
+                           id="input_${field}" value="${currentValue}"
                            onchange="updateNeraca()" style="flex: 1;"
-                           aria-label="Nilai ${field} 2023">
+                           aria-label="Nilai ${field} 2024">
                     <button class="btn btn-sm btn-danger" onclick="hapusItem('${field}')"
                             style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;"
                             title="Hapus seluruh item ini">
@@ -855,7 +844,25 @@ function editNeraca() {
                     </button>
                 </div>
             `;
-        }
+
+            // Konversi nilai 2023 ke input dengan button hapus
+            const td2023 = document.getElementById(field + '_2023');
+            if (td2023) {
+                const currentValue2023 = td2023.textContent.replace('Rp ', '').replace(/\./g, '').trim();
+                td2023.innerHTML = `
+                    <div class="d-flex gap-1 align-items-center">
+                        <input type="number" class="form-control form-control-sm text-end"
+                               id="input_${field}_2023" value="${currentValue2023}"
+                               onchange="updateNeraca()" style="flex: 1;"
+                               aria-label="Nilai ${field} 2023">
+                        <button class="btn btn-sm btn-danger" onclick="hapusItem('${field}')"
+                                style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;"
+                                title="Hapus seluruh item ini">
+                            <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
+                        </button>
+                    </div>
+                `;
+            }
         
         // Konversi label/keterangan ke input text
         const labelTd = document.getElementById('label_' + field);
@@ -1488,81 +1495,34 @@ function tambahItem(kategori) {
             }
         }
         
-        if (targetRow) {
-            console.log('✓ Menggunakan row kosong yang ada');
-            
-            // Jika row punya colspan di kolom kanan, perlu replace cell terakhir dengan 4 cell normal
-            if (targetRow.cells.length === 5 && targetRow.cells[4].colSpan === 4) {
-                console.log('✓ Row memiliki colspan="4" di kolom kanan, akan di-replace dengan 4 cell normal');
-                // Hapus cell colspan terakhir
-                targetRow.removeChild(targetRow.cells[4]);
-                // Buat 4 cell baru untuk kolom kanan
-                for (let i = 0; i < 4; i++) {
-                    const td = document.createElement('td');
-                    targetRow.appendChild(td);
-                }
-            }
-            
-            // Gunakan row kosong yang ada
-            // cells[4] = No Perkiraan, cells[5] = Label, cells[6] = Value 2024, cells[7] = Value 2023
-            targetRow.cells[4].innerHTML = `<input type="text" class="form-control form-control-sm text-center" id="input_no_${id}" placeholder="No">`;
-            targetRow.cells[4].className = 'text-center';
-            
-            targetRow.cells[5].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${id}" placeholder="Nama Item" aria-label="Label ${id}">`;
-            targetRow.cells[5].className = 'ps-4';
-            targetRow.cells[5].colSpan = 1;
-            targetRow.cells[5].id = `label_${id}`;
-
-            targetRow.cells[6].innerHTML = `
-                <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()" aria-label="Nilai ${id} 2024">
-            `;
-            targetRow.cells[6].className = 'text-end';
-            targetRow.cells[6].id = id;
-
-            targetRow.cells[7].innerHTML = `
+        // Selalu buat row baru untuk custom item di kewajibanLancar/ekuitas agar input langsung muncul
+        console.log('ℹ️ Selalu membuat row baru untuk custom item di kategori kanan');
+        newRow = document.createElement('tr');
+        newRow.id = `row_${id}`;
+        newRow.innerHTML = `
+            <td colspan="4"></td>
+            <td class="text-center"><input type="text" class="form-control form-control-sm text-center" id="input_no_${id}" placeholder="No"></td>
+            <td class="ps-4" id="label_${id}">
+                <input type="text" class="form-control form-control-sm" id="input_label_${id}" placeholder="Nama Item">
+            </td>
+            <td class="text-end" id="${id}">
+                <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
+            </td>
+            <td class="text-end" id="${id}_2023">
                 <div class="d-flex gap-1 align-items-center">
-                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()" style="flex: 1;" aria-label="Nilai ${id} 2023">
-                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')"
-                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;"
+                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()" style="flex: 1;">
+                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
+                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
                             title="Hapus seluruh item ini">
                         <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                     </button>
                 </div>
-            `;
-            targetRow.cells[7].className = 'text-end';
-            targetRow.cells[7].id = `${id}_2023`;
-        } else {
-            // Buat row baru jika tidak ada row kosong
-            console.log('ℹ️ Tidak ada row kosong, membuat row baru');
-            newRow = document.createElement('tr');
-            newRow.id = `row_${id}`;
-            newRow.innerHTML = `
-                <td colspan="4"></td>
-                <td class="text-center"><input type="text" class="form-control form-control-sm text-center" id="input_no_${id}" placeholder="No"></td>
-                <td class="ps-4" id="label_${id}">
-                    <input type="text" class="form-control form-control-sm" id="input_label_${id}" placeholder="Nama Item">
-                </td>
-                <td class="text-end" id="${id}">
-                    <input type="number" class="form-control form-control-sm text-end" id="input_${id}" value="0" onchange="updateNeraca()">
-                </td>
-                <td class="text-end" id="${id}_2023">
-                    <div class="d-flex gap-1 align-items-center">
-                        <input type="number" class="form-control form-control-sm text-end" id="input_${id}_2023" value="0" onchange="updateNeraca()" style="flex: 1;">
-                        <button class="btn btn-sm btn-danger" onclick="hapusItem('${id}')" 
-                                style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;" 
-                                title="Hapus seluruh item ini">
-                            <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
-                        </button>
-                    </div>
-                </td>
-            `;
-            
-            const endId = kategori === 'kewajibanLancar' ? 'asetLancarEnd' : 'asetTetapEnd';
-            const endRow = document.getElementById(endId);
-            if (endRow) {
-                // Untuk semua kategori, insert AFTER endRow (setelah row terakhir)
-                endRow.after(newRow);
-            }
+            </td>
+        `;
+        const endId = kategori === 'kewajibanLancar' ? 'asetLancarEnd' : 'asetTetapEnd';
+        const endRow = document.getElementById(endId);
+        if (endRow) {
+            endRow.after(newRow);
         }
     }
     
