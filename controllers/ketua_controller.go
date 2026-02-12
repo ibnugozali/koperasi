@@ -23,6 +23,105 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
+// KetuaKonfirmasiTransaksiPost menangani konfirmasi/reject transaksi oleh ketua
+func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
+	transactionType := c.Param("type")
+	idStr := c.Param("id")
+	action := c.PostForm("action")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	switch transactionType {
+	case "simpanan":
+		if action == "confirm" {
+			err = repository.UpdateSimpananStatus(id, "confirmed")
+		} else {
+			err = repository.UpdateSimpananStatus(id, "rejected")
+		}
+	case "pinjaman":
+		if action == "confirm" {
+			err = repository.UpdatePinjamanStatus(id, "aktif")
+		} else {
+			err = repository.UpdatePinjamanStatus(id, "gagal")
+		}
+	case "angsuran":
+		if action == "confirm" {
+			err = repository.UpdateAngsuranStatus(id, "confirmed")
+		} else {
+			err = repository.UpdateAngsuranStatus(id, "rejected")
+		}
+	case "pengambilan":
+		if action == "confirm" {
+			err = repository.UpdatePengambilanSimpananStatus(id, "approved")
+		} else {
+			err = repository.UpdatePengambilanSimpananStatus(id, "rejected")
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe transaksi tidak valid"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses transaksi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Transaksi berhasil diproses"})
+}
+
+// getFloat extracts a float64 value from a map[string]interface{} by key, returns 0 if not found or not convertible
+func getFloat(m map[string]interface{}, key string) float64 {
+	if m == nil {
+		return 0
+	}
+	if val, ok := m[key]; ok {
+		switch v := val.(type) {
+		case float64:
+			return v
+		case float32:
+			return float64(v)
+		case int:
+			return float64(v)
+		case int64:
+			return float64(v)
+		case string:
+			f, err := strconv.ParseFloat(v, 64)
+			if err == nil {
+				return f
+			}
+		}
+	}
+	return 0
+}
+
+// getInt extracts an int value from a map[string]interface{} by key, returns 0 if not found or not convertible
+func getInt(m map[string]interface{}, key string) int {
+	if m == nil {
+		return 0
+	}
+	if val, ok := m[key]; ok {
+		switch v := val.(type) {
+		case int:
+			return v
+		case int64:
+			return int(v)
+		case float64:
+			return int(v)
+		case float32:
+			return int(v)
+		case string:
+			i, err := strconv.Atoi(v)
+			if err == nil {
+				return i
+			}
+		}
+	}
+	return 0
+}
+
 // KetuaDetailAngsuran menampilkan detail angsuran berdasarkan IDAngsuran
 func KetuaDetailAngsuran(c *gin.Context) {
 	idStr := c.Param("id")
@@ -32,19 +131,11 @@ func KetuaDetailAngsuran(c *gin.Context) {
 		return
 	}
 
-	// Ambil data angsuran
 	db := config.GetDB()
 	var angsuran models.Angsuran
 	var tglBayar sql.NullTime
 	err = db.QueryRow(`
-		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, 
-		       a.id_pengelola, 
-		       a.tgl_bayar, 
-		       COALESCE(a.sisa_pinjaman, 0), 
-		       COALESCE(a.bukti_angsuran, ''), 
-		       COALESCE(a.status_angsuran, ''), 
-		       COALESCE(a.status, ''), 
-		       ang.nama_anggota 
+		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, COALESCE(a.sisa_pinjaman, 0), COALESCE(a.bukti_angsuran, ''), COALESCE(a.status_angsuran, ''), COALESCE(a.status, ''), ang.nama_anggota
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
@@ -61,22 +152,6 @@ func KetuaDetailAngsuran(c *gin.Context) {
 		angsuran.TglBayar = tglBayar.Time
 	}
 
-	// // Ambil data pinjaman terkait
-	// var jumlahPinjaman float64
-	// var angsuranKe int
-	// var nomorRekening string
-	// var metodePencairan string
-	// var namaBank string
-	// var namaPemilikRekening string
-	// err = db.QueryRow(`SELECT jumlah_pinjaman, COALESCE(nomor_rekening, '-'), COALESCE(metode_pencairan, 'tunai'), COALESCE(nama_bank, '-'), COALESCE(nama_pemilik_rekening, '-') FROM pinjaman WHERE id_pinjaman = $1`, angsuran.IDPinjaman).Scan(&jumlahPinjaman, &nomorRekening, &metodePencairan, &namaBank, &namaPemilikRekening)
-	// if err != nil {
-	// 	jumlahPinjaman = 0
-	// 	nomorRekening = "-"
-	// 	metodePencairan = "tunai"
-	// 	namaBank = "-"
-	// 	namaPemilikRekening = "-"
-	// }
-	//Ambil data pinjaman terkait
 	var jumlahPinjaman float64
 	var angsuranKe int
 	var nomorRekening string
@@ -135,18 +210,6 @@ func KetuaDetailAngsuran(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "ketua_detail_angsuran.html", gin.H{
-		// 		"Anggota":              angsuran,
-		// 		"JumlahPinjaman":       jumlahPinjaman,
-		// 		"SisaPinjaman":         angsuran.SisaPinjaman,
-		// 		"AngsuranKe":           angsuranKe,
-		// 		"NomorRekening":        nomorRekening,
-		// 		"MetodePencairan":      metodePencairan,
-		// 		"NamaBank":             namaBank,
-		// 		"NamaPemilikRekening":  namaPemilikRekening,
-		// 		"Angsurans":            angsurans,
-		// 		"CurrentLogo":          latestLogo,
-		// 	})
-		// }
 		"Anggota":         angsuran,
 		"JumlahPinjaman":  jumlahPinjaman,
 		"SisaPinjaman":    angsuran.SisaPinjaman,
@@ -156,56 +219,6 @@ func KetuaDetailAngsuran(c *gin.Context) {
 		"Angsurans":       angsurans,
 		"CurrentLogo":     latestLogo,
 	})
-}
-
-// KetuaKonfirmasiTransaksiPost menangani konfirmasi/reject transaksi oleh ketua
-func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
-	transactionType := c.Param("type")
-	idStr := c.Param("id")
-	action := c.PostForm("action")
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
-		return
-	}
-
-	switch transactionType {
-	case "simpanan":
-		if action == "confirm" {
-			err = repository.UpdateSimpananStatus(id, "confirmed")
-		} else {
-			err = repository.UpdateSimpananStatus(id, "rejected")
-		}
-	case "pinjaman":
-		if action == "confirm" {
-			err = repository.UpdatePinjamanStatus(id, "aktif")
-		} else {
-			err = repository.UpdatePinjamanStatus(id, "gagal")
-		}
-	case "angsuran":
-		if action == "confirm" {
-			err = repository.UpdateAngsuranStatus(id, "confirmed")
-		} else {
-			err = repository.UpdateAngsuranStatus(id, "rejected")
-		}
-	case "pengambilan":
-		if action == "confirm" {
-			err = repository.UpdatePengambilanSimpananStatus(id, "approved")
-		} else {
-			err = repository.UpdatePengambilanSimpananStatus(id, "rejected")
-		}
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe transaksi tidak valid"})
-		return
-	}
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses transaksi"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Transaksi berhasil diproses"})
 }
 
 // KetuaLihatPersyaratanPinjaman menampilkan halaman persyaratan ajukan pinjaman untuk anggota (read-only, mirip bendahara)
@@ -441,14 +454,13 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		if err == nil {
 			potonganBulanIni, _ = repository.GetPotonganBulanIniAllAnggota()
 		}
-
-		// Ambil laporan detail per anggota untuk tipe bulanan
+		// Tambahan agar laporanDetail terdefinisi
 		var laporanDetail []map[string]interface{}
 		if tipeLaporan == "bulanan" {
 			laporanDetail, _ = repository.GetLaporanBulananPerAnggota(bulanInt, tahunInt)
 		}
 
-		// Selalu buat tabel rincian meskipun tidak ada data anggota
+		// Selalu buat tabel rincian meskipun tidak ada data
 		startRow := rowOffset + 5 + len(dataRows) + 2
 
 		log.Printf("DEBUG Excel: tipeLaporan=%s, startRow=%d", tipeLaporan, startRow)
@@ -1027,6 +1039,11 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		if err == nil {
 			potonganBulanIni, _ = repository.GetPotonganBulanIniAllAnggota()
 		}
+		// Tambahan agar laporanDetail terdefinisi
+		var laporanDetail []map[string]interface{}
+		if tipeLaporan == "bulanan" {
+			laporanDetail, _ = repository.GetLaporanBulananPerAnggota(bulanInt, tahunInt)
+		}
 
 		// Selalu buat tabel rincian meskipun tidak ada data
 		if err != nil || len(anggotas) == 0 {
@@ -1108,7 +1125,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				pdf.CellFormat(pageWidth, 10, "Rincian Laporan Bulanan", "0", 1, "C", false, 0, "")
 				pdf.Ln(2)
 
-				// Header baris 1 dengan merged cells
+				// Header baris 1 dengan merged cells dan label sesuai web
 				pdf.SetFont("Arial", "B", 7)
 				pdf.SetFillColor(23, 162, 184) // Info color
 				pdf.SetTextColor(255, 255, 255)
@@ -1129,50 +1146,63 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				// Jumlah Pembayaran
 				pdf.CellFormat(colWidths[19], 7, "Jumlah Bayar", "1", 1, "C", true, 0, "")
 
-				// Baris 2: Detail headers
-				// Skip 4 kolom pertama yang sudah di-set di baris 1
-				pdf.CellFormat(colWidths[0], 0, "", "", 0, "", false, 0, "")
-				pdf.CellFormat(colWidths[1], 0, "", "", 0, "", false, 0, "")
-				pdf.CellFormat(colWidths[2], 0, "", "", 0, "", false, 0, "")
-				pdf.CellFormat(colWidths[3], 0, "", "", 0, "", false, 0, "")
+				// Baris 2: Detail headers sesuai label web
+				pdf.CellFormat(colWidths[0], 7, "", "1", 0, "", true, 0, "")
+				pdf.CellFormat(colWidths[1], 7, "", "1", 0, "", true, 0, "")
+				pdf.CellFormat(colWidths[2], 7, "", "1", 0, "", true, 0, "")
+				pdf.CellFormat(colWidths[3], 7, "", "1", 0, "", true, 0, "")
 
 				// Detail Pinjaman
-				pinjamanHeaders := []string{"Nominal", "Tenor", "Pokok", "Jasa", "Jumlah", "Angs-1", "Angs-2", "Sisa"}
+				pinjamanHeaders := []string{"Nominal", "Tenor", "Pokok", "Jasa", "Jumlah", "Total Angs", "Sisa Angs", "Sisa"}
 				for i, h := range pinjamanHeaders {
 					pdf.CellFormat(colWidths[4+i], 7, h, "1", 0, "C", true, 0, "")
 				}
 
 				// Detail Simpanan
-				simpananHeaders := []string{"Pokok", "Wajib", "Jml Wajib", "Hari Raya", "Jml HR", "Sukarela", "Jml Sukarela"}
+				simpananHeaders := []string{"Pokok", "Wajib", "Ttl Wajib", "HR", "Ttl HR", "Sukarela", "Ttl Sukar"}
 				for i, h := range simpananHeaders {
 					pdf.CellFormat(colWidths[12+i], 7, h, "1", 0, "C", true, 0, "")
 				}
 
 				// Skip kolom Jumlah Pembayaran (sudah di-set di baris 1)
-				pdf.CellFormat(colWidths[19], 0, "", "", 1, "", false, 0, "")
+				// pdf.CellFormat(colWidths[19], 0, "", "", 1, "", false, 0, "")
+				pdf.CellFormat(colWidths[19], 7, "", "1", 0, "", true, 0, "")
+
+				// Tambahkan baris baru setelah header agar tidak bertumpuk
+				pdf.Ln(7)
 
 				// Data rows
-				pdf.SetFont("Arial", "", 6)
+				pdf.SetFont("Arial", "", 8) // Font sedikit lebih besar
 				pdf.SetTextColor(0, 0, 0)
 				for idx, anggota := range anggotas {
-					pdf.CellFormat(colWidths[0], 5, fmt.Sprintf("%d", idx+1), "1", 0, "C", false, 0, "")
-					pdf.CellFormat(colWidths[1], 5, anggota.IDAnggota, "1", 0, "C", false, 0, "")
-					pdf.CellFormat(colWidths[2], 5, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
-					pdf.CellFormat(colWidths[3], 5, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "L", false, 0, "")
-					// Data Pinjaman (semua Rp 0)
-					for i := 0; i < 8; i++ {
-						if i == 1 { // Tenor
-							pdf.CellFormat(colWidths[4+i], 5, "0", "1", 0, "C", false, 0, "")
-						} else {
-							pdf.CellFormat(colWidths[4+i], 5, "Rp 0", "1", 0, "R", false, 0, "")
-						}
+					pdf.CellFormat(colWidths[0], 7, fmt.Sprintf("%d", idx+1), "1", 0, "C", false, 0, "")
+					pdf.CellFormat(colWidths[1], 7, anggota.IDAnggota, "1", 0, "C", false, 0, "")
+					pdf.CellFormat(colWidths[2], 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
+					pdf.CellFormat(colWidths[3], 7, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "C", false, 0, "")
+					var detail map[string]interface{}
+					if idx < len(laporanDetail) {
+						detail = laporanDetail[idx]
 					}
-					// Data Simpanan (semua Rp 0)
-					for i := 0; i < 7; i++ {
-						pdf.CellFormat(colWidths[12+i], 5, "Rp 0", "1", 0, "R", false, 0, "")
-					}
+					// Data Pinjaman
+					pdf.CellFormat(colWidths[4], 7, formatRupiah(getFloat(detail, "pinjaman_bulanan")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[5], 7, fmt.Sprintf("%v", getInt(detail, "jangka_waktu")), "1", 0, "C", false, 0, "")
+					pdf.CellFormat(colWidths[6], 7, formatRupiah(getFloat(detail, "pokok_per_bulan")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[7], 7, formatRupiah(getFloat(detail, "jasa_per_bulan")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[8], 7, formatRupiah(getFloat(detail, "jumlah_angsuran_per_bulan")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[9], 7, fmt.Sprintf("%v", getInt(detail, "total_angsuran_dibayar")), "1", 0, "C", false, 0, "")
+					pdf.CellFormat(colWidths[10], 7, fmt.Sprintf("%v", getInt(detail, "sisa_angsuran")), "1", 0, "C", false, 0, "")
+					pdf.CellFormat(colWidths[11], 7, formatRupiah(getFloat(detail, "sisa_pinjaman")), "1", 0, "R", false, 0, "")
+					// Data Simpanan
+					pdf.CellFormat(colWidths[12], 7, formatRupiah(getFloat(detail, "simpanan_pokok")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[13], 7, formatRupiah(getFloat(detail, "simpanan_wajib_bulanan")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[14], 7, formatRupiah(getFloat(detail, "total_simpanan_wajib")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[15], 7, formatRupiah(getFloat(detail, "simpanan_hariraya_bulanan")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[16], 7, formatRupiah(getFloat(detail, "total_simpanan_hariraya")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[17], 7, formatRupiah(getFloat(detail, "simpanan_sukarela_bulanan")), "1", 0, "R", false, 0, "")
+					pdf.CellFormat(colWidths[18], 7, formatRupiah(getFloat(detail, "total_simpanan_sukarela")), "1", 0, "R", false, 0, "")
 					// Jumlah Pembayaran
-					pdf.CellFormat(colWidths[19], 6, "Rp 0", "1", 1, "R", false, 0, "")
+					pdf.CellFormat(colWidths[19], 7, formatRupiah(getFloat(detail, "total_pembayaran")), "1", 1, "R", false, 0, "")
+					pdf.Ln(1) // Tambahkan jarak antar baris
 				}
 			}
 		}
@@ -1680,6 +1710,27 @@ func KetuaLaporan(c *gin.Context) {
 		return
 	}
 
+	// Ambil data neraca dari repository
+	session := sessions.Default(c)
+	userID := session.Get("user_id")
+	var userIDInt int
+	switch v := userID.(type) {
+	case int:
+		userIDInt = v
+	case string:
+		userIDInt = 1 // Default ketua ID
+	default:
+		userIDInt = 1
+	}
+	db := config.GetDB()
+	neracaRepo := repository.NewNeracaRepository(db)
+	neraca, _ := neracaRepo.GetNeraca(userIDInt)
+	var data2024, data2023 map[string]interface{}
+	if neraca != nil {
+		json.Unmarshal([]byte(neraca.Data2024), &data2024)
+		json.Unmarshal([]byte(neraca.Data2023), &data2023)
+	}
+
 	// Ambil data anggota aktif (untuk tabel tahunan)
 	anggotas, err := repository.GetAllAnggota()
 	if err != nil {
@@ -1722,6 +1773,8 @@ func KetuaLaporan(c *gin.Context) {
 		"SisaGaji":         sisaGaji,
 		"GetUnitKerjaName": repository.GetUnitKerjaName,
 		"success":          successMsg,
+		"NeracaData2024":   data2024,
+		"NeracaData2023":   data2023,
 	})
 }
 
