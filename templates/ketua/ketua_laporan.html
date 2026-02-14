@@ -572,7 +572,7 @@
                                                 <td class="text-center">1.1.01</td>
                                                 <td class="ps-4" id="label_kas">Kas</td>
                                                 <td class="text-end" id="kas">Rp 0</td>
-                                                <td class="text-end" id="kas_2023">Rp 0</td>
+                                                <td class="text-end" id="kas_2023"><div class='d-flex gap-1 align-items-center'><input type='number' class='form-control form-control-sm text-end' id='input_kas_2023' value='0' onchange='updateNeraca()' style='flex: 1;' aria-label='Nilai kas 2023'><button class='btn btn-sm btn-danger' onclick='hapusItem("kas")' style='padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;' title='Hapus seluruh item ini'><i class='fas fa-trash' style='font-size: 0.75rem;'></i></button></div></td>
                                                 <td class="text-center">2.1.01</td>
                                                 <td class="ps-4" id="label_hutangUsaha">Hutang Usaha</td>
                                                 <td class="text-end" id="hutangUsaha">Rp 0</td>
@@ -582,11 +582,11 @@
                                                 <td class="text-center">1.1.02</td>
                                                 <td class="ps-4" id="label_bank">Bank</td>
                                                 <td class="text-end" id="bank">Rp 0</td>
-                                                <td class="text-end" id="bank_2023">Rp 0</td>
+                                                <td class="text-end" id="bank_2023"><div class='d-flex gap-1 align-items-center'><input type='number' class='form-control form-control-sm text-end' id='input_bank_2023' value='0' onchange='updateNeraca()' style='flex: 1;' aria-label='Nilai bank 2023'><button class='btn btn-sm btn-danger' onclick='hapusItem("bank")' style='padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;' title='Hapus seluruh item ini'><i class='fas fa-trash' style='font-size: 0.75rem;'></i></button></div></td>
                                                 <td class="text-center">2.1.02</td>
                                                 <td class="ps-4" id="label_hutangBunga">Hutang Bunga</td>
                                                 <td class="text-end" id="hutangBunga">Rp 0</td>
-                                                <td class="text-end" id="hutangBunga_2023">Rp 0</td>
+                                                <td class="text-end" id="hutangBunga_2023"><div class='d-flex gap-1 align-items-center'><input type='number' class='form-control form-control-sm text-end' id='input_hutangBunga_2023' value='0' onchange='updateNeraca()' style='flex: 1;' aria-label='Nilai hutangBunga 2023'><button class='btn btn-sm btn-danger' onclick='hapusItem("hutangBunga")' style='padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;' title='Hapus seluruh item ini'><i class='fas fa-trash' style='font-size: 0.75rem;'></i></button></div></td>
                                             </tr>
                                             <tr id="row_piutangAnggota">
                                                 <td class="text-center">1.1.03</td>
@@ -852,20 +852,13 @@ function editNeraca() {
 
             const currentValue = td.textContent.replace('Rp ', '').replace(/\./g, '').trim();
             td.innerHTML = `
-                <div class="d-flex gap-1 align-items-center">
-                    <input type="number" class="form-control form-control-sm text-end"
-                           id="input_${field}" value="${currentValue}"
-                           onchange="updateNeraca()" style="flex: 1;"
-                           aria-label="Nilai ${field} 2024">
-                    <button class="btn btn-sm btn-danger" onclick="hapusItem('${field}')"
-                            style="padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;"
-                            title="Hapus seluruh item ini">
-                        <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
-                    </button>
-                </div>
+                <input type="number" class="form-control form-control-sm text-end"
+                       id="input_${field}" value="${currentValue}"
+                       onchange="updateNeraca()" style="flex: 1;"
+                       aria-label="Nilai ${field} 2024">
             `;
 
-            // Konversi nilai 2023 ke input dengan button hapus
+            // Konversi nilai 2023 ke input dengan button hapus (hanya di kolom 2023)
             const td2023 = document.getElementById(field + '_2023');
             if (td2023) {
                 const currentValue2023 = td2023.textContent.replace('Rp ', '').replace(/\./g, '').trim();
@@ -934,7 +927,7 @@ function editNeraca() {
                 val2023 = /^-?\d+(\.\d+)?$/.test(val2023) ? val2023 : '';
                 row.cells[1].innerHTML = `<input type="text" class="form-control form-control-sm text-center" id="input_no_${itemId}" value="${valNo}" placeholder="No Perkiraan">`;
                 row.cells[2].innerHTML = `<input type="text" class="form-control form-control-sm ps-4" id="input_label_${itemId}" value="${valLabel}" placeholder="Label item">`;
-                row.cells[3].innerHTML = `<div class='d-flex gap-1 align-items-center'><input type='number' class='form-control form-control-sm text-end' id='input_${itemId}' value='${val2024}' placeholder='0'><button class='btn btn-sm btn-danger' onclick='hapusItem("${itemId}")' style='padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;' title='Hapus seluruh item ini'><i class='fas fa-trash' style='font-size: 0.75rem;'></i></button></div>`;
+                row.cells[3].innerHTML = `<input type='number' class='form-control form-control-sm text-end' id='input_${itemId}' value='${val2024}' placeholder='0'>`;
                 row.cells[4].innerHTML = `<div class='d-flex gap-1 align-items-center'><input type='number' class='form-control form-control-sm text-end' id='input_${itemId}_2023' value='${val2023}' placeholder='0'><button class='btn btn-sm btn-danger' onclick='hapusItem("${itemId}")' style='padding: 0.25rem 0.4rem; min-width: 28px; height: 28px;' title='Hapus seluruh item ini'><i class='fas fa-trash' style='font-size: 0.75rem;'></i></button></div>`;
                 row.cells[1].className = 'text-center';
                 row.cells[2].className = 'ps-4';
@@ -1547,7 +1540,7 @@ function tambahItem(kategori) {
         console.log('ℹ️ Selalu membuat row baru untuk custom item di kategori kanan');
         newRow = document.createElement('tr');
         newRow.id = `row_${id}`;
-        // Buat 4 kolom input di kanan, 4 kolom kosong di kiri, input 2024/2023 SELALU ada tombol hapus
+        // Buat 4 kolom input di kanan, 4 kolom kosong di kiri, input 2024 tanpa tombol hapus, input 2023 dengan tombol hapus
         newRow.innerHTML = `
             <td></td>
             <td></td>
@@ -1726,7 +1719,22 @@ function hapusItem(itemId) {
     if (valueTd2023) {
         valueTd2023.innerHTML = '';
     }
-    
+    // Hapus juga cell NoPerkiraan hanya di kolom yang sesuai
+    const row = valueTd.parentElement;
+    if (row) {
+        // Cek mapping editableRows untuk menentukan kolom NoPerkiraan yang benar
+        let colNoPerkiraan = null;
+        for (const rc of editableRows) {
+            if (rc.field === itemId) {
+                colNoPerkiraan = rc.col;
+                break;
+            }
+        }
+        if (colNoPerkiraan !== null && row.cells[colNoPerkiraan] && row.cells[colNoPerkiraan].querySelector('input')) {
+            row.cells[colNoPerkiraan].innerHTML = '';
+        }
+    }
+
     // Untuk custom item, langsung hapus row-nya
     if (itemId.includes('_custom_')) {
         const row = valueTd.parentElement;
@@ -1735,30 +1743,26 @@ function hapusItem(itemId) {
             console.log('Row custom item dihapus');
         }
     } else {
-        // Untuk item default, periksa apakah seluruh row kosong
+        // Untuk item default, periksa apakah seluruh row kosong (kiri dan kanan)
         const row = valueTd.parentElement;
         if (row) {
-            const allCells = Array.from(row.cells);
-            const allEmpty = allCells.every(cell => {
+            let allEmpty = true;
+            for (let i = 0; i < row.cells.length; i++) {
+                const cell = row.cells[i];
+                // Cek jika cell kosong (baik text maupun input)
                 const text = cell.textContent.trim();
-                const hasContent = text !== '' && text !== undefined && text !== null;
-                const hasVisibleChildren = cell.querySelector('input, button, select, textarea') !== null;
-                return !hasContent && !hasVisibleChildren;
-            });
-            
-            console.log('Semua cell kosong?', allEmpty);
-            
-            // Hanya hapus row jika benar-benar semua kolom kosong
+                const hasInput = cell.querySelector('input, button, select, textarea');
+                if (text !== '' || hasInput) {
+                    allEmpty = false;
+                    break;
+                }
+            }
             if (allEmpty) {
                 row.remove();
-                console.log('Row dihapus');
+                console.log('Row default dihapus karena seluruh kolom kosong');
             } else {
+                // Jika hanya satu sisi yang kosong, tetap pertahankan baris
                 console.log('Row dipertahankan karena masih ada data di kolom lain');
-                // Tambahkan colspan untuk cell yang dikosongkan agar tetap rapih
-                const noPerkiraan = row.cells[0] || row.cells[4];
-                if (noPerkiraan && !noPerkiraan.textContent.trim()) {
-                    noPerkiraan.innerHTML = '';
-                }
             }
         }
     }
