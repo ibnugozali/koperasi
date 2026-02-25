@@ -1349,7 +1349,12 @@ function tambahItem(kategori) {
         let sectionStart = null;
         let sectionEnd = null;
         for (let i = 0; i < rows.length; i++) {
-            if (rows[i].textContent.includes(sectionName)) {
+            // Ambil header section pertama saja, jangan tertimpa baris "Total ..."
+            if (
+                sectionStart === null &&
+                rows[i].classList.contains('table-primary') &&
+                rows[i].textContent.includes(sectionName)
+            ) {
                 sectionStart = i;
             }
             // Batas section custom adalah sebelum baris total, bukan sebelum row default end.
