@@ -353,6 +353,125 @@ func KetuaDownloadLaporan(c *gin.Context) {
 
 	log.Printf("DEBUG: bulanInt=%d, format=%s", bulanInt, format)
 
+	// Untuk laporan tahunan, prioritaskan angka dari data Neraca yang disimpan user.
+	type summaryRow struct {
+		Label string
+		Value float64
+	}
+	neracaSummaryRows := []summaryRow{}
+	useNeracaSummary := false
+
+	toFloat := func(v interface{}) float64 {
+		switch n := v.(type) {
+		case float64:
+			return n
+		case float32:
+			return float64(n)
+		case int:
+			return float64(n)
+		case int64:
+			return float64(n)
+		case json.Number:
+			f, _ := n.Float64()
+			return f
+		case string:
+			clean := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(n, "Rp", ""), ".", ""), ",", "")
+			clean = strings.TrimSpace(clean)
+			f, _ := strconv.ParseFloat(clean, 64)
+			return f
+		default:
+			return 0
+		}
+	}
+
+	if tipeLaporan == "tahunan" {
+		session := sessions.Default(c)
+		userID := session.Get("user_id")
+		userIDInt := 1
+		switch v := userID.(type) {
+		case int:
+			userIDInt = v
+		case string:
+			if parsed, err := strconv.Atoi(v); err == nil {
+				userIDInt = parsed
+			}
+		}
+
+		db := config.GetDB()
+		neracaRepo := repository.NewNeracaRepository(db)
+		neraca, err := neracaRepo.GetNeraca(userIDInt)
+		if err != nil {
+			log.Printf("WARN: gagal ambil neraca untuk download tahunan: %v", err)
+		}
+		if neraca != nil {
+			var data2024 map[string]interface{}
+			var customItems map[string]interface{}
+			var deletedItems []string
+
+			_ = json.Unmarshal([]byte(neraca.Data2024), &data2024)
+			_ = json.Unmarshal([]byte(neraca.CustomItems), &customItems)
+			_ = json.Unmarshal([]byte(neraca.DeletedItems), &deletedItems)
+
+			deletedSet := map[string]bool{}
+			for _, id := range deletedItems {
+				deletedSet[id] = true
+			}
+
+			defaultFields := map[string][]string{
+				"asetLancar":      {"kas", "bank", "piutangAnggota", "perlengkapan"},
+				"asetTetap":       {"tanah", "bangunan", "kendaraan", "peralatan"},
+				"kewajibanLancar": {"hutangUsaha", "hutangBunga", "simpananAnggota"},
+				"ekuitas":         {"simpananPokok", "simpananWajib", "cadangan", "shuTahunBerjalan"},
+			}
+
+			sumCategory := func(kategori string) float64 {
+				total := 0.0
+				for _, field := range defaultFields[kategori] {
+					if deletedSet[field] {
+						continue
+					}
+					total += toFloat(data2024[field])
+				}
+
+				if raw, ok := customItems[kategori]; ok {
+					if arr, ok := raw.([]interface{}); ok {
+						for _, item := range arr {
+							m, ok := item.(map[string]interface{})
+							if !ok {
+								continue
+							}
+							id, _ := m["id"].(string)
+							if id != "" && deletedSet[id] {
+								continue
+							}
+							total += toFloat(m["value"])
+						}
+					}
+				}
+				return total
+			}
+
+			asetLancar := sumCategory("asetLancar")
+			asetTetap := sumCategory("asetTetap")
+			kewajibanLancar := sumCategory("kewajibanLancar")
+			ekuitas := sumCategory("ekuitas")
+			totalAset := asetLancar + asetTetap
+			totalKewajibanEkuitas := kewajibanLancar + ekuitas
+
+			neracaSummaryRows = []summaryRow{
+				{Label: "Total Aset Lancar", Value: asetLancar},
+				{Label: "Total Aset Tetap", Value: asetTetap},
+				{Label: "Total Kewajiban Lancar", Value: kewajibanLancar},
+				{Label: "Total Ekuitas", Value: ekuitas},
+				{Label: "TOTAL ASET", Value: totalAset},
+				{Label: "TOTAL KEWAJIBAN & EKUITAS", Value: totalKewajibanEkuitas},
+			}
+			// Tetap gunakan format laporan tahunan klasik (ringkasan + rincian anggota)
+			// agar output download sesuai format yang diharapkan.
+			useNeracaSummary = false
+		}
+	}
+
 	switch format {
 	case "excel":
 		log.Printf("DEBUG: Memulai generate Excel...")
@@ -411,19 +530,29 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		// Data
 		totalPengeluaran := 0.0
 		if pinjaman, ok := report["total_pinjaman"].(float64); ok {
-			totalPengeluaran += pinjaman
-		}
-		if pengambilan, ok := report["total_pengambilan"].(float64); ok {
-			totalPengeluaran += pengambilan
+			totalPengeluaran = pinjaman
 		}
 		dataRows := []struct {
 			label string
 			value interface{}
-		}{
-			{"Total Simpanan", report["total_simpanan"]},
-			{"Total Pinjaman", report["total_pinjaman"]},
-			{"Total Angsuran", report["total_angsuran"]},
-			{"Total Pengeluaran", totalPengeluaran},
+		}{}
+		if useNeracaSummary {
+			for _, r := range neracaSummaryRows {
+				dataRows = append(dataRows, struct {
+					label string
+					value interface{}
+				}{label: r.Label, value: r.Value})
+			}
+		} else {
+			dataRows = []struct {
+				label string
+				value interface{}
+			}{
+				{"Total Simpanan", report["total_simpanan"]},
+				{"Total Pinjaman", report["total_pinjaman"]},
+				{"Total Angsuran", report["total_angsuran"]},
+				{"Total Pengeluaran", totalPengeluaran},
+			}
 		}
 		for i, row := range dataRows {
 			f.SetCellValue(sheet, fmt.Sprintf("A%d", rowOffset+5+i), row.label)
@@ -446,112 +575,286 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		// Set lebar kolom otomatis
 		f.SetColWidth(sheet, "A", "B", 25)
 
-		// Ambil data anggota aktif dan potongan/sisa gaji
-		anggotas, err := repository.GetAllAnggota()
-		log.Printf("DEBUG Excel: GetAllAnggota err=%v, len(anggotas)=%d", err, len(anggotas))
+		// Untuk laporan tahunan, samakan format rincian dengan tampilan halaman ketua/laporan (rincianTahunan).
+		if tipeLaporan == "tahunan" && !useNeracaSummary {
+			laporanDetail, _ := repository.GetLaporanBulananPerAnggota(0, tahunInt)
+			startRow := rowOffset + 5 + len(dataRows) + 2
 
-		potonganBulanIni := make(map[string]float64)
-		if err == nil {
-			potonganBulanIni, _ = repository.GetPotonganBulanIniAllAnggota()
-		}
-		// Tambahan agar laporanDetail terdefinisi
-		var laporanDetail []map[string]interface{}
-		if tipeLaporan == "bulanan" {
-			laporanDetail, _ = repository.GetLaporanBulananPerAnggota(bulanInt, tahunInt)
-		}
+			tableBorderStyle, _ := f.NewStyle(&excelize.Style{
+				Alignment: &excelize.Alignment{Horizontal: "left"},
+				Border: []excelize.Border{
+					{Type: "left", Color: "#000000", Style: 1},
+					{Type: "right", Color: "#000000", Style: 1},
+					{Type: "top", Color: "#000000", Style: 1},
+					{Type: "bottom", Color: "#000000", Style: 1},
+				},
+			})
+			makeHeaderStyle := func(color string) int {
+				styleID, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{color}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1},
+						{Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1},
+						{Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+				return styleID
+			}
 
-		// Selalu buat tabel rincian meskipun tidak ada data
-		startRow := rowOffset + 5 + len(dataRows) + 2
-
-		log.Printf("DEBUG Excel: tipeLaporan=%s, startRow=%d", tipeLaporan, startRow)
-		log.Printf("DEBUG Excel: tipeLaporan=%s, startRow=%d", tipeLaporan, startRow)
-
-		// Jika ada error atau tidak ada anggota, tetap buat struktur tabel
-		if err != nil || len(anggotas) == 0 {
-			log.Printf("DEBUG Excel: Membuat tabel dengan pesan 'Tidak ada data' (err=%v, len=%d)", err, len(anggotas))
-			// Buat tabel kosong dengan header saja
-			if tipeLaporan == "tahunan" {
-				// Untuk tahunan, buat 5 tabel dengan pesan "Tidak ada data"
-				tableNames := []string{
-					"Rincian Simpanan Wajib Tahunan",
-					"Rincian Simpanan Sukarela Tahunan",
-					"Rincian Pinjaman Tahunan",
-					"Rincian Angsuran Tahunan",
-					"Rincian Pengambilan Tahunan",
+			writeTable := func(title string, headers []string, rows [][]string, headerColor string, row int) int {
+				cols := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"}
+				lastCol := cols[len(headers)-1]
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", row), title)
+				headerRow := row + 1
+				for i, h := range headers {
+					f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], headerRow), h)
 				}
-				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
-				cols := []string{"A", "B", "C", "D", "E"}
-				currentRow := startRow
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", headerRow), fmt.Sprintf("%s%d", lastCol, headerRow), makeHeaderStyle(headerColor))
 
-				for _, tableName := range tableNames {
-					f.SetCellValue(sheet, fmt.Sprintf("A%d", currentRow-1), tableName)
-					for i, h := range headers {
-						f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], currentRow), h)
+				dataStart := headerRow + 1
+				if len(rows) == 0 {
+					f.MergeCell(sheet, fmt.Sprintf("A%d", dataStart), fmt.Sprintf("%s%d", lastCol, dataStart))
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", dataStart), "Tidak ada data")
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", dataStart), fmt.Sprintf("%s%d", lastCol, dataStart), tableBorderStyle)
+					return dataStart + 2
+				}
+
+				for i, r := range rows {
+					cur := dataStart + i
+					for j, v := range r {
+						f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[j], cur), v)
 					}
+				}
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", dataStart), fmt.Sprintf("%s%d", lastCol, dataStart+len(rows)-1), tableBorderStyle)
+				return dataStart + len(rows) + 2
+			}
+
+			toText := func(v interface{}) string {
+				if v == nil {
+					return "-"
+				}
+				s := strings.TrimSpace(fmt.Sprintf("%v", v))
+				if s == "" || s == "<nil>" {
+					return "-"
+				}
+				return s
+			}
+			toRupiah := func(v float64) string {
+				return fmt.Sprintf("Rp %.0f", v)
+			}
+
+			// 1) Daftar Simpanan Anggota
+			rowsSimpanan := [][]string{}
+			for i, d := range laporanDetail {
+				rowsSimpanan = append(rowsSimpanan, []string{
+					fmt.Sprintf("%d", i+1),
+					toText(d["id_anggota"]),
+					toText(d["nama_anggota"]),
+					repository.GetUnitKerjaName(toText(d["unit_kerja"])),
+					toRupiah(getFloat(d, "simpanan_pokok")),
+					toRupiah(getFloat(d, "total_simpanan_wajib")),
+					toRupiah(getFloat(d, "total_simpanan_hariraya")),
+					"Rp 0",
+					"Rp 0",
+					toRupiah(getFloat(d, "total_simpanan_sukarela")),
+				})
+			}
+			startRow = writeTable(
+				"Daftar Simpanan Anggota",
+				[]string{"No", "ID Anggota", "Nama", "Unit", "Simpanan Pokok", "Simpanan Wajib", "Simpanan Hari Raya", "Simpanan Umroh/Haji", "Simpanan Qurban", "Simpanan Sukarela"},
+				rowsSimpanan,
+				"#0d6efd",
+				startRow,
+			)
+
+			// 2) Daftar Piutang Anggota
+			rowsPiutang := [][]string{}
+			for i, d := range laporanDetail {
+				rowsPiutang = append(rowsPiutang, []string{
+					fmt.Sprintf("%d", i+1),
+					toText(d["id_anggota"]),
+					toText(d["nama_anggota"]),
+					repository.GetUnitKerjaName(toText(d["unit_kerja"])),
+					toRupiah(getFloat(d, "sisa_pinjaman")),
+				})
+			}
+			startRow = writeTable(
+				"Daftar Piutang Anggota",
+				[]string{"No", "ID Anggota", "Nama", "Unit", "Sisa Piutang"},
+				rowsPiutang,
+				"#0dcaf0",
+				startRow,
+			)
+
+			// 3) Daftar Piutang Macet Anggota
+			rowsMacet := [][]string{}
+			for _, d := range laporanDetail {
+				if getFloat(d, "sisa_pinjaman") > 0 {
+					rowsMacet = append(rowsMacet, []string{
+						fmt.Sprintf("%d", len(rowsMacet)+1),
+						toText(d["id_anggota"]),
+						toText(d["nama_anggota"]),
+						repository.GetUnitKerjaName(toText(d["unit_kerja"])),
+						toRupiah(getFloat(d, "sisa_pinjaman")),
+					})
+				}
+			}
+			startRow = writeTable(
+				"Daftar Piutang Macet Anggota",
+				[]string{"No", "ID Anggota", "Nama", "Unit", "Jumlah Piutang"},
+				rowsMacet,
+				"#dc3545",
+				startRow,
+			)
+
+			// 4) Daftar SHU Anggota
+			rowsSHU := [][]string{}
+			for i, d := range laporanDetail {
+				shuPinjaman := getFloat(d, "jasa_per_bulan")
+				rowsSHU = append(rowsSHU, []string{
+					fmt.Sprintf("%d", i+1),
+					toText(d["nama_anggota"]),
+					repository.GetUnitKerjaName(toText(d["unit_kerja"])),
+					toRupiah(shuPinjaman),
+					"Rp 0",
+					toRupiah(shuPinjaman),
+				})
+			}
+			_ = writeTable(
+				"Daftar SHU Anggota",
+				[]string{"No", "Nama", "Unit", "SHU Pinjaman", "SHU Simpanan", "Jumlah SHU"},
+				rowsSHU,
+				"#198754",
+				startRow,
+			)
+
+			// Lebar kolom menyesuaikan tabel tahunan
+			f.SetColWidth(sheet, "A", "A", 8)
+			f.SetColWidth(sheet, "B", "B", 16)
+			f.SetColWidth(sheet, "C", "C", 24)
+			f.SetColWidth(sheet, "D", "D", 16)
+			f.SetColWidth(sheet, "E", "J", 18)
+
+			c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+			c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.xlsx")
+			c.Header("Content-Transfer-Encoding", "binary")
+			if err := f.Write(c.Writer); err != nil {
+				c.String(http.StatusInternalServerError, "Gagal membuat file Excel")
+			}
+			return
+		}
+
+		// Untuk tahunan berbasis neraca, jangan tampilkan rincian anggota agar output konsisten dengan data neraca.
+		if !(tipeLaporan == "tahunan" && useNeracaSummary) {
+			// Ambil data anggota aktif dan potongan/sisa gaji
+			anggotas, err := repository.GetAllAnggota()
+			log.Printf("DEBUG Excel: GetAllAnggota err=%v, len(anggotas)=%d", err, len(anggotas))
+
+			potonganBulanIni := make(map[string]float64)
+			if err == nil {
+				potonganBulanIni, _ = repository.GetPotonganBulanIniAllAnggota()
+			}
+			// Tambahan agar laporanDetail terdefinisi
+			var laporanDetail []map[string]interface{}
+			if tipeLaporan == "bulanan" {
+				laporanDetail, _ = repository.GetLaporanBulananPerAnggota(bulanInt, tahunInt)
+			}
+
+			// Selalu buat tabel rincian meskipun tidak ada data
+			startRow := rowOffset + 5 + len(dataRows) + 2
+
+			log.Printf("DEBUG Excel: tipeLaporan=%s, startRow=%d", tipeLaporan, startRow)
+			log.Printf("DEBUG Excel: tipeLaporan=%s, startRow=%d", tipeLaporan, startRow)
+
+			// Jika ada error atau tidak ada anggota, tetap buat struktur tabel
+			if err != nil || len(anggotas) == 0 {
+				log.Printf("DEBUG Excel: Membuat tabel dengan pesan 'Tidak ada data' (err=%v, len=%d)", err, len(anggotas))
+				// Buat tabel kosong dengan header saja
+				if tipeLaporan == "tahunan" {
+					// Untuk tahunan, buat 5 tabel dengan pesan "Tidak ada data"
+					tableNames := []string{
+						"Rincian Simpanan Wajib Tahunan",
+						"Rincian Simpanan Sukarela Tahunan",
+						"Rincian Pinjaman Tahunan",
+						"Rincian Angsuran Tahunan",
+						"Rincian Pengambilan Tahunan",
+					}
+					headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+					cols := []string{"A", "B", "C", "D", "E"}
+					currentRow := startRow
+
+					for _, tableName := range tableNames {
+						f.SetCellValue(sheet, fmt.Sprintf("A%d", currentRow-1), tableName)
+						for i, h := range headers {
+							f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], currentRow), h)
+						}
+						// Baris pesan "Tidak ada data"
+						f.MergeCell(sheet, fmt.Sprintf("A%d", currentRow+1), fmt.Sprintf("E%d", currentRow+1))
+						f.SetCellValue(sheet, fmt.Sprintf("A%d", currentRow+1), "Tidak ada data anggota")
+						currentRow += 4
+					}
+				} else {
+					// Untuk bulanan, buat tabel Rincian Laporan Bulanan
+					log.Printf("DEBUG Excel: Membuat tabel Rincian Laporan Bulanan (tanpa data) di startRow=%d", startRow)
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Bulanan")
+					headers1 := []string{"No", "Kode", "Nama", "Unit", "Pinjaman", "", "", "", "", "", "", "", "Simpanan", "", "", "", "", "", "", "Jumlah Pembayaran"}
+					cols := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"}
+
+					for i, h := range headers1 {
+						if h != "" {
+							f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], startRow), h)
+						}
+					}
+					f.MergeCell(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("A%d", startRow+1))
+					f.MergeCell(sheet, fmt.Sprintf("B%d", startRow), fmt.Sprintf("B%d", startRow+1))
+					f.MergeCell(sheet, fmt.Sprintf("C%d", startRow), fmt.Sprintf("C%d", startRow+1))
+					f.MergeCell(sheet, fmt.Sprintf("D%d", startRow), fmt.Sprintf("D%d", startRow+1))
+					f.MergeCell(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("L%d", startRow))
+					f.MergeCell(sheet, fmt.Sprintf("M%d", startRow), fmt.Sprintf("S%d", startRow))
+					f.MergeCell(sheet, fmt.Sprintf("T%d", startRow), fmt.Sprintf("T%d", startRow+1))
+
+					headers2 := []string{"", "", "", "", "Nominal Pinjaman", "Periode/Tenor", "Pokok Pinjaman", "Jasa", "Jumlah", "Angsuran ke-1", "Angsuran ke-2", "Sisa Pinjaman", "Pokok", "Wajib", "Jumlah Wajib", "Simpanan Hari Raya", "Jumlah Simpanan Hari Raya", "Sukarela", "Jumlah Sukarela", ""}
+					for i := 4; i < len(headers2)-1; i++ {
+						f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], startRow+1), headers2[i])
+					}
+
 					// Baris pesan "Tidak ada data"
-					f.MergeCell(sheet, fmt.Sprintf("A%d", currentRow+1), fmt.Sprintf("E%d", currentRow+1))
-					f.SetCellValue(sheet, fmt.Sprintf("A%d", currentRow+1), "Tidak ada data anggota")
-					currentRow += 4
+					f.MergeCell(sheet, fmt.Sprintf("A%d", startRow+2), fmt.Sprintf("T%d", startRow+2))
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow+2), "Tidak ada data anggota")
 				}
 			} else {
-				// Untuk bulanan, buat tabel Rincian Laporan Bulanan
-				log.Printf("DEBUG Excel: Membuat tabel Rincian Laporan Bulanan (tanpa data) di startRow=%d", startRow)
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Bulanan")
-				headers1 := []string{"No", "Kode", "Nama", "Unit", "Pinjaman", "", "", "", "", "", "", "", "Simpanan", "", "", "", "", "", "", "Jumlah Pembayaran"}
-				cols := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"}
+				// Ada data anggota, buat tabel dengan data
+				log.Printf("DEBUG Excel: Membuat tabel dengan data anggota (len=%d)", len(anggotas))
+				// Hapus deklarasi ulang startRow yang tidak perlu
+				// startRow sudah didefinisikan di atas
 
-				for i, h := range headers1 {
-					if h != "" {
-						f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], startRow), h)
+				// Jika laporan tahunan, buat 5 tabel terpisah
+				if tipeLaporan == "tahunan" {
+					// Tabel 1: Simpanan Wajib
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Simpanan Wajib Tahunan")
+					headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+					cols := []string{"A", "B", "C", "D", "E"}
+					for i, h := range headers {
+						col := cols[i]
+						f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow), h)
 					}
-				}
-				f.MergeCell(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("A%d", startRow+1))
-				f.MergeCell(sheet, fmt.Sprintf("B%d", startRow), fmt.Sprintf("B%d", startRow+1))
-				f.MergeCell(sheet, fmt.Sprintf("C%d", startRow), fmt.Sprintf("C%d", startRow+1))
-				f.MergeCell(sheet, fmt.Sprintf("D%d", startRow), fmt.Sprintf("D%d", startRow+1))
-				f.MergeCell(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("L%d", startRow))
-				f.MergeCell(sheet, fmt.Sprintf("M%d", startRow), fmt.Sprintf("S%d", startRow))
-				f.MergeCell(sheet, fmt.Sprintf("T%d", startRow), fmt.Sprintf("T%d", startRow+1))
-
-				headers2 := []string{"", "", "", "", "Nominal Pinjaman", "Periode/Tenor", "Pokok Pinjaman", "Jasa", "Jumlah", "Angsuran ke-1", "Angsuran ke-2", "Sisa Pinjaman", "Pokok", "Wajib", "Jumlah Wajib", "Simpanan Hari Raya", "Jumlah Simpanan Hari Raya", "Sukarela", "Jumlah Sukarela", ""}
-				for i := 4; i < len(headers2)-1; i++ {
-					f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], startRow+1), headers2[i])
-				}
-
-				// Baris pesan "Tidak ada data"
-				f.MergeCell(sheet, fmt.Sprintf("A%d", startRow+2), fmt.Sprintf("T%d", startRow+2))
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow+2), "Tidak ada data anggota")
-			}
-		} else {
-			// Ada data anggota, buat tabel dengan data
-			log.Printf("DEBUG Excel: Membuat tabel dengan data anggota (len=%d)", len(anggotas))
-			// Hapus deklarasi ulang startRow yang tidak perlu
-			// startRow sudah didefinisikan di atas
-
-			// Jika laporan tahunan, buat 5 tabel terpisah
-			if tipeLaporan == "tahunan" {
-				// Tabel 1: Simpanan Wajib
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Simpanan Wajib Tahunan")
-				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
-				cols := []string{"A", "B", "C", "D", "E"}
-				for i, h := range headers {
-					col := cols[i]
-					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow), h)
-				}
-				for idx, anggota := range anggotas {
-					row := startRow + 1 + idx
-					nohp := anggota.NoTelepon
-					if !strings.HasPrefix(nohp, "+62") {
-						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					for idx, anggota := range anggotas {
+						row := startRow + 1 + idx
+						nohp := anggota.NoTelepon
+						if !strings.HasPrefix(nohp, "+62") {
+							nohp = "+62" + strings.TrimLeft(nohp, "0")
+						}
+						sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+						unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
+						f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+						f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+						f.SetCellValue(sheet, fmt.Sprintf("C%d", row), unitKerjaName)
+						f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
 					}
-					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-					unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
-					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
-					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
-					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), unitKerjaName)
-					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
-					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
-				}
 
 				// Style untuk tabel simpanan wajib
 				rincianHeaderStyle1, _ := f.NewStyle(&excelize.Style{
@@ -863,6 +1166,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				f.SetColWidth(sheet, "A", "T", 18)
 			}
 		}
+		}
 		// Set header untuk download
 		c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.xlsx")
@@ -893,10 +1197,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		// Hitung total pengeluaran (pinjaman + pengambilan)
 		totalPengeluaran := 0.0
 		if pinjaman, ok := report["total_pinjaman"].(float64); ok {
-			totalPengeluaran += pinjaman
-		}
-		if pengambilan, ok := report["total_pengambilan"].(float64); ok {
-			totalPengeluaran += pengambilan
+			totalPengeluaran = pinjaman
 		}
 
 		// Helper function untuk format Rupiah dengan pemisah ribuan (tanpa dobel 'Rp')
@@ -972,12 +1273,25 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		dataRows := []struct {
 			label string
 			value float64
-		}{
-			{"Total Simpanan", report["total_simpanan"].(float64)},
-			{"Total Pinjaman", report["total_pinjaman"].(float64)},
-			{"Total Angsuran", report["total_angsuran"].(float64)},
-			{"Total Pengeluaran", totalPengeluaran},
-		}
+		}{}
+		if useNeracaSummary {
+			for _, r := range neracaSummaryRows {
+				dataRows = append(dataRows, struct {
+					label string
+					value float64
+				}{label: r.Label, value: r.Value})
+			}
+		} else {
+			dataRows = []struct {
+				label string
+				value float64
+			}{
+				{"Total Simpanan", report["total_simpanan"].(float64)},
+				{"Total Pinjaman", report["total_pinjaman"].(float64)},
+				{"Total Angsuran", report["total_angsuran"].(float64)},
+				{"Total Pengeluaran", totalPengeluaran},
+				}
+			}
 		// Hitung lebar kolom maksimal
 		pdf.SetFont("Arial", "B", 11)
 		maxLabelWidth := pdf.GetStringWidth("Keterangan")
@@ -1033,20 +1347,162 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			pdf.CellFormat(maxValueWidth, rowHeight, formatRupiah(row.value), "1", 1, "L", false, 0, "")
 		}
 
-		// Ambil data anggota aktif dan potongan/sisa gaji
-		anggotas, err := repository.GetAllAnggota()
-		potonganBulanIni := make(map[string]float64)
-		if err == nil {
-			potonganBulanIni, _ = repository.GetPotonganBulanIniAllAnggota()
-		}
-		// Tambahan agar laporanDetail terdefinisi
-		var laporanDetail []map[string]interface{}
-		if tipeLaporan == "bulanan" {
-			laporanDetail, _ = repository.GetLaporanBulananPerAnggota(bulanInt, tahunInt)
+		// Untuk laporan tahunan, samakan format rincian dengan tampilan halaman ketua/laporan (rincianTahunan).
+		if tipeLaporan == "tahunan" && !useNeracaSummary {
+			laporanDetail, _ := repository.GetLaporanBulananPerAnggota(0, tahunInt)
+			toText := func(v interface{}) string {
+				if v == nil {
+					return "-"
+				}
+				s := strings.TrimSpace(fmt.Sprintf("%v", v))
+				if s == "" || s == "<nil>" {
+					return "-"
+				}
+				return s
+			}
+			toRp := func(v float64) string {
+				return formatRupiah(v)
+			}
+
+			writePDFTable := func(title string, headers []string, widths []float64, rows [][]string, r, g, b int) {
+				if pdf.GetY() > 240 {
+					pdf.AddPage()
+				}
+				pdf.Ln(6)
+				pdf.SetFont("Arial", "B", 12)
+				pdf.CellFormat(190, 8, title, "0", 1, "L", false, 0, "")
+				pdf.SetFont("Arial", "B", 8)
+				pdf.SetFillColor(r, g, b)
+				pdf.SetTextColor(255, 255, 255)
+				for i, h := range headers {
+					pdf.CellFormat(widths[i], 7, h, "1", 0, "C", true, 0, "")
+				}
+				pdf.Ln(-1)
+
+				pdf.SetFont("Arial", "", 8)
+				pdf.SetTextColor(0, 0, 0)
+				if len(rows) == 0 {
+					pdf.CellFormat(190, 7, "Tidak ada data", "1", 1, "C", false, 0, "")
+					return
+				}
+				for _, row := range rows {
+					for i, v := range row {
+						align := "L"
+						if i == 0 {
+							align = "C"
+						}
+						pdf.CellFormat(widths[i], 7, v, "1", 0, align, false, 0, "")
+					}
+					pdf.Ln(-1)
+				}
+			}
+
+			rowsSimpanan := [][]string{}
+			for i, d := range laporanDetail {
+				rowsSimpanan = append(rowsSimpanan, []string{
+					fmt.Sprintf("%d", i+1),
+					toText(d["id_anggota"]),
+					toText(d["nama_anggota"]),
+					repository.GetUnitKerjaName(toText(d["unit_kerja"])),
+					toRp(getFloat(d, "simpanan_pokok")),
+					toRp(getFloat(d, "total_simpanan_wajib")),
+					toRp(getFloat(d, "total_simpanan_hariraya")),
+					"Rp 0",
+					"Rp 0",
+					toRp(getFloat(d, "total_simpanan_sukarela")),
+				})
+			}
+			writePDFTable(
+				"Daftar Simpanan Anggota",
+				[]string{"No", "ID", "Nama", "Unit", "Pokok", "Wajib", "HR", "Umroh", "Qurban", "Sukarela"},
+				[]float64{8, 18, 34, 22, 15, 15, 15, 15, 15, 33},
+				rowsSimpanan,
+				13, 110, 253,
+			)
+
+			rowsPiutang := [][]string{}
+			for i, d := range laporanDetail {
+				rowsPiutang = append(rowsPiutang, []string{
+					fmt.Sprintf("%d", i+1),
+					toText(d["id_anggota"]),
+					toText(d["nama_anggota"]),
+					repository.GetUnitKerjaName(toText(d["unit_kerja"])),
+					toRp(getFloat(d, "sisa_pinjaman")),
+				})
+			}
+			writePDFTable(
+				"Daftar Piutang Anggota",
+				[]string{"No", "ID Anggota", "Nama", "Unit", "Sisa Piutang"},
+				[]float64{10, 30, 55, 45, 50},
+				rowsPiutang,
+				13, 202, 240,
+			)
+
+			rowsMacet := [][]string{}
+			for _, d := range laporanDetail {
+				if getFloat(d, "sisa_pinjaman") > 0 {
+					rowsMacet = append(rowsMacet, []string{
+						fmt.Sprintf("%d", len(rowsMacet)+1),
+						toText(d["id_anggota"]),
+						toText(d["nama_anggota"]),
+						repository.GetUnitKerjaName(toText(d["unit_kerja"])),
+						toRp(getFloat(d, "sisa_pinjaman")),
+					})
+				}
+			}
+			writePDFTable(
+				"Daftar Piutang Macet Anggota",
+				[]string{"No", "ID Anggota", "Nama", "Unit", "Jumlah Piutang"},
+				[]float64{10, 30, 55, 45, 50},
+				rowsMacet,
+				220, 53, 69,
+			)
+
+			rowsSHU := [][]string{}
+			for i, d := range laporanDetail {
+				shuPinjaman := getFloat(d, "jasa_per_bulan")
+				rowsSHU = append(rowsSHU, []string{
+					fmt.Sprintf("%d", i+1),
+					toText(d["nama_anggota"]),
+					repository.GetUnitKerjaName(toText(d["unit_kerja"])),
+					toRp(shuPinjaman),
+					"Rp 0",
+					toRp(shuPinjaman),
+				})
+			}
+			writePDFTable(
+				"Daftar SHU Anggota",
+				[]string{"No", "Nama", "Unit", "SHU Pinjaman", "SHU Simpanan", "Jumlah SHU"},
+				[]float64{10, 55, 35, 30, 30, 30},
+				rowsSHU,
+				25, 135, 84,
+			)
+
+			c.Header("Content-Type", "application/pdf")
+			c.Header("Content-Disposition", "attachment; filename=laporan_koperasi_tahunan_"+fmt.Sprintf("%d", tahunInt)+".pdf")
+			err = pdf.Output(c.Writer)
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Gagal membuat file PDF")
+			}
+			return
 		}
 
-		// Selalu buat tabel rincian meskipun tidak ada data
-		if err != nil || len(anggotas) == 0 {
+		// Untuk tahunan berbasis neraca, jangan tampilkan rincian anggota agar output konsisten dengan data neraca.
+		if !(tipeLaporan == "tahunan" && useNeracaSummary) {
+			// Ambil data anggota aktif dan potongan/sisa gaji
+			anggotas, err := repository.GetAllAnggota()
+			potonganBulanIni := make(map[string]float64)
+			if err == nil {
+				potonganBulanIni, _ = repository.GetPotonganBulanIniAllAnggota()
+			}
+			// Tambahan agar laporanDetail terdefinisi
+			var laporanDetail []map[string]interface{}
+			if tipeLaporan == "bulanan" {
+				laporanDetail, _ = repository.GetLaporanBulananPerAnggota(bulanInt, tahunInt)
+			}
+
+			// Selalu buat tabel rincian meskipun tidak ada data
+			if err != nil || len(anggotas) == 0 {
 			// Tidak ada data anggota
 			if tipeLaporan == "tahunan" {
 				tableNames := []string{
@@ -1080,10 +1536,10 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				pdf.SetFont("Arial", "", 10)
 				pdf.CellFormat(pageWidth, 7, "Tidak ada data anggota", "1", 1, "C", false, 0, "")
 			}
-		} else {
+			} else {
 			// Ada data anggota
 
-			if tipeLaporan == "tahunan" {
+				if tipeLaporan == "tahunan" {
 				// Laporan tahunan: 5 tabel terpisah
 				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
 				tableNames := []string{
@@ -1118,7 +1574,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 						pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 1, "L", false, 0, "")
 					}
 				}
-			} else {
+				} else {
 				// Laporan bulanan: Tabel Rincian Laporan Bulanan (already in landscape mode)
 				pdf.Ln(10)
 				pdf.SetFont("Arial", "B", 14)
@@ -1203,6 +1659,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 					// Jumlah Pembayaran
 					pdf.CellFormat(colWidths[19], 7, formatRupiah(getFloat(detail, "total_pembayaran")), "1", 1, "R", false, 0, "")
 					pdf.Ln(1) // Tambahkan jarak antar baris
+				}
 				}
 			}
 		}
