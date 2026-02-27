@@ -358,7 +358,21 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		Label string
 		Value float64
 	}
+	type neracaItem struct {
+		No    string
+		Label string
+		V2024 float64
+		V2023 float64
+	}
 	neracaSummaryRows := []summaryRow{}
+	neracaAsetLancar := []neracaItem{}
+	neracaAsetTetap := []neracaItem{}
+	neracaKewajibanLancar := []neracaItem{}
+	neracaEkuitas := []neracaItem{}
+	neracaTotalAsetLancar2024, neracaTotalAsetLancar2023 := 0.0, 0.0
+	neracaTotalAsetTetap2024, neracaTotalAsetTetap2023 := 0.0, 0.0
+	neracaTotalKewajibanLancar2024, neracaTotalKewajibanLancar2023 := 0.0, 0.0
+	neracaTotalEkuitas2024, neracaTotalEkuitas2023 := 0.0, 0.0
 	useNeracaSummary := false
 
 	toFloat := func(v interface{}) float64 {
@@ -405,12 +419,24 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		}
 		if neraca != nil {
 			var data2024 map[string]interface{}
+			var data2023 map[string]interface{}
 			var customItems map[string]interface{}
 			var deletedItems []string
+			var labels map[string]string
+			var noPerkiraan map[string]string
 
 			_ = json.Unmarshal([]byte(neraca.Data2024), &data2024)
+			_ = json.Unmarshal([]byte(neraca.Data2023), &data2023)
 			_ = json.Unmarshal([]byte(neraca.CustomItems), &customItems)
 			_ = json.Unmarshal([]byte(neraca.DeletedItems), &deletedItems)
+			_ = json.Unmarshal([]byte(neraca.Labels), &labels)
+			_ = json.Unmarshal([]byte(neraca.NoPerkiraan), &noPerkiraan)
+			if labels == nil {
+				labels = map[string]string{}
+			}
+			if noPerkiraan == nil {
+				noPerkiraan = map[string]string{}
+			}
 
 			deletedSet := map[string]bool{}
 			for _, id := range deletedItems {
@@ -423,16 +449,51 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				"kewajibanLancar": {"hutangUsaha", "hutangBunga", "simpananAnggota"},
 				"ekuitas":         {"simpananPokok", "simpananWajib", "cadangan", "shuTahunBerjalan"},
 			}
+			defaultLabelMap := map[string]string{
+				"kas":             "Kas",
+				"bank":            "Bank",
+				"piutangAnggota":  "Piutang Anggota USP",
+				"perlengkapan":    "Perlengkapan",
+				"tanah":           "Tanah",
+				"bangunan":        "Bangunan",
+				"kendaraan":       "Kendaraan",
+				"peralatan":       "Peralatan",
+				"hutangUsaha":     "Hutang Usaha",
+				"hutangBunga":     "Hutang Bunga",
+				"simpananAnggota": "Simpanan Anggota",
+				"simpananPokok":   "Simpanan Pokok",
+				"simpananWajib":   "Simpanan Wajib",
+				"cadangan":        "Cadangan",
+				"shuTahunBerjalan": "SHU Tahun Berjalan",
+			}
 
-			sumCategory := func(kategori string) float64 {
-				total := 0.0
+			collectCategoryItems := func(kategori string) []neracaItem {
+				items := []neracaItem{}
 				for _, field := range defaultFields[kategori] {
 					if deletedSet[field] {
 						continue
 					}
-					total += toFloat(data2024[field])
+					lbl := strings.TrimSpace(labels[field])
+					if lbl == "" {
+						lbl = defaultLabelMap[field]
+					}
+					if strings.TrimSpace(lbl) == "" {
+						lbl = field
+					}
+					no := strings.TrimSpace(noPerkiraan[field])
+					v24 := toFloat(data2024[field])
+					v23 := toFloat(data2023[field])
+					hasMeta := strings.TrimSpace(no) != "" || (strings.TrimSpace(labels[field]) != "" && strings.TrimSpace(labels[field]) != defaultLabelMap[field])
+					if v24 == 0 && v23 == 0 && !hasMeta {
+						continue
+					}
+					items = append(items, neracaItem{
+						No:    no,
+						Label: lbl,
+						V2024: v24,
+						V2023: v23,
+					})
 				}
-
 				if raw, ok := customItems[kategori]; ok {
 					if arr, ok := raw.([]interface{}); ok {
 						for _, item := range arr {
@@ -444,25 +505,56 @@ func KetuaDownloadLaporan(c *gin.Context) {
 							if id != "" && deletedSet[id] {
 								continue
 							}
-							total += toFloat(m["value"])
+							lbl := strings.TrimSpace(fmt.Sprintf("%v", m["label"]))
+							if lbl == "" || lbl == "<nil>" {
+								lbl = strings.TrimSpace(labels[id])
+							}
+							if lbl == "" || lbl == "<nil>" {
+								lbl = id
+							}
+							no := strings.TrimSpace(fmt.Sprintf("%v", m["no"]))
+							if no == "" || no == "<nil>" {
+								no = strings.TrimSpace(noPerkiraan[id])
+							}
+							v24 := toFloat(m["value"])
+							v23 := toFloat(m["value2023"])
+							if strings.TrimSpace(lbl) == "" && v24 == 0 && v23 == 0 {
+								continue
+							}
+							items = append(items, neracaItem{
+								No:    no,
+								Label: lbl,
+								V2024: v24,
+								V2023: v23,
+							})
 						}
 					}
 				}
-				return total
+				return items
 			}
-
-			asetLancar := sumCategory("asetLancar")
-			asetTetap := sumCategory("asetTetap")
-			kewajibanLancar := sumCategory("kewajibanLancar")
-			ekuitas := sumCategory("ekuitas")
-			totalAset := asetLancar + asetTetap
-			totalKewajibanEkuitas := kewajibanLancar + ekuitas
-
+			neracaAsetLancar = collectCategoryItems("asetLancar")
+			neracaAsetTetap = collectCategoryItems("asetTetap")
+			neracaKewajibanLancar = collectCategoryItems("kewajibanLancar")
+			neracaEkuitas = collectCategoryItems("ekuitas")
+			sumItems := func(items []neracaItem) (float64, float64) {
+				a, b := 0.0, 0.0
+				for _, it := range items {
+					a += it.V2024
+					b += it.V2023
+				}
+				return a, b
+			}
+			neracaTotalAsetLancar2024, neracaTotalAsetLancar2023 = sumItems(neracaAsetLancar)
+			neracaTotalAsetTetap2024, neracaTotalAsetTetap2023 = sumItems(neracaAsetTetap)
+			neracaTotalKewajibanLancar2024, neracaTotalKewajibanLancar2023 = sumItems(neracaKewajibanLancar)
+			neracaTotalEkuitas2024, neracaTotalEkuitas2023 = sumItems(neracaEkuitas)
+			totalAset := neracaTotalAsetLancar2024 + neracaTotalAsetTetap2024
+			totalKewajibanEkuitas := neracaTotalKewajibanLancar2024 + neracaTotalEkuitas2024
 			neracaSummaryRows = []summaryRow{
-				{Label: "Total Aset Lancar", Value: asetLancar},
-				{Label: "Total Aset Tetap", Value: asetTetap},
-				{Label: "Total Kewajiban Lancar", Value: kewajibanLancar},
-				{Label: "Total Ekuitas", Value: ekuitas},
+				{Label: "Total Aset Lancar", Value: neracaTotalAsetLancar2024},
+				{Label: "Total Aset Tetap", Value: neracaTotalAsetTetap2024},
+				{Label: "Total Kewajiban Lancar", Value: neracaTotalKewajibanLancar2024},
+				{Label: "Total Ekuitas", Value: neracaTotalEkuitas2024},
 				{Label: "TOTAL ASET", Value: totalAset},
 				{Label: "TOTAL KEWAJIBAN & EKUITAS", Value: totalKewajibanEkuitas},
 			}
@@ -644,6 +736,210 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			}
 			toRupiah := func(v float64) string {
 				return fmt.Sprintf("Rp %.0f", v)
+			}
+
+			// Neraca format 2 sisi: Aset (kiri) vs Kewajiban & Ekuitas (kanan)
+			if len(neracaAsetLancar)+len(neracaAsetTetap)+len(neracaKewajibanLancar)+len(neracaEkuitas) > 0 {
+				headerDark, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#1f232a"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+				headerBlue, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#1f6feb"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+				headerGreen, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#198754"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+				sectionBlue, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#dbeafe"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "left"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+				sectionGreen, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#dcfce7"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "left"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+				totalStyle, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true},
+					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#fef3c7"}, Pattern: 1},
+					Alignment: &excelize.Alignment{Horizontal: "left"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+				numStyle, _ := f.NewStyle(&excelize.Style{
+					Alignment: &excelize.Alignment{Horizontal: "right"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+				centerStyle, _ := f.NewStyle(&excelize.Style{
+					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+				textStyle, _ := f.NewStyle(&excelize.Style{
+					Alignment: &excelize.Alignment{Horizontal: "left"},
+					Border: []excelize.Border{
+						{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1},
+						{Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1},
+					},
+				})
+
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow), "Neraca Koperasi Simpan Pinjam")
+				f.MergeCell(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("H%d", startRow))
+				startRow++
+
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow), "NoPerkiraan")
+				f.SetCellValue(sheet, fmt.Sprintf("B%d", startRow), "Perkiraan")
+				f.SetCellValue(sheet, fmt.Sprintf("C%d", startRow), "ASET")
+				f.MergeCell(sheet, fmt.Sprintf("C%d", startRow), fmt.Sprintf("D%d", startRow))
+				f.SetCellValue(sheet, fmt.Sprintf("E%d", startRow), "NoPerkiraan")
+				f.SetCellValue(sheet, fmt.Sprintf("F%d", startRow), "Perkiraan")
+				f.SetCellValue(sheet, fmt.Sprintf("G%d", startRow), "KEWAJIBAN & EKUITAS")
+				f.MergeCell(sheet, fmt.Sprintf("G%d", startRow), fmt.Sprintf("H%d", startRow))
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("B%d", startRow), headerDark)
+				f.SetCellStyle(sheet, fmt.Sprintf("C%d", startRow), fmt.Sprintf("D%d", startRow), headerBlue)
+				f.SetCellStyle(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("F%d", startRow), headerDark)
+				f.SetCellStyle(sheet, fmt.Sprintf("G%d", startRow), fmt.Sprintf("H%d", startRow), headerGreen)
+
+				startRow++
+				f.SetCellValue(sheet, fmt.Sprintf("C%d", startRow), "2024 (Rp)")
+				f.SetCellValue(sheet, fmt.Sprintf("D%d", startRow), "2023 (Rp)")
+				f.SetCellValue(sheet, fmt.Sprintf("G%d", startRow), "2024 (Rp)")
+				f.SetCellValue(sheet, fmt.Sprintf("H%d", startRow), "2023 (Rp)")
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("B%d", startRow), headerDark)
+				f.SetCellStyle(sheet, fmt.Sprintf("C%d", startRow), fmt.Sprintf("D%d", startRow), headerBlue)
+				f.SetCellStyle(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("F%d", startRow), headerDark)
+				f.SetCellStyle(sheet, fmt.Sprintf("G%d", startRow), fmt.Sprintf("H%d", startRow), headerGreen)
+
+				writePair := func(leftTitle string, left []neracaItem, lTotal24, lTotal23 float64, rightTitle string, right []neracaItem, rTotal24, rTotal23 float64) {
+					startRow++
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow), leftTitle)
+					f.MergeCell(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("D%d", startRow))
+					f.SetCellValue(sheet, fmt.Sprintf("E%d", startRow), rightTitle)
+					f.MergeCell(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("H%d", startRow))
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("D%d", startRow), sectionBlue)
+					f.SetCellStyle(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("H%d", startRow), sectionGreen)
+
+					maxLen := len(left)
+					if len(right) > maxLen {
+						maxLen = len(right)
+					}
+					for i := 0; i < maxLen; i++ {
+						startRow++
+						if i < len(left) {
+							f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow), left[i].No)
+							f.SetCellValue(sheet, fmt.Sprintf("B%d", startRow), left[i].Label)
+							f.SetCellValue(sheet, fmt.Sprintf("C%d", startRow), toRupiah(left[i].V2024))
+							f.SetCellValue(sheet, fmt.Sprintf("D%d", startRow), toRupiah(left[i].V2023))
+						}
+						if i < len(right) {
+							f.SetCellValue(sheet, fmt.Sprintf("E%d", startRow), right[i].No)
+							f.SetCellValue(sheet, fmt.Sprintf("F%d", startRow), right[i].Label)
+							f.SetCellValue(sheet, fmt.Sprintf("G%d", startRow), toRupiah(right[i].V2024))
+							f.SetCellValue(sheet, fmt.Sprintf("H%d", startRow), toRupiah(right[i].V2023))
+						}
+						f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("A%d", startRow), centerStyle)
+						f.SetCellStyle(sheet, fmt.Sprintf("B%d", startRow), fmt.Sprintf("B%d", startRow), textStyle)
+						f.SetCellStyle(sheet, fmt.Sprintf("C%d", startRow), fmt.Sprintf("D%d", startRow), numStyle)
+						f.SetCellStyle(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("E%d", startRow), centerStyle)
+						f.SetCellStyle(sheet, fmt.Sprintf("F%d", startRow), fmt.Sprintf("F%d", startRow), textStyle)
+						f.SetCellStyle(sheet, fmt.Sprintf("G%d", startRow), fmt.Sprintf("H%d", startRow), numStyle)
+					}
+
+					startRow++
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow), "Total "+leftTitle)
+					f.MergeCell(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("B%d", startRow))
+					f.SetCellValue(sheet, fmt.Sprintf("C%d", startRow), toRupiah(lTotal24))
+					f.SetCellValue(sheet, fmt.Sprintf("D%d", startRow), toRupiah(lTotal23))
+					f.SetCellValue(sheet, fmt.Sprintf("E%d", startRow), "Total "+rightTitle)
+					f.MergeCell(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("F%d", startRow))
+					f.SetCellValue(sheet, fmt.Sprintf("G%d", startRow), toRupiah(rTotal24))
+					f.SetCellValue(sheet, fmt.Sprintf("H%d", startRow), toRupiah(rTotal23))
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("D%d", startRow), sectionBlue)
+					f.SetCellStyle(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("H%d", startRow), sectionGreen)
+				}
+
+				// Samakan dengan tampilan web: jika baris kanan kurang, item ekuitas awal bisa "naik"
+				// ke blok Kewajiban Lancar agar sejajar dengan Aset Lancar.
+				rightKewajiban := append([]neracaItem{}, neracaKewajibanLancar...)
+				rightEkuitas := append([]neracaItem{}, neracaEkuitas...)
+				totalKewajiban24, totalKewajiban23 := neracaTotalKewajibanLancar2024, neracaTotalKewajibanLancar2023
+				totalEkuitas24, totalEkuitas23 := neracaTotalEkuitas2024, neracaTotalEkuitas2023
+				if len(rightKewajiban) < len(neracaAsetLancar) && len(rightEkuitas) > 0 {
+					need := len(neracaAsetLancar) - len(rightKewajiban)
+					if need > len(rightEkuitas) {
+						need = len(rightEkuitas)
+					}
+					for i := 0; i < need; i++ {
+						it := rightEkuitas[i]
+						rightKewajiban = append(rightKewajiban, it)
+						totalKewajiban24 += it.V2024
+						totalKewajiban23 += it.V2023
+						totalEkuitas24 -= it.V2024
+						totalEkuitas23 -= it.V2023
+					}
+					rightEkuitas = rightEkuitas[need:]
+				}
+
+				writePair(
+					"Aset Lancar", neracaAsetLancar, neracaTotalAsetLancar2024, neracaTotalAsetLancar2023,
+					"Kewajiban Lancar", rightKewajiban, totalKewajiban24, totalKewajiban23,
+				)
+				writePair(
+					"Aset Tetap", neracaAsetTetap, neracaTotalAsetTetap2024, neracaTotalAsetTetap2023,
+					"Ekuitas/Modal", rightEkuitas, totalEkuitas24, totalEkuitas23,
+				)
+
+				startRow++
+				totalAset24 := neracaTotalAsetLancar2024 + neracaTotalAsetTetap2024
+				totalAset23 := neracaTotalAsetLancar2023 + neracaTotalAsetTetap2023
+				totalKE24 := totalKewajiban24 + totalEkuitas24
+				totalKE23 := totalKewajiban23 + totalEkuitas23
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow), "TOTAL ASET")
+				f.MergeCell(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("B%d", startRow))
+				f.SetCellValue(sheet, fmt.Sprintf("C%d", startRow), toRupiah(totalAset24))
+				f.SetCellValue(sheet, fmt.Sprintf("D%d", startRow), toRupiah(totalAset23))
+				f.SetCellValue(sheet, fmt.Sprintf("E%d", startRow), "TOTAL KEWAJIBAN & EKUITAS")
+				f.MergeCell(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("F%d", startRow))
+				f.SetCellValue(sheet, fmt.Sprintf("G%d", startRow), toRupiah(totalKE24))
+				f.SetCellValue(sheet, fmt.Sprintf("H%d", startRow), toRupiah(totalKE23))
+				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("H%d", startRow), totalStyle)
+				f.SetCellStyle(sheet, fmt.Sprintf("C%d", startRow), fmt.Sprintf("D%d", startRow), numStyle)
+				f.SetCellStyle(sheet, fmt.Sprintf("G%d", startRow), fmt.Sprintf("H%d", startRow), numStyle)
+
+				startRow += 2
 			}
 
 			// 1) Daftar Simpanan Anggota
@@ -1364,11 +1660,152 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				return formatRupiah(v)
 			}
 
-			writePDFTable := func(title string, headers []string, widths []float64, rows [][]string, r, g, b int) {
-				if pdf.GetY() > 240 {
+			// Neraca format 2 sisi: Aset (kiri) vs Kewajiban & Ekuitas (kanan)
+			if len(neracaAsetLancar)+len(neracaAsetTetap)+len(neracaKewajibanLancar)+len(neracaEkuitas) > 0 {
+				if pdf.GetY()+110 > 270 {
 					pdf.AddPage()
 				}
 				pdf.Ln(6)
+				pdf.SetFont("Arial", "B", 12)
+				pdf.CellFormat(190, 8, "Neraca Koperasi Simpan Pinjam", "0", 1, "L", false, 0, "")
+
+				// Lebar kolom diseimbangkan agar judul total di sisi kanan tidak terpotong.
+				w := []float64{13, 40, 21, 21, 13, 40, 21, 21}
+
+				// Header row 1
+				pdf.SetFont("Arial", "B", 7)
+				pdf.SetFillColor(31, 35, 42)
+				pdf.SetTextColor(255, 255, 255)
+				pdf.CellFormat(w[0], 7, "NoPerkiraan", "1", 0, "C", true, 0, "")
+				pdf.CellFormat(w[1], 7, "Perkiraan", "1", 0, "C", true, 0, "")
+				pdf.SetFillColor(31, 111, 235)
+				pdf.CellFormat(w[2]+w[3], 7, "ASET", "1", 0, "C", true, 0, "")
+				pdf.SetFillColor(31, 35, 42)
+				pdf.CellFormat(w[4], 7, "NoPerkiraan", "1", 0, "C", true, 0, "")
+				pdf.CellFormat(w[5], 7, "Perkiraan", "1", 0, "C", true, 0, "")
+				pdf.SetFillColor(25, 135, 84)
+				pdf.CellFormat(w[6]+w[7], 7, "KEWAJIBAN & EKUITAS", "1", 1, "C", true, 0, "")
+
+				// Header row 2
+				pdf.SetFillColor(31, 35, 42)
+				pdf.CellFormat(w[0], 7, "", "1", 0, "C", true, 0, "")
+				pdf.CellFormat(w[1], 7, "", "1", 0, "C", true, 0, "")
+				pdf.SetFillColor(31, 111, 235)
+				pdf.CellFormat(w[2], 7, "2024 (Rp)", "1", 0, "C", true, 0, "")
+				pdf.CellFormat(w[3], 7, "2023 (Rp)", "1", 0, "C", true, 0, "")
+				pdf.SetFillColor(31, 35, 42)
+				pdf.CellFormat(w[4], 7, "", "1", 0, "C", true, 0, "")
+				pdf.CellFormat(w[5], 7, "", "1", 0, "C", true, 0, "")
+				pdf.SetFillColor(25, 135, 84)
+				pdf.CellFormat(w[6], 7, "2024 (Rp)", "1", 0, "C", true, 0, "")
+				pdf.CellFormat(w[7], 7, "2023 (Rp)", "1", 1, "C", true, 0, "")
+
+				pdf.SetTextColor(0, 0, 0)
+				pdf.SetFont("Arial", "", 7)
+
+				writePairPDF := func(leftTitle string, left []neracaItem, lTotal24, lTotal23 float64, rightTitle string, right []neracaItem, rTotal24, rTotal23 float64) {
+					pdf.SetFillColor(219, 234, 254)
+					pdf.SetFont("Arial", "B", 7)
+					pdf.CellFormat(w[0]+w[1]+w[2]+w[3], 7, leftTitle, "1", 0, "L", true, 0, "")
+					pdf.SetFillColor(220, 252, 231)
+					pdf.CellFormat(w[4]+w[5]+w[6]+w[7], 7, rightTitle, "1", 1, "L", true, 0, "")
+					pdf.SetFont("Arial", "", 7)
+
+					maxLen := len(left)
+					if len(right) > maxLen {
+						maxLen = len(right)
+					}
+					for i := 0; i < maxLen; i++ {
+						if i < len(left) {
+							pdf.CellFormat(w[0], 7, left[i].No, "1", 0, "C", false, 0, "")
+							pdf.CellFormat(w[1], 7, left[i].Label, "1", 0, "L", false, 0, "")
+							pdf.CellFormat(w[2], 7, toRp(left[i].V2024), "1", 0, "R", false, 0, "")
+							pdf.CellFormat(w[3], 7, toRp(left[i].V2023), "1", 0, "R", false, 0, "")
+						} else {
+							pdf.CellFormat(w[0], 7, "", "1", 0, "C", false, 0, "")
+							pdf.CellFormat(w[1], 7, "", "1", 0, "L", false, 0, "")
+							pdf.CellFormat(w[2], 7, "", "1", 0, "R", false, 0, "")
+							pdf.CellFormat(w[3], 7, "", "1", 0, "R", false, 0, "")
+						}
+						if i < len(right) {
+							pdf.CellFormat(w[4], 7, right[i].No, "1", 0, "C", false, 0, "")
+							pdf.CellFormat(w[5], 7, right[i].Label, "1", 0, "L", false, 0, "")
+							pdf.CellFormat(w[6], 7, toRp(right[i].V2024), "1", 0, "R", false, 0, "")
+							pdf.CellFormat(w[7], 7, toRp(right[i].V2023), "1", 1, "R", false, 0, "")
+						} else {
+							pdf.CellFormat(w[4], 7, "", "1", 0, "C", false, 0, "")
+							pdf.CellFormat(w[5], 7, "", "1", 0, "L", false, 0, "")
+							pdf.CellFormat(w[6], 7, "", "1", 0, "R", false, 0, "")
+							pdf.CellFormat(w[7], 7, "", "1", 1, "R", false, 0, "")
+						}
+					}
+
+					pdf.SetFont("Arial", "B", 7)
+					pdf.SetFillColor(219, 234, 254)
+					pdf.CellFormat(w[0]+w[1], 7, "Total "+leftTitle, "1", 0, "L", true, 0, "")
+					pdf.CellFormat(w[2], 7, toRp(lTotal24), "1", 0, "R", true, 0, "")
+					pdf.CellFormat(w[3], 7, toRp(lTotal23), "1", 0, "R", true, 0, "")
+					pdf.SetFillColor(220, 252, 231)
+					pdf.CellFormat(w[4]+w[5], 7, "Total "+rightTitle, "1", 0, "L", true, 0, "")
+					pdf.CellFormat(w[6], 7, toRp(rTotal24), "1", 0, "R", true, 0, "")
+					pdf.CellFormat(w[7], 7, toRp(rTotal23), "1", 1, "R", true, 0, "")
+					pdf.SetFont("Arial", "", 7)
+				}
+
+				// Samakan dengan tampilan web: item ekuitas bisa naik mengisi blok Kewajiban Lancar.
+				rightKewajiban := append([]neracaItem{}, neracaKewajibanLancar...)
+				rightEkuitas := append([]neracaItem{}, neracaEkuitas...)
+				totalKewajiban24, totalKewajiban23 := neracaTotalKewajibanLancar2024, neracaTotalKewajibanLancar2023
+				totalEkuitas24, totalEkuitas23 := neracaTotalEkuitas2024, neracaTotalEkuitas2023
+				if len(rightKewajiban) < len(neracaAsetLancar) && len(rightEkuitas) > 0 {
+					need := len(neracaAsetLancar) - len(rightKewajiban)
+					if need > len(rightEkuitas) {
+						need = len(rightEkuitas)
+					}
+					for i := 0; i < need; i++ {
+						it := rightEkuitas[i]
+						rightKewajiban = append(rightKewajiban, it)
+						totalKewajiban24 += it.V2024
+						totalKewajiban23 += it.V2023
+						totalEkuitas24 -= it.V2024
+						totalEkuitas23 -= it.V2023
+					}
+					rightEkuitas = rightEkuitas[need:]
+				}
+
+				writePairPDF(
+					"Aset Lancar", neracaAsetLancar, neracaTotalAsetLancar2024, neracaTotalAsetLancar2023,
+					"Kewajiban Lancar", rightKewajiban, totalKewajiban24, totalKewajiban23,
+				)
+				writePairPDF(
+					"Aset Tetap", neracaAsetTetap, neracaTotalAsetTetap2024, neracaTotalAsetTetap2023,
+					"Ekuitas/Modal", rightEkuitas, totalEkuitas24, totalEkuitas23,
+				)
+
+				totalAset24 := neracaTotalAsetLancar2024 + neracaTotalAsetTetap2024
+				totalAset23 := neracaTotalAsetLancar2023 + neracaTotalAsetTetap2023
+				totalKE24 := totalKewajiban24 + totalEkuitas24
+				totalKE23 := totalKewajiban23 + totalEkuitas23
+				pdf.SetFont("Arial", "B", 8)
+				pdf.SetFillColor(254, 243, 199)
+				pdf.CellFormat(w[0]+w[1], 8, "TOTAL ASET", "1", 0, "L", true, 0, "")
+				pdf.CellFormat(w[2], 8, toRp(totalAset24), "1", 0, "R", true, 0, "")
+				pdf.CellFormat(w[3], 8, toRp(totalAset23), "1", 0, "R", true, 0, "")
+				pdf.CellFormat(w[4]+w[5], 8, "TOTAL KEWAJIBAN & EKUITAS", "1", 0, "L", true, 0, "")
+				pdf.CellFormat(w[6], 8, toRp(totalKE24), "1", 0, "R", true, 0, "")
+				pdf.CellFormat(w[7], 8, toRp(totalKE23), "1", 1, "R", true, 0, "")
+			}
+
+			writePDFTable := func(title string, headers []string, widths []float64, rows [][]string, r, g, b int) {
+				neededRows := len(rows)
+				if neededRows == 0 {
+					neededRows = 1
+				}
+				neededHeight := 6.0 + 8.0 + 7.0 + (7.0 * float64(neededRows))
+				if pdf.GetY()+neededHeight > 280 {
+					pdf.AddPage()
+				}
+				pdf.Ln(4)
 				pdf.SetFont("Arial", "B", 12)
 				pdf.CellFormat(190, 8, title, "0", 1, "L", false, 0, "")
 				pdf.SetFont("Arial", "B", 8)
