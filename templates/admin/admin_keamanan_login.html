@@ -76,8 +76,10 @@
                                                     <span class="badge bg-primary">Bendahara</span>
                                                 {{ else if eq $history.Role "ketua" }}
                                                     <span class="badge bg-warning">Ketua</span>
-                                                {{ else }}
+                                                {{ else if eq $history.Role "anggota" }}
                                                     <span class="badge bg-secondary">Anggota</span>
+                                                {{ else }}
+                                                    <span class="badge bg-dark">Unknown</span>
                                                 {{ end }}
                                             </td>
                                             <td>
@@ -162,7 +164,7 @@
             var table = $('#loginHistoryTable').DataTable({
                 "pageLength": 10,
                 "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
-                "order": [[3, "desc"]],
+                "order": [[4, "desc"]],
                 "columnDefs": [
                     { "searchable": false, "orderable": false, "targets": 0 }
                 ],

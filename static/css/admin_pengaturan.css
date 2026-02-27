@@ -12,10 +12,17 @@
         -webkit-overflow-scrolling: touch;
     }
 }
+html, body {
+    height: 100%;
+}
+
 body {
     background-color: #f5f7fa;
     font-family: "Poppins", sans-serif;
     overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Sidebar */
@@ -130,6 +137,7 @@ body:not(:has(.sidebar.show)) footer {
     margin-left: 240px;
     padding: 30px;
     transition: margin-left 0.3s ease;
+    flex: 1 0 auto;
 }
 .sidebar:not(.show) ~ .main-content,
 body:not(:has(.sidebar.show)) .main-content {
@@ -170,12 +178,14 @@ body:not(:has(.sidebar.show)) .main-content {
 
 footer {
     margin-left: 240px;
+    margin-top: auto;
     padding: 15px;
     text-align: center;
     color: #666;
     background: #fff;
     border-top: 1px solid #ddd;
     transition: margin-left 0.3s ease;
+    flex-shrink: 0;
 }
 .sidebar:not(.show) ~ footer,
 body:not(:has(.sidebar.show)) footer {

@@ -1597,7 +1597,7 @@ func BendaharaPengaturan(c *gin.Context) {
 	// Ambil data bendahara
 	bendahara, err := repository.GetPengelolaByID(bendaharaID.(int))
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "bendahara_layout.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "bendahara_pengaturan.html", gin.H{
 			"ActivePage": "pengaturan",
 			"Error":      "Gagal mengambil data bendahara: " + err.Error(),
 			"LogoPath":   latestLogo,
@@ -1605,7 +1605,7 @@ func BendaharaPengaturan(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "bendahara_layout.html", gin.H{
+	c.HTML(http.StatusOK, "bendahara_pengaturan.html", gin.H{
 		"ActivePage":  "pengaturan",
 		"Bendahara":   bendahara,
 		"LogoPath":    latestLogo,

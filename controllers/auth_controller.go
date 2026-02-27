@@ -297,10 +297,12 @@ func Login(c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 	ipAddress := c.ClientIP()
+	failedRole := "unknown"
 
 	// Cek di tabel pengelola
 	pengelola, err := repository.GetPengelolaByUsername(username)
 	if err == nil {
+		failedRole = pengelola.Level
 		err = bcrypt.CompareHashAndPassword([]byte(pengelola.Password), []byte(password))
 		if err == nil { // Password cocok
 			session := sessions.Default(c)
@@ -343,6 +345,7 @@ func Login(c *gin.Context) {
 	// Cek di tabel anggota
 	anggota, err := repository.GetAnggotaByUsername(username)
 	if err == nil {
+		failedRole = "anggota"
 		// Password disimpan dalam plain text, jadi bandingkan langsung
 		if anggota.Password == password { // Password cocok
 			session := sessions.Default(c)
@@ -373,7 +376,7 @@ func Login(c *gin.Context) {
 	// Log failed login attempt
 	loginHistory := models.LoginHistory{
 		Username:  username,
-		Role:      "unknown",
+		Role:      failedRole,
 		LoginTime: time.Now(),
 		IPAddress: ipAddress,
 		Status:    "failed",

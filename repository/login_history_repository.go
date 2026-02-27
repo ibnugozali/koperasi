@@ -11,7 +11,21 @@ func GetLoginHistory() ([]models.LoginHistory, error) {
 	var loginHistories []models.LoginHistory
 
 	query := `
-		SELECT id, username, role, login_time, ip_address, status
+		SELECT
+			id,
+			username,
+			CASE
+				WHEN LOWER(TRIM(role)) IN ('admin', 'bendahara', 'ketua', 'anggota') THEN LOWER(TRIM(role))
+				WHEN LOWER(TRIM(role)) = 'member' THEN 'anggota'
+				ELSE LOWER(TRIM(role))
+			END AS role,
+			login_time,
+			ip_address,
+			CASE
+				WHEN LOWER(TRIM(status)) IN ('success', 'berhasil', 'sukses') THEN 'success'
+				WHEN LOWER(TRIM(status)) IN ('failed', 'gagal') THEN 'failed'
+				ELSE LOWER(TRIM(status))
+			END AS status
 		FROM login_history
 		ORDER BY login_time DESC
 	`
