@@ -106,8 +106,7 @@
 									<th>No</th>
 									<th>ID Anggota</th>
 									<th>Nama</th>
-									<th>NIK</th>
-									<th>Fakultas</th>
+									<th>Unit Kerja</th>
 									<th>No. Telepon</th>
 									<th>Status</th>
 									<th>Tanggal Keluar</th>
@@ -120,8 +119,7 @@
 									<td>{{ add $index 1 }}</td>
 									<td><strong>{{ if $anggota.IDAnggota }}{{ $anggota.IDAnggota }}{{ else }}-{{ end }}</strong></td>
 									<td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ $anggota.NamaAnggota }}</td>
-									<td>{{ $anggota.NikKTP }}</td>
-									<td>{{ $anggota.Fakultas }}</td>
+									<td>{{ if or (eq $anggota.Fakultas "Rektorat / Yayasan / Staff") (eq $anggota.Fakultas "Rektorat / Yayasan") }}Rektoriat{{ else }}{{ $anggota.Fakultas }}{{ end }}</td>
 									<td>{{ if $anggota.NoTelepon }}+62{{ $anggota.NoTelepon }}{{ else }}-{{ end }}</td>
 									<td>
 										<span class="badge-status badge-inactive">

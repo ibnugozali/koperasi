@@ -61,7 +61,7 @@
         <div class="stat-card">
             <div class="stat-icon text-secondary"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
             <div class="stat-number text-secondary" data-value="{{ printf "%.0f" .TotalPengambilan }}">{{ printf "%.0f" .TotalPengambilan }}</div>
-            <div class="stat-label">Total Pengambilan Simpanan</div>
+            <div class="stat-label">Total Penarikan Simpanan</div>
         </div>
     </div>
 </div>
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'Total Simpanan',
         'Total Pinjaman Aktif',
         'Total Angsuran Terbayar',
-        'Total Pengambilan Simpanan'
+        'Total Penarikan Simpanan'
     ];
     const data = [
         parseFloat({{ .TotalAnggota }}),

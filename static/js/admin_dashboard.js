@@ -57,22 +57,22 @@ document.addEventListener("DOMContentLoaded", function() {
                         label: 'Anggota',
                         data: [window.AktivitasData.find(x => x.Jenis === 'Anggota').Jumlah],
                         borderColor: 'blue',
-                        backgroundColor: 'rgba(0,0,255,0.1)',
-                        tension: 0.3
+                        backgroundColor: 'rgba(0,0,255,0.65)',
+                        borderWidth: 1
                     },
                     {
                         label: 'Simpanan',
                         data: [window.AktivitasData.find(x => x.Jenis === 'Simpanan').Jumlah],
                         borderColor: 'green',
-                        backgroundColor: 'rgba(0,128,0,0.1)',
-                        tension: 0.3
+                        backgroundColor: 'rgba(0,128,0,0.65)',
+                        borderWidth: 1
                     },
                     {
                         label: 'Pinjaman',
                         data: [window.AktivitasData.find(x => x.Jenis === 'Pinjaman').Jumlah],
                         borderColor: 'red',
-                        backgroundColor: 'rgba(255,0,0,0.1)',
-                        tension: 0.3
+                        backgroundColor: 'rgba(255,0,0,0.65)',
+                        borderWidth: 1
                     }
                 ];
             } else {
@@ -86,28 +86,28 @@ document.addEventListener("DOMContentLoaded", function() {
                         label: 'Simpanan',
                         data: window.AktivitasData.filter(x => x.Jenis === 'Simpanan').map(x => x.Jumlah),
                         borderColor: 'green',
-                        backgroundColor: 'rgba(0,128,0,0.1)',
-                        tension: 0.3
+                        backgroundColor: 'rgba(0,128,0,0.65)',
+                        borderWidth: 1
                     },
                     {
                         label: 'Pinjaman',
                         data: window.AktivitasData.filter(x => x.Jenis === 'Pinjaman').map(x => x.Jumlah),
                         borderColor: 'red',
-                        backgroundColor: 'rgba(255,0,0,0.1)',
-                        tension: 0.3
+                        backgroundColor: 'rgba(255,0,0,0.65)',
+                        borderWidth: 1
                     },
                     {
                         label: 'Anggota',
                         data: window.AktivitasData.filter(x => x.Jenis === 'Anggota').map(x => x.Jumlah),
                         borderColor: 'blue',
-                        backgroundColor: 'rgba(0,0,255,0.1)',
-                        tension: 0.3
+                        backgroundColor: 'rgba(0,0,255,0.65)',
+                        borderWidth: 1
                     }
                 ];
             }
             const ctx = document.getElementById('activityChart').getContext('2d');
             new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: datasets
@@ -115,6 +115,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    datasets: {
+                        bar: {
+                            borderRadius: 6,
+                            barThickness: 16,
+                            maxBarThickness: 18
+                        }
+                    },
                     plugins: {
                         legend: { position: 'top' },
                         title: { display: true, text: isStatistikOnly ? 'Statistik Koperasi' : 'Aktivitas 30 Hari Terakhir' }

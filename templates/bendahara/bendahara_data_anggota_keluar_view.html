@@ -221,10 +221,6 @@
                                         <div class="info-value">{{ .Anggota.NamaAnggota }}</div>
                                     </div>
                                     <div class="info-row">
-                                        <div class="info-label"><i class="fas fa-id-card me-2"></i>NIK/KTP</div>
-                                        <div class="info-value">{{ .Anggota.NikKTP }}</div>
-                                    </div>
-                                    <div class="info-row">
                                         <div class="info-label"><i class="fas fa-birthday-cake me-2"></i>Tanggal Lahir</div>
                                         <div class="info-value">{{ if .Anggota.TglLahir }}<span id="tanggalLahir">{{ .Anggota.TglLahir }}</span>{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
                                     </div>
@@ -243,11 +239,11 @@
                                     </div>
                                     <h5 class="mt-4 mb-3"><i class="fas fa-university me-2"></i>Informasi Akademik</h5>
                                     <div class="info-row">
-                                        <div class="info-label"><i class="fas fa-building me-2"></i>Fakultas</div>
-                                        <div class="info-value">{{ .Anggota.Fakultas }}</div>
+                                        <div class="info-label"><i class="fas fa-building me-2"></i>Unit Kerja</div>
+                                        <div class="info-value">{{ if or (eq .Anggota.Fakultas "Rektorat / Yayasan / Staff") (eq .Anggota.Fakultas "Rektorat / Yayasan") }}Rektoriat{{ else }}{{ .Anggota.Fakultas }}{{ end }}</div>
                                     </div>
                                     <div class="info-row">
-                                        <div class="info-label"><i class="fas fa-briefcase me-2"></i>Unit Kerja</div>
+                                        <div class="info-label"><i class="fas fa-briefcase me-2"></i>Jabatan</div>
                                         <div class="info-value">{{ if eq .Anggota.UnitKerja "01" }}Dosen{{ else if eq .Anggota.UnitKerja "02" }}Staff{{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa{{ else }}{{ .Anggota.UnitKerja }}{{ end }}</div>
                                     </div>
                                     <div class="info-row">

@@ -178,8 +178,8 @@ func CreateAnggota(anggota models.Anggota) error {
 	// nomor_urut will be set to NULL during registration and assigned during confirmation
 	anggota.NomorUrut = "NULL"
 	query := `
-	INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer, gaji_bulanan, tahun, nomor_urut)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+	INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer, gaji_bulanan, tahun, nomor_urut)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 	`
 	var nomorUrut interface{}
 	if anggota.NomorUrut == "NULL" {
@@ -197,6 +197,7 @@ func CreateAnggota(anggota models.Anggota) error {
 		anggota.NoTelepon,
 		anggota.Alamat,
 		anggota.JenisKelamin,
+		"pending",
 		anggota.StatusAnggota,
 		anggota.Fakultas,
 		anggota.TglGabung,

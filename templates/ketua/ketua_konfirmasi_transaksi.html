@@ -58,7 +58,7 @@
                                             <span class="badge bg-light text-dark ms-1">Simpanan: {{len .PendingSimpanan}}</span>
                                             <span class="badge bg-light text-dark ms-1">Pinjaman: {{len .PendingPinjaman}}</span>
                                             <span class="badge bg-light text-dark ms-1">Angsuran: {{len .PendingAngsuran}}</span>
-                                            <span class="badge bg-light text-dark ms-1">Pengambilan: {{len .PendingPengambilan}}</span>
+                                            <span class="badge bg-light text-dark ms-1">Penarikan: {{len .PendingPengambilan}}</span>
                                         </div>
                                     </div>
                                     <div class="card-body">
@@ -188,7 +188,7 @@
                                         </div>
                                         <!-- Pending Pengambilan Simpanan -->
                                         <div class="stat-card mb-4">
-                                            <h5><i class="fa-solid fa-hand-holding-usd me-2"></i>Pengambilan Simpanan Pending</h5>
+                                            <h5><i class="fa-solid fa-hand-holding-usd me-2"></i>Penarikan Simpanan Pending</h5>
                                             {{if .PendingPengambilan}}
                                             <div class="table-responsive">
                                                 <table class="table table-hover table-striped table-bordered align-middle">
@@ -212,7 +212,7 @@
                                                             <td class="text-center"><span class="small text-muted">{{.TglPengajuan.Format "2006-01-02"}}</span></td>
                                                             <td class="text-center">
                                                                 <div class="btn-group" role="group">
-                                                                    <a class="btn btn-outline-primary btn-sm" href="/ketua/detail-ajukan-pengambilan/{{.IDPengambilan}}" title="Lihat detail pengambilan"><i class="fa-solid fa-eye"></i></a>
+                                                                    <a class="btn btn-outline-primary btn-sm" href="/ketua/detail-ajukan-pengambilan/{{.IDPengambilan}}" title="Lihat detail penarikan"><i class="fa-solid fa-eye"></i></a>
                                                                     <button type="button" class="btn btn-success btn-sm" onclick="confirmTransaction('pengambilan', '{{.IDPengambilan}}', 'confirm')" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
                                                                     <button type="button" class="btn btn-danger btn-sm" onclick="confirmTransaction('pengambilan', '{{.IDPengambilan}}', 'reject')" title="Tolak"><i class="fa-solid fa-times"></i></button>
                                                                 </div>
@@ -224,7 +224,7 @@
                                             </div>
                                             {{else}}
                                             <div class="alert alert-info">
-                                                <i class="fa-solid fa-info-circle me-2"></i>Tidak ada pengambilan simpanan yang menunggu konfirmasi.
+                                                <i class="fa-solid fa-info-circle me-2"></i>Tidak ada penarikan simpanan yang menunggu konfirmasi.
                                             </div>
                                             {{end}}
                                         </div>

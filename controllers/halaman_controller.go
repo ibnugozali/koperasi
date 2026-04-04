@@ -495,7 +495,7 @@ func ShowRiwayatPage(c *gin.Context) {
 
 	// Add pengambilan simpanan transactions
 	for _, ps := range riwayatPengambilan {
-		desc := "Pengambilan " + ps.JenisSimpanan
+		desc := "Penarikan " + ps.JenisSimpanan
 		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", ps.Jumlah)), " ", "")
 		var status string
 		switch ps.Status {
@@ -516,7 +516,7 @@ func ShowRiwayatPage(c *gin.Context) {
 			ID:          ps.IDPengambilan,
 			Date:        ps.TglPengajuan,
 			Time:        timeStr,
-			Type:        "Pengambilan Simpanan",
+			Type:        "Penarikan Simpanan",
 			Description: desc,
 			Amount:      amount,
 			Status:      status,

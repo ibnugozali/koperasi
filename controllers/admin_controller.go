@@ -160,6 +160,156 @@ func AdminDashboard(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin_dashboard.html", data)
 }
 
+func AdminDataAnggota(c *gin.Context) {
+	anggotas, err := repository.GetAllAnggota()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data anggota"})
+		return
+	}
+
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "admin_data_anggota.html", gin.H{
+		"Anggotas":    anggotas,
+		"ActivePage":  "anggota",
+		"LogoPath":    logoPath,
+		"CurrentLogo": logoPath,
+	})
+}
+
+func AdminViewAnggota(c *gin.Context) {
+	idStr := c.Param("id")
+
+	anggota, err := repository.GetAnggotaByID(idStr)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		return
+	}
+
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(idStr)
+	if err != nil {
+		simpananByJenis = map[string]float64{
+			"pokok":      0,
+			"wajib":      0,
+			"sukarela":   0,
+			"hari_raya":  0,
+			"umroh_haji": 0,
+			"qurban":     0,
+		}
+	}
+
+	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
+		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
+		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+
+	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
+	if err != nil {
+		totalPinjaman = 0
+	}
+
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+
+	c.HTML(http.StatusOK, "admin_data_anggota_view.html", gin.H{
+		"Anggota":           anggota,
+		"ActivePage":        "anggota",
+		"LogoPath":          logoPath,
+		"CurrentLogo":       logoPath,
+		"Title":             "Detail Anggota",
+		"SimpananPokok":     simpananByJenis["pokok"],
+		"SimpananWajib":     simpananByJenis["wajib"],
+		"SimpananSukarela":  simpananByJenis["sukarela"],
+		"SimpananHariRaya":  simpananByJenis["hari_raya"],
+		"SimpananUmrohHaji": simpananByJenis["umroh_haji"],
+		"SimpananQurban":    simpananByJenis["qurban"],
+		"TotalSimpanan":     totalSimpanan,
+		"TotalPinjaman":     totalPinjaman,
+	})
+}
+
+func getLatestKopPath() string {
+	files, err := os.ReadDir("static/uploads/kop")
+	if err != nil {
+		return ""
+	}
+
+	var latestPath string
+	var latestTime int64
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		name := strings.ToLower(file.Name())
+		if !strings.HasSuffix(name, ".jpg") && !strings.HasSuffix(name, ".jpeg") && !strings.HasSuffix(name, ".png") {
+			continue
+		}
+
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+
+		modTime := info.ModTime().Unix()
+		if modTime > latestTime {
+			latestTime = modTime
+			latestPath = "/static/uploads/kop/" + file.Name()
+		}
+	}
+
+	return latestPath
+}
+
+func getLatestSignaturePath(role string) string {
+	role = strings.ToLower(strings.TrimSpace(role))
+	if role == "" {
+		return ""
+	}
+
+	signDir := "static/uploads/signatures"
+	files, err := os.ReadDir(signDir)
+	if err != nil {
+		return ""
+	}
+
+	var latestPath string
+	var latestTime int64
+	prefix := "ttd_" + role + "_"
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		name := strings.ToLower(file.Name())
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+
+		ext := filepath.Ext(name)
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			continue
+		}
+
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+
+		modTime := info.ModTime().Unix()
+		if modTime > latestTime {
+			latestTime = modTime
+			latestPath = "/static/uploads/signatures/" + file.Name()
+		}
+	}
+
+	return latestPath
+}
+
 // ViewRegistration menampilkan detail registrasi anggota pending
 func ShowEditHalamanForm(c *gin.Context) {
 	slug := c.Param("slug")
@@ -198,20 +348,165 @@ func ShowEditHalamanForm(c *gin.Context) {
 	// Pilih template berdasarkan slug (ganti - dengan _ untuk nama file)
 	templateSlug := strings.ReplaceAll(slug, "-", "_")
 	var templateName string
+	activePage := templateSlug
 	switch templateSlug {
 	case "hubungi_kami":
 		templateName = "admin_halaman_edit_hubungi_kami.html"
 	case "dashboard_anggota":
 		templateName = "admin_halaman_edit_dashboard.html"
+		activePage = "dashboard_content"
+	case "simpanan":
+		templateName = "admin_halaman_edit_simpanan.html"
+		activePage = "edit_simpanan"
 	default:
 		templateName = "admin_halaman_edit_" + templateSlug + ".html"
 	}
 
 	c.HTML(http.StatusOK, templateName, gin.H{
-		"Halaman":  halaman,
-		"Konten":   konten,
-		"LogoPath": c.MustGet("LogoPath"),
+		"Halaman":    halaman,
+		"Konten":     konten,
+		"LogoPath":   c.MustGet("LogoPath"),
+		"CurrentKop": getLatestKopPath(),
+		"CurrentSignatureKetua":     getLatestSignaturePath("ketua"),
+		"CurrentSignatureBendahara": getLatestSignaturePath("bendahara"),
+		"CurrentSignatureSekretaris": getLatestSignaturePath("sekretaris"),
+		"success":    c.Query("success"),
+		"error":      c.Query("error"),
+		"ActivePage": activePage,
 	})
+}
+
+func AdminUploadKop(c *gin.Context) {
+	file, err := c.FormFile("kop_file")
+	if err != nil {
+		c.Redirect(http.StatusFound, "/admin/halaman/edit/dashboard_anggota?error=Gagal menerima file kop")
+		return
+	}
+
+	kopDir := "static/uploads/kop/"
+	if err := os.MkdirAll(kopDir, os.ModePerm); err != nil {
+		c.Redirect(http.StatusFound, "/admin/halaman/edit/dashboard_anggota?error=Gagal membuat folder kop")
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		c.Redirect(http.StatusFound, "/admin/halaman/edit/dashboard_anggota?error=Hanya file JPG, JPEG, PNG yang diperbolehkan")
+		return
+	}
+
+	filename := "kop_" + strconv.FormatInt(time.Now().Unix(), 10) + ext
+	savePath := filepath.Join(kopDir, filename)
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.Redirect(http.StatusFound, "/admin/halaman/edit/dashboard_anggota?error=Gagal menyimpan file kop")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin/halaman/edit/dashboard_anggota?success=Kop surat berhasil diupload")
+}
+
+func AdminUploadSignature(c *gin.Context) {
+	role := strings.ToLower(strings.TrimSpace(c.PostForm("sign_role")))
+	if role != "ketua" && role != "bendahara" && role != "sekretaris" {
+		c.Redirect(http.StatusFound, "/admin/tanda-tangan?error=Peran tanda tangan tidak valid")
+		return
+	}
+
+	file, err := c.FormFile("sign_file")
+	if err != nil {
+		c.Redirect(http.StatusFound, "/admin/tanda-tangan?error=Gagal menerima file tanda tangan")
+		return
+	}
+
+	signDir := "static/uploads/signatures/"
+	if err := os.MkdirAll(signDir, os.ModePerm); err != nil {
+		c.Redirect(http.StatusFound, "/admin/tanda-tangan?error=Gagal membuat folder tanda tangan")
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		c.Redirect(http.StatusFound, "/admin/tanda-tangan?error=Hanya file JPG, JPEG, PNG yang diperbolehkan untuk tanda tangan")
+		return
+	}
+
+	filename := "ttd_" + role + "_" + strconv.FormatInt(time.Now().Unix(), 10) + ext
+	savePath := filepath.Join(signDir, filename)
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.Redirect(http.StatusFound, "/admin/tanda-tangan?error=Gagal menyimpan file tanda tangan")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin/tanda-tangan?success=Template tanda tangan berhasil diupload")
+}
+
+func AdminEditTandaTangan(c *gin.Context) {
+	logoPath := c.MustGet("LogoPath")
+	db := config.GetDB()
+	getNamaTtd := func(key, def string) string {
+		var val string
+		err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = $1", key).Scan(&val)
+		if err != nil || strings.TrimSpace(val) == "" {
+			return def
+		}
+		return val
+	}
+
+	c.HTML(http.StatusOK, "admin_edit_tanda_tangan.html", gin.H{
+		"LogoPath":                 logoPath,
+		"CurrentLogo":              logoPath,
+		"CurrentSignatureKetua":    getLatestSignaturePath("ketua"),
+		"CurrentSignatureBendahara": getLatestSignaturePath("bendahara"),
+		"CurrentSignatureSekretaris": getLatestSignaturePath("sekretaris"),
+		"NamaTtdKetua":             getNamaTtd("ttd_nama_ketua", "Ketua KOPMA"),
+		"NamaTtdBendahara":         getNamaTtd("ttd_nama_bendahara", "Bendahara"),
+		"NamaTtdSekretaris":        getNamaTtd("ttd_nama_sekretaris", "Sekretaris"),
+		"success":                  c.Query("success"),
+		"error":                    c.Query("error"),
+		"ActivePage":               "edit_tanda_tangan",
+	})
+}
+
+func AdminUpdateSignatureNames(c *gin.Context) {
+	namaKetua := strings.TrimSpace(c.PostForm("nama_ttd_ketua"))
+	namaBendahara := strings.TrimSpace(c.PostForm("nama_ttd_bendahara"))
+	namaSekretaris := strings.TrimSpace(c.PostForm("nama_ttd_sekretaris"))
+
+	if namaKetua == "" {
+		namaKetua = "Ketua KOPMA"
+	}
+	if namaBendahara == "" {
+		namaBendahara = "Bendahara"
+	}
+	if namaSekretaris == "" {
+		namaSekretaris = "Sekretaris"
+	}
+
+	db := config.GetDB()
+	upsert := func(key, value string) error {
+		_, err := db.Exec(`
+			INSERT INTO pengaturan (nama_pengaturan, nilai, updated_at)
+			VALUES ($1, $2, NOW())
+			ON CONFLICT (nama_pengaturan)
+			DO UPDATE SET nilai = EXCLUDED.nilai, updated_at = NOW()
+		`, key, value)
+		return err
+	}
+
+	if err := upsert("ttd_nama_ketua", namaKetua); err != nil {
+		c.Redirect(http.StatusFound, "/admin/tanda-tangan?error=Gagal menyimpan nama Ketua")
+		return
+	}
+	if err := upsert("ttd_nama_bendahara", namaBendahara); err != nil {
+		c.Redirect(http.StatusFound, "/admin/tanda-tangan?error=Gagal menyimpan nama Bendahara")
+		return
+	}
+	if err := upsert("ttd_nama_sekretaris", namaSekretaris); err != nil {
+		c.Redirect(http.StatusFound, "/admin/tanda-tangan?error=Gagal menyimpan nama Sekretaris")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin/tanda-tangan?success=Nama penandatangan berhasil disimpan")
 }
 
 // UpdateHalaman memproses update konten halaman.
@@ -545,17 +840,113 @@ func AdminRiwayat(c *gin.Context) {
 
 // AdminLaporan menampilkan halaman laporan keuangan admin
 func AdminLaporan(c *gin.Context) {
-	riwayats, err := repository.GetAllRiwayat()
+	// Ambil tipe laporan dari query parameter (default: bulanan)
+	tipeLaporan := c.Query("tipe_laporan")
+	if tipeLaporan == "" {
+		tipeLaporan = "bulanan"
+	}
+
+	currentTime := time.Now()
+	bulan := int(currentTime.Month())
+	tahun := currentTime.Year()
+
+	if tipeLaporan == "tahunan" {
+		bulan = 0
+	} else {
+		if b := c.Query("bulan"); b != "" {
+			if parsed, convErr := strconv.Atoi(b); convErr == nil {
+				bulan = parsed
+			}
+		}
+	}
+
+	if t := c.Query("tahun"); t != "" {
+		if parsed, convErr := strconv.Atoi(t); convErr == nil {
+			tahun = parsed
+		}
+	}
+
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+
+	report, err := repository.GetLaporanKeuangan(bulan, tahun)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data laporan"})
+		c.HTML(http.StatusInternalServerError, "ketua_laporan.html", gin.H{
+			"ActivePage":      "laporan",
+			"Error":           "Gagal mengambil laporan",
+			"CurrentLogo":     logoPath,
+			"LogoPath":        logoPath,
+			"Bulan":           bulan,
+			"Tahun":           tahun,
+			"TipeLaporan":     tipeLaporan,
+			"LaporanBasePath": "/admin/laporan",
+			"UseAdminLayout":  true,
+			"ReadOnlyMode":    true,
+		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "admin_laporan.html", gin.H{
-		"ActivePage": "laporan",
-		"Riwayats":   riwayats,
-		"LogoPath":   c.MustGet("LogoPath"),
+	// Ambil data neraca dari repository untuk ditampilkan read-only
+	userIDInt := resolveNeracaOwnerID(c)
+
+	db := config.GetDB()
+	neracaRepo := repository.NewNeracaRepository(db)
+	neraca, _ := neracaRepo.GetNeraca(userIDInt)
+	var data2024, data2023 map[string]interface{}
+	if neraca != nil {
+		_ = json.Unmarshal([]byte(neraca.Data2024), &data2024)
+		_ = json.Unmarshal([]byte(neraca.Data2023), &data2023)
+	}
+
+	anggotas, err := repository.GetAllAnggota()
+	if err != nil {
+		anggotas = []models.Anggota{}
+	}
+
+	potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+	if err != nil {
+		potonganBulanIni = make(map[string]float64)
+	}
+
+	sisaGaji := make(map[string]float64)
+	for _, anggota := range anggotas {
+		potongan := potonganBulanIni[anggota.IDAnggota]
+		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
+	}
+
+	laporanDetail, err := repository.GetLaporanBulananPerAnggota(bulan, tahun)
+	if err != nil {
+		laporanDetail = []map[string]interface{}{}
+	}
+
+	c.HTML(http.StatusOK, "ketua_laporan.html", gin.H{
+		"ActivePage":       "laporan",
+		"Report":           report,
+		"Bulan":            bulan,
+		"Tahun":            tahun,
+		"TipeLaporan":      tipeLaporan,
+		"CurrentLogo":      logoPath,
+		"LogoPath":         logoPath,
+		"Anggotas":         anggotas,
+		"LaporanDetail":    laporanDetail,
+		"SisaGaji":         sisaGaji,
+		"GetUnitKerjaName": repository.GetUnitKerjaName,
+		"NeracaData2024":   data2024,
+		"NeracaData2023":   data2023,
+		"LaporanBasePath":  "/admin/laporan",
+		"UseAdminLayout":   true,
+		"ReadOnlyMode":     true,
 	})
+}
+
+func AdminDownloadLaporan(c *gin.Context) {
+	KetuaDownloadLaporan(c)
+}
+
+func AdminGetNeraca(c *gin.Context) {
+	KetuaGetNeraca(c)
 }
 
 // AdminTentang menampilkan halaman tentang kami admin

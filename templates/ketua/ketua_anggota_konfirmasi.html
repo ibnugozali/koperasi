@@ -199,18 +199,13 @@
                                 </span>
                             </div>
                             <div class="info-item">
-                                <span class="info-label"><i class="fas fa-id-card me-2"></i>NIK:</span>
-                                <span class="info-value">{{ .NikKTP }}</span>
-                            </div>
-                            
-                            <div class="info-item">
                                 <span class="info-label"><i class="fas fa-phone me-2"></i>Telepon:</span>
                                 <span class="info-value">+62{{ .NoTelepon }}</span>
                             </div>
                             
                             <div class="info-item">
-                                <span class="info-label"><i class="fas fa-building me-2"></i>Fakultas:</span>
-                                <span class="info-value">{{ .Fakultas }}</span>
+                                <span class="info-label"><i class="fas fa-building me-2"></i>Unit Kerja:</span>
+                                <span class="info-value">{{ if or (eq .Fakultas "Rektorat / Yayasan / Staff") (eq .Fakultas "Rektorat / Yayasan") }}Rektoriat{{ else }}{{ .Fakultas }}{{ end }}</span>
                             </div>
                             
                             <div class="info-item">
@@ -270,18 +265,13 @@
                                 <span class="info-value"><strong>{{ .IDAnggota }}</strong></span>
                             </div>
                             <div class="info-item">
-                                <span class="info-label"><i class="fas fa-id-card me-2"></i>NIK:</span>
-                                <span class="info-value">{{ .NikKTP }}</span>
-                            </div>
-                            
-                            <div class="info-item">
                                 <span class="info-label"><i class="fas fa-phone me-2"></i>Telepon:</span>
                                 <span class="info-value">+62{{ .NoTelepon }}</span>
                             </div>
                             
                             <div class="info-item">
-                                <span class="info-label"><i class="fas fa-building me-2"></i>Fakultas:</span>
-                                <span class="info-value">{{ .Fakultas }}</span>
+                                <span class="info-label"><i class="fas fa-building me-2"></i>Unit Kerja:</span>
+                                <span class="info-value">{{ if or (eq .Fakultas "Rektorat / Yayasan / Staff") (eq .Fakultas "Rektorat / Yayasan") }}Rektoriat{{ else }}{{ .Fakultas }}{{ end }}</span>
                             </div>
                             
                             <div class="info-item">

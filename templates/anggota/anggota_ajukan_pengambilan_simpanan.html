@@ -13,7 +13,7 @@
 <div class="container mt-4">
   <div class="card">
     <div class="card-body p-4 p-md-5 bg-white">
-      <h1 class="card-title mb-4">Ajukan Pengambilan Simpanan</h1>
+      <h1 class="card-title mb-4">Ajukan Penarikan Simpanan</h1>
       <hr>
 
       <!-- Alert Section -->
@@ -61,15 +61,15 @@
 
       <!-- Ketentuan -->
       <div class="mt-4">
-        <h5 class="text-primary mb-3"><i class="bi bi-clipboard-check me-2"></i>Ketentuan Pengambilan Simpanan</h5>
+        <h5 class="text-primary mb-3"><i class="bi bi-clipboard-check me-2"></i>Ketentuan Penarikan Simpanan</h5>
         <ul class="list-group">
           <li class="list-group-item">
             <i class="bi bi-check-circle-fill text-success me-2"></i>
-            Pengambilan simpanan harus melalui persetujuan bendahara
+            Penarikan simpanan harus melalui persetujuan bendahara
           </li>
           <li class="list-group-item">
             <i class="bi bi-check-circle-fill text-success me-2"></i>
-            Jumlah pengambilan tidak boleh melebihi saldo simpanan Anda
+            Jumlah penarikan tidak boleh melebihi saldo simpanan Anda
           </li>
           <li class="list-group-item">
             <i class="bi bi-check-circle-fill text-success me-2"></i>
@@ -81,14 +81,14 @@
           </li>
           <li class="list-group-item">
             <i class="bi bi-check-circle-fill text-success me-2"></i>
-            Pastikan alasan pengambilan jelas dan valid
+            Pastikan alasan penarikan jelas dan valid
           </li>
         </ul>
       </div>
 
       <!-- Form -->
       <div class="mt-4">
-        <h5 class="text-primary mb-3">Formulir Pengambilan Simpanan</h5>
+        <h5 class="text-primary mb-3">Formulir Penarikan Simpanan</h5>
         <form id="pengambilanForm">
           <div class="row mb-3 align-items-center">
             <label for="namaAnggota" class="col-sm-4 col-form-label">Nama Anggota</label>
@@ -125,7 +125,7 @@
           </div>
 
           <div class="row mb-3 align-items-center">
-            <label for="jumlah" class="col-sm-4 col-form-label">Jumlah Pengambilan <span class="text-danger">*</span></label>
+            <label for="jumlah" class="col-sm-4 col-form-label">Jumlah Penarikan <span class="text-danger">*</span></label>
             <div class="col-sm-8">
               <div class="input-group">
                 <span class="input-group-text">Rp</span>
@@ -141,10 +141,10 @@
           </div>
 
           <div class="row mb-3 align-items-center">
-            <label for="metodePengambilan" class="col-sm-4 col-form-label">Metode Pengambilan <span class="text-danger">*</span></label>
+            <label for="metodePengambilan" class="col-sm-4 col-form-label">Metode Penarikan <span class="text-danger">*</span></label>
             <div class="col-sm-8">
               <select class="form-select" id="metodePengambilan" name="metode_pengambilan" required>
-                <option value="">-- Pilih Metode Pengambilan --</option>
+                <option value="">-- Pilih Metode Penarikan --</option>
                 <option value="transfer_bank">Transfer Bank</option>
                 <option value="tunai">Tunai</option>
               </select>
@@ -192,10 +192,10 @@
           </div>
 
           <div class="row mb-3 align-items-center">
-            <label for="alasan" class="col-sm-4 col-form-label">Alasan Pengambilan <span class="text-danger">*</span></label>
+            <label for="alasan" class="col-sm-4 col-form-label">Alasan Penarikan <span class="text-danger">*</span></label>
             <div class="col-sm-8">
               <textarea class="form-control" id="alasan" name="alasan" rows="5" 
-                        placeholder="Jelaskan alasan pengambilan simpanan Anda..." required></textarea>
+                        placeholder="Jelaskan alasan penarikan simpanan Anda..." required></textarea>
               <div class="form-text">
                 <i class="bi bi-info-circle me-1"></i>
                 Minimal 20 karakter
@@ -206,7 +206,7 @@
           <div class="row">
             <div class="col-sm-8 offset-sm-4">
               <button type="submit" class="btn btn-success me-2" id="submitBtn">
-                <i class="bi bi-send me-2"></i>Ajukan Pengambilan
+                <i class="bi bi-send me-2"></i>Ajukan Penarikan
               </button>
               <button type="button" class="btn btn-secondary" onclick="window.location.href='/anggota/dashboard'">
                 <i class="bi bi-arrow-left me-2"></i>Kembali
@@ -330,7 +330,7 @@
             }
             
             if (!metodePengambilan) {
-                showAlert('warning', 'Metode pengambilan harus dipilih!');
+                showAlert('warning', 'Metode penarikan harus dipilih!');
                 return;
             }
             
@@ -346,12 +346,12 @@
             }
 
             if (!jumlah || jumlah <= 0) {
-                showAlert('danger', 'Jumlah pengambilan harus lebih dari 0!');
+                showAlert('danger', 'Jumlah penarikan harus lebih dari 0!');
                 return;
             }
 
             if (jumlah > currentMaxSaldo) {
-                showAlert('danger', 'Jumlah pengambilan melebihi saldo jenis simpanan yang dipilih!');
+                showAlert('danger', 'Jumlah penarikan melebihi saldo jenis simpanan yang dipilih!');
                 return;
             }
             
@@ -402,7 +402,7 @@
                     }, 2000);
                 },
                 error: function(xhr) {
-                    let errorMsg = 'Terjadi kesalahan saat mengajukan pengambilan simpanan.';
+                    let errorMsg = 'Terjadi kesalahan saat mengajukan penarikan simpanan.';
                     if (xhr.responseJSON && xhr.responseJSON.error) {
                         errorMsg = xhr.responseJSON.error;
                     }
@@ -410,7 +410,7 @@
                     
                     // Re-enable button
                     submitBtn.prop('disabled', false);
-                    submitBtn.html('<i class="bi bi-send me-2"></i>Ajukan Pengambilan');
+                    submitBtn.html('<i class="bi bi-send me-2"></i>Ajukan Penarikan');
                 }
             });
         });

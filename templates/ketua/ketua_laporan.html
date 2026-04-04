@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -18,7 +18,11 @@
       <link href="/static/css/ketua_edit_bunga.css" rel="stylesheet"> -->
 </head>
 <body>
+    {{ if .UseAdminLayout }}
+    {{ template "admin_navbar.html" . }}
+    {{ else }}
     {{ template "ketua_navbar.html" . }}
+    {{ end }}
 
     <!-- Main Content -->
     <div class="main-content">
@@ -41,39 +45,11 @@
                     <small class="text-white-50">Ringkasan laporan keuangan koperasi</small>
                 </div>
                 <div class="card-body">
-                    <!-- Upload Template Kop Surat -->
-                    <div class="mb-3 row g-2 align-items-center">
-                        <div class="col-12 col-md-7">
-                            <form method="POST" action="/ketua/laporan/upload-kop" enctype="multipart/form-data" id="uploadKopForm" class="d-flex flex-wrap gap-2 align-items-center">
-                                <label for="kop_file" class="form-label mb-0 me-2">Pilih file kop surat:</label>
-                                <input type="file" id="kop_file" name="kop_file" accept=".jpg,.jpeg,.png" class="form-control flex-fill" required autocomplete="off" style="min-width:180px;" onchange="previewKop(event)">
-                                <button type="submit" class="btn btn-primary flex-fill" style="min-width:150px;">
-                                    <i class="fa-solid fa-upload me-2"></i> Upload Template Kop
-                                </button>
-                            </form>
-                        </div>
-                        <div class="col-12 col-md-5 text-end">
-                            <div class="d-flex flex-wrap gap-2 justify-content-end">
-                                <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}" id="downloadExcelBtn" class="btn btn-success flex-fill" style="min-width:150px;">
-                                    <i class="fa-solid fa-download me-2"></i> Download Excel
-                                </a>
-                                <a href="/ketua/laporan/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}&format=pdf" id="downloadPdfBtn" class="btn btn-danger flex-fill" style="min-width:150px;">
-                                    <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Preview Kop Surat tidak ditampilkan sesuai permintaan bendahara -->
-                    
-                    <div class="mb-2">
-                        <small class="text-muted">Template kop yang Anda upload akan otomatis digunakan pada file PDF/Excel laporan yang diunduh.<br>
-                        Saat Anda klik <b>Download PDF</b> atau <b>Download Excel</b>, kop surat akan muncul di bagian atas file sesuai file template kop terakhir yang di-upload.</small>
-                    </div>
                     <!-- Form untuk memilih bulan dan tahun -->
                     <div class="stat-card mb-4">
-                        <h5>Pilih Periode Laporan</h5>
-                        <form method="GET" action="/ketua/laporan" class="row g-3" id="formPeriode">
+                        <h5 class="mb-3">Pilih Periode Laporan</h5>
+                        <form method="GET" action="{{.LaporanBasePath}}" class="row g-3" id="formPeriode" autocomplete="off"
+                              data-server-tipe="{{.TipeLaporan}}" data-server-bulan="{{.Bulan}}" data-server-tahun="{{.Tahun}}">
                             <div class="col-md-2">
                                 <label for="tipe_laporan" class="form-label">Tipe Laporan</label>
                                 <select class="form-control" id="tipe_laporan" name="tipe_laporan" onchange="togglePeriode()">
@@ -102,88 +78,31 @@
                                 <label for="tahun" class="form-label">Tahun</label>
                                 <input type="number" class="form-control" id="tahun" name="tahun" value="{{.Tahun}}" min="2020" max="2030">
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">&nbsp;</label>
-                                <button type="submit" class="btn btn-primary w-100">Tampilkan Laporan</button>
+                            <div class="col-md-6">
+                                <label class="form-label d-block">&nbsp;</label>
+                                <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                                    <a href="{{.LaporanBasePath}}/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}" id="downloadExcelBtn" class="btn btn-success" style="min-width:150px;">
+                                        <i class="fa-solid fa-download me-2"></i> Download Excel
+                                    </a>
+                                    <a href="{{.LaporanBasePath}}/download?bulan={{.Bulan}}&tahun={{.Tahun}}&tipe_laporan={{.TipeLaporan}}&format=pdf" id="downloadPdfBtn" class="btn btn-danger" style="min-width:150px;">
+                                        <i class="fa-solid fa-file-pdf me-2"></i> Download PDF
+                                    </a>
+                                </div>
                             </div>
                         </form>
                     </div>
 
-                    <!-- Statistik Utama -->
+                    <!-- Diagram Batang Ringkasan -->
                     <div class="row">
-                                    <div class="col-md-3 mb-4">
-                                        <div class="stat-card">
-                                            <div class="stat-icon text-success">
-                                                <i class="fas fa-piggy-bank"></i>
-                                            </div>
-                                            <div class="stat-number">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</div>
-                                            <div class="stat-label">Total Simpanan</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3 mb-4">
-                                        <div class="stat-card">
-                                            <div class="stat-icon text-danger">
-                                                <i class="fas fa-hand-holding-usd"></i>
-                                            </div>
-                                            <div class="stat-number">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</div>
-                                            <div class="stat-label">Total Pinjaman</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3 mb-4">
-                                        <div class="stat-card">
-                                            <div class="stat-icon text-info">
-                                                <i class="fas fa-coins"></i>
-                                            </div>
-                                            <div class="stat-number">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</div>
-                                            <div class="stat-label">Total Angsuran</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3 mb-4">
-                                        <div class="stat-card">
-                                            <div class="stat-icon text-warning">
-                                                <i class="fas fa-chart-line"></i>
-                                            </div>
-                                            <div class="stat-number">Rp {{if .Report.total_pengambilan}}{{printf "%.0f" .Report.total_pengambilan}}{{else}}0{{end}}</div>
-                                            <div class="stat-label">Total Pengambilan</div>
-                                        </div>
-                                    </div>
+                        <div class="col-12 mb-4">
+                            <div class="stat-card">
+                                <h6 class="mb-3"><i class="fa-solid fa-chart-column me-2"></i>Diagram Batang Ringkasan Laporan</h6>
+                                <div style="height: 320px;">
+                                    <canvas id="laporanSummaryChart"></canvas>
                                 </div>
-                                <div class="stat-card">
-                                    <h5>Ringkasan Laporan Keuangan Bulan {{.Bulan}} Tahun {{.Tahun}}</h5>
-                                    <p>Berikut adalah ringkasan laporan keuangan koperasi untuk periode yang dipilih.</p>
-                                    <div class="row">
-                                        <div class="col-12 col-md-6 mb-3">
-                                            <h6 class="mb-2">Pemasukan</h6>
-                                            <ul class="list-group list-group-flush mb-2">
-                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
-                                                    <span>Total Simpanan</span>
-                                                    <span class="badge bg-primary rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center fw-bold mb-2">
-                                                    <span>Total Pemasukan</span>
-                                                    <span class="badge bg-success rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}</span>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        <div class="col-12 col-md-6 mb-3">
-                                            <h6 class="mb-2">Pengeluaran</h6>
-                                            <ul class="list-group list-group-flush mb-2">
-                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
-                                                    <span>Total Pinjaman</span>
-                                                    <span class="badge bg-danger rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
-                                                    <span>Total Angsuran</span>
-                                                    <span class="badge bg-info rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}</span>
-                                                </li>
-                                                <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center fw-bold mb-2">
-                                                    <span>Total Pengeluaran</span>
-                                                    <span class="badge bg-danger rounded-pill mt-2 mt-md-0">Rp {{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}</span>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
+                            </div>
+                        </div>
+                    </div>
                                 {{if and (not .Report.total_simpanan) (not .Report.total_pinjaman) (not .Report.total_angsuran)}}
                                 <div class="alert alert-warning mt-3" role="alert">
                                     <i class="fas fa-exclamation-triangle me-2"></i>
@@ -204,91 +123,154 @@
             <!-- Tabel Rincian Laporan Keuangan - Bulanan -->
             <div class="row mt-4" id="rincianBulanan" style="display: {{if eq .TipeLaporan "tahunan"}}none{{else}}block{{end}};">
                 <div class="col-12">
+                    <div class="mb-2">
+                        <h5 class="mb-0 text-info"><i class="fa-solid fa-list"></i> Rincian Laporan Bulanan</h5>
+                    </div>
                     <div class="card shadow-sm">
-                        <div class="card-header bg-info text-white">
-                            <i class="fa-solid fa-list"></i> Rincian Laporan Bulanan
+                        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div class="d-flex align-items-center gap-2" id="monthlyLengthControl">
+                                <label for="monthlyPageLength" class="mb-0 text-white">Tampilkan</label>
+                                <select id="monthlyPageLength" class="form-select form-select-sm" style="width:80px;">
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="-1">Semua</option>
+                                </select>
+                                <span class="text-white">entri</span>
+                            </div>
+                            <div class="input-group input-group-sm" style="max-width: 320px;">
+                                <span class="input-group-text border-0"><i class="fa-solid fa-magnifying-glass"></i></span>
+                                <input
+                                    type="text"
+                                    id="searchRincianBulanan"
+                                    class="form-control border-0"
+                                    placeholder="Cari kode, nama, unit..."
+                                    aria-label="Cari Rincian Laporan Bulanan"
+                                >
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table id="riwayatTable" class="table table-striped table-hover">
-                                    <thead class="table-dark">
-                                        <tr>
-                                            <th rowspan="2">No</th>
-                                            <th rowspan="2">Kode</th>
-                                            <th rowspan="2">Nama</th>
-                                            <th rowspan="2">Unit</th>
-                                            <th colspan="8" class="text-center">Pinjaman</th>
-                                            <th colspan="7" class="text-center">Simpanan</th>
-                                            <th rowspan="2">Jumlah Pembayaran</th>
-                                        </tr>
-                                        <tr>
-                                            <th>Nominal Pinjaman</th>
-                                            <th>Periode/Tenor</th>
-                                            <th>Pokok Pinjaman</th>
-                                            <th>Jasa</th>
-                                            <th>Jumlah</th>
-                                            <th>Angsuran</th>
-                                            <th>Sisa Angsuran</th>
-                                            <th>Sisa Pinjaman</th>
-                                            <th>Pokok</th>
-                                            <th>Wajib</th>
-                                            <th>Jumlah Wajib</th>
-                                            <th>Simpanan Hari Raya</th>
-                                            <th>Jumlah Simpanan Hari Raya</th>
-                                            <th>Sukarela</th>
-                                            <th>Jumlah Sukarela</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="riwayatTableBody">
-                                        {{ if .Error }}
-                                        <tr>
-                                            <td colspan="20" class="text-center text-danger">
-                                                <i class="fas fa-exclamation-circle"></i> {{ .Error }}
-                                            </td>
-                                        </tr>
-                                        {{ else }}
-                                        {{ if .LaporanDetail }}
-                                            {{ range $index, $detail := .LaporanDetail }}
-                                            <tr>
-                                                <td style="white-space: nowrap;">{{ add $index 1 }}</td>
-                                                <td style="white-space: nowrap;">{{ $detail.id_anggota }}</td>
-                                                <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
-                                                <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.pinjaman_bulanan }}</td>
-                                                <td style="white-space: nowrap;">{{ $detail.jangka_waktu }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.pokok_per_bulan }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jasa_per_bulan }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jumlah_angsuran_per_bulan }}</td>
-                                                <td style="white-space: nowrap;">{{ $detail.total_angsuran_dibayar }}</td>
-                                                <td style="white-space: nowrap;">{{ $detail.sisa_angsuran }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.sisa_pinjaman }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_pokok }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_wajib_bulanan }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_wajib }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_hariraya_bulanan }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_hariraya }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_sukarela_bulanan }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_sukarela }}</td>
-                                                <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_pembayaran }}</td>
-                                            </tr>
-                                            {{ end }}
-                                        {{ else }}
-                                            <tr>
-                                                <td colspan="20" class="text-center text-muted">
-                                                    <i class="fas fa-info-circle"></i> Tidak ada data anggota aktif untuk periode ini
-                                                    <br><small>Silakan pilih periode lain atau tambahkan data transaksi terlebih dahulu</small>
-                                                </td>
-                                            </tr>
-                                        {{ end }}
-                                        {{ end }}
-                                    </tbody>
-                                </table>
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary mb-3"><i class="fa-solid fa-wallet"></i> Rincian Pinjaman</h6>
+                                    <div class="table-responsive">
+                                        <table id="riwayatTable" class="table table-striped table-hover table-sm align-middle">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>No</th>
+                                                    <th>Kode</th>
+                                                    <th>Nama</th>
+                                                    <th>Unit</th>
+                                                    <th>Nominal Pinjaman</th>
+                                                    <th>Periode</th>
+                                                    <th>Pokok Pinjaman</th>
+                                                    <th>Jasa</th>
+                                                    <th>Jumlah</th>
+                                                    <th>Angsuran</th>
+                                                    <th>Sisa Angsuran</th>
+                                                    <th>Sisa Pinjaman</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="riwayatTableBody">
+                                                {{ if .Error }}
+                                                <tr>
+                                                    <td colspan="12" class="text-center text-danger">
+                                                        <i class="fas fa-exclamation-circle"></i> {{ .Error }}
+                                                    </td>
+                                                </tr>
+                                                {{ else }}
+                                                {{ if .LaporanDetail }}
+                                                    {{ range $index, $detail := .LaporanDetail }}
+                                                    <tr>
+                                                        <td style="white-space: nowrap;">{{ add $index 1 }}</td>
+                                                        <td style="white-space: nowrap;">{{ $detail.id_anggota }}</td>
+                                                        <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
+                                                        <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.pinjaman_bulanan }}</td>
+                                                        <td style="white-space: nowrap;">{{ $detail.jangka_waktu }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.pokok_per_bulan }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jasa_per_bulan }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jumlah_angsuran_per_bulan }}</td>
+                                                        <td style="white-space: nowrap;">{{ $detail.total_angsuran_dibayar }}</td>
+                                                        <td style="white-space: nowrap;">{{ $detail.sisa_angsuran }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.sisa_pinjaman }}</td>
+                                                    </tr>
+                                                    {{ end }}
+                                                {{ else }}
+                                                    <tr>
+                                                        <td colspan="12" class="text-center text-muted">
+                                                            <i class="fas fa-info-circle"></i> Tidak ada data pinjaman anggota untuk periode ini
+                                                        </td>
+                                                    </tr>
+                                                {{ end }}
+                                                {{ end }}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <h6 class="text-success mb-3"><i class="fa-solid fa-piggy-bank"></i> Rincian Simpanan</h6>
+                                    <div class="table-responsive">
+                                        <table id="rincianSimpananTable" class="table table-striped table-hover table-sm align-middle">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>No</th>
+                                                    <th>Kode</th>
+                                                    <th>Nama</th>
+                                                    <th>Unit</th>
+                                                    <th>Pokok</th>
+                                                    <th>Wajib</th>
+                                                    <th>Jumlah Wajib</th>
+                                                    <th>Simpanan Hari Raya</th>
+                                                    <th>Jumlah Simpanan Hari Raya</th>
+                                                    <th>Sukarela</th>
+                                                    <th>Jumlah Sukarela</th>
+                                                    <th>Jumlah Pembayaran</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {{ if .Error }}
+                                                <tr>
+                                                    <td colspan="12" class="text-center text-danger">
+                                                        <i class="fas fa-exclamation-circle"></i> {{ .Error }}
+                                                    </td>
+                                                </tr>
+                                                {{ else }}
+                                                {{ if .LaporanDetail }}
+                                                    {{ range $index, $detail := .LaporanDetail }}
+                                                    <tr>
+                                                        <td style="white-space: nowrap;">{{ add $index 1 }}</td>
+                                                        <td style="white-space: nowrap;">{{ $detail.id_anggota }}</td>
+                                                        <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
+                                                        <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_pokok }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_wajib_bulanan }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_wajib }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_hariraya_bulanan }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_hariraya }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_sukarela_bulanan }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_sukarela }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_pembayaran }}</td>
+                                                    </tr>
+                                                    {{ end }}
+                                                {{ else }}
+                                                    <tr>
+                                                        <td colspan="12" class="text-center text-muted">
+                                                            <i class="fas fa-info-circle"></i> Tidak ada data simpanan anggota untuk periode ini
+                                                        </td>
+                                                    </tr>
+                                                {{ end }}
+                                                {{ end }}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
             <!-- Tabel Rincian Laporan Keuangan - Tahunan (5 Tabel) -->
             <div id="rincianTahunan" style="display: {{if eq .TipeLaporan "tahunan"}}block{{else}}none{{end}};">
                 <!-- Tabel 1:Daftar Simpanan Anggota -->
@@ -499,9 +481,9 @@
                                                     <td style="white-space: nowrap;">{{ add $index 1 }}</td>
                                                     <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
                                                     <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
-                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jasa_per_bulan }}</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
-                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jasa_per_bulan }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.shu_pinjaman }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.shu_simpanan }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.jumlah_shu }}</td>
                                                 </tr>
                                                 {{ end }}
                                             {{ else }}
@@ -520,16 +502,20 @@
                     </div>
                 </div>
 
-                <!-- Tabel 5: Rincian Pengambilan Tahunan -->
+                <!-- Tabel 5: Rincian Penarikan Tahunan -->
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="card shadow-sm">
                             <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center" id="neracaCardHeader">
                                 <span><i class="fa-solid fa-money-bill-transfer"></i> Neraca Koprasi Simpan Pinjam</span>
                                 <div class="btn-group" id="neracaButtonGroup">
+                                {{ if not .ReadOnlyMode }}
                                 <button class="btn btn-sm btn-primary" id="btnEditNeraca" type="button" onclick="editNeraca()">
                                     <i class="fas fa-edit"></i> Edit Neraca
                                 </button>
+                                {{ else }}
+                                <span class="badge bg-secondary align-self-center px-3 py-2">Read-only</span>
+                                {{ end }}
                                 </div>
                             </div>
                             <div class="card-body">
@@ -689,7 +675,11 @@
         </div>
     </div>
 
+    {{ if .UseAdminLayout }}
+    {{ template "admin_footer" . }}
+    {{ else }}
     {{ template "ketua_footer" . }}
+    {{ end }}
 
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -698,10 +688,77 @@
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+{{ if not .UseAdminLayout }}
 <script src="/static/js/ketua_navbar.js"></script>
+{{ end }}
 
 <script>
+const laporanBasePath = '{{.LaporanBasePath}}';
+const laporanReadOnly = {{if .ReadOnlyMode}}true{{else}}false{{end}};
+
+let laporanSummaryChart = null;
+
+function initLaporanSummaryChart() {
+    if (typeof Chart === 'undefined') return;
+
+    const canvas = document.getElementById('laporanSummaryChart');
+    if (!canvas) return;
+
+    const labels = ['Total Simpanan', 'Total Pinjaman', 'Total Angsuran', 'Total Penarikan'];
+    const values = [
+        Number('{{if .Report.total_simpanan}}{{printf "%.0f" .Report.total_simpanan}}{{else}}0{{end}}') || 0,
+        Number('{{if .Report.total_pinjaman}}{{printf "%.0f" .Report.total_pinjaman}}{{else}}0{{end}}') || 0,
+        Number('{{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}') || 0,
+        Number('{{if .Report.total_pengambilan}}{{printf "%.0f" .Report.total_pengambilan}}{{else}}0{{end}}') || 0
+    ];
+
+    if (laporanSummaryChart) {
+        laporanSummaryChart.destroy();
+    }
+
+    laporanSummaryChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: ['#198754', '#dc3545', '#0dcaf0', '#ffc107'],
+                borderColor: ['#198754', '#dc3545', '#0dcaf0', '#ffc107'],
+                borderWidth: 1,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Rp ' + Number(context.raw || 0).toLocaleString('id-ID');
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'Rp ' + Number(value).toLocaleString('id-ID');
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initLaporanSummaryChart);
+
 // ============================================
 // GLOBAL VARIABLES
 // ============================================
@@ -765,12 +822,15 @@ let isEditMode = false;
 
 // Define functions in global scope first
 function editNeraca() {
+    if (laporanReadOnly) {
+        return;
+    }
     console.log('=== editNeraca() DIPANGGIL ===');
     console.log('Stack trace:', new Error().stack);
     
     // Cek apakah sudah dalam edit mode
     if (isEditMode) {
-        console.warn('⚠️ Sudah dalam edit mode, skip execution');
+        console.warn('?? Sudah dalam edit mode, skip execution');
         return;
     }
 
@@ -783,7 +843,7 @@ function editNeraca() {
     // Cek apakah sudah ada input (tanda sudah dalam edit mode)
     const firstInput = document.getElementById('input_kas') || document.getElementById('input_tanah');
     if (firstInput) {
-        console.warn('⚠️ Input sudah ada, sudah dalam edit mode. Skip.');
+        console.warn('?? Input sudah ada, sudah dalam edit mode. Skip.');
         return;
     }
 
@@ -1120,9 +1180,6 @@ function togglePeriode() {
     const tipeValue = tipeLaporan.value;
     console.log('Toggle periode called, tipe:', tipeValue);
     
-    // Update download button links
-    updateDownloadLinks();
-    
     if (tipeValue === 'tahunan') {
         // Hide bulan field untuk laporan tahunan
         if (bulanField) {
@@ -1150,33 +1207,23 @@ function togglePeriode() {
     }
 }
 
-// Fungsi untuk update download links
-function updateDownloadLinks() {
-    const tipeLaporan = document.getElementById('tipe_laporan').value;
-    const bulan = document.getElementById('bulan').value;
-    const tahun = document.getElementById('tahun').value;
-    const downloadExcelBtn = document.getElementById('downloadExcelBtn');
-    const downloadPdfBtn = document.getElementById('downloadPdfBtn');
-    
-    let excelUrl = '/ketua/laporan/download?';
-    let pdfUrl = '/ketua/laporan/download?';
-    
-    if (tipeLaporan === 'tahunan') {
-        // URL untuk laporan tahunan (tanpa parameter bulan)
-        excelUrl += `tahun=${tahun}&tipe_laporan=tahunan`;
-        pdfUrl += `tahun=${tahun}&tipe_laporan=tahunan&format=pdf`;
-    } else {
-        // URL untuk laporan bulanan (dengan parameter bulan)
-        excelUrl += `bulan=${bulan}&tahun=${tahun}&tipe_laporan=bulanan`;
-        pdfUrl += `bulan=${bulan}&tahun=${tahun}&tipe_laporan=bulanan&format=pdf`;
-    }
-    
-    downloadExcelBtn.href = excelUrl;
-    downloadPdfBtn.href = pdfUrl;
-}
-
 // Initialize on page load
 window.addEventListener('load', function() {
+    // Paksa nilai filter mengikuti data server agar tidak mismatch karena restore state browser.
+    const formPeriode = document.getElementById('formPeriode');
+    if (formPeriode) {
+        const serverTipe = formPeriode.dataset.serverTipe || 'bulanan';
+        const serverBulan = formPeriode.dataset.serverBulan || '';
+        const serverTahun = formPeriode.dataset.serverTahun || '';
+        const tipeEl = document.getElementById('tipe_laporan');
+        const bulanEl = document.getElementById('bulan');
+        const tahunEl = document.getElementById('tahun');
+
+        if (tipeEl) tipeEl.value = serverTipe;
+        if (bulanEl && serverBulan !== '') bulanEl.value = serverBulan;
+        if (tahunEl && serverTahun !== '') tahunEl.value = serverTahun;
+    }
+
     // Toggle bulan field saat halaman load
     console.log('Page loaded, calling togglePeriode');
     setTimeout(function() {
@@ -1213,28 +1260,77 @@ $(document).ready(function() {
     setTimeout(function() {
         togglePeriode();
     }, 50);
-    
-    // Add event listeners untuk update download links saat nilai berubah
+
+    // Sinkronkan data tampilan dengan periode terpilih:
+    // saat filter berubah, submit form otomatis agar data halaman tidak stale.
+    const formPeriodeEl = document.getElementById('formPeriode');
     const bulanEl = document.getElementById('bulan');
     const tahunEl = document.getElementById('tahun');
     const tipeLaporanEl = document.getElementById('tipe_laporan');
+    const autoSubmitPeriode = () => {
+        if (formPeriodeEl) formPeriodeEl.submit();
+    };
+    if (tipeLaporanEl) tipeLaporanEl.addEventListener('change', autoSubmitPeriode);
+    if (bulanEl) bulanEl.addEventListener('change', autoSubmitPeriode);
+    if (tahunEl) tahunEl.addEventListener('change', autoSubmitPeriode);
 
-    if (bulanEl) bulanEl.addEventListener('change', updateDownloadLinks);
-    if (tahunEl) tahunEl.addEventListener('change', updateDownloadLinks);
-    if (tipeLaporanEl) tipeLaporanEl.addEventListener('change', updateDownloadLinks);
+    // DataTables untuk rincian laporan bulanan (satu kontrol saja)
+    const monthlyTableOptions = {
+        "language": {
+            "url": "/static/js/datatables/i18n/id.json",
+            "info": "Menampilkan _START_ sampai _END_ dari _TOTAL_ entri"
+        },
+        "dom": "rt<'d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2'ip>",
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+        "order": [[0, 'asc']],
+        "responsive": true
+    };
 
-    // Button Edit Neraca sudah memiliki onclick="editNeraca()" di HTML
-    // Tidak perlu addEventListener lagi untuk menghindari double execution
-    console.log('Button Edit Neraca menggunakan inline onclick handler');
-    
-    // DataTables dinonaktifkan untuk riwayatTable karena struktur header dengan rowspan/colspan
-    // yang kompleks menyebabkan error "Incorrect column count"
-    // Tabel akan menggunakan scroll horizontal biasa
-    {{ if and (not .Error) .Anggotas }}
-    // $('#riwayatTable').DataTable() - DISABLED due to complex header structure
-    console.log('riwayatTable: DataTables disabled, using native table with horizontal scroll');
-    {{ end }}
-    
+    // Hanya tabel simpanan yang memakai kontrol DataTables
+    const simpananTable = $('#rincianSimpananTable').DataTable(monthlyTableOptions);
+    // Sinkronkan dropdown "Tampilkan" di header biru dengan DataTables
+    const monthlyPageLengthEl = document.getElementById('monthlyPageLength');
+    if (monthlyPageLengthEl) {
+        monthlyPageLengthEl.value = '10';
+        monthlyPageLengthEl.addEventListener('change', function() {
+            const selected = parseInt(this.value, 10);
+            simpananTable.page.len(selected).draw();
+        });
+    }
+
+    // Sinkronkan tampilan baris tabel pinjaman berdasarkan hasil paging/filter tabel simpanan
+    const syncPinjamanRows = function() {
+        const pinjamanRows = $('#riwayatTable tbody tr');
+        if (!pinjamanRows.length) return;
+
+        pinjamanRows.hide();
+        const visibleIndexes = simpananTable.rows({ search: 'applied', page: 'current' }).indexes().toArray();
+
+        if (visibleIndexes.length === 0) {
+            return;
+        }
+
+        visibleIndexes.forEach(function(idx) {
+            const row = pinjamanRows.get(idx);
+            if (row) {
+                row.style.display = '';
+            }
+        });
+    };
+
+    simpananTable.on('draw', syncPinjamanRows);
+    syncPinjamanRows();
+
+    // Search di pojok kanan header untuk rincian bulanan
+    const searchRincianBulananEl = document.getElementById('searchRincianBulanan');
+    if (searchRincianBulananEl) {
+        searchRincianBulananEl.addEventListener('input', function() {
+            const query = (this.value || '').trim();
+            simpananTable.search(query).draw();
+        });
+    }
+
     // Initialize DataTables for 5 yearly report tables
     $('#simpananWajibTable').DataTable({
             "language": {
@@ -1295,7 +1391,7 @@ function tambahItem(kategori) {
     const existingInput = document.getElementById(`input_${id}`);
     
     if (existingRow || existingInput) {
-        console.warn(`⚠️ Element dengan ID ${id} sudah ada! Skip pembuatan.`);
+        console.warn(`?? Element dengan ID ${id} sudah ada! Skip pembuatan.`);
         itemCounter[kategori]--; // Rollback counter
         return;
     }
@@ -1333,7 +1429,7 @@ function tambahItem(kategori) {
     let newRow;
     if (kategori === 'asetLancar' || kategori === 'asetTetap') {
         // Cari row dengan colspan="4" di kolom kiri terlebih dahulu
-        console.log(`🔍 Mencari row kosong untuk ${kategori}...`);
+        console.log(`?? Mencari row kosong untuk ${kategori}...`);
         const tbody = document.getElementById('neracaTableBody');
         const rows = Array.from(tbody.querySelectorAll('tr'));
         rows.forEach(normalizeToEightCells);
@@ -1426,7 +1522,7 @@ function tambahItem(kategori) {
         }
         // Jika cell kiri sudah terisi input, atau tidak ada baris kosong, buat baris baru
         if (!targetRow || document.querySelectorAll(`#neracaTableBody tr`).length === 0) {
-            console.log('ℹ️ Tidak ada row kosong, membuat row baru');
+            console.log('?? Tidak ada row kosong, membuat row baru');
             newRow = document.createElement('tr');
             newRow.id = `row_${id}`;
             // PATCH: Buat hanya 4 kolom kiri untuk aset, 4 kolom kanan untuk kewajiban/ekuitas
@@ -1469,7 +1565,7 @@ function tambahItem(kategori) {
         }
     } else if (kategori === 'kewajibanLancar' || kategori === 'ekuitas') {
         // Cari row dengan colspan="4" di kolom kanan terlebih dahulu
-        console.log(`🔍 Mencari row kosong untuk ${kategori}...`);
+        console.log(`?? Mencari row kosong untuk ${kategori}...`);
         const tbody = document.getElementById('neracaTableBody');
         const rows = Array.from(tbody.querySelectorAll('tr'));
         rows.forEach(normalizeToEightCells);
@@ -1495,7 +1591,7 @@ function tambahItem(kategori) {
                 const lastCell = row.cells[row.cells.length - 1];
                 if (lastCell.colSpan === 4) {
                     targetRow = row;
-                    console.log(`✓ Menemukan row dengan colspan="4" di kolom kanan (row id: ${row.id || 'no-id'})`);
+                    console.log(`? Menemukan row dengan colspan="4" di kolom kanan (row id: ${row.id || 'no-id'})`);
                     break;
                 }
             }
@@ -1529,7 +1625,7 @@ function tambahItem(kategori) {
                     if (!hasRightInput && rightText === '') {
                         targetRow = row;
                         const leftInfo = row.cells[0] ? row.cells[0].textContent.trim().substring(0, 20) : '';
-                        console.log(`✓ Menemukan row kosong di kolom kanan | Kolom kiri: "${leftInfo}..." | Row id: ${row.id || 'no-id'}`);
+                        console.log(`? Menemukan row kosong di kolom kanan | Kolom kiri: "${leftInfo}..." | Row id: ${row.id || 'no-id'}`);
                         break;
                     }
                 }
@@ -2322,7 +2418,7 @@ function saveNeraca() {
     }
     
     // Jika validasi lolos, lanjutkan proses simpan
-    console.log('✓ Validasi lolos, memulai pengambilan data dari form...');
+    console.log('? Validasi lolos, memulai penarikan data dari form...');
     
     // Ambil data header yang diedit
     const headerData = {};
@@ -2337,13 +2433,13 @@ function saveNeraca() {
         const inputElement = document.getElementById(`input_${headerId}`);
         if (inputElement) {
             headerData[headerId] = inputElement.value.trim();
-            console.log(`📝 Header ${headerId}:`, headerData[headerId]);
+            console.log(`?? Header ${headerId}:`, headerData[headerId]);
         }
     });
     
     // STRATEGI: Ambil semua data dari form yang sedang dalam mode edit
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📝 Mengambil data dari form edit...');
+    console.log('????????????????????????????????');
+    console.log('?? Mengambil data dari form edit...');
     
     // Inisialisasi objek data kosong
     const neracaData = {};
@@ -2361,7 +2457,7 @@ function saveNeraca() {
     fields.forEach(field => {
         // Skip jika item sudah dihapus
         if (deletedItems.includes(field)) {
-            console.log(`⏩ Skip ${field} (deleted)`);
+            console.log(`? Skip ${field} (deleted)`);
             return;
         }
         
@@ -2369,17 +2465,17 @@ function saveNeraca() {
         const inputField = document.getElementById('input_' + field);
         if (inputField) {
             neracaData[field] = parseFloat(inputField.value) || 0;
-            console.log(`✏️ ${field} (2024) dari input:`, neracaData[field]);
+            console.log(`?? ${field} (2024) dari input:`, neracaData[field]);
         } else {
             // Fallback: ambil dari text yang ditampilkan
             const td = document.getElementById(field);
             if (td && td.textContent) {
                 const text = td.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim();
                 neracaData[field] = parseFloat(text) || 0;
-                console.log(`📄 ${field} (2024) dari text:`, neracaData[field]);
+                console.log(`?? ${field} (2024) dari text:`, neracaData[field]);
             } else {
                 neracaData[field] = 0;
-                console.log(`⚠️ ${field} (2024) default ke 0`);
+                console.log(`?? ${field} (2024) default ke 0`);
             }
         }
         
@@ -2387,17 +2483,17 @@ function saveNeraca() {
         const inputField2023 = document.getElementById('input_' + field + '_2023');
         if (inputField2023) {
             neracaData2023[field] = parseFloat(inputField2023.value) || 0;
-            console.log(`✏️ ${field} (2023) dari input:`, neracaData2023[field]);
+            console.log(`?? ${field} (2023) dari input:`, neracaData2023[field]);
         } else {
             // Fallback: ambil dari text yang ditampilkan
             const td2023 = document.getElementById(field + '_2023');
             if (td2023 && td2023.textContent) {
                 const text = td2023.textContent.replace('Rp ', '').replace(/\./g, '').replace(/,/g, '').trim();
                 neracaData2023[field] = parseFloat(text) || 0;
-                console.log(`📄 ${field} (2023) dari text:`, neracaData2023[field]);
+                console.log(`?? ${field} (2023) dari text:`, neracaData2023[field]);
             } else {
                 neracaData2023[field] = 0;
-                console.log(`⚠️ ${field} (2023) default ke 0`);
+                console.log(`?? ${field} (2023) default ke 0`);
             }
         }
         
@@ -2405,13 +2501,13 @@ function saveNeraca() {
         const labelInput = document.getElementById('input_label_' + field);
         if (labelInput) {
             neracaLabels[field] = labelInput.value.trim();
-            console.log(`✏️ ${field} label dari input:`, neracaLabels[field]);
+            console.log(`?? ${field} label dari input:`, neracaLabels[field]);
         } else {
             // Fallback: ambil dari text yang ditampilkan
             const labelTd = document.getElementById('label_' + field);
             if (labelTd && labelTd.textContent) {
                 neracaLabels[field] = labelTd.textContent.trim();
-                console.log(`📄 ${field} label dari text:`, neracaLabels[field]);
+                console.log(`?? ${field} label dari text:`, neracaLabels[field]);
             } else {
                 // Default label jika tidak ada
                 const defaultLabels = {
@@ -2432,18 +2528,18 @@ function saveNeraca() {
                     shuTahunBerjalan: 'SHU Tahun Berjalan'
                 };
                 neracaLabels[field] = defaultLabels[field] || field;
-                console.log(`⚠️ ${field} label default:`, neracaLabels[field]);
+                console.log(`?? ${field} label default:`, neracaLabels[field]);
             }
         }
     });
     
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 DATA DARI FORM:');
+    console.log('????????????????????????????????');
+    console.log('?? DATA DARI FORM:');
     console.log('Total fields data_2024:', Object.keys(neracaData).length);
     console.log('Total fields data_2023:', Object.keys(neracaData2023).length);
     console.log('Total fields labels:', Object.keys(neracaLabels).length);
     console.log('Sample data_2024:', neracaData);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('????????????????????????????????');
     
     // Simpan data No Perkiraan dari setiap row
     editableRows.forEach(rowConfig => {
@@ -2456,11 +2552,11 @@ function saveNeraca() {
         if (cell && cell.querySelector('input')) {
             const input = cell.querySelector('input');
             neracaNoPerkiraan[rowConfig.field] = input.value.trim();
-            console.log(`✏️ No Perkiraan ${rowConfig.field} dari input:`, neracaNoPerkiraan[rowConfig.field]);
+            console.log(`?? No Perkiraan ${rowConfig.field} dari input:`, neracaNoPerkiraan[rowConfig.field]);
         } else if (cell) {
             // Fallback: ambil dari text yang ditampilkan
             neracaNoPerkiraan[rowConfig.field] = cell.textContent.trim();
-            console.log(`📄 No Perkiraan ${rowConfig.field} dari text:`, neracaNoPerkiraan[rowConfig.field]);
+            console.log(`?? No Perkiraan ${rowConfig.field} dari text:`, neracaNoPerkiraan[rowConfig.field]);
         }
     });
     
@@ -2471,7 +2567,7 @@ function saveNeraca() {
             
             // Skip jika item sudah dihapus
             if (deletedItems.includes(itemId)) {
-                console.log(`⏩ Skip item ${itemId} (deleted)`);
+                console.log(`? Skip item ${itemId} (deleted)`);
                 return;
             }
             
@@ -2492,7 +2588,7 @@ function saveNeraca() {
                 };
                 
                 customItems[kategori].push(itemData);
-                console.log(`📝 Custom item ${itemId} dari input:`, itemData);
+                console.log(`?? Custom item ${itemId} dari input:`, itemData);
             } else {
                 // Mode view: ambil dari text yang ditampilkan
                 const noTd = document.getElementById(`no_${itemId}`);
@@ -2514,12 +2610,12 @@ function saveNeraca() {
                     };
                     
                     customItems[kategori].push(itemData);
-                    console.log(`📄 Custom item ${itemId} dari text:`, itemData);
+                    console.log(`?? Custom item ${itemId} dari text:`, itemData);
                 }
             }
         });
         
-        console.log(`📊 Total custom items ${kategori}:`, customItems[kategori].length);
+        console.log(`?? Total custom items ${kategori}:`, customItems[kategori].length);
     });
     
     // Siapkan payload untuk dikirim ke server
@@ -2534,9 +2630,9 @@ function saveNeraca() {
         header_data: headerData  // Tambahkan data header
     };
     
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📤 MENGIRIM DATA KE SERVER');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('????????????????????????????????');
+    console.log('?? MENGIRIM DATA KE SERVER');
+    console.log('????????????????????????????????');
     console.log('Payload lengkap:', payload);
     console.log('Data 2024 (contoh kas):', payload.data_2024.kas);
     console.log('Data 2023 (contoh kas):', payload.data_2023.kas);
@@ -2546,10 +2642,10 @@ function saveNeraca() {
         kewajibanLancar: payload.custom_items.kewajibanLancar?.length || 0,
         ekuitas: payload.custom_items.ekuitas?.length || 0
     });
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('????????????????????????????????');
 
     // Simpan ke database via API
-    fetch('/ketua/laporan/save-neraca', {
+    fetch(laporanBasePath + '/save-neraca', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2558,35 +2654,35 @@ function saveNeraca() {
         body: JSON.stringify(payload)
     })
     .then(response => {
-        console.log('📥 Response HTTP status:', response.status, response.statusText);
+        console.log('?? Response HTTP status:', response.status, response.statusText);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         // Check if response is JSON
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-            console.error('❌ Response is not JSON! Content-Type:', contentType);
+            console.error('? Response is not JSON! Content-Type:', contentType);
             return response.text().then(text => {
-                console.error('❌ Response body:', text.substring(0, 500));
+                console.error('? Response body:', text.substring(0, 500));
                 throw new Error('Server returned non-JSON response');
             });
         }
         return response.json();
     })
     .then(data => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('📥 RESPONSE DARI SERVER');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('????????????????????????????????');
+        console.log('?? RESPONSE DARI SERVER');
+        console.log('????????????????????????????????');
         console.log('Response data:', data);
         console.log('Success:', data.success);
         console.log('Message:', data.message);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('????????????????????????????????');
         
         if (data.success) {
-            console.log('%c✅ SUKSES! Data berhasil disimpan ke database!', 'color: green; font-weight: bold; font-size: 14px;');
+            console.log('%c? SUKSES! Data berhasil disimpan ke database!', 'color: green; font-weight: bold; font-size: 14px;');
             
             // SETELAH SAVE BERHASIL: Update tampilan (convert input ke text)
-            console.log('🎨 Mengupdate tampilan UI...');
+            console.log('?? Mengupdate tampilan UI...');
             
             // Update tampilan header kembali ke text
             headerIds.forEach(headerId => {
@@ -2651,47 +2747,47 @@ function saveNeraca() {
             isEditMode = false;
             localStorage.removeItem('editMode');
             
-            console.log('✓ UI berhasil direset ke mode read-only');
-            alert('✅ Data berhasil disimpan!\n\nData Anda sudah aman di database.\nSaat refresh atau login kembali, data akan dimuat otomatis.');
+            console.log('? UI berhasil direset ke mode read-only');
+            alert('? Data berhasil disimpan!\n\nData Anda sudah aman di database.\nSaat refresh atau login kembali, data akan dimuat otomatis.');
         } else {
-            console.error('%c❌ GAGAL! Server menolak data', 'color: red; font-weight: bold; font-size: 14px;');
+            console.error('%c? GAGAL! Server menolak data', 'color: red; font-weight: bold; font-size: 14px;');
             console.error('Error dari server:', data.error);
-            alert('❌ Gagal menyimpan!\n\n' + (data.error || 'Unknown error'));
+            alert('? Gagal menyimpan!\n\n' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.error('❌ ERROR KONEKSI KE SERVER');
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('????????????????????????????????');
+        console.error('? ERROR KONEKSI KE SERVER');
+        console.error('????????????????????????????????');
         console.error('Error detail:', error);
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        alert('❌ Error koneksi!\n\n' + error.message + '\n\nPastikan server masih berjalan.');
+        console.error('????????????????????????????????');
+        alert('? Error koneksi!\n\n' + error.message + '\n\nPastikan server masih berjalan.');
     });
 }
 window.saveNeraca = saveNeraca;
 
 // Load data dari database atau localStorage saat halaman dimuat
 window.addEventListener('load', function() {
-    console.log('🔄 Window load event - Memuat data neraca...');
+    console.log('?? Window load event - Memuat data neraca...');
 
     // Coba load dari database terlebih dahulu
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🔍 MEMUAT DATA DARI SERVER');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('Fetching: /ketua/laporan/get-neraca');
+    console.log('????????????????????????????????');
+    console.log('?? MEMUAT DATA DARI SERVER');
+    console.log('????????????????????????????????');
+    console.log('Fetching:', laporanBasePath + '/get-neraca');
 
-    fetch('/ketua/laporan/get-neraca', {
+    fetch(laporanBasePath + '/get-neraca', {
         method: 'GET',
         credentials: 'same-origin'
     })
         .then(response => {
-            console.log('📥 Response HTTP status:', response.status, response.statusText);
-            console.log('📥 Response content-type:', response.headers.get('content-type'));
+            console.log('?? Response HTTP status:', response.status, response.statusText);
+            console.log('?? Response content-type:', response.headers.get('content-type'));
 
             // Check if response is HTML (login page) - redirect immediately
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('text/html')) {
-                console.warn('⚠️ Server returned HTML (login page), redirecting to login...');
+                console.warn('?? Server returned HTML (login page), redirecting to login...');
                 window.location.href = '/login';
                 throw new Error('Redirecting to login');
             }
@@ -2701,9 +2797,9 @@ window.addEventListener('load', function() {
             }
             // Check if response is JSON
             if (!contentType || !contentType.includes('application/json')) {
-                console.error('❌ Response is not JSON! Content-Type:', contentType);
+                console.error('? Response is not JSON! Content-Type:', contentType);
                 return response.text().then(text => {
-                    console.error('❌ Response body:', text.substring(0, 500));
+                    console.error('? Response body:', text.substring(0, 500));
                     throw new Error('Server returned non-JSON response');
                 });
             }
@@ -2715,13 +2811,13 @@ window.addEventListener('load', function() {
                 console.log('No result data, skipping...');
                 return;
             }
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('📥 DATA DITERIMA DARI SERVER');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('????????????????????????????????');
+            console.log('?? DATA DITERIMA DARI SERVER');
+            console.log('????????????????????????????????');
             console.log('Result lengkap:', result);
             
             if (result.success && result.data) {
-                console.log('%c✅ Data ditemukan di database!', 'color: green; font-weight: bold; font-size: 14px;');
+                console.log('%c? Data ditemukan di database!', 'color: green; font-weight: bold; font-size: 14px;');
                 console.log('Data 2024 lengkap:', result.data.data_2024);
                 console.log('Data 2023 lengkap:', result.data.data_2023);
                 console.log('Labels lengkap:', result.data.labels);
@@ -2729,7 +2825,7 @@ window.addEventListener('load', function() {
                 console.log('Custom items lengkap:', result.data.custom_items);
                 console.log('Item counter:', result.data.item_counter);
                 console.log('Deleted items:', result.data.deleted_items);
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('????????????????????????????????');
                 
                 // Hapus localStorage karena data sudah dimuat dari database
                 localStorage.removeItem('neracaData');
@@ -2739,23 +2835,23 @@ window.addEventListener('load', function() {
                 localStorage.removeItem('neracaCustomItems');
                 localStorage.removeItem('itemCounter');
                 localStorage.removeItem('deletedItems');
-                console.log('✓ localStorage dibersihkan (data dari database digunakan)');
+                console.log('? localStorage dibersihkan (data dari database digunakan)');
                 
                 loadNeracaData(result.data);
             } else {
-                console.log('%c⚠️ Tidak ada data di database', 'color: orange; font-weight: bold; font-size: 14px;');
+                console.log('%c?? Tidak ada data di database', 'color: orange; font-weight: bold; font-size: 14px;');
                 console.log('Result:', result);
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                console.log('� Halaman akan menampilkan data default (Rp 0)');
+                console.log('????????????????????????????????');
+                console.log('? Halaman akan menampilkan data default (Rp 0)');
             }
         })
         .catch(error => {
-            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.error('❌ ERROR LOADING DATA');
-            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('????????????????????????????????');
+            console.error('? ERROR LOADING DATA');
+            console.error('????????????????????????????????');
             console.error('Error detail:', error);
-            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('📄 Halaman akan menampilkan data default (Rp 0)');
+            console.error('????????????????????????????????');
+            console.log('?? Halaman akan menampilkan data default (Rp 0)');
         });
 });
 
@@ -2780,20 +2876,20 @@ function loadNeracaData(data) {
                 });
             });
         }
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 MEMUAT DATA KE HALAMAN');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('????????????????????????????????');
+    console.log('?? MEMUAT DATA KE HALAMAN');
+    console.log('????????????????????????????????');
     console.log('Data yang akan dimuat:', data);
     
     if (!data) {
-        console.warn('%c⚠️ loadNeracaData: data kosong atau null', 'color: orange; font-weight: bold;');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.warn('%c?? loadNeracaData: data kosong atau null', 'color: orange; font-weight: bold;');
+        console.log('????????????????????????????????');
         return;
     }
     
     // Load header data jika ada
     if (data.header_data) {
-        console.log('✓ Memuat header data:', data.header_data);
+        console.log('? Memuat header data:', data.header_data);
         Object.keys(data.header_data).forEach(headerId => {
             const element = document.getElementById(headerId);
             if (element) {
@@ -2806,7 +2902,7 @@ function loadNeracaData(data) {
                 } else {
                     element.textContent = value;
                 }
-                console.log(`✅ Header ${headerId} loaded:`, value);
+                console.log(`? Header ${headerId} loaded:`, value);
             }
         });
     }
@@ -2827,7 +2923,7 @@ function loadNeracaData(data) {
     
     // Load counter
     if (data.item_counter) {
-        console.log('✓ Memuat item counter:', data.item_counter);
+        console.log('? Memuat item counter:', data.item_counter);
         itemCounter = data.item_counter;
     }
     
@@ -2836,7 +2932,7 @@ function loadNeracaData(data) {
         // Load deleted items as-is (termasuk field default jika dihapus)
         deletedItems = data.deleted_items;
         
-        console.log('✓ Deleted items:', deletedItems);
+        console.log('? Deleted items:', deletedItems);
         
         // Hapus atau kosongkan cell untuk item yang dihapus
         deletedItems.forEach(itemId => {
@@ -2869,7 +2965,7 @@ function loadNeracaData(data) {
             }
         });
     } else {
-        console.log('✓ Tidak ada deleted items');
+        console.log('? Tidak ada deleted items');
         deletedItems = [];
     }
     
@@ -2884,21 +2980,21 @@ function loadNeracaData(data) {
             if (td && !deletedItems.includes(key)) {
                 const value = neracaData[key];
                 td.textContent = 'Rp ' + (value || 0).toLocaleString('id-ID');
-                console.log(`✓ Set ${key} = Rp ${(value || 0).toLocaleString('id-ID')}`);
+                console.log(`? Set ${key} = Rp ${(value || 0).toLocaleString('id-ID')}`);
             } else if (!td) {
-                console.warn(`⚠️ Element #${key} tidak ditemukan`);
+                console.warn(`?? Element #${key} tidak ditemukan`);
             } else {
-                console.warn(`⚠️ ${key} ada di deleted items, skip render`);
+                console.warn(`?? ${key} ada di deleted items, skip render`);
                 // Sembunyikan row yang dihapus
                 const row = td.closest('tr');
                 if (row) {
                     row.style.display = 'none';
-                    console.log(`  → Row ${key} disembunyikan`);
+                    console.log(`  ? Row ${key} disembunyikan`);
                 }
             }
         });
     } else {
-        console.log('⚠️ Tidak ada data_2024 di database - menggunakan default Rp 0');
+        console.log('?? Tidak ada data_2024 di database - menggunakan default Rp 0');
     }
     
     // Load data default 2023
@@ -2911,7 +3007,7 @@ function loadNeracaData(data) {
             if (td2023 && !deletedItems.includes(key)) {
                 const value = neracaData2023[key];
                 td2023.textContent = 'Rp ' + (value || 0).toLocaleString('id-ID');
-                console.log(`✓ Set ${key}_2023 = Rp ${(value || 0).toLocaleString('id-ID')}`);
+                console.log(`? Set ${key}_2023 = Rp ${(value || 0).toLocaleString('id-ID')}`);
             } else if (deletedItems.includes(key)) {
                 // Sembunyikan row yang dihapus (untuk backward compatibility jika belum hidden dari data_2024)
                 const row = td2023?.closest('tr');
@@ -2921,7 +3017,7 @@ function loadNeracaData(data) {
             }
         });
     } else {
-        console.log('⚠️ Tidak ada data_2023 di database - menggunakan default Rp 0');
+        console.log('?? Tidak ada data_2023 di database - menggunakan default Rp 0');
     }
     
     // Sembunyikan row field default yang ada di deletedItems (meskipun tidak ada di data_2024)
@@ -2934,7 +3030,7 @@ function loadNeracaData(data) {
                 const row = td.closest('tr');
                 if (row) {
                     row.style.display = 'none';
-                    console.log(`✓ Field default ${field} disembunyikan (ada di deletedItems)`);
+                    console.log(`? Field default ${field} disembunyikan (ada di deletedItems)`);
                 }
             }
         }
@@ -2971,16 +3067,16 @@ function loadNeracaData(data) {
                 
                 // Validasi: Jika label adalah angka saja (corrupt), gunakan default
                 if (/^\d+$/.test(labelText)) {
-                    console.warn(`⚠️ Label corrupt untuk ${key}: "${labelText}" - direset ke default`);
+                    console.warn(`?? Label corrupt untuk ${key}: "${labelText}" - direset ke default`);
                     labelText = defaultLabels[key] || key;
                 }
                 
                 labelTd.textContent = labelText;
-                console.log(`✓ Set label_${key} = ${labelText}`);
+                console.log(`? Set label_${key} = ${labelText}`);
             }
         });
     } else {
-        console.log('⚠️ Tidak ada labels di database - menggunakan label default HTML');
+        console.log('?? Tidak ada labels di database - menggunakan label default HTML');
     }
     
     // Load No Perkiraan default
@@ -3068,7 +3164,7 @@ function loadNeracaData(data) {
             
             // Skip jika item ini sudah dihapus
             if (deletedItems.includes(id)) {
-                console.log(`⏩ Skip render ${id} (sudah dihapus)`);
+                console.log(`? Skip render ${id} (sudah dihapus)`);
                 return;
             }
             
@@ -3105,7 +3201,7 @@ function loadNeracaData(data) {
             
             // Skip jika item ini sudah dihapus
             if (deletedItems.includes(id)) {
-                console.log(`⏩ Skip render ${id} (sudah dihapus)`);
+                console.log(`? Skip render ${id} (sudah dihapus)`);
                 return;
             }
             
@@ -3144,7 +3240,7 @@ function loadNeracaData(data) {
             
             // Skip jika item ini sudah dihapus
             if (deletedItems.includes(id)) {
-                console.log(`⏩ Skip render ${id} (sudah dihapus)`);
+                console.log(`? Skip render ${id} (sudah dihapus)`);
                 return;
             }
             
@@ -3195,7 +3291,7 @@ function loadNeracaData(data) {
             
             // Skip jika item ini sudah dihapus
             if (deletedItems.includes(id)) {
-                console.log(`⏩ Skip render ${id} (sudah dihapus)`);
+                console.log(`? Skip render ${id} (sudah dihapus)`);
                 return;
             }
             
@@ -3335,40 +3431,62 @@ function loadNeracaData(data) {
         const batalButton = buttonGroup.querySelector('.btn-secondary');
         if (batalButton) {
             batalButton.remove();
-            console.log('✓ Button Batal dihapus');
+            console.log('? Button Batal dihapus');
         }
     }
     
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('%c✅ DATA BERHASIL DIMUAT KE HALAMAN!', 'color: green; font-weight: bold; font-size: 14px;');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 RINGKASAN DATA:');
-    console.log('• Total Aset Lancar: Rp ' + asetLancarTotals.y2024.toLocaleString('id-ID'));
-    console.log('• Total Aset Tetap: Rp ' + asetTetapTotals.y2024.toLocaleString('id-ID'));
-    console.log('• TOTAL ASET: Rp ' + totalAset.toLocaleString('id-ID'));
-    console.log('• Total Kewajiban Lancar: Rp ' + kewajibanLancarTotals.y2024.toLocaleString('id-ID'));
-    console.log('• Total Ekuitas: Rp ' + ekuitasTotals.y2024.toLocaleString('id-ID'));
-    console.log('• TOTAL KEWAJIBAN & EKUITAS: Rp ' + totalKewajibanEkuitas.toLocaleString('id-ID'));
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📝 DATA SOURCE:');
-    console.log('• Data 2024:', data.data_2024 ? 'Ada (' + Object.keys(data.data_2024).length + ' items)' : 'Tidak ada');
-    console.log('• Data 2023:', data.data_2023 ? 'Ada (' + Object.keys(data.data_2023).length + ' items)' : 'Tidak ada');
-    console.log('• Labels:', data.labels ? 'Ada (' + Object.keys(data.labels).length + ' items)' : 'Tidak ada');
-    console.log('• Custom Items Aset Lancar:', data.custom_items?.asetLancar ? data.custom_items.asetLancar.length + ' items' : '0 items');
-    console.log('• Custom Items Aset Tetap:', data.custom_items?.asetTetap ? data.custom_items.asetTetap.length + ' items' : '0 items');
-    console.log('• Custom Items Kewajiban Lancar:', data.custom_items?.kewajibanLancar ? data.custom_items.kewajibanLancar.length + ' items' : '0 items');
-    console.log('• Custom Items Ekuitas:', data.custom_items?.ekuitas ? data.custom_items.ekuitas.length + ' items' : '0 items');
-    console.log('• Deleted Items:', deletedItems.length + ' items');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('????????????????????????????????');
+    console.log('%c? DATA BERHASIL DIMUAT KE HALAMAN!', 'color: green; font-weight: bold; font-size: 14px;');
+    console.log('????????????????????????????????');
+    console.log('?? RINGKASAN DATA:');
+    console.log('� Total Aset Lancar: Rp ' + asetLancarTotals.y2024.toLocaleString('id-ID'));
+    console.log('� Total Aset Tetap: Rp ' + asetTetapTotals.y2024.toLocaleString('id-ID'));
+    console.log('� TOTAL ASET: Rp ' + totalAset.toLocaleString('id-ID'));
+    console.log('� Total Kewajiban Lancar: Rp ' + kewajibanLancarTotals.y2024.toLocaleString('id-ID'));
+    console.log('� Total Ekuitas: Rp ' + ekuitasTotals.y2024.toLocaleString('id-ID'));
+    console.log('� TOTAL KEWAJIBAN & EKUITAS: Rp ' + totalKewajibanEkuitas.toLocaleString('id-ID'));
+    console.log('????????????????????????????????');
+    console.log('?? DATA SOURCE:');
+    console.log('� Data 2024:', data.data_2024 ? 'Ada (' + Object.keys(data.data_2024).length + ' items)' : 'Tidak ada');
+    console.log('� Data 2023:', data.data_2023 ? 'Ada (' + Object.keys(data.data_2023).length + ' items)' : 'Tidak ada');
+    console.log('� Labels:', data.labels ? 'Ada (' + Object.keys(data.labels).length + ' items)' : 'Tidak ada');
+    console.log('� Custom Items Aset Lancar:', data.custom_items?.asetLancar ? data.custom_items.asetLancar.length + ' items' : '0 items');
+    console.log('� Custom Items Aset Tetap:', data.custom_items?.asetTetap ? data.custom_items.asetTetap.length + ' items' : '0 items');
+    console.log('� Custom Items Kewajiban Lancar:', data.custom_items?.kewajibanLancar ? data.custom_items.kewajibanLancar.length + ' items' : '0 items');
+    console.log('� Custom Items Ekuitas:', data.custom_items?.ekuitas ? data.custom_items.ekuitas.length + ' items' : '0 items');
+    console.log('� Deleted Items:', deletedItems.length + ' items');
+    console.log('????????????????????????????????');
     console.log('Button Edit Neraca onclick:', btnEdit ? (typeof btnEdit.onclick) : 'tidak ada');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('????????????????????????????????');
 }
 
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-console.log('%c🚀 SCRIPT NERACA READY!', 'color: blue; font-weight: bold; font-size: 16px;');
+console.log('????????????????????????????????');
+console.log('%c?? SCRIPT NERACA READY!', 'color: blue; font-weight: bold; font-size: 16px;');
 console.log('Fungsi tersedia: editNeraca(), saveNeraca(), loadNeracaData()');
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('????????????????????????????????');
 </script>
 
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

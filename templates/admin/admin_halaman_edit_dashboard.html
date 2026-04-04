@@ -22,6 +22,39 @@
                       <br><br><br>
                     <div class="card shadow-sm">   
                         <div class="card-body">
+                            {{ if .success }}
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                {{ .success }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                            {{ end }}
+                            {{ if .error }}
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                {{ .error }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                            {{ end }}
+
+                            <div class="mb-4 p-3 border rounded">
+                                <h6 class="mb-3"><i class="fa-solid fa-file-upload me-2"></i>Template Kop Surat Laporan</h6>
+                                <form method="POST" action="/admin/upload-kop" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
+                                    <label for="kop_file" class="form-label mb-0 me-2">Pilih file kop surat:</label>
+                                    <input type="file" id="kop_file" name="kop_file" accept=".jpg,.jpeg,.png" class="form-control flex-fill" required autocomplete="off" style="min-width:220px;">
+                                    <button type="submit" class="btn btn-primary" style="min-width:170px;">
+                                        <i class="fa-solid fa-upload me-2"></i>Upload Template Kop
+                                    </button>
+                                </form>
+                                <small class="text-muted d-block mt-2">Kop surat ini akan dipakai otomatis saat download laporan PDF/Excel.</small>
+                                {{ if .CurrentKop }}
+                                <div class="mt-1">
+                                    <small class="text-muted me-2">File kop aktif:</small>
+                                    <a href="{{.CurrentKop}}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fa-solid fa-eye me-1"></i>Lihat
+                                    </a>
+                                </div>
+                                {{ end }}
+                            </div>
+
                             <form id="editForm">
                                 <input type="hidden" id="konten" name="konten">
                                 <!-- Konten Dashboard -->

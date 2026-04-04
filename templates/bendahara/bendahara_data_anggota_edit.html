@@ -160,22 +160,15 @@
                                 <h5 class="section-title"><i class="fas fa-user-circle me-2"></i>Data Pribadi</h5>
                                 
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
+                                    <div class="col-md-12 mb-3">
                                         <label for="NamaAnggota" class="form-label">
                                             <i class="fas fa-user me-2"></i>Nama Lengkap <span class="text-danger">*</span>
                                         </label>
                                         <input type="text" class="form-control" id="NamaAnggota" name="NamaAnggota" 
                                                value="{{ .Anggota.NamaAnggota }}" required>
                                     </div>
-
-                                    <div class="col-md-6 mb-3">
-                                        <label for="NikKTP" class="form-label">
-                                            <i class="fas fa-id-card me-2"></i>NIK/KTP <span class="text-danger">*</span>
-                                        </label>
-                                        <input type="text" class="form-control" id="NikKTP" name="NikKTP" 
-                                               value="{{ .Anggota.NikKTP }}" required>
-                                    </div>
                                 </div>
+                                <input type="hidden" id="NikKTP" name="NikKTP" value="{{ .Anggota.NikKTP }}">
 
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
@@ -231,10 +224,10 @@
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label for="Fakultas" class="form-label">
-                                            <i class="fas fa-building me-2"></i>Fakultas <span class="text-danger">*</span>
+                                            <i class="fas fa-building me-2"></i>Unit Kerja <span class="text-danger">*</span>
                                         </label>
                                         <input type="text" class="form-control" id="Fakultas" name="Fakultas" 
-                                               value="{{ .Anggota.Fakultas }}" required>
+                                               value="{{ if or (eq .Anggota.Fakultas "Rektorat / Yayasan / Staff") (eq .Anggota.Fakultas "Rektorat / Yayasan") }}Rektoriat{{ else }}{{ .Anggota.Fakultas }}{{ end }}" required>
                                     </div>
 
                                     <div class="col-md-6 mb-3">

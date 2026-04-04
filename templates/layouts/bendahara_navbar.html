@@ -18,26 +18,17 @@
     </div>
     <a href="/bendahara/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
     
-    <!-- Manajemen Anggota -->
-    <a href="#" onclick="toggleSubmenu(this, 'manajemenAnggota'); return false;" class="dropdown-toggle"><i class="fa-solid fa-users me-2"></i> Manajemen Anggota</a>
-    <div class="collapse {{ if eq .ActivePage "anggota" }}show{{ end }}" id="manajemenAnggota" {{ if or (eq .ActivePage "anggota") (eq .ActivePage "setting_simpanan_wajib") }}style="display: block;"{{ end }}>
-        <a href="/bendahara/anggota" class="ms-3 {{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
-    </div>
+    <a href="/bendahara/anggota" class="{{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
 
     <!-- Konten Website -->
     <a href="#" onclick="toggleSubmenu(this, 'kontenWebsite'); return false;" class="dropdown-toggle"><i class="fa-solid fa-globe me-2"></i> Konten Website</a>
-    <div class="collapse {{ if or (eq .ActivePage "edit_simpanan") (eq .ActivePage "setting_simpanan_wajib") (eq .ActivePage "edit-rekening-register") (eq .ActivePage "edit-bunga") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "edit_simpanan") (eq .ActivePage "setting_simpanan_wajib") (eq .ActivePage "edit-rekening-register") (eq .ActivePage "edit-bunga") }}style="display: block;"{{ end }}>
-        <a href="/bendahara/halaman/edit/simpanan" class="ms-3 {{ if eq .ActivePage "edit_simpanan" }}active{{ end }}"><i class="fa-solid fa-piggy-bank me-2"></i> Edit Halaman Simpanan</a>
+    <div class="collapse {{ if or (eq .ActivePage "setting_simpanan_wajib") (eq .ActivePage "edit-rekening-register") (eq .ActivePage "edit-bunga") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "setting_simpanan_wajib") (eq .ActivePage "edit-rekening-register") (eq .ActivePage "edit-bunga") }}style="display: block;"{{ end }}>
         <a href="/bendahara/setting-simpanan-wajib" class="ms-3 {{ if eq .ActivePage "setting_simpanan_wajib" }}active{{ end }}"><i class="fa-solid fa-cog me-2"></i> Edit Simpanan Wajib</a>
         <a href="/bendahara/edit-rekening-register" class="ms-3 {{ if eq .ActivePage "edit-rekening-register" }}active{{ end }}"><i class="fa-solid fa-edit me-2"></i> Edit Nomor Rekening</a>
         <a href="/bendahara/edit-bunga" class="ms-3 {{ if eq .ActivePage "edit-bunga" }}active{{ end }}"><i class="fa-solid fa-percent me-2"></i> Edit Bunga</a>
     </div>
 
-    <!-- Transaksi & Laporan -->
-    <a href="#" onclick="toggleSubmenu(this, 'transaksiLaporan'); return false;" class="dropdown-toggle"><i class="fa-solid fa-chart-bar me-2"></i> Transaksi & Laporan</a>
-    <div class="collapse {{ if or (eq .ActivePage "riwayat") (eq .ActivePage "transaksi-anggota") (eq .ActivePage "transaksi-pinjaman") (eq .ActivePage "transaksi-simpanan") (eq .ActivePage "transaksi-angsuran") }}show{{ end }}" id="transaksiLaporan" {{ if or (eq .ActivePage "riwayat") (eq .ActivePage "transaksi-anggota") (eq .ActivePage "transaksi-pinjaman") (eq .ActivePage "transaksi-simpanan") (eq .ActivePage "transaksi-angsuran") }}style="display: block;"{{ end }}>
-        <a href="/bendahara/riwayat" class="ms-3 {{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Riwayat Transaksi</a>
-    </div>
+    <a href="/bendahara/riwayat" class="{{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Riwayat Transaksi</a>
 
     <a href="/bendahara/pesan" class="{{ if eq .ActivePage "pesan" }}active{{ end }}"><i class="fa-solid fa-envelope me-2"></i> Pesan</a>
     <a href="/bendahara/pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
@@ -131,29 +122,6 @@
 
     // Pastikan submenu tetap terbuka berdasarkan URL saat ini dengan animasi
     var currentURL = window.location.pathname;
-    if (currentURL.includes('/bendahara/anggota') || currentURL.includes('/bendahara/login-history')) {
-        var manajemenAnggota = document.getElementById('manajemenAnggota');
-        if (manajemenAnggota && !manajemenAnggota.classList.contains('show')) {
-            manajemenAnggota.style.display = 'block';
-            manajemenAnggota.style.maxHeight = '0px';
-            manajemenAnggota.style.opacity = '0';
-            manajemenAnggota.style.transition = 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out';
-            setTimeout(function() {
-                manajemenAnggota.classList.add('show');
-                manajemenAnggota.style.maxHeight = manajemenAnggota.scrollHeight + 'px';
-                manajemenAnggota.style.opacity = '1';
-            }, 10);
-            setTimeout(function() {
-                manajemenAnggota.style.maxHeight = '';
-                manajemenAnggota.style.transition = '';
-            }, 300);
-            var toggle = manajemenAnggota.previousElementSibling;
-            if (toggle) {
-                toggle.setAttribute('aria-expanded', 'true');
-            }
-        }
-    }
-
     if (currentURL.includes('/bendahara/halaman/edit')) {
         var kontenWebsite = document.getElementById('kontenWebsite');
         if (kontenWebsite && !kontenWebsite.classList.contains('show')) {
@@ -171,29 +139,6 @@
                 kontenWebsite.style.transition = '';
             }, 300);
             var toggle = kontenWebsite.previousElementSibling;
-            if (toggle) {
-                toggle.setAttribute('aria-expanded', 'true');
-            }
-        }
-    }
-
-    if (currentURL.includes('/bendahara/konfirmasi-transaksi') || currentURL.includes('/bendahara/riwayat') || currentURL.includes('/bendahara/transaksi-anggota') || currentURL.includes('/bendahara/transaksi-pinjaman') || currentURL.includes('/bendahara/transaksi-simpanan') || currentURL.includes('/bendahara/transaksi-angsuran')) {
-        var transaksiLaporan = document.getElementById('transaksiLaporan');
-        if (transaksiLaporan && !transaksiLaporan.classList.contains('show')) {
-            transaksiLaporan.style.display = 'block';
-            transaksiLaporan.style.maxHeight = '0px';
-            transaksiLaporan.style.opacity = '0';
-            transaksiLaporan.style.transition = 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out';
-            setTimeout(function() {
-                transaksiLaporan.classList.add('show');
-                transaksiLaporan.style.maxHeight = transaksiLaporan.scrollHeight + 'px';
-                transaksiLaporan.style.opacity = '1';
-            }, 10);
-            setTimeout(function() {
-                transaksiLaporan.style.maxHeight = '';
-                transaksiLaporan.style.transition = '';
-            }, 300);
-            var toggle = transaksiLaporan.previousElementSibling;
             if (toggle) {
                 toggle.setAttribute('aria-expanded', 'true');
             }

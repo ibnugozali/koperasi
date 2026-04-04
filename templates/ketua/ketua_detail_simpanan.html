@@ -40,10 +40,10 @@
                                         <td>: {{ .Anggota.NamaAnggota }}</td>
                                     </tr>
                                     <tr>
-                                        <td><strong>Unit Kerja</strong></td>
+                                        <td><strong>Jabatan</strong></td>
                                         <td>: 
                                             {{if eq .Anggota.UnitKerja "01"}}Dosen
-                                            {{else if eq .Anggota.UnitKerja "02"}}Karyawan/Staff
+                                            {{else if eq .Anggota.UnitKerja "02"}}Tenaga Pendidikan
                                             {{else if eq .Anggota.UnitKerja "03"}}Mahasiswa
                                             {{else}}Tidak Diketahui{{end}}
                                         </td>
@@ -53,8 +53,8 @@
                             <div class="col-md-6">
                                 <table class="table table-borderless table-sm">
                                     <tr>
-                                        <td width="40%"><strong>Fakultas</strong></td>
-                                        <td>: {{ .Anggota.Fakultas }}</td>
+                                        <td width="40%"><strong>Unit Kerja</strong></td>
+                                        <td>: {{ if or (eq .Anggota.Fakultas "Rektorat / Yayasan / Staff") (eq .Anggota.Fakultas "Rektorat / Yayasan") }}Rektoriat{{ else }}{{ .Anggota.Fakultas }}{{ end }}</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Status</strong></td>

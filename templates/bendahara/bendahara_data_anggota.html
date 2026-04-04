@@ -343,7 +343,7 @@
                                     <th>No</th>
                                     <th>ID Anggota</th>
                                     <th>Nama</th>
-                                    <th>Fakultas</th>
+                                    <th>Unit Kerja</th>
                                     <th>No. Telepon</th>
                                     <th>Gaji Bulanan</th>
                                     <th>
@@ -364,7 +364,7 @@
                                     <td>{{ add $index 1 }}</td>
                                     <td><strong>{{ if $anggota.IDAnggota }}{{ $anggota.IDAnggota }}{{ else }}-{{ end }}</strong></td>
                                     <td>{{ $anggota.NamaAnggota }}</td>
-                                    <td>{{ $anggota.Fakultas }}</td>
+                                    <td>{{ if or (eq $anggota.Fakultas "Rektorat / Yayasan / Staff") (eq $anggota.Fakultas "Rektorat / Yayasan") }}Rektoriat{{ else }}{{ $anggota.Fakultas }}{{ end }}</td>
                                     <td>+62{{ $anggota.NoTelepon }}</td>
                                     <td>
                                         {{ if gt $anggota.GajiBulanan 0 }}
@@ -595,7 +595,7 @@
             // Count from table rows
             const rows = document.querySelectorAll('#anggotaTable tbody tr');
             rows.forEach(row => {
-                const statusCell = row.querySelector('td:nth-child(10)'); // Updated index after removing NIK column
+                const statusCell = row.querySelector('td:nth-child(10)'); // Updated index after column adjustment
                 if (statusCell) {
                     const statusText = statusCell.textContent.trim();
                     if (statusText.includes('Aktif')) {

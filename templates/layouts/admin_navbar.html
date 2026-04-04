@@ -2,7 +2,7 @@
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg fixed-top">
     <div class="container-fluid">
-        <button class="hamburger me-3" onclick="toggleSidebar()">
+        <button class="hamburger me-3" onclick="toggleSidebar()" style="padding:6px 12px;background:#004aad;color:#fff;">
             <i class="fas fa-bars"></i>
         </button>
         <span class="navbar-brand fw-bold">Dasbor Admin</span>
@@ -17,21 +17,25 @@
         <h5 class="mt-2">KOPMA</h5>
     </div>
     <a href="/admin/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
+    <a href="/admin/anggota" class="{{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
+    <a href="/admin/laporan" class="{{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-lines me-2"></i> Laporan</a>
+    <a href="/admin/tanda-tangan" class="{{ if eq .ActivePage "edit_tanda_tangan" }}active{{ end }}"><i class="fa-solid fa-signature me-2"></i> Tanda Tangan</a>
     <a href="/admin/edit-logo" class="{{ if eq .ActivePage "edit_logo" }}active{{ end }}"><i class="fa-solid fa-image me-2"></i> Edit Logo</a>
     <a href="/admin/riwayat-login" class="{{ if eq .ActivePage "login_history" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Riwayat Login</a>
 
     <!-- Konten Website -->
     <a href="#" onclick="toggleSubmenu(this, 'kontenWebsite'); return false;" class="dropdown-toggle"><i class="fa-solid fa-globe me-2"></i> Konten Website</a>
-    <div class="collapse {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "halaman") (eq .ActivePage "hubungi_kami") (eq .ActivePage "dashboard_content") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "halaman") (eq .ActivePage "hubungi_kami") (eq .ActivePage "dashboard_content") }}style="display: block;"{{ end }}>
+    <div class="collapse {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "halaman") (eq .ActivePage "hubungi_kami") (eq .ActivePage "dashboard_content") (eq .ActivePage "edit_simpanan") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "halaman") (eq .ActivePage "hubungi_kami") (eq .ActivePage "dashboard_content") (eq .ActivePage "edit_simpanan") }}style="display: block;"{{ end }}>
         <a href="/admin/halaman/edit/sejarah" class="ms-3 {{ if eq .ActivePage "sejarah" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Edit Sejarah</a>
         <a href="/admin/halaman/edit/visi-misi" class="ms-3 {{ if eq .ActivePage "visi_misi" }}active{{ end }}"><i class="fa-solid fa-eye me-2"></i> Edit Visi & Misi </a>
         <a href="/admin/halaman/edit/struktur" class="ms-3 {{ if eq .ActivePage "struktur" }}active{{ end }}"><i class="fa-solid fa-sitemap me-2"></i> Edit Struktur Organisasi</a>
         <a href="/admin/halaman/edit/hubungi_kami" class="ms-3 {{ if eq .ActivePage "hubungi_kami" }}active{{ end }}"><i class="fa-solid fa-phone me-2"></i> Edit Hubungi Kami</a>
+        <a href="/admin/halaman/edit/simpanan" class="ms-3 {{ if eq .ActivePage "edit_simpanan" }}active{{ end }}"><i class="fa-solid fa-piggy-bank me-2"></i> Edit Halaman Simpanan</a>
         <a href="/admin/halaman/edit/dashboard_anggota" class="ms-3 {{ if eq .ActivePage "dashboard_content" }}active{{ end }}"><i class="fa-solid fa-desktop me-2"></i> Edit Halaman Dashboard Anggota</a>
     </div>
 
     <!-- Menu Pesan dihapus sesuai permintaan -->
-    <a href="/admin/pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
+    <a href="/admin/pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Manajemen Akun</a>
     <a href="#" onclick="handleLogout(event)"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
 </div>
 

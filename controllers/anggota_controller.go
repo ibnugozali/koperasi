@@ -19,6 +19,104 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
+func isAngsuranTerbayar(status string) bool {
+	s := strings.ToLower(strings.TrimSpace(status))
+	return s == "confirmed" || s == "lunas" || s == "diterima"
+}
+
+type pinjamanAngsuranInfo struct {
+	Pinjaman    models.Pinjaman
+	SisaPinjaman float64
+	AngsuranKe   int
+}
+
+func getPinjamanAngsuranInfos(pinjamans []models.Pinjaman) ([]pinjamanAngsuranInfo, error) {
+	var infos []pinjamanAngsuranInfo
+	for i := range pinjamans {
+		p := pinjamans[i]
+		if strings.ToLower(strings.TrimSpace(p.Status)) != "aktif" {
+			continue
+		}
+
+		angsurans, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+		if err != nil {
+			return nil, err
+		}
+
+		totalAngsuranTerbayar := 0.0
+		for _, a := range angsurans {
+			if isAngsuranTerbayar(a.Status) {
+				totalAngsuranTerbayar += a.SisaPinjaman
+			}
+		}
+
+		sisaPinjaman := p.JumlahPinjaman - totalAngsuranTerbayar
+		if sisaPinjaman < 0 {
+			sisaPinjaman = 0
+		}
+
+		angsuranKe := 1
+		if len(angsurans) > 0 {
+			angsuranKe = len(angsurans) + 1
+		}
+
+		infos = append(infos, pinjamanAngsuranInfo{
+			Pinjaman:     p,
+			SisaPinjaman: sisaPinjaman,
+			AngsuranKe:   angsuranKe,
+		})
+	}
+	return infos, nil
+}
+
+func getPinjamanPrioritasAngsuran(pinjamans []models.Pinjaman) (*pinjamanAngsuranInfo, error) {
+	infos, err := getPinjamanAngsuranInfos(pinjamans)
+	if err != nil {
+		return nil, err
+	}
+	if len(infos) == 0 {
+		return nil, nil
+	}
+
+	var prioritas *pinjamanAngsuranInfo
+	for i := range infos {
+		info := &infos[i]
+		if info.SisaPinjaman <= 0 {
+			continue
+		}
+		if prioritas == nil || info.Pinjaman.TglPinjaman.Before(prioritas.Pinjaman.TglPinjaman) {
+			prioritas = info
+		}
+	}
+	if prioritas != nil {
+		return prioritas, nil
+	}
+
+	var terbaru *pinjamanAngsuranInfo
+	for i := range infos {
+		info := &infos[i]
+		if terbaru == nil || info.Pinjaman.TglPinjaman.After(terbaru.Pinjaman.TglPinjaman) {
+			terbaru = info
+		}
+	}
+	return terbaru, nil
+}
+
+func getTotalAngsuranAktif(pinjamans []models.Pinjaman) (float64, float64, error) {
+	infos, err := getPinjamanAngsuranInfos(pinjamans)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	var totalPinjaman float64
+	var totalSisaPinjaman float64
+	for _, info := range infos {
+		totalPinjaman += info.Pinjaman.JumlahPinjaman
+		totalSisaPinjaman += info.SisaPinjaman
+	}
+	return totalPinjaman, totalSisaPinjaman, nil
+}
+
 // AnggotaDashboard menampilkan halaman utama untuk anggota.
 func AnggotaDashboard(c *gin.Context) {
 	session := sessions.Default(c)
@@ -718,23 +816,26 @@ func AjukanPinjamanPost(c *gin.Context) {
 			return
 		}
 
-		// Hitung jumlah angsuran yang sudah dibayar (status lunas/confirmed/diterima)
-		totalAngsuran := p.JangkaWaktu
-		angsuranLunas := 0
+		// Hitung persentase berdasarkan nominal yang sudah dibayar, agar konsisten
+		// dengan halaman angsuran (bukan berdasarkan jumlah cicilan/tenor).
+		totalAngsuranTerbayar := 0.0
 		for _, a := range angsurans {
 			if a.Status == "lunas" || a.Status == "confirmed" || a.Status == "diterima" {
-				angsuranLunas++
+				totalAngsuranTerbayar += a.SisaPinjaman
 			}
 		}
 		persentase := 0.0
-		if totalAngsuran > 0 {
-			persentase = float64(angsuranLunas) / float64(totalAngsuran) * 100
+		if p.JumlahPinjaman > 0 {
+			persentase = (totalAngsuranTerbayar / p.JumlahPinjaman) * 100
+			if persentase > 100 {
+				persentase = 100
+			}
 		}
-		// Syarat: minimal 50% angsuran harus lunas
+		// Syarat: minimal 50% nominal pinjaman harus sudah terbayar
 		if persentase < 50 {
 			templateData := getAjukanPinjamanTemplateData(userID, anggota)
 			templateData["Error"] = fmt.Sprintf(
-				"Anda baru melunasi %.2f%% angsuran pinjaman. Minimal harus 50%% untuk mengajukan pinjaman baru.",
+				"Anda baru melunasi %.2f%% pinjaman. Minimal harus 50%% untuk mengajukan pinjaman baru.",
 				persentase,
 			)
 			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
@@ -1233,12 +1334,6 @@ func AnggotaAngsuran(c *gin.Context) {
 		return
 	}
 
-	// Ambil data saldo (total pinjaman yang belum lunas)
-	_, totalPinjaman, _, err := repository.GetSaldoAnggota(userID)
-	if err != nil {
-		totalPinjaman = 0
-	}
-
 	// Ambil pinjaman aktif anggota
 	pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
 	if err != nil {
@@ -1249,38 +1344,15 @@ func AnggotaAngsuran(c *gin.Context) {
 	var jumlahPinjaman float64
 	var sisaPinjaman float64
 	var angsuranKe int
-	var totalAngsuranTerbayar float64
 
-	if len(pinjamans) > 0 {
-		pinjaman := pinjamans[0] // Ambil pinjaman pertama yang aktif
-		jumlahPinjaman = pinjaman.JumlahPinjaman
-
-		// Hitung total angsuran yang sudah dibayar
-		angsurans, err := repository.GetAngsuranByPinjamanID(pinjaman.IDPinjaman)
-		if err == nil && len(angsurans) > 0 {
-			// Hitung total angsuran yang sudah dibayar
-			for _, a := range angsurans {
-				if a.Status == "confirmed" {
-					totalAngsuranTerbayar += a.SisaPinjaman
-				}
-			}
-			// Sisa pinjaman = jumlah pinjaman - total angsuran terbayar
-			sisaPinjaman = jumlahPinjaman - totalAngsuranTerbayar
-			// Jika sisaPinjaman negatif, set ke 0
-			if sisaPinjaman < 0 {
-				sisaPinjaman = 0
-			}
-			angsuranKe = len(angsurans) + 1
-		} else {
-			sisaPinjaman = jumlahPinjaman
-			angsuranKe = 1
-		}
-	} else if totalPinjaman > 0 {
-		// Jika tidak ada pinjaman dalam status aktif/proses tapi ada total pinjaman di saldo
-		// Ambil pinjaman dengan status 'lunas' atau 'ditolak' untuk lihat yang ada
-		jumlahPinjaman = totalPinjaman
-		sisaPinjaman = totalPinjaman
-		angsuranKe = 1
+	totalPinjamanAktif, totalSisaAktif, errTotal := getTotalAngsuranAktif(pinjamans)
+	pinjamanInfo, err := getPinjamanPrioritasAngsuran(pinjamans)
+	if errTotal == nil {
+		jumlahPinjaman = totalPinjamanAktif
+		sisaPinjaman = totalSisaAktif
+	}
+	if err == nil && pinjamanInfo != nil {
+		angsuranKe = pinjamanInfo.AngsuranKe
 	}
 
 	db := config.GetDB()
@@ -1316,8 +1388,8 @@ func AnggotaAngsuran(c *gin.Context) {
 	}
 	// Hitung persentase pelunasan
 	persentasePelunasan := 0.0
-	if totalPinjaman > 0 {
-		persentasePelunasan = float64(totalPinjaman-sisaPinjaman) / float64(totalPinjaman) * 100
+	if jumlahPinjaman > 0 {
+		persentasePelunasan = float64(jumlahPinjaman-sisaPinjaman) / float64(jumlahPinjaman) * 100
 		if persentasePelunasan < 0 {
 			persentasePelunasan = 0
 		}
@@ -1329,7 +1401,7 @@ func AnggotaAngsuran(c *gin.Context) {
 		"SisaPinjaman":        sisaPinjaman,
 		"AngsuranKe":          angsuranKe,
 		"Pinjamans":           pinjamans,
-		"TotalPinjaman":       totalPinjaman,
+		"TotalPinjaman":       jumlahPinjaman,
 		"NomorRekening":       nomorRekening,
 		"CurrentLogo":         latestLogo,
 		"PersentasePelunasan": persentasePelunasan,
@@ -1364,37 +1436,20 @@ func AnggotaAngsuranPost(c *gin.Context) {
 
 	// helper to render error with recomputed loan totals so template shows correct state
 	renderWithTotals := func(status int, msg string) {
-		_, totalPinjaman, _, _ := repository.GetSaldoAnggota(userID)
 		pinjamans, _ := repository.GetPinjamanAktifByAnggotaID(userID)
 
 		var jumlahPinjaman float64
 		var sisaPinjaman float64
 		var angsuranKe int
-		var totalAngsuranTerbayar float64
 
-		if len(pinjamans) > 0 {
-			p := pinjamans[0]
-			jumlahPinjaman = p.JumlahPinjaman
-			angsurans, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
-			if err == nil && len(angsurans) > 0 {
-				for _, a := range angsurans {
-					if a.Status == "confirmed" {
-						totalAngsuranTerbayar += a.SisaPinjaman
-					}
-				}
-				sisaPinjaman = jumlahPinjaman - totalAngsuranTerbayar
-				if sisaPinjaman < 0 {
-					sisaPinjaman = 0
-				}
-				angsuranKe = len(angsurans) + 1
-			} else {
-				sisaPinjaman = jumlahPinjaman
-				angsuranKe = 1
-			}
-		} else if totalPinjaman > 0 {
-			jumlahPinjaman = totalPinjaman
-			sisaPinjaman = totalPinjaman
-			angsuranKe = 1
+		totalPinjamanAktif, totalSisaAktif, errTotal := getTotalAngsuranAktif(pinjamans)
+		pinjamanInfo, err := getPinjamanPrioritasAngsuran(pinjamans)
+		if errTotal == nil {
+			jumlahPinjaman = totalPinjamanAktif
+			sisaPinjaman = totalSisaAktif
+		}
+		if err == nil && pinjamanInfo != nil {
+			angsuranKe = pinjamanInfo.AngsuranKe
 		}
 
 		c.HTML(status, "anggota_angsuran.html", gin.H{
@@ -1405,7 +1460,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 			"SisaPinjaman":   sisaPinjaman,
 			"AngsuranKe":     angsuranKe,
 			"Pinjamans":      pinjamans,
-			"TotalPinjaman":  totalPinjaman,
+			"TotalPinjaman":  jumlahPinjaman,
 		})
 	}
 
@@ -1534,7 +1589,8 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		} else {
 			// fallback: cari pinjaman aktif
 			pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
-			if err != nil || len(pinjamans) == 0 {
+			pinjamanInfo, errInfo := getPinjamanPrioritasAngsuran(pinjamans)
+			if err != nil || errInfo != nil || pinjamanInfo == nil {
 				c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
 					"Judul":          "Angsuran",
 					"Anggota":        anggota,
@@ -1546,12 +1602,13 @@ func AnggotaAngsuranPost(c *gin.Context) {
 				})
 				return
 			}
-			idPinjaman = pinjamans[0].IDPinjaman
+			idPinjaman = pinjamanInfo.Pinjaman.IDPinjaman
 		}
 	} else {
 		// Jika tidak ada ID pinjaman di form, ambil pinjaman aktif pertama
 		pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
-		if err != nil || len(pinjamans) == 0 {
+		pinjamanInfo, errInfo := getPinjamanPrioritasAngsuran(pinjamans)
+		if err != nil || errInfo != nil || pinjamanInfo == nil {
 			c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
 				"Judul":          "Angsuran",
 				"Anggota":        anggota,
@@ -1563,7 +1620,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 			})
 			return
 		}
-		idPinjaman = pinjamans[0].IDPinjaman
+		idPinjaman = pinjamanInfo.Pinjaman.IDPinjaman
 	}
 
 	// Buat angsuran baru
@@ -1854,7 +1911,7 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 
 	// Validasi metode pengambilan
 	if metodePengambilan != "transfer_bank" && metodePengambilan != "tunai" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Metode pengambilan harus dipilih"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Metode penarikan harus dipilih"})
 		return
 	}
 
@@ -1896,7 +1953,7 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 	}
 
 	if jumlah > saldoJenis {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Jumlah pengambilan melebihi saldo jenis simpanan yang dipilih"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Jumlah penarikan melebihi saldo jenis simpanan yang dipilih"})
 		return
 	}
 
@@ -1911,7 +1968,7 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 	}
 
 	// Berhasil, kirim response sukses (frontend akan redirect ke riwayat)
-	c.JSON(http.StatusOK, gin.H{"message": "Pengajuan pengambilan simpanan berhasil disubmit. Menunggu persetujuan bendahara."})
+	c.JSON(http.StatusOK, gin.H{"message": "Pengajuan penarikan simpanan berhasil disubmit. Menunggu persetujuan bendahara."})
 }
 
 // AnggotaRiwayatPage menampilkan halaman riwayat anggota dengan logo terbaru dan data riwayat gabungan

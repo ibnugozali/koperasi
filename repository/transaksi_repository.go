@@ -1034,8 +1034,25 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				THEN COALESCE((SELECT (p.jumlah_pinjaman * p.bunga / 100) / p.jangka_waktu FROM pinjaman p WHERE p.id_anggota = a.id_anggota AND p.status = 'aktif' ORDER BY p.tgl_pinjaman DESC LIMIT 1), 0)
 				ELSE 0
 			END as jasa_per_bulan
+			,
+			-- Total jasa pinjaman yang benar-benar dibayar anggota pada periode laporan
+			COALESCE((
+				SELECT SUM(
+					CASE
+						WHEN p2.jangka_waktu > 0 THEN (p2.jumlah_pinjaman * p2.bunga / 100) / p2.jangka_waktu
+						ELSE 0
+					END
+				)
+				FROM angsuran ang2
+				JOIN pinjaman p2 ON ang2.id_pinjaman = p2.id_pinjaman
+				WHERE p2.id_anggota = a.id_anggota
+				AND ($1 = 0 OR EXTRACT(MONTH FROM ang2.tgl_bayar) = $1)
+				AND EXTRACT(YEAR FROM ang2.tgl_bayar) = $2
+				AND ang2.status = 'confirmed'
+			), 0) as jasa_dibayar_periode
 		FROM anggota a
-		WHERE a.status_anggota IN ('dosen', 'karyawan')
+		WHERE a.status = 'aktif'
+		  AND a.status_anggota IN ('dosen', 'karyawan')
 		ORDER BY a.id_anggota
 	`
 
@@ -1055,7 +1072,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 		var pinjamanBulanan, totalPinjamanAktif, sisaPinjaman float64
 		var angsuranBulanan float64
 		var totalAngsuranDibayar, sisaAngsuran, jangkaWaktu int
-		var pokokPerBulan, jasaPerBulan float64
+		var pokokPerBulan, jasaPerBulan, jasaDibayarPeriode float64
 
 		if err := rows.Scan(
 			&idAnggota, &namaAnggota, &unitKerja,
@@ -1065,7 +1082,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 			&simpananSukarelaBulanan, &totalSimpananSukarela,
 			&pinjamanBulanan, &totalPinjamanAktif, &sisaPinjaman,
 			&angsuranBulanan, &totalAngsuranDibayar, &sisaAngsuran,
-			&jangkaWaktu, &pokokPerBulan, &jasaPerBulan,
+			&jangkaWaktu, &pokokPerBulan, &jasaPerBulan, &jasaDibayarPeriode,
 		); err != nil {
 			return nil, err
 		}
@@ -1097,8 +1114,50 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 		report["jasa_per_bulan"] = jasaPerBulan
 		report["jumlah_angsuran_per_bulan"] = jumlahAngsuranPerBulan
 		report["total_pembayaran"] = totalPembayaran
+		report["jasa_dibayar_periode"] = jasaDibayarPeriode
+		report["kontribusi_simpanan_shu"] = simpananPokok + totalSimpananWajib + totalSimpananHariRaya + totalSimpananSukarela
 
 		reports = append(reports, report)
+	}
+
+	// Hitung distribusi SHU:
+	// - 50% berbasis kontribusi pinjaman (jasa dibayar periode laporan)
+	// - 50% berbasis kontribusi simpanan (akumulasi simpanan anggota)
+	totalJasaPeriode := 0.0
+	totalKontribusiSimpanan := 0.0
+	for _, r := range reports {
+		if v, ok := r["jasa_dibayar_periode"].(float64); ok {
+			totalJasaPeriode += v
+		}
+		if v, ok := r["kontribusi_simpanan_shu"].(float64); ok {
+			totalKontribusiSimpanan += v
+		}
+	}
+
+	shuPoolPinjaman := totalJasaPeriode * 0.5
+	shuPoolSimpanan := totalJasaPeriode * 0.5
+	for i := range reports {
+		jasaDibayar := 0.0
+		if v, ok := reports[i]["jasa_dibayar_periode"].(float64); ok {
+			jasaDibayar = v
+		}
+		kontribusiSimpanan := 0.0
+		if v, ok := reports[i]["kontribusi_simpanan_shu"].(float64); ok {
+			kontribusiSimpanan = v
+		}
+
+		shuPinjaman := 0.0
+		if totalJasaPeriode > 0 {
+			shuPinjaman = (jasaDibayar / totalJasaPeriode) * shuPoolPinjaman
+		}
+		shuSimpanan := 0.0
+		if totalKontribusiSimpanan > 0 {
+			shuSimpanan = (kontribusiSimpanan / totalKontribusiSimpanan) * shuPoolSimpanan
+		}
+
+		reports[i]["shu_pinjaman"] = shuPinjaman
+		reports[i]["shu_simpanan"] = shuSimpanan
+		reports[i]["jumlah_shu"] = shuPinjaman + shuSimpanan
 	}
 
 	return reports, nil

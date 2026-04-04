@@ -287,7 +287,7 @@ func BendaharaDetailAjukanPengambilan(c *gin.Context) {
 	}
 	pengambilan, err := repository.GetPengambilanSimpananByID(id)
 	if err != nil {
-		c.String(http.StatusNotFound, "Data pengambilan tidak ditemukan")
+		c.String(http.StatusNotFound, "Data penarikan tidak ditemukan")
 		return
 	}
 	c.HTML(http.StatusOK, "bendahara_detail_ajukan_pengambilan.html", gin.H{
@@ -2824,6 +2824,8 @@ func BendaharaImportAnggota(c *gin.Context) {
 			return "07"
 		case strings.Contains(fakultas, "FT") || strings.Contains(fakultas, "TEKNIK"):
 			return "08"
+		case strings.Contains(fakultas, "PASKASARJANA") || strings.Contains(fakultas, "PASCASARJANA"):
+			return "10"
 		case strings.Contains(fakultas, "REKTORAT") || strings.Contains(fakultas, "YAYASAN"):
 			return "09"
 		default:
@@ -3256,6 +3258,8 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 			return "07"
 		case strings.Contains(fakultas, "FT") || strings.Contains(fakultas, "TEKNIK"):
 			return "08"
+		case strings.Contains(fakultas, "PASKASARJANA") || strings.Contains(fakultas, "PASCASARJANA"):
+			return "10"
 		case strings.Contains(fakultas, "REKTORAT") || strings.Contains(fakultas, "YAYASAN"):
 			return "09"
 		default:
@@ -3326,7 +3330,7 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 
 			// Validasi fakultas (harus bisa dimapping atau sudah 2 digit)
 			if fakultas != "" && len(fakultas) > 2 && fakultasCode == "" {
-				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Fakultas '%s' tidak valid. Gunakan: FAI, FE, FH, FISIP, FKIP, FKM, FAPERTA, FT, atau Rektorat", rowNum, fakultas))
+				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Fakultas '%s' tidak valid. Gunakan: FAI, FE, FH, FISIP, FKIP, FKM, FAPERTA, FT, Paskasarjana, atau Rektorat", rowNum, fakultas))
 				continue
 			}
 

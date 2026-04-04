@@ -68,7 +68,7 @@
                     <div class="stat-card">
                         <div class="stat-icon text-secondary"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
                         <div class="stat-number text-secondary" data-value="{{ .TotalPengambilan }}">{{ printf "%.0f" .TotalPengambilan }}</div>
-                        <div class="stat-label">Total Pengambilan Simpanan</div>
+                        <div class="stat-label">Total Penarikan Simpanan</div>
                     </div>
                 </div>
             </div>
@@ -142,7 +142,7 @@
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Total Simpanan', 'Pinjaman Aktif', 'Angsuran Terbayar', 'Pengambilan Simpanan'],
+                labels: ['Total Simpanan', 'Pinjaman Aktif', 'Angsuran Terbayar', 'Penarikan Simpanan'],
                 datasets: [{
                     label: 'Jumlah (Rp)',
                     data: [totalSimpanan, totalPinjaman, totalAngsuran, totalPengambilan],

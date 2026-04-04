@@ -42,11 +42,10 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <p><strong>NIK:</strong> {{ .Anggota.NikKTP }}</p>
                             <p><strong>Nama:</strong> {{ .Anggota.NamaAnggota }}</p>
-                            <p><strong>Unit Kerja:</strong> 
+                            <p><strong>Jabatan:</strong> 
                                 {{if eq .Anggota.UnitKerja "01"}}Dosen
-                                {{else if eq .Anggota.UnitKerja "02"}}Karyawan/Staff
+                                {{else if eq .Anggota.UnitKerja "02"}}Tenaga Pendidikan
                                 {{else if eq .Anggota.UnitKerja "03"}}Mahasiswa
                                 {{else}}Tidak Diketahui
                                 {{end}}

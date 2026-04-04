@@ -61,7 +61,7 @@
                 <div class="col-12">
                     <div class="card shadow-sm">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="fa-solid fa-chart-line me-2"></i>Aktivitas Terbaru</h5>
+                            <h5 class="mb-0"><i class="fa-solid fa-chart-bar me-2"></i>Aktivitas Terbaru</h5>
                         </div>
                         <div class="card-body">
                             <div class="mb-3 text-center">
@@ -122,39 +122,27 @@
                         label: 'Total Anggota',
                         data: getData('Anggota'),
                         borderColor: 'rgb(54, 162, 235)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                        borderWidth: 3,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        tension: 0.4,
-                        fill: true
+                        backgroundColor: 'rgba(54, 162, 235, 0.65)',
+                        borderWidth: 1
                     },
                     {
                         label: 'Total Simpanan',
                         data: getData('Simpanan'),
                         borderColor: 'rgb(75, 192, 192)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                        borderWidth: 3,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        tension: 0.4,
-                        fill: true
+                        backgroundColor: 'rgba(75, 192, 192, 0.65)',
+                        borderWidth: 1
                     },
                     {
                         label: 'Total Pinjaman',
                         data: getData('Pinjaman'),
                         borderColor: 'rgb(255, 99, 132)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                        borderWidth: 3,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        tension: 0.4,
-                        fill: true
+                        backgroundColor: 'rgba(255, 99, 132, 0.65)',
+                        borderWidth: 1
                     }
                 ];
                 const ctx = document.getElementById('activityChart').getContext('2d');
                 new Chart(ctx, {
-                    type: 'line',
+                    type: 'bar',
                     data: {
                         labels: labels,
                         datasets: datasets
@@ -180,6 +168,13 @@
                         },
                         layout: {
                             padding: 0
+                        },
+                        datasets: {
+                            bar: {
+                                borderRadius: 6,
+                                barThickness: 16,
+                                maxBarThickness: 18
+                            }
                         },
                         scales: {
                             x: {

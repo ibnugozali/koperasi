@@ -235,7 +235,7 @@ func Register(c *gin.Context) {
 	// Validasi gaji hanya untuk non-mahasiswa
 	if newAnggota.StatusAnggota != "mahasiswa" && newAnggota.GajiBulanan <= 0 {
 		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Gaji bulanan wajib diisi untuk dosen dan karyawan",
+			"error":           "Gaji bulanan wajib diisi untuk dosen dan tenaga pendidikan",
 			"NomorRekening":   nomorRekening,
 			"NominalSimpanan": nominalSimpanan,
 		})
@@ -270,6 +270,8 @@ func Register(c *gin.Context) {
 		newAnggota.FakultasCode = "07"
 	case "Fakultas Teknik (FT)":
 		newAnggota.FakultasCode = "08"
+	case "Paskasarjana", "Pascasarjana":
+		newAnggota.FakultasCode = "10"
 	case "Rektorat / Yayasan", "Rektorat / Yayasan / Staff":
 		newAnggota.FakultasCode = "09"
 	}

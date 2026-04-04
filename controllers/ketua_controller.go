@@ -1,9 +1,17 @@
 package controllers
 
 import (
+	"bytes"
+	"crypto/sha1"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
+	_ "image/jpeg"
+	"image/png"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +23,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/jung-kurt/gofpdf/v2"
+	"github.com/skip2/go-qrcode"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 
@@ -120,6 +129,421 @@ func getInt(m map[string]interface{}, key string) int {
 		}
 	}
 	return 0
+}
+
+func getLatestSignatureFilePath(role string) string {
+	role = strings.ToLower(strings.TrimSpace(role))
+	if role == "" {
+		return ""
+	}
+
+	signDir := "static/uploads/signatures"
+	files, err := os.ReadDir(signDir)
+	if err != nil {
+		return ""
+	}
+
+	var latestPath string
+	var latestTime int64
+	prefix := "ttd_" + role + "_"
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		name := strings.ToLower(file.Name())
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+
+		ext := strings.ToLower(filepath.Ext(name))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			continue
+		}
+
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+
+		mod := info.ModTime().Unix()
+		if mod > latestTime {
+			latestTime = mod
+			latestPath = filepath.Join(signDir, file.Name())
+		}
+	}
+
+	return latestPath
+}
+
+func isSupportedImageFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".jpg" || ext == ".jpeg" || ext == ".png"
+}
+
+func applyKopToExcelEveryPage(f *excelize.File, sheet, kopPath string) {
+	if strings.TrimSpace(kopPath) == "" || !isSupportedImageFile(kopPath) {
+		return
+	}
+
+	data, err := os.ReadFile(kopPath)
+	if err != nil {
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(kopPath))
+	if ext == ".jpeg" {
+		ext = ".jpg"
+	}
+
+	if err := f.AddHeaderFooterImage(sheet, &excelize.HeaderFooterImageOptions{
+		Position:  excelize.HeaderFooterImagePositionCenter,
+		File:      data,
+		Extension: ext,
+		Width:     "500pt",
+		Height:    "70pt",
+	}); err != nil {
+		return
+	}
+
+	_ = f.SetHeaderFooter(sheet, &excelize.HeaderFooterOptions{
+		OddHeader:   "&C&G",
+		FirstHeader: "&C&G",
+	})
+}
+
+func formatTanggalIndonesia(t time.Time) string {
+	bulan := []string{
+		"", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+		"Juli", "Agustus", "September", "Oktober", "November", "Desember",
+	}
+	b := bulan[int(t.Month())]
+	return fmt.Sprintf("%d %s %d", t.Day(), b, t.Year())
+}
+
+func getLatestLogoFilePath() string {
+	files, err := os.ReadDir("static/images")
+	if err != nil {
+		return ""
+	}
+
+	var latestPath string
+	var latestTime int64
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		name := strings.ToLower(file.Name())
+		if !(name == "logo.png" || strings.HasPrefix(name, "logo_")) {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(name))
+		if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
+			continue
+		}
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+		mod := info.ModTime().Unix()
+		if mod > latestTime {
+			latestTime = mod
+			latestPath = filepath.Join("static/images", file.Name())
+		}
+	}
+	return latestPath
+}
+
+func resizeImageNN(src image.Image, targetW, targetH int) *image.RGBA {
+	dst := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
+	srcBounds := src.Bounds()
+	srcW := srcBounds.Dx()
+	srcH := srcBounds.Dy()
+	if srcW <= 0 || srcH <= 0 || targetW <= 0 || targetH <= 0 {
+		return dst
+	}
+
+	for y := 0; y < targetH; y++ {
+		sy := srcBounds.Min.Y + (y*srcH)/targetH
+		for x := 0; x < targetW; x++ {
+			sx := srcBounds.Min.X + (x*srcW)/targetW
+			dst.Set(x, y, src.At(sx, sy))
+		}
+	}
+	return dst
+}
+
+func buildPublicStaticURL(c *gin.Context, filePath string) string {
+	raw := strings.TrimSpace(filePath)
+	if raw == "" {
+		return ""
+	}
+
+	normalized := strings.ReplaceAll(raw, "\\", "/")
+	normalized = strings.TrimPrefix(normalized, "./")
+
+	if strings.HasPrefix(normalized, "http://") || strings.HasPrefix(normalized, "https://") {
+		return normalized
+	}
+
+	urlPath := normalized
+	if strings.HasPrefix(normalized, "static/") {
+		urlPath = "/" + normalized
+	} else if !strings.HasPrefix(normalized, "/") {
+		urlPath = "/" + normalized
+	}
+
+	proto := "http"
+	if c.GetHeader("X-Forwarded-Proto") != "" {
+		proto = strings.Split(c.GetHeader("X-Forwarded-Proto"), ",")[0]
+		proto = strings.TrimSpace(proto)
+	} else if c.Request != nil && c.Request.TLS != nil {
+		proto = "https"
+	}
+
+	host := ""
+	if c.Request != nil {
+		host = c.Request.Host
+	}
+	if strings.TrimSpace(host) == "" {
+		host = "localhost:8081"
+	}
+
+	return fmt.Sprintf("%s://%s%s", proto, host, urlPath)
+}
+
+func generateSignatureQRCodePath(role, signerName, imageURL, logoPath string) string {
+	if strings.TrimSpace(imageURL) == "" {
+		return ""
+	}
+
+	payload := strings.TrimSpace(imageURL)
+	logoKey := ""
+	if strings.TrimSpace(logoPath) != "" {
+		if info, err := os.Stat(logoPath); err == nil {
+			logoKey = logoPath + "|" + strconv.FormatInt(info.ModTime().Unix(), 10)
+		}
+	}
+	cacheKey := payload + "|" + strings.TrimSpace(role) + "|" + strings.TrimSpace(signerName) + "|" + logoKey
+	sum := sha1.Sum([]byte(cacheKey))
+	fileName := "kopma_ttd_qr_" + hex.EncodeToString(sum[:]) + ".png"
+	qrPath := filepath.Join(os.TempDir(), fileName)
+
+	if _, err := os.Stat(qrPath); err == nil {
+		return qrPath
+	}
+
+	qrBytes, err := qrcode.Encode(payload, qrcode.Medium, 260)
+	if err != nil {
+		return ""
+	}
+
+	qrImg, _, err := image.Decode(bytes.NewReader(qrBytes))
+	if err != nil {
+		return ""
+	}
+
+	dst := image.NewRGBA(qrImg.Bounds())
+	draw.Draw(dst, dst.Bounds(), qrImg, qrImg.Bounds().Min, draw.Src)
+
+	if strings.TrimSpace(logoPath) != "" {
+		if logoFile, err := os.Open(logoPath); err == nil {
+			defer logoFile.Close()
+			if logoImg, _, err := image.Decode(logoFile); err == nil {
+				qrW := dst.Bounds().Dx()
+				qrH := dst.Bounds().Dy()
+				logoSize := qrW / 5
+				if qrH < qrW {
+					logoSize = qrH / 5
+				}
+				if logoSize > 0 {
+					resizedLogo := resizeImageNN(logoImg, logoSize, logoSize)
+					x := (qrW - logoSize) / 2
+					y := (qrH - logoSize) / 2
+
+					padding := logoSize / 8
+					bg := image.Rect(x-padding, y-padding, x+logoSize+padding, y+logoSize+padding).Intersect(dst.Bounds())
+					draw.Draw(dst, bg, &image.Uniform{C: color.White}, image.Point{}, draw.Src)
+					draw.Draw(dst, image.Rect(x, y, x+logoSize, y+logoSize), resizedLogo, image.Point{}, draw.Over)
+				}
+			}
+		}
+	}
+
+	out, err := os.Create(qrPath)
+	if err != nil {
+		return ""
+	}
+	defer out.Close()
+	if err := png.Encode(out, dst); err != nil {
+		return ""
+	}
+
+	return qrPath
+}
+
+func getSignatureDisplayNames() map[string]string {
+	db := config.GetDB()
+	getValue := func(key, def string) string {
+		var value string
+		err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = $1", key).Scan(&value)
+		if err != nil || strings.TrimSpace(value) == "" {
+			return def
+		}
+		return value
+	}
+	return map[string]string{
+		"ketua":     getValue("ttd_nama_ketua", "Ketua KOPMA"),
+		"bendahara": getValue("ttd_nama_bendahara", "Bendahara"),
+		"sekretaris": getValue("ttd_nama_sekretaris", "Sekretaris"),
+	}
+}
+
+func addSignatureBlockToExcel(f *excelize.File, sheet string, startRow int, tipeLaporan string, signatures map[string]string, names map[string]string) {
+	if startRow < 1 {
+		startRow = 1
+	}
+
+	dateStyle, _ := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "right"},
+	})
+	titleStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+	labelStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+	nameStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Underline: "single"},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+
+	tanggalLokasi := "Indramayu, " + formatTanggalIndonesia(time.Now())
+	f.SetCellValue(sheet, fmt.Sprintf("G%d", startRow), tanggalLokasi)
+	f.MergeCell(sheet, fmt.Sprintf("G%d", startRow), fmt.Sprintf("I%d", startRow))
+	f.SetCellStyle(sheet, fmt.Sprintf("G%d", startRow), fmt.Sprintf("I%d", startRow), dateStyle)
+
+	f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow+1), "Mengetahui,")
+	f.MergeCell(sheet, fmt.Sprintf("A%d", startRow+1), fmt.Sprintf("I%d", startRow+1))
+	f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow+1), fmt.Sprintf("I%d", startRow+1), titleStyle)
+
+	jabatanRow := startRow + 3
+	imgRow := startRow + 4
+	nameRow := startRow + 13
+
+	addImage := func(cell string, imagePath string) {
+		if imagePath == "" || !isSupportedImageFile(imagePath) {
+			return
+		}
+		_ = f.AddPicture(sheet, cell, imagePath, &excelize.GraphicOptions{
+			AutoFit: false,
+			ScaleX:  0.38,
+			ScaleY:  0.38,
+			OffsetX: 8,
+			OffsetY: 0,
+		})
+	}
+
+	if tipeLaporan == "tahunan" {
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", jabatanRow), "Ketua KOPMA,")
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", jabatanRow), "Bendahara,")
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", jabatanRow), "Sekretaris,")
+		f.MergeCell(sheet, fmt.Sprintf("A%d", jabatanRow), fmt.Sprintf("C%d", jabatanRow))
+		f.MergeCell(sheet, fmt.Sprintf("D%d", jabatanRow), fmt.Sprintf("F%d", jabatanRow))
+		f.MergeCell(sheet, fmt.Sprintf("G%d", jabatanRow), fmt.Sprintf("I%d", jabatanRow))
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", jabatanRow), fmt.Sprintf("I%d", jabatanRow), labelStyle)
+
+		addImage(fmt.Sprintf("A%d", imgRow), signatures["ketua"])
+		addImage(fmt.Sprintf("D%d", imgRow), signatures["bendahara"])
+		addImage(fmt.Sprintf("G%d", imgRow), signatures["sekretaris"])
+
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", nameRow), names["ketua"])
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", nameRow), names["bendahara"])
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", nameRow), names["sekretaris"])
+		f.MergeCell(sheet, fmt.Sprintf("A%d", nameRow), fmt.Sprintf("C%d", nameRow))
+		f.MergeCell(sheet, fmt.Sprintf("D%d", nameRow), fmt.Sprintf("F%d", nameRow))
+		f.MergeCell(sheet, fmt.Sprintf("G%d", nameRow), fmt.Sprintf("I%d", nameRow))
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", nameRow), fmt.Sprintf("I%d", nameRow), nameStyle)
+	} else {
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", jabatanRow), "Ketua KOPMA,")
+		f.MergeCell(sheet, fmt.Sprintf("A%d", jabatanRow), fmt.Sprintf("C%d", jabatanRow))
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", jabatanRow), fmt.Sprintf("C%d", jabatanRow), labelStyle)
+
+		addImage(fmt.Sprintf("A%d", imgRow), signatures["ketua"])
+
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", nameRow), names["ketua"])
+		f.MergeCell(sheet, fmt.Sprintf("A%d", nameRow), fmt.Sprintf("C%d", nameRow))
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", nameRow), fmt.Sprintf("C%d", nameRow), nameStyle)
+	}
+}
+
+func addSignatureBlockToPDF(pdf *gofpdf.Fpdf, tipeLaporan string, signatures map[string]string, names map[string]string) {
+	if pdf.GetY() > 230 {
+		pdf.AddPage()
+	}
+
+	pdf.Ln(8)
+	pdf.SetFont("Arial", "", 10)
+	pdf.CellFormat(190, 6, "Indramayu, "+formatTanggalIndonesia(time.Now()), "0", 1, "R", false, 0, "")
+	pdf.SetFont("Arial", "B", 11)
+	pdf.CellFormat(190, 7, "Mengetahui,", "0", 1, "C", false, 0, "")
+	pdf.Ln(2)
+
+	addSignArea := func(x, y, w float64, title, imgPath, caption string) {
+		pdf.SetXY(x, y)
+		pdf.SetFont("Arial", "B", 10)
+		pdf.CellFormat(w, 6, title, "0", 1, "C", false, 0, "")
+
+		if imgPath != "" && isSupportedImageFile(imgPath) {
+			pdf.ImageOptions(imgPath, x+(w-28)/2, y+6, 28, 0, false, gofpdf.ImageOptions{ImageType: ""}, 0, "")
+		}
+
+		pdf.SetXY(x, y+34)
+		pdf.SetFont("Arial", "BU", 9)
+		pdf.CellFormat(w, 6, caption, "0", 1, "C", false, 0, "")
+	}
+
+	baseY := pdf.GetY()
+	if tipeLaporan == "tahunan" {
+		pageLeft := 10.0
+		pageWidth := 190.0
+		sectionWidth := pageWidth / 3.0
+
+		addSignArea(pageLeft+(sectionWidth*0), baseY, sectionWidth, "Ketua KOPMA,", signatures["ketua"], names["ketua"])
+		addSignArea(pageLeft+(sectionWidth*1), baseY, sectionWidth, "Bendahara,", signatures["bendahara"], names["bendahara"])
+		addSignArea(pageLeft+(sectionWidth*2), baseY, sectionWidth, "Sekretaris,", signatures["sekretaris"], names["sekretaris"])
+		pdf.SetY(baseY + 42)
+	} else {
+		addSignArea(10, baseY, 56, "Ketua KOPMA,", signatures["ketua"], names["ketua"])
+		pdf.SetY(baseY + 42)
+	}
+}
+
+func resolveNeracaOwnerID(c *gin.Context) int {
+	// Untuk halaman/admin endpoint, pakai akun ketua aktif agar tampilan identik dengan ketua.
+	if strings.HasPrefix(c.Request.URL.Path, "/admin/") {
+		db := config.GetDB()
+		var ketuaID int
+		err := db.QueryRow("SELECT id_pengelola FROM pengelola WHERE level = 'ketua' AND status = 'aktif' ORDER BY id_pengelola ASC LIMIT 1").Scan(&ketuaID)
+		if err == nil && ketuaID > 0 {
+			return ketuaID
+		}
+		return 1
+	}
+
+	session := sessions.Default(c)
+	userID := session.Get("user_id")
+	switch v := userID.(type) {
+	case int:
+		return v
+	case string:
+		if parsed, err := strconv.Atoi(v); err == nil {
+			return parsed
+		}
+	}
+	return 1
 }
 
 // KetuaDetailAngsuran menampilkan detail angsuran berdasarkan IDAngsuran
@@ -344,6 +768,24 @@ func KetuaDownloadLaporan(c *gin.Context) {
 	if kopPath != "" && !filepath.IsAbs(kopPath) {
 		absKopPath, _ = filepath.Abs(kopPath)
 	}
+	signatures := map[string]string{
+		"ketua":     getLatestSignatureFilePath("ketua"),
+		"bendahara": getLatestSignatureFilePath("bendahara"),
+		"sekretaris": getLatestSignatureFilePath("sekretaris"),
+	}
+	signatureNames := getSignatureDisplayNames()
+	signatureDisplayImages := map[string]string{
+		"ketua":     signatures["ketua"],
+		"bendahara": signatures["bendahara"],
+		"sekretaris": signatures["sekretaris"],
+	}
+	logoPath := getLatestLogoFilePath()
+	for _, role := range []string{"ketua", "bendahara", "sekretaris"} {
+		imageURL := buildPublicStaticURL(c, signatures[role])
+		if qrPath := generateSignatureQRCodePath(role, signatureNames[role], imageURL, logoPath); qrPath != "" {
+			signatureDisplayImages[role] = qrPath
+		}
+	}
 
 	// Jika laporan tahunan, bulan tidak diperlukan
 	bulanInt := 0
@@ -399,17 +841,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 	}
 
 	if tipeLaporan == "tahunan" {
-		session := sessions.Default(c)
-		userID := session.Get("user_id")
-		userIDInt := 1
-		switch v := userID.(type) {
-		case int:
-			userIDInt = v
-		case string:
-			if parsed, err := strconv.Atoi(v); err == nil {
-				userIDInt = parsed
-			}
-		}
+		userIDInt := resolveNeracaOwnerID(c)
 
 		db := config.GetDB()
 		neracaRepo := repository.NewNeracaRepository(db)
@@ -450,20 +882,20 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				"ekuitas":         {"simpananPokok", "simpananWajib", "cadangan", "shuTahunBerjalan"},
 			}
 			defaultLabelMap := map[string]string{
-				"kas":             "Kas",
-				"bank":            "Bank",
-				"piutangAnggota":  "Piutang Anggota USP",
-				"perlengkapan":    "Perlengkapan",
-				"tanah":           "Tanah",
-				"bangunan":        "Bangunan",
-				"kendaraan":       "Kendaraan",
-				"peralatan":       "Peralatan",
-				"hutangUsaha":     "Hutang Usaha",
-				"hutangBunga":     "Hutang Bunga",
-				"simpananAnggota": "Simpanan Anggota",
-				"simpananPokok":   "Simpanan Pokok",
-				"simpananWajib":   "Simpanan Wajib",
-				"cadangan":        "Cadangan",
+				"kas":              "Kas",
+				"bank":             "Bank",
+				"piutangAnggota":   "Piutang Anggota USP",
+				"perlengkapan":     "Perlengkapan",
+				"tanah":            "Tanah",
+				"bangunan":         "Bangunan",
+				"kendaraan":        "Kendaraan",
+				"peralatan":        "Peralatan",
+				"hutangUsaha":      "Hutang Usaha",
+				"hutangBunga":      "Hutang Bunga",
+				"simpananAnggota":  "Simpanan Anggota",
+				"simpananPokok":    "Simpanan Pokok",
+				"simpananWajib":    "Simpanan Wajib",
+				"cadangan":         "Cadangan",
 				"shuTahunBerjalan": "SHU Tahun Berjalan",
 			}
 
@@ -578,6 +1010,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 
 		f := excelize.NewFile()
 		sheet := "Sheet1"
+		applyKopToExcelEveryPage(f, sheet, absKopPath)
 		// Jika ada kop PDF, skip image insert untuk Excel (PDF tidak bisa di embed ke Excel)
 		rowOffset := 1
 		if absKopPath != "" && (strings.HasSuffix(strings.ToLower(absKopPath), ".jpg") || strings.HasSuffix(strings.ToLower(absKopPath), ".jpeg") || strings.HasSuffix(strings.ToLower(absKopPath), ".png")) {
@@ -681,11 +1114,38 @@ func KetuaDownloadLaporan(c *gin.Context) {
 					{Type: "bottom", Color: "#000000", Style: 1},
 				},
 			})
+			tableLeftStyle, _ := f.NewStyle(&excelize.Style{
+				Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
+				Border: []excelize.Border{
+					{Type: "left", Color: "#000000", Style: 1},
+					{Type: "right", Color: "#000000", Style: 1},
+					{Type: "top", Color: "#000000", Style: 1},
+					{Type: "bottom", Color: "#000000", Style: 1},
+				},
+			})
+			tableCenterStyle, _ := f.NewStyle(&excelize.Style{
+				Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+				Border: []excelize.Border{
+					{Type: "left", Color: "#000000", Style: 1},
+					{Type: "right", Color: "#000000", Style: 1},
+					{Type: "top", Color: "#000000", Style: 1},
+					{Type: "bottom", Color: "#000000", Style: 1},
+				},
+			})
+			tableRightStyle, _ := f.NewStyle(&excelize.Style{
+				Alignment: &excelize.Alignment{Horizontal: "right", Vertical: "center"},
+				Border: []excelize.Border{
+					{Type: "left", Color: "#000000", Style: 1},
+					{Type: "right", Color: "#000000", Style: 1},
+					{Type: "top", Color: "#000000", Style: 1},
+					{Type: "bottom", Color: "#000000", Style: 1},
+				},
+			})
 			makeHeaderStyle := func(color string) int {
 				styleID, _ := f.NewStyle(&excelize.Style{
 					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
 					Fill:      excelize.Fill{Type: "pattern", Color: []string{color}, Pattern: 1},
-					Alignment: &excelize.Alignment{Horizontal: "center"},
+					Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
 					Border: []excelize.Border{
 						{Type: "left", Color: "#000000", Style: 1},
 						{Type: "right", Color: "#000000", Style: 1},
@@ -705,6 +1165,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 					f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], headerRow), h)
 				}
 				f.SetCellStyle(sheet, fmt.Sprintf("A%d", headerRow), fmt.Sprintf("%s%d", lastCol, headerRow), makeHeaderStyle(headerColor))
+				_ = f.SetRowHeight(sheet, headerRow, 24)
 
 				dataStart := headerRow + 1
 				if len(rows) == 0 {
@@ -717,8 +1178,22 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				for i, r := range rows {
 					cur := dataStart + i
 					for j, v := range r {
-						f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[j], cur), v)
+						cell := fmt.Sprintf("%s%d", cols[j], cur)
+						f.SetCellValue(sheet, cell, v)
+						switch {
+						case j == 0 || j == 1:
+							f.SetCellStyle(sheet, cell, cell, tableCenterStyle)
+						case j == 2:
+							f.SetCellStyle(sheet, cell, cell, tableLeftStyle)
+						case j == 3:
+							f.SetCellStyle(sheet, cell, cell, tableCenterStyle)
+						case strings.HasPrefix(strings.TrimSpace(v), "Rp "):
+							f.SetCellStyle(sheet, cell, cell, tableRightStyle)
+						default:
+							f.SetCellStyle(sheet, cell, cell, tableLeftStyle)
+						}
 					}
+					_ = f.SetRowHeight(sheet, cur, 20)
 				}
 				f.SetCellStyle(sheet, fmt.Sprintf("A%d", dataStart), fmt.Sprintf("%s%d", lastCol, dataStart+len(rows)-1), tableBorderStyle)
 				return dataStart + len(rows) + 2
@@ -1009,14 +1484,16 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			// 4) Daftar SHU Anggota
 			rowsSHU := [][]string{}
 			for i, d := range laporanDetail {
-				shuPinjaman := getFloat(d, "jasa_per_bulan")
+				shuPinjaman := getFloat(d, "shu_pinjaman")
+				shuSimpanan := getFloat(d, "shu_simpanan")
+				jumlahSHU := getFloat(d, "jumlah_shu")
 				rowsSHU = append(rowsSHU, []string{
 					fmt.Sprintf("%d", i+1),
 					toText(d["nama_anggota"]),
 					repository.GetUnitKerjaName(toText(d["unit_kerja"])),
 					toRupiah(shuPinjaman),
-					"Rp 0",
-					toRupiah(shuPinjaman),
+					toRupiah(shuSimpanan),
+					toRupiah(jumlahSHU),
 				})
 			}
 			_ = writeTable(
@@ -1033,6 +1510,8 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			f.SetColWidth(sheet, "C", "C", 24)
 			f.SetColWidth(sheet, "D", "D", 16)
 			f.SetColWidth(sheet, "E", "J", 18)
+			rowsForSign, _ := f.GetRows(sheet)
+			addSignatureBlockToExcel(f, sheet, len(rowsForSign)+3, tipeLaporan, signatureDisplayImages, signatureNames)
 
 			c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 			c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.xlsx")
@@ -1045,7 +1524,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 
 		// Untuk tahunan berbasis neraca, jangan tampilkan rincian anggota agar output konsisten dengan data neraca.
 		if !(tipeLaporan == "tahunan" && useNeracaSummary) {
-			// Ambil data anggota aktif dan potongan/sisa gaji
+			// Ambil data anggota aktif dan potongan/sisa gajian bulan ini untuk semua anggota, agar bisa buat tabel rincian per anggota di bagian bawah.
 			anggotas, err := repository.GetAllAnggota()
 			log.Printf("DEBUG Excel: GetAllAnggota err=%v, len(anggotas)=%d", err, len(anggotas))
 
@@ -1076,7 +1555,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 						"Rincian Simpanan Sukarela Tahunan",
 						"Rincian Pinjaman Tahunan",
 						"Rincian Angsuran Tahunan",
-						"Rincian Pengambilan Tahunan",
+						"Rincian Penarikan Tahunan",
 					}
 					headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
 					cols := []string{"A", "B", "C", "D", "E"}
@@ -1152,318 +1631,320 @@ func KetuaDownloadLaporan(c *gin.Context) {
 						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
 					}
 
-				// Style untuk tabel simpanan wajib
-				rincianHeaderStyle1, _ := f.NewStyle(&excelize.Style{
-					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
-					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#0d6efd"}, Pattern: 1},
-					Alignment: &excelize.Alignment{Horizontal: "center"},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
-				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("E%d", startRow), rincianHeaderStyle1)
+					// Style untuk tabel simpanan wajib
+					rincianHeaderStyle1, _ := f.NewStyle(&excelize.Style{
+						Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+						Fill:      excelize.Fill{Type: "pattern", Color: []string{"#0d6efd"}, Pattern: 1},
+						Alignment: &excelize.Alignment{Horizontal: "center"},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("E%d", startRow), rincianHeaderStyle1)
 
-				// Tabel 2: Simpanan Sukarela
-				startRow2 := startRow + len(anggotas) + 3
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow2-1), "Rincian Simpanan Sukarela Tahunan")
-				for i, h := range headers {
-					col := cols[i]
-					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow2), h)
-				}
-				for idx, anggota := range anggotas {
-					row := startRow2 + 1 + idx
-					nohp := anggota.NoTelepon
-					if !strings.HasPrefix(nohp, "+62") {
-						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					// Tabel 2: Simpanan Sukarela
+					startRow2 := startRow + len(anggotas) + 3
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow2-1), "Rincian Simpanan Sukarela Tahunan")
+					for i, h := range headers {
+						col := cols[i]
+						f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow2), h)
 					}
-					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
-					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
-					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
-					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
-					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
-				}
-				rincianHeaderStyle2, _ := f.NewStyle(&excelize.Style{
-					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
-					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#0dcaf0"}, Pattern: 1},
-					Alignment: &excelize.Alignment{Horizontal: "center"},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
-				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow2), fmt.Sprintf("E%d", startRow2), rincianHeaderStyle2)
-
-				// Tabel 3: Pinjaman
-				startRow3 := startRow2 + len(anggotas) + 3
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow3-1), "Rincian Pinjaman Tahunan")
-				for i, h := range headers {
-					col := cols[i]
-					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow3), h)
-				}
-				for idx, anggota := range anggotas {
-					row := startRow3 + 1 + idx
-					nohp := anggota.NoTelepon
-					if !strings.HasPrefix(nohp, "+62") {
-						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					for idx, anggota := range anggotas {
+						row := startRow2 + 1 + idx
+						nohp := anggota.NoTelepon
+						if !strings.HasPrefix(nohp, "+62") {
+							nohp = "+62" + strings.TrimLeft(nohp, "0")
+						}
+						sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+						f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+						f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+						f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
+						f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
 					}
-					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
-					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
-					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
-					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
-					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
-				}
-				rincianHeaderStyle3, _ := f.NewStyle(&excelize.Style{
-					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
-					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#dc3545"}, Pattern: 1},
-					Alignment: &excelize.Alignment{Horizontal: "center"},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
-				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow3), fmt.Sprintf("E%d", startRow3), rincianHeaderStyle3)
+					rincianHeaderStyle2, _ := f.NewStyle(&excelize.Style{
+						Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+						Fill:      excelize.Fill{Type: "pattern", Color: []string{"#0dcaf0"}, Pattern: 1},
+						Alignment: &excelize.Alignment{Horizontal: "center"},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow2), fmt.Sprintf("E%d", startRow2), rincianHeaderStyle2)
 
-				// Tabel 4: Angsuran
-				startRow4 := startRow3 + len(anggotas) + 3
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow4-1), "Rincian Angsuran Tahunan")
-				for i, h := range headers {
-					col := cols[i]
-					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow4), h)
-				}
-				for idx, anggota := range anggotas {
-					row := startRow4 + 1 + idx
-					nohp := anggota.NoTelepon
-					if !strings.HasPrefix(nohp, "+62") {
-						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					// Tabel 3: Pinjaman
+					startRow3 := startRow2 + len(anggotas) + 3
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow3-1), "Rincian Pinjaman Tahunan")
+					for i, h := range headers {
+						col := cols[i]
+						f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow3), h)
 					}
-					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
-					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
-					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
-					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
-					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
-				}
-				rincianHeaderStyle4, _ := f.NewStyle(&excelize.Style{
-					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
-					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#198754"}, Pattern: 1},
-					Alignment: &excelize.Alignment{Horizontal: "center"},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
-				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow4), fmt.Sprintf("E%d", startRow4), rincianHeaderStyle4)
-
-				// Tabel 5: Pengambilan
-				startRow5 := startRow4 + len(anggotas) + 3
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow5-1), "Rincian Pengambilan Tahunan")
-				for i, h := range headers {
-					col := cols[i]
-					f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow5), h)
-				}
-				for idx, anggota := range anggotas {
-					row := startRow5 + 1 + idx
-					nohp := anggota.NoTelepon
-					if !strings.HasPrefix(nohp, "+62") {
-						nohp = "+62" + strings.TrimLeft(nohp, "0")
+					for idx, anggota := range anggotas {
+						row := startRow3 + 1 + idx
+						nohp := anggota.NoTelepon
+						if !strings.HasPrefix(nohp, "+62") {
+							nohp = "+62" + strings.TrimLeft(nohp, "0")
+						}
+						sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+						f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+						f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+						f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
+						f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
 					}
-					sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
-					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
-					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
-					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
-					f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
-				}
-				rincianHeaderStyle5, _ := f.NewStyle(&excelize.Style{
-					Font:      &excelize.Font{Bold: true, Color: "#000000"},
-					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#ffc107"}, Pattern: 1},
-					Alignment: &excelize.Alignment{Horizontal: "center"},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
-				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow5), fmt.Sprintf("E%d", startRow5), rincianHeaderStyle5)
-			} else {
-				// Laporan bulanan - Tabel Rincian Laporan Bulanan
-				log.Printf("DEBUG Excel: Membuat tabel Rincian Laporan Bulanan (dengan data %d anggota) di startRow=%d", len(anggotas), startRow)
+					rincianHeaderStyle3, _ := f.NewStyle(&excelize.Style{
+						Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+						Fill:      excelize.Fill{Type: "pattern", Color: []string{"#dc3545"}, Pattern: 1},
+						Alignment: &excelize.Alignment{Horizontal: "center"},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow3), fmt.Sprintf("E%d", startRow3), rincianHeaderStyle3)
 
-				// Set lebar kolom yang proporsional
-				f.SetColWidth(sheet, "A", "A", 5)  // No
-				f.SetColWidth(sheet, "B", "B", 10) // Kode
-				f.SetColWidth(sheet, "C", "C", 25) // Nama
-				f.SetColWidth(sheet, "D", "D", 20) // Unit
-				f.SetColWidth(sheet, "E", "E", 15) // Nominal Pinjaman
-				f.SetColWidth(sheet, "F", "F", 10) // Tenor
-				f.SetColWidth(sheet, "G", "G", 13) // Pokok Pinjaman
-				f.SetColWidth(sheet, "H", "H", 13) // Jasa
-				f.SetColWidth(sheet, "I", "I", 13) // Jumlah
-				f.SetColWidth(sheet, "J", "J", 13) // Angsuran ke-1
-				f.SetColWidth(sheet, "K", "K", 13) // Angsuran ke-2
-				f.SetColWidth(sheet, "L", "L", 13) // Sisa Pinjaman
-				f.SetColWidth(sheet, "M", "M", 12) // Pokok
-				f.SetColWidth(sheet, "N", "N", 12) // Wajib
-				f.SetColWidth(sheet, "O", "O", 13) // Jumlah Wajib
-				f.SetColWidth(sheet, "P", "P", 15) // Simpanan Hari Raya
-				f.SetColWidth(sheet, "Q", "Q", 18) // Jumlah Simpanan Hari Raya
-				f.SetColWidth(sheet, "R", "R", 12) // Sukarela
-				f.SetColWidth(sheet, "S", "S", 15) // Jumlah Sukarela
-				f.SetColWidth(sheet, "T", "T", 15) // Jumlah Pembayaran
-
-				f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Bulanan")
-				// Header baris 1 (dengan merge cells untuk grup Pinjaman dan Simpanan)
-				headers1 := []string{"No", "Kode", "Nama", "Unit", "Pinjaman", "", "", "", "", "", "", "", "Simpanan", "", "", "", "", "", "", "Jumlah Pembayaran"}
-				cols := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"}
-
-				// Set header baris 1
-				for i, h := range headers1 {
-					if h != "" {
-						f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], startRow), h)
+					// Tabel 4: Angsuran
+					startRow4 := startRow3 + len(anggotas) + 3
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow4-1), "Rincian Angsuran Tahunan")
+					for i, h := range headers {
+						col := cols[i]
+						f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow4), h)
 					}
-				}
+					for idx, anggota := range anggotas {
+						row := startRow4 + 1 + idx
+						nohp := anggota.NoTelepon
+						if !strings.HasPrefix(nohp, "+62") {
+							nohp = "+62" + strings.TrimLeft(nohp, "0")
+						}
+						sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+						f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+						f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+						f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
+						f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+					}
+					rincianHeaderStyle4, _ := f.NewStyle(&excelize.Style{
+						Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+						Fill:      excelize.Fill{Type: "pattern", Color: []string{"#198754"}, Pattern: 1},
+						Alignment: &excelize.Alignment{Horizontal: "center"},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow4), fmt.Sprintf("E%d", startRow4), rincianHeaderStyle4)
 
-				// Merge cells untuk kolom yang span
-				f.MergeCell(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("A%d", startRow+1)) // No
-				f.MergeCell(sheet, fmt.Sprintf("B%d", startRow), fmt.Sprintf("B%d", startRow+1)) // Kode
-				f.MergeCell(sheet, fmt.Sprintf("C%d", startRow), fmt.Sprintf("C%d", startRow+1)) // Nama
-				f.MergeCell(sheet, fmt.Sprintf("D%d", startRow), fmt.Sprintf("D%d", startRow+1)) // Unit
-				f.MergeCell(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("L%d", startRow))   // Pinjaman (colspan 8)
-				f.MergeCell(sheet, fmt.Sprintf("M%d", startRow), fmt.Sprintf("S%d", startRow))   // Simpanan (colspan 7)
-				f.MergeCell(sheet, fmt.Sprintf("T%d", startRow), fmt.Sprintf("T%d", startRow+1)) // Jumlah Pembayaran
+					// Tabel 5: Pengambilan
+					startRow5 := startRow4 + len(anggotas) + 3
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow5-1), "Rincian Penarikan Tahunan")
+					for i, h := range headers {
+						col := cols[i]
+						f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, startRow5), h)
+					}
+					for idx, anggota := range anggotas {
+						row := startRow5 + 1 + idx
+						nohp := anggota.NoTelepon
+						if !strings.HasPrefix(nohp, "+62") {
+							nohp = "+62" + strings.TrimLeft(nohp, "0")
+						}
+						sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+						f.SetCellValue(sheet, fmt.Sprintf("A%d", row), anggota.NamaAnggota)
+						f.SetCellValue(sheet, fmt.Sprintf("B%d", row), nohp)
+						f.SetCellValue(sheet, fmt.Sprintf("C%d", row), repository.GetUnitKerjaName(anggota.UnitKerja))
+						f.SetCellValue(sheet, fmt.Sprintf("D%d", row), int64(anggota.GajiBulanan))
+						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), int64(sisaGaji))
+					}
+					rincianHeaderStyle5, _ := f.NewStyle(&excelize.Style{
+						Font:      &excelize.Font{Bold: true, Color: "#000000"},
+						Fill:      excelize.Fill{Type: "pattern", Color: []string{"#ffc107"}, Pattern: 1},
+						Alignment: &excelize.Alignment{Horizontal: "center"},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow5), fmt.Sprintf("E%d", startRow5), rincianHeaderStyle5)
+				} else {
+					// Laporan bulanan - Tabel Rincian Laporan Bulanan
+					log.Printf("DEBUG Excel: Membuat tabel Rincian Laporan Bulanan (dengan data %d anggota) di startRow=%d", len(anggotas), startRow)
 
-				// Header baris 2 (detail kolom)
-				headers2 := []string{"", "", "", "", "Nominal Pinjaman", "Periode/Tenor", "Pokok Pinjaman", "Jasa", "Jumlah", "Angsuran ke-1", "Angsuran ke-2", "Sisa Pinjaman", "Pokok", "Wajib", "Jumlah Wajib", "Simpanan Hari Raya", "Jumlah Simpanan Hari Raya", "Sukarela", "Jumlah Sukarela", ""}
-				for i := 4; i < len(headers2)-1; i++ { // Skip kolom yang sudah di-merge (0-3 dan 19)
-					f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], startRow+1), headers2[i])
-				}
+					// Set lebar kolom yang proporsional
+					f.SetColWidth(sheet, "A", "A", 5)  // No
+					f.SetColWidth(sheet, "B", "B", 10) // Kode
+					f.SetColWidth(sheet, "C", "C", 25) // Nama
+					f.SetColWidth(sheet, "D", "D", 20) // Unit
+					f.SetColWidth(sheet, "E", "E", 15) // Nominal Pinjaman
+					f.SetColWidth(sheet, "F", "F", 10) // Tenor
+					f.SetColWidth(sheet, "G", "G", 13) // Pokok Pinjaman
+					f.SetColWidth(sheet, "H", "H", 13) // Jasa
+					f.SetColWidth(sheet, "I", "I", 13) // Jumlah
+					f.SetColWidth(sheet, "J", "J", 13) // Angsuran ke-1
+					f.SetColWidth(sheet, "K", "K", 13) // Angsuran ke-2
+					f.SetColWidth(sheet, "L", "L", 13) // Sisa Pinjaman
+					f.SetColWidth(sheet, "M", "M", 12) // Pokok
+					f.SetColWidth(sheet, "N", "N", 12) // Wajib
+					f.SetColWidth(sheet, "O", "O", 13) // Jumlah Wajib
+					f.SetColWidth(sheet, "P", "P", 15) // Simpanan Hari Raya
+					f.SetColWidth(sheet, "Q", "Q", 18) // Jumlah Simpanan Hari Raya
+					f.SetColWidth(sheet, "R", "R", 12) // Sukarela
+					f.SetColWidth(sheet, "S", "S", 15) // Jumlah Sukarela
+					f.SetColWidth(sheet, "T", "T", 15) // Jumlah Pembayaran
 
-				// Style untuk data
-				dataCenterStyle, _ := f.NewStyle(&excelize.Style{
-					Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
-				dataLeftStyle, _ := f.NewStyle(&excelize.Style{
-					Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
-				dataRightStyle, _ := f.NewStyle(&excelize.Style{
-					Alignment: &excelize.Alignment{Horizontal: "right", Vertical: "center"},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
+					f.SetCellValue(sheet, fmt.Sprintf("A%d", startRow-1), "Rincian Laporan Bulanan")
+					// Header baris 1 (dengan merge cells untuk grup Pinjaman dan Simpanan)
+					headers1 := []string{"No", "Kode", "Nama", "Unit", "Pinjaman", "", "", "", "", "", "", "", "Simpanan", "", "", "", "", "", "", "Jumlah Pembayaran"}
+					cols := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"}
 
-				// Data
-				for idx, anggota := range anggotas {
-					row := startRow + 2 + idx
-					unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
-
-					// Ambil data detail untuk anggota ini (jika tersedia)
-					var detail map[string]interface{}
-					if idx < len(laporanDetail) {
-						detail = laporanDetail[idx]
+					// Set header baris 1
+					for i, h := range headers1 {
+						if h != "" {
+							f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], startRow), h)
+						}
 					}
 
-					// Kolom identitas
-					f.SetCellValue(sheet, fmt.Sprintf("A%d", row), idx+1)
-					f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), dataCenterStyle)
+					// Merge cells untuk kolom yang span
+					f.MergeCell(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("A%d", startRow+1)) // No
+					f.MergeCell(sheet, fmt.Sprintf("B%d", startRow), fmt.Sprintf("B%d", startRow+1)) // Kode
+					f.MergeCell(sheet, fmt.Sprintf("C%d", startRow), fmt.Sprintf("C%d", startRow+1)) // Nama
+					f.MergeCell(sheet, fmt.Sprintf("D%d", startRow), fmt.Sprintf("D%d", startRow+1)) // Unit
+					f.MergeCell(sheet, fmt.Sprintf("E%d", startRow), fmt.Sprintf("L%d", startRow))   // Pinjaman (colspan 8)
+					f.MergeCell(sheet, fmt.Sprintf("M%d", startRow), fmt.Sprintf("S%d", startRow))   // Simpanan (colspan 7)
+					f.MergeCell(sheet, fmt.Sprintf("T%d", startRow), fmt.Sprintf("T%d", startRow+1)) // Jumlah Pembayaran
 
-					f.SetCellValue(sheet, fmt.Sprintf("B%d", row), anggota.IDAnggota)
-					f.SetCellStyle(sheet, fmt.Sprintf("B%d", row), fmt.Sprintf("B%d", row), dataCenterStyle)
+					// Header baris 2 (detail kolom)
+					headers2 := []string{"", "", "", "", "Nominal Pinjaman", "Periode/Tenor", "Pokok Pinjaman", "Jasa", "Jumlah", "Angsuran ke-1", "Angsuran ke-2", "Sisa Pinjaman", "Pokok", "Wajib", "Jumlah Wajib", "Simpanan Hari Raya", "Jumlah Simpanan Hari Raya", "Sukarela", "Jumlah Sukarela", ""}
+					for i := 4; i < len(headers2)-1; i++ { // Skip kolom yang sudah di-merge (0-3 dan 19)
+						f.SetCellValue(sheet, fmt.Sprintf("%s%d", cols[i], startRow+1), headers2[i])
+					}
 
-					f.SetCellValue(sheet, fmt.Sprintf("C%d", row), anggota.NamaAnggota)
-					f.SetCellStyle(sheet, fmt.Sprintf("C%d", row), fmt.Sprintf("C%d", row), dataLeftStyle)
+					// Style untuk data
+					dataCenterStyle, _ := f.NewStyle(&excelize.Style{
+						Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
+					dataLeftStyle, _ := f.NewStyle(&excelize.Style{
+						Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
+					dataRightStyle, _ := f.NewStyle(&excelize.Style{
+						Alignment: &excelize.Alignment{Horizontal: "right", Vertical: "center"},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
 
-					f.SetCellValue(sheet, fmt.Sprintf("D%d", row), unitKerjaName)
-					f.SetCellStyle(sheet, fmt.Sprintf("D%d", row), fmt.Sprintf("D%d", row), dataLeftStyle)
+					// Data
+					for idx, anggota := range anggotas {
+						row := startRow + 2 + idx
+						unitKerjaName := repository.GetUnitKerjaName(anggota.UnitKerja)
 
-					// Kolom Pinjaman (E-L) - menggunakan data dari laporanDetail
-					if detail != nil {
-						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("Rp %.0f", detail["pinjaman_bulanan"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("%v bulan", detail["jangka_waktu"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("F%d", row), dataCenterStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("Rp %.0f", detail["pokok_per_bulan"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("G%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("H%d", row), fmt.Sprintf("Rp %.0f", detail["jasa_per_bulan"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("H%d", row), fmt.Sprintf("H%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("Rp %.0f", detail["jumlah_angsuran_per_bulan"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("I%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("J%d", row), fmt.Sprintf("%v", detail["total_angsuran_dibayar"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("J%d", row), fmt.Sprintf("J%d", row), dataCenterStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("%v", detail["sisa_angsuran"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("K%d", row), dataCenterStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("L%d", row), fmt.Sprintf("Rp %.0f", detail["sisa_pinjaman"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("L%d", row), fmt.Sprintf("L%d", row), dataRightStyle)
-
-						// Kolom Simpanan (M-S)
-						f.SetCellValue(sheet, fmt.Sprintf("M%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_pokok"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("M%d", row), fmt.Sprintf("M%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("N%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_wajib_bulanan"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("N%d", row), fmt.Sprintf("N%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("O%d", row), fmt.Sprintf("Rp %.0f", detail["total_simpanan_wajib"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("O%d", row), fmt.Sprintf("O%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("P%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_hariraya_bulanan"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("P%d", row), fmt.Sprintf("P%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("Q%d", row), fmt.Sprintf("Rp %.0f", detail["total_simpanan_hariraya"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("Q%d", row), fmt.Sprintf("Q%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("R%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_sukarela_bulanan"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("R%d", row), fmt.Sprintf("R%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("S%d", row), fmt.Sprintf("Rp %.0f", detail["total_simpanan_sukarela"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("S%d", row), fmt.Sprintf("S%d", row), dataRightStyle)
-
-						// Jumlah Pembayaran
-						f.SetCellValue(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("Rp %.0f", detail["total_pembayaran"]))
-						f.SetCellStyle(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("T%d", row), dataRightStyle)
-					} else {
-						// Default values jika tidak ada detail
-						f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Rp 0")
-						f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), dataRightStyle)
-
-						f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "0 bulan")
-						f.SetCellStyle(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("F%d", row), dataCenterStyle)
-
-						for col := 'G'; col <= 'L'; col++ {
-							f.SetCellValue(sheet, fmt.Sprintf("%c%d", col, row), "Rp 0")
-							f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), dataRightStyle)
+						// Ambil data detail untuk anggota ini (jika tersedia)
+						var detail map[string]interface{}
+						if idx < len(laporanDetail) {
+							detail = laporanDetail[idx]
 						}
 
-						// Kolom Simpanan (M-S)
-						for col := 'M'; col <= 'S'; col++ {
-							f.SetCellValue(sheet, fmt.Sprintf("%c%d", col, row), "Rp 0")
-							f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), dataRightStyle)
+						// Kolom identitas
+						f.SetCellValue(sheet, fmt.Sprintf("A%d", row), idx+1)
+						f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), dataCenterStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("B%d", row), anggota.IDAnggota)
+						f.SetCellStyle(sheet, fmt.Sprintf("B%d", row), fmt.Sprintf("B%d", row), dataCenterStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("C%d", row), anggota.NamaAnggota)
+						f.SetCellStyle(sheet, fmt.Sprintf("C%d", row), fmt.Sprintf("C%d", row), dataLeftStyle)
+
+						f.SetCellValue(sheet, fmt.Sprintf("D%d", row), unitKerjaName)
+						f.SetCellStyle(sheet, fmt.Sprintf("D%d", row), fmt.Sprintf("D%d", row), dataLeftStyle)
+
+						// Kolom Pinjaman (E-L) - menggunakan data dari laporanDetail
+						if detail != nil {
+							f.SetCellValue(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("Rp %.0f", detail["pinjaman_bulanan"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("%v bulan", detail["jangka_waktu"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("F%d", row), dataCenterStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("Rp %.0f", detail["pokok_per_bulan"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("G%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("H%d", row), fmt.Sprintf("Rp %.0f", detail["jasa_per_bulan"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("H%d", row), fmt.Sprintf("H%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("Rp %.0f", detail["jumlah_angsuran_per_bulan"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("I%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("J%d", row), fmt.Sprintf("%v", detail["total_angsuran_dibayar"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("J%d", row), fmt.Sprintf("J%d", row), dataCenterStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("%v", detail["sisa_angsuran"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("K%d", row), dataCenterStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("L%d", row), fmt.Sprintf("Rp %.0f", detail["sisa_pinjaman"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("L%d", row), fmt.Sprintf("L%d", row), dataRightStyle)
+
+							// Kolom Simpanan (M-S)
+							f.SetCellValue(sheet, fmt.Sprintf("M%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_pokok"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("M%d", row), fmt.Sprintf("M%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("N%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_wajib_bulanan"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("N%d", row), fmt.Sprintf("N%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("O%d", row), fmt.Sprintf("Rp %.0f", detail["total_simpanan_wajib"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("O%d", row), fmt.Sprintf("O%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("P%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_hariraya_bulanan"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("P%d", row), fmt.Sprintf("P%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("Q%d", row), fmt.Sprintf("Rp %.0f", detail["total_simpanan_hariraya"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("Q%d", row), fmt.Sprintf("Q%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("R%d", row), fmt.Sprintf("Rp %.0f", detail["simpanan_sukarela_bulanan"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("R%d", row), fmt.Sprintf("R%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("S%d", row), fmt.Sprintf("Rp %.0f", detail["total_simpanan_sukarela"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("S%d", row), fmt.Sprintf("S%d", row), dataRightStyle)
+
+							// Jumlah Pembayaran
+							f.SetCellValue(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("Rp %.0f", detail["total_pembayaran"]))
+							f.SetCellStyle(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("T%d", row), dataRightStyle)
+						} else {
+							// Default values jika tidak ada detail
+							f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Rp 0")
+							f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), dataRightStyle)
+
+							f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "0 bulan")
+							f.SetCellStyle(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("F%d", row), dataCenterStyle)
+
+							for col := 'G'; col <= 'L'; col++ {
+								f.SetCellValue(sheet, fmt.Sprintf("%c%d", col, row), "Rp 0")
+								f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), dataRightStyle)
+							}
+
+							// Kolom Simpanan (M-S)
+							for col := 'M'; col <= 'S'; col++ {
+								f.SetCellValue(sheet, fmt.Sprintf("%c%d", col, row), "Rp 0")
+								f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), dataRightStyle)
+							}
+
+							// Jumlah Pembayaran
+							f.SetCellValue(sheet, fmt.Sprintf("T%d", row), "Rp 0")
+							f.SetCellStyle(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("T%d", row), dataRightStyle)
 						}
-
-						// Jumlah Pembayaran
-						f.SetCellValue(sheet, fmt.Sprintf("T%d", row), "Rp 0")
-						f.SetCellStyle(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("T%d", row), dataRightStyle)
 					}
+					// Style header rincian
+					rincianHeaderStyle, _ := f.NewStyle(&excelize.Style{
+						Font:      &excelize.Font{Bold: true, Color: "#FFFFFF", Size: 10},
+						Fill:      excelize.Fill{Type: "pattern", Color: []string{"#17a2b8"}, Pattern: 1},
+						Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
+
+					// Set style untuk semua header
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("T%d", startRow+1), rincianHeaderStyle)
+
+					// Set tinggi baris header
+					f.SetRowHeight(sheet, startRow, 25)
+					f.SetRowHeight(sheet, startRow+1, 25)
+
+					rincianDataStyle, _ := f.NewStyle(&excelize.Style{
+						Alignment: &excelize.Alignment{Horizontal: "left"},
+						Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
+					})
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("T%d", startRow+1), rincianHeaderStyle)
+					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow+2), fmt.Sprintf("T%d", startRow+1+len(anggotas)), rincianDataStyle)
+					f.SetColWidth(sheet, "A", "T", 18)
 				}
-				// Style header rincian
-				rincianHeaderStyle, _ := f.NewStyle(&excelize.Style{
-					Font:      &excelize.Font{Bold: true, Color: "#FFFFFF", Size: 10},
-					Fill:      excelize.Fill{Type: "pattern", Color: []string{"#17a2b8"}, Pattern: 1},
-					Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
-
-				// Set style untuk semua header
-				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("T%d", startRow+1), rincianHeaderStyle)
-
-				// Set tinggi baris header
-				f.SetRowHeight(sheet, startRow, 25)
-				f.SetRowHeight(sheet, startRow+1, 25)
-
-				rincianDataStyle, _ := f.NewStyle(&excelize.Style{
-					Alignment: &excelize.Alignment{Horizontal: "left"},
-					Border:    []excelize.Border{{Type: "left", Color: "#000000", Style: 1}, {Type: "right", Color: "#000000", Style: 1}, {Type: "top", Color: "#000000", Style: 1}, {Type: "bottom", Color: "#000000", Style: 1}},
-				})
-				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow), fmt.Sprintf("T%d", startRow+1), rincianHeaderStyle)
-				f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow+2), fmt.Sprintf("T%d", startRow+1+len(anggotas)), rincianDataStyle)
-				f.SetColWidth(sheet, "A", "T", 18)
 			}
 		}
-		}
 		// Set header untuk download
+		rowsForSign, _ := f.GetRows(sheet)
+		addSignatureBlockToExcel(f, sheet, len(rowsForSign)+3, tipeLaporan, signatureDisplayImages, signatureNames)
 		c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 		c.Header("Content-Disposition", "attachment; filename=laporan_koperasi.xlsx")
 		c.Header("Content-Transfer-Encoding", "binary")
@@ -1527,25 +2008,20 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			}
 		}
 
-		// Set orientation based on report type
-		var orientation string
-		var pageWidth float64
-		if tipeLaporan == "bulanan" {
-			orientation = "L" // Landscape for monthly reports
-			pageWidth = 277
-		} else {
-			orientation = "P" // Portrait for annual reports
-			pageWidth = 190
-		}
+		// Gunakan portrait untuk semua jenis laporan agar output konsisten.
+		orientation := "P"
+		pageWidth := 190.0
 
 		pdf := gofpdf.New(orientation, "mm", "A4", "")
-		pdf.AddPage()
-
-		// Jika ada kop gambar, sisipkan di bagian atas
-		if kopPath != "" {
-			pdf.ImageOptions(kopPath, 10, 10, pageWidth, 0, false, gofpdf.ImageOptions{ImageType: ""}, 0, "")
-			pdf.Ln(45) // Tambah jarak agar data tidak bertumpuk dengan kop surat
+		if kopPath != "" && isSupportedImageFile(kopPath) {
+			kopForHeader := kopPath
+			pdf.SetHeaderFuncMode(func() {
+				pdf.ImageOptions(kopForHeader, 10, 8, pageWidth, 0, false, gofpdf.ImageOptions{ImageType: ""}, 0, "")
+				pdf.SetY(50)
+			}, true)
+			pdf.SetTopMargin(52)
 		}
+		pdf.AddPage()
 
 		// PDF header, keterangan, dan data laporan
 		pdf.SetFont("Arial", "B", 16)
@@ -1586,8 +2062,8 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				{"Total Pinjaman", report["total_pinjaman"].(float64)},
 				{"Total Angsuran", report["total_angsuran"].(float64)},
 				{"Total Pengeluaran", totalPengeluaran},
-				}
 			}
+		}
 		// Hitung lebar kolom maksimal
 		pdf.SetFont("Arial", "B", 11)
 		maxLabelWidth := pdf.GetStringWidth("Keterangan")
@@ -1825,8 +2301,10 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				for _, row := range rows {
 					for i, v := range row {
 						align := "L"
-						if i == 0 {
+						if i == 0 || i == 1 {
 							align = "C"
+						} else if i >= 4 {
+							align = "R"
 						}
 						pdf.CellFormat(widths[i], 7, v, "1", 0, align, false, 0, "")
 					}
@@ -1838,7 +2316,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			for i, d := range laporanDetail {
 				rowsSimpanan = append(rowsSimpanan, []string{
 					fmt.Sprintf("%d", i+1),
-					toText(d["id_anggota"]),
+					" " + toText(d["id_anggota"]),
 					toText(d["nama_anggota"]),
 					repository.GetUnitKerjaName(toText(d["unit_kerja"])),
 					toRp(getFloat(d, "simpanan_pokok")),
@@ -1852,7 +2330,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			writePDFTable(
 				"Daftar Simpanan Anggota",
 				[]string{"No", "ID", "Nama", "Unit", "Pokok", "Wajib", "HR", "Umroh", "Qurban", "Sukarela"},
-				[]float64{8, 18, 34, 22, 15, 15, 15, 15, 15, 33},
+				[]float64{6, 20, 27, 12, 18, 18, 18, 18, 18, 35},
 				rowsSimpanan,
 				13, 110, 253,
 			)
@@ -1897,14 +2375,16 @@ func KetuaDownloadLaporan(c *gin.Context) {
 
 			rowsSHU := [][]string{}
 			for i, d := range laporanDetail {
-				shuPinjaman := getFloat(d, "jasa_per_bulan")
+				shuPinjaman := getFloat(d, "shu_pinjaman")
+				shuSimpanan := getFloat(d, "shu_simpanan")
+				jumlahSHU := getFloat(d, "jumlah_shu")
 				rowsSHU = append(rowsSHU, []string{
 					fmt.Sprintf("%d", i+1),
 					toText(d["nama_anggota"]),
 					repository.GetUnitKerjaName(toText(d["unit_kerja"])),
 					toRp(shuPinjaman),
-					"Rp 0",
-					toRp(shuPinjaman),
+					toRp(shuSimpanan),
+					toRp(jumlahSHU),
 				})
 			}
 			writePDFTable(
@@ -1914,6 +2394,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				rowsSHU,
 				25, 135, 84,
 			)
+			addSignatureBlockToPDF(pdf, tipeLaporan, signatureDisplayImages, signatureNames)
 
 			c.Header("Content-Type", "application/pdf")
 			c.Header("Content-Disposition", "attachment; filename=laporan_koperasi_tahunan_"+fmt.Sprintf("%d", tahunInt)+".pdf")
@@ -1940,167 +2421,206 @@ func KetuaDownloadLaporan(c *gin.Context) {
 
 			// Selalu buat tabel rincian meskipun tidak ada data
 			if err != nil || len(anggotas) == 0 {
-			// Tidak ada data anggota
-			if tipeLaporan == "tahunan" {
-				tableNames := []string{
-					"Rincian Simpanan Wajib Tahunan",
-					"Rincian Simpanan Sukarela Tahunan",
-					"Rincian Pinjaman Tahunan",
-					"Rincian Angsuran Tahunan",
-					"Rincian Pengambilan Tahunan",
-				}
-				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
-
-				for _, tableName := range tableNames {
-					pdf.Ln(6)
-					pdf.SetFont("Arial", "B", 12)
-					pdf.CellFormat(190, 8, tableName, "0", 1, "L", false, 0, "")
-					pdf.Ln(1)
-					pdf.SetFont("Arial", "B", 10)
-					for _, h := range headers {
-						pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
+				// Tidak ada data anggota
+				if tipeLaporan == "tahunan" {
+					tableNames := []string{
+						"Rincian Simpanan Wajib Tahunan",
+						"Rincian Simpanan Sukarela Tahunan",
+						"Rincian Pinjaman Tahunan",
+						"Rincian Angsuran Tahunan",
+						"Rincian Penarikan Tahunan",
 					}
-					pdf.Ln(-1)
+					headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+
+					for _, tableName := range tableNames {
+						pdf.Ln(6)
+						pdf.SetFont("Arial", "B", 12)
+						pdf.CellFormat(190, 8, tableName, "0", 1, "L", false, 0, "")
+						pdf.Ln(1)
+						pdf.SetFont("Arial", "B", 10)
+						for _, h := range headers {
+							pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
+						}
+						pdf.Ln(-1)
+						pdf.SetFont("Arial", "", 10)
+						pdf.CellFormat(190, 7, "Tidak ada data anggota", "1", 1, "C", false, 0, "")
+					}
+				} else {
+					// Laporan bulanan: Tabel Rincian Laporan Bulanan
+					pdf.Ln(10)
+					pdf.SetFont("Arial", "B", 12)
+					pdf.CellFormat(pageWidth, 8, "Rincian Laporan Bulanan", "0", 1, "L", false, 0, "")
+					pdf.Ln(2)
 					pdf.SetFont("Arial", "", 10)
-					pdf.CellFormat(190, 7, "Tidak ada data anggota", "1", 1, "C", false, 0, "")
+					pdf.CellFormat(pageWidth, 7, "Tidak ada data anggota", "1", 1, "C", false, 0, "")
 				}
 			} else {
-				// Laporan bulanan: Tabel Rincian Laporan Bulanan (already in landscape)
-				pdf.Ln(10)
-				pdf.SetFont("Arial", "B", 12)
-				pdf.CellFormat(pageWidth, 8, "Rincian Laporan Bulanan", "0", 1, "L", false, 0, "")
-				pdf.Ln(2)
-				pdf.SetFont("Arial", "", 10)
-				pdf.CellFormat(pageWidth, 7, "Tidak ada data anggota", "1", 1, "C", false, 0, "")
-			}
-			} else {
-			// Ada data anggota
+				// Ada data anggota
 
 				if tipeLaporan == "tahunan" {
-				// Laporan tahunan: 5 tabel terpisah
-				headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
-				tableNames := []string{
-					"Rincian Simpanan Wajib Tahunan",
-					"Rincian Simpanan Sukarela Tahunan",
-					"Rincian Pinjaman Tahunan",
-					"Rincian Angsuran Tahunan",
-					"Rincian Pengambilan Tahunan",
-				}
-
-				for _, tableName := range tableNames {
-					pdf.Ln(6)
-					pdf.SetFont("Arial", "B", 12)
-					pdf.CellFormat(190, 8, tableName, "0", 1, "L", false, 0, "")
-					pdf.Ln(1)
-					pdf.SetFont("Arial", "B", 10)
-					for _, h := range headers {
-						pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
+					// Laporan tahunan: 5 tabel terpisah
+					headers := []string{"Anggota", "No. HP", "Jenis Unit", "Gaji Bulanan", "Sisa Gaji"}
+					tableNames := []string{
+						"Rincian Simpanan Wajib Tahunan",
+						"Rincian Simpanan Sukarela Tahunan",
+						"Rincian Pinjaman Tahunan",
+						"Rincian Angsuran Tahunan",
+						"Rincian Penarikan Tahunan",
 					}
-					pdf.Ln(-1)
-					pdf.SetFont("Arial", "", 10)
-					for _, anggota := range anggotas {
-						nohp := anggota.NoTelepon
-						if !strings.HasPrefix(nohp, "+62") {
-							nohp = "+62" + strings.TrimLeft(nohp, "0")
+
+					for _, tableName := range tableNames {
+						pdf.Ln(6)
+						pdf.SetFont("Arial", "B", 12)
+						pdf.CellFormat(190, 8, tableName, "0", 1, "L", false, 0, "")
+						pdf.Ln(1)
+						pdf.SetFont("Arial", "B", 10)
+						for _, h := range headers {
+							pdf.CellFormat(38, 7, h, "1", 0, "C", true, 0, "")
 						}
-						sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
-						pdf.CellFormat(38, 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
-						pdf.CellFormat(38, 7, nohp, "1", 0, "L", false, 0, "")
-						pdf.CellFormat(38, 7, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "L", false, 0, "")
-						pdf.CellFormat(38, 7, fmt.Sprintf("%d", anggota.GajiBulanan), "1", 0, "L", false, 0, "")
-						pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 1, "L", false, 0, "")
+						pdf.Ln(-1)
+						pdf.SetFont("Arial", "", 10)
+						for _, anggota := range anggotas {
+							nohp := anggota.NoTelepon
+							if !strings.HasPrefix(nohp, "+62") {
+								nohp = "+62" + strings.TrimLeft(nohp, "0")
+							}
+							sisaGaji := float64(anggota.GajiBulanan) - potonganBulanIni[anggota.IDAnggota]
+							pdf.CellFormat(38, 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
+							pdf.CellFormat(38, 7, nohp, "1", 0, "L", false, 0, "")
+							pdf.CellFormat(38, 7, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "L", false, 0, "")
+							pdf.CellFormat(38, 7, fmt.Sprintf("%d", anggota.GajiBulanan), "1", 0, "L", false, 0, "")
+							pdf.CellFormat(38, 7, fmt.Sprintf("%.0f", sisaGaji), "1", 1, "L", false, 0, "")
+						}
 					}
-				}
 				} else {
-				// Laporan bulanan: Tabel Rincian Laporan Bulanan (already in landscape mode)
-				pdf.Ln(10)
-				pdf.SetFont("Arial", "B", 14)
-				pdf.CellFormat(pageWidth, 10, "Rincian Laporan Bulanan", "0", 1, "C", false, 0, "")
-				pdf.Ln(2)
+					// Laporan bulanan: 2 tabel matching web (Pinjaman + Simpanan) dengan lebar kolom konsisten.
+					pdf.Ln(10)
 
-				// Header baris 1 dengan merged cells dan label sesuai web
-				pdf.SetFont("Arial", "B", 7)
-				pdf.SetFillColor(23, 162, 184) // Info color
-				pdf.SetTextColor(255, 255, 255)
-
-				colWidths := []float64{8, 12, 30, 18, 14, 10, 13, 11, 13, 13, 13, 13, 11, 11, 13, 16, 20, 13, 16, 16}
-
-				// Baris 1: Header dengan span
-				headers1 := []string{"No", "Kode", "Nama", "Unit"}
-				for i, h := range headers1 {
-					pdf.CellFormat(colWidths[i], 7, h, "1", 0, "C", true, 0, "")
-				}
-				// Pinjaman (colspan 8)
-				pinjamanWidth := colWidths[4] + colWidths[5] + colWidths[6] + colWidths[7] + colWidths[8] + colWidths[9] + colWidths[10] + colWidths[11]
-				pdf.CellFormat(pinjamanWidth, 7, "Pinjaman", "1", 0, "C", true, 0, "")
-				// Simpanan (colspan 7)
-				simpananWidth := colWidths[12] + colWidths[13] + colWidths[14] + colWidths[15] + colWidths[16] + colWidths[17] + colWidths[18]
-				pdf.CellFormat(simpananWidth, 7, "Simpanan", "1", 0, "C", true, 0, "")
-				// Jumlah Pembayaran
-				pdf.CellFormat(colWidths[19], 7, "Jumlah Bayar", "1", 1, "C", true, 0, "")
-
-				// Baris 2: Detail headers sesuai label web
-				pdf.CellFormat(colWidths[0], 7, "", "1", 0, "", true, 0, "")
-				pdf.CellFormat(colWidths[1], 7, "", "1", 0, "", true, 0, "")
-				pdf.CellFormat(colWidths[2], 7, "", "1", 0, "", true, 0, "")
-				pdf.CellFormat(colWidths[3], 7, "", "1", 0, "", true, 0, "")
-
-				// Detail Pinjaman
-				pinjamanHeaders := []string{"Nominal", "Tenor", "Pokok", "Jasa", "Jumlah", "Total Angs", "Sisa Angs", "Sisa"}
-				for i, h := range pinjamanHeaders {
-					pdf.CellFormat(colWidths[4+i], 7, h, "1", 0, "C", true, 0, "")
-				}
-
-				// Detail Simpanan
-				simpananHeaders := []string{"Pokok", "Wajib", "Ttl Wajib", "HR", "Ttl HR", "Sukarela", "Ttl Sukar"}
-				for i, h := range simpananHeaders {
-					pdf.CellFormat(colWidths[12+i], 7, h, "1", 0, "C", true, 0, "")
-				}
-
-				// Skip kolom Jumlah Pembayaran (sudah di-set di baris 1)
-				// pdf.CellFormat(colWidths[19], 0, "", "", 1, "", false, 0, "")
-				pdf.CellFormat(colWidths[19], 7, "", "1", 0, "", true, 0, "")
-
-				// Tambahkan baris baru setelah header agar tidak bertumpuk
-				pdf.Ln(7)
-
-				// Data rows
-				pdf.SetFont("Arial", "", 8) // Font sedikit lebih besar
-				pdf.SetTextColor(0, 0, 0)
-				for idx, anggota := range anggotas {
-					pdf.CellFormat(colWidths[0], 7, fmt.Sprintf("%d", idx+1), "1", 0, "C", false, 0, "")
-					pdf.CellFormat(colWidths[1], 7, anggota.IDAnggota, "1", 0, "C", false, 0, "")
-					pdf.CellFormat(colWidths[2], 7, anggota.NamaAnggota, "1", 0, "L", false, 0, "")
-					pdf.CellFormat(colWidths[3], 7, repository.GetUnitKerjaName(anggota.UnitKerja), "1", 0, "C", false, 0, "")
-					var detail map[string]interface{}
-					if idx < len(laporanDetail) {
-						detail = laporanDetail[idx]
+					asText := func(v interface{}) string {
+						if v == nil {
+							return ""
+						}
+						return fmt.Sprintf("%v", v)
 					}
-					// Data Pinjaman
-					pdf.CellFormat(colWidths[4], 7, formatRupiah(getFloat(detail, "pinjaman_bulanan")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[5], 7, fmt.Sprintf("%v", getInt(detail, "jangka_waktu")), "1", 0, "C", false, 0, "")
-					pdf.CellFormat(colWidths[6], 7, formatRupiah(getFloat(detail, "pokok_per_bulan")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[7], 7, formatRupiah(getFloat(detail, "jasa_per_bulan")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[8], 7, formatRupiah(getFloat(detail, "jumlah_angsuran_per_bulan")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[9], 7, fmt.Sprintf("%v", getInt(detail, "total_angsuran_dibayar")), "1", 0, "C", false, 0, "")
-					pdf.CellFormat(colWidths[10], 7, fmt.Sprintf("%v", getInt(detail, "sisa_angsuran")), "1", 0, "C", false, 0, "")
-					pdf.CellFormat(colWidths[11], 7, formatRupiah(getFloat(detail, "sisa_pinjaman")), "1", 0, "R", false, 0, "")
-					// Data Simpanan
-					pdf.CellFormat(colWidths[12], 7, formatRupiah(getFloat(detail, "simpanan_pokok")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[13], 7, formatRupiah(getFloat(detail, "simpanan_wajib_bulanan")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[14], 7, formatRupiah(getFloat(detail, "total_simpanan_wajib")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[15], 7, formatRupiah(getFloat(detail, "simpanan_hariraya_bulanan")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[16], 7, formatRupiah(getFloat(detail, "total_simpanan_hariraya")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[17], 7, formatRupiah(getFloat(detail, "simpanan_sukarela_bulanan")), "1", 0, "R", false, 0, "")
-					pdf.CellFormat(colWidths[18], 7, formatRupiah(getFloat(detail, "total_simpanan_sukarela")), "1", 0, "R", false, 0, "")
-					// Jumlah Pembayaran
-					pdf.CellFormat(colWidths[19], 7, formatRupiah(getFloat(detail, "total_pembayaran")), "1", 1, "R", false, 0, "")
-					pdf.Ln(1) // Tambahkan jarak antar baris
-				}
+					toCompactRp := func(v float64) string {
+						return strings.TrimPrefix(formatRupiah(v), "Rp ")
+					}
+					normalizeCell := func(text string) string {
+						if strings.TrimSpace(text) == "" {
+							return "-"
+						}
+						return text
+					}
+					writeWrappedRow := func(values []string, widths []float64, aligns []string, lineHeight float64, fill bool) {
+						startX := pdf.GetX()
+						startY := pdf.GetY()
+						maxLines := 1
+						for i, v := range values {
+							cellText := normalizeCell(v)
+							cellLines := pdf.SplitLines([]byte(cellText), widths[i]-1)
+							if len(cellLines) > maxLines {
+								maxLines = len(cellLines)
+							}
+						}
+
+						rowHeight := float64(maxLines) * lineHeight
+						if pdf.GetY()+rowHeight > 280 {
+							pdf.AddPage()
+							startX = pdf.GetX()
+							startY = pdf.GetY()
+						}
+
+						currX := startX
+						for i, v := range values {
+							align := "L"
+							if i < len(aligns) {
+								align = aligns[i]
+							}
+							pdf.SetXY(currX, startY)
+							pdf.MultiCell(widths[i], lineHeight, normalizeCell(v), "1", align, fill)
+							currX += widths[i]
+							pdf.SetXY(currX, startY)
+						}
+						pdf.SetXY(startX, startY+rowHeight)
+					}
+
+					writeTableHeader := func(headers []string, widths []float64) {
+						pdf.SetFont("Arial", "B", 7)
+						pdf.SetFillColor(23, 162, 184)
+						pdf.SetTextColor(255, 255, 255)
+						for i, h := range headers {
+							pdf.CellFormat(widths[i], 6, h, "1", 0, "C", true, 0, "")
+						}
+						pdf.Ln(-1)
+						pdf.SetFont("Arial", "", 7)
+						pdf.SetTextColor(0, 0, 0)
+					}
+
+					writeTableRow := func(values []string, widths []float64, aligns []string) {
+						writeWrappedRow(values, widths, aligns, 4.0, false)
+					}
+					// TABLE 1: RINCIAN PINJAMAN
+					pdf.SetFont("Arial", "B", 12)
+					pdf.CellFormat(pageWidth, 8, "Rincian Pinjaman", "0", 1, "L", false, 0, "")
+					pdf.Ln(2)
+
+					pinjamColWidths := []float64{7, 28, 32, 13, 18, 10, 18, 12, 16, 9, 11, 16} // total 190 (portrait)
+					pinjamHeaders := []string{"No", "Kode", "Nama", "Unit", "Nominal", "Tenor", "Pokok", "Jasa", "Jumlah", "Angs.", "S.A.", "S.P."}
+					pinjamAligns := []string{"C", "C", "L", "C", "R", "C", "R", "R", "R", "C", "C", "R"}
+					writeTableHeader(pinjamHeaders, pinjamColWidths)
+					for idx, detail := range laporanDetail {
+						row := []string{
+							fmt.Sprintf("%d", idx+1),
+							asText(detail["id_anggota"]),
+							asText(detail["nama_anggota"]),
+							repository.GetUnitKerjaName(asText(detail["unit_kerja"])),
+							toCompactRp(getFloat(detail, "pinjaman_bulanan")),
+							fmt.Sprintf("%d", getInt(detail, "jangka_waktu")),
+							toCompactRp(getFloat(detail, "pokok_per_bulan")),
+							toCompactRp(getFloat(detail, "jasa_per_bulan")),
+							toCompactRp(getFloat(detail, "jumlah_angsuran_per_bulan")),
+							fmt.Sprintf("%d", getInt(detail, "total_angsuran_dibayar")),
+							fmt.Sprintf("%d", getInt(detail, "sisa_angsuran")),
+							toCompactRp(getFloat(detail, "sisa_pinjaman")),
+						}
+						writeTableRow(row, pinjamColWidths, pinjamAligns)
+					}
+
+					// TABLE 2: RINCIAN SIMPANAN
+					if pdf.GetY()+70 > 270 {
+						pdf.AddPage()
+					}
+					pdf.Ln(8)
+					pdf.SetFont("Arial", "B", 12)
+					pdf.CellFormat(pageWidth, 8, "Rincian Simpanan", "0", 1, "L", false, 0, "")
+					pdf.Ln(2)
+
+					simpanColWidths := []float64{7, 29, 27, 13, 11, 11, 14, 13, 16, 13, 13, 23} // total 190 (portrait)
+					simpanHeaders := []string{"No", "Kode", "Nama", "Unit", "Pokok", "Wajib", "Jml Wajib", "Simp. HR", "Jml HR", "Suk.", "Jml Suk.", "Jml Bayar"}
+					simpanAligns := []string{"C", "C", "L", "C", "R", "R", "R", "R", "R", "R", "R", "R"}
+					writeTableHeader(simpanHeaders, simpanColWidths)
+					for idx, detail := range laporanDetail {
+						row := []string{
+							fmt.Sprintf("%d", idx+1),
+							asText(detail["id_anggota"]),
+							asText(detail["nama_anggota"]),
+							repository.GetUnitKerjaName(asText(detail["unit_kerja"])),
+							toCompactRp(getFloat(detail, "simpanan_pokok")),
+							toCompactRp(getFloat(detail, "simpanan_wajib_bulanan")),
+							toCompactRp(getFloat(detail, "total_simpanan_wajib")),
+							toCompactRp(getFloat(detail, "simpanan_hariraya_bulanan")),
+							toCompactRp(getFloat(detail, "total_simpanan_hariraya")),
+							toCompactRp(getFloat(detail, "simpanan_sukarela_bulanan")),
+							toCompactRp(getFloat(detail, "total_simpanan_sukarela")),
+							toCompactRp(getFloat(detail, "total_pembayaran")),
+						}
+						writeTableRow(row, simpanColWidths, simpanAligns)
+					}
 				}
 			}
 		}
 		// Set header untuk download
+		addSignatureBlockToPDF(pdf, tipeLaporan, signatureDisplayImages, signatureNames)
 		c.Header("Content-Type", "application/pdf")
 		if tipeLaporan == "tahunan" {
 			c.Header("Content-Disposition", "attachment; filename=laporan_koperasi_tahunan_"+fmt.Sprintf("%d", tahunInt)+".pdf")
@@ -2595,27 +3115,20 @@ func KetuaLaporan(c *gin.Context) {
 	report, err := repository.GetLaporanKeuangan(bulan, tahun)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "ketua_laporan.html", gin.H{
-			"ActivePage":  "laporan",
-			"Error":       "Gagal mengambil laporan",
-			"CurrentLogo": latestLogo,
-			"Bulan":       bulan,
-			"Tahun":       tahun,
+			"ActivePage":      "laporan",
+			"Error":           "Gagal mengambil laporan",
+			"CurrentLogo":     latestLogo,
+			"Bulan":           bulan,
+			"Tahun":           tahun,
+			"LaporanBasePath": "/ketua/laporan",
+			"UseAdminLayout":  false,
+			"ReadOnlyMode":    false,
 		})
 		return
 	}
 
 	// Ambil data neraca dari repository
-	session := sessions.Default(c)
-	userID := session.Get("user_id")
-	var userIDInt int
-	switch v := userID.(type) {
-	case int:
-		userIDInt = v
-	case string:
-		userIDInt = 1 // Default ketua ID
-	default:
-		userIDInt = 1
-	}
+	userIDInt := resolveNeracaOwnerID(c)
 	db := config.GetDB()
 	neracaRepo := repository.NewNeracaRepository(db)
 	neraca, _ := neracaRepo.GetNeraca(userIDInt)
@@ -2669,6 +3182,9 @@ func KetuaLaporan(c *gin.Context) {
 		"success":          successMsg,
 		"NeracaData2024":   data2024,
 		"NeracaData2023":   data2023,
+		"LaporanBasePath":  "/ketua/laporan",
+		"UseAdminLayout":   false,
+		"ReadOnlyMode":     false,
 	})
 }
 
@@ -2956,39 +3472,6 @@ func KetuaRejectAnggotaKeluar(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/ketua/konfirmasi?success=Permohonan keluar berhasil ditolak")
 }
 
-// KetuaUploadKop handles kop surat upload for ketua
-func KetuaUploadKop(c *gin.Context) {
-	// Parse form file
-	file, err := c.FormFile("kop_file")
-	if err != nil {
-		c.String(http.StatusBadRequest, "Gagal menerima file kop: %v", err)
-		return
-	}
-	// Buat folder jika belum ada
-	kopDir := "static/uploads/kop/"
-	if err := os.MkdirAll(kopDir, os.ModePerm); err != nil {
-		c.String(http.StatusInternalServerError, "Gagal membuat folder kop: %v", err)
-		return
-	}
-	// Izinkan file gambar (jpg, jpeg, png) untuk kop surat
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
-		c.String(http.StatusBadRequest, "Hanya file gambar (JPG, JPEG, PNG) yang diperbolehkan untuk kop surat!")
-		return
-	}
-	filename := fmt.Sprintf("kop_%d%s", time.Now().Unix(), ext)
-	savePath := filepath.Join(kopDir, filename)
-	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		c.String(http.StatusInternalServerError, "Gagal menyimpan file kop: %v", err)
-		return
-	}
-	// Simpan path kop ke session atau database jika perlu (sementara ke session)
-	session := sessions.Default(c)
-	session.Set("kop_path", savePath)
-	session.Save()
-	c.Redirect(http.StatusFound, "/ketua/laporan?success=Kop surat berhasil diupload")
-}
-
 // KetuaSaveNeraca saves neraca data to database
 func KetuaSaveNeraca(c *gin.Context) {
 	session := sessions.Default(c)
@@ -3007,19 +3490,7 @@ func KetuaSaveNeraca(c *gin.Context) {
 	db := config.GetDB()
 	neracaRepo := repository.NewNeracaRepository(db)
 
-	// Convert userID to int safely
-	var userIDInt int
-	switch v := userID.(type) {
-	case int:
-		userIDInt = v
-	case string:
-		// For ketua, user_id is stored as string (id_pengelola)
-		// We can use a default value or fetch from pengelola table
-		userIDInt = 1 // Default ketua ID
-	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
-		return
-	}
+	userIDInt := resolveNeracaOwnerID(c)
 
 	err := neracaRepo.SaveNeraca(&req, userIDInt)
 	if err != nil {
@@ -3046,17 +3517,7 @@ func KetuaGetNeraca(c *gin.Context) {
 	db := config.GetDB()
 	neracaRepo := repository.NewNeracaRepository(db)
 
-	// Convert userID to int safely
-	var userIDInt int
-	switch v := userID.(type) {
-	case int:
-		userIDInt = v
-	case string:
-		userIDInt = 1 // Default ketua ID
-	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
-		return
-	}
+	userIDInt := resolveNeracaOwnerID(c)
 
 	neraca, err := neracaRepo.GetNeraca(userIDInt)
 	if err != nil {
@@ -3251,7 +3712,7 @@ func KetuaDetailAjukanPengambilan(c *gin.Context) {
 
 	pengambilan, err := repository.GetPengambilanSimpananByID(id)
 	if err != nil {
-		c.String(http.StatusNotFound, "Data pengambilan tidak ditemukan")
+		c.String(http.StatusNotFound, "Data penarikan tidak ditemukan")
 		return
 	}
 
