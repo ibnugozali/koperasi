@@ -1,10 +1,16 @@
 package controllers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -87,7 +93,7 @@ func ShowLoginPage(c *gin.Context) {
 
 	if status == "success_register" {
 		c.HTML(http.StatusOK, "login.html", gin.H{
-			"success":     "Pendaftaran berhasil! Silakan tunggu konfirmasi dari admin sebelum login.",
+			"success":     "Pendaftaran berhasil! Silakan tunggu konfirmasi dari ketua sebelum login.",
 			"LogoPath":    logoPath,
 			"CurrentLogo": latestLogo,
 			"Konten":      kontak,
@@ -119,9 +125,27 @@ func ShowRegisterPage(c *gin.Context) {
 		nominalSimpanan = "100000" // Default jika belum diset
 	}
 
+	// Ambil nomor ketua dari konten halaman hubungi_kami (fallback ke telepon admin)
+	ketuaTelepon := ""
+	halaman, errHalaman := repository.GetHalamanBySlug("hubungi_kami")
+	if errHalaman == nil {
+		var kontak map[string]interface{}
+		if json.Unmarshal([]byte(halaman.Konten), &kontak) == nil {
+			if v, ok := kontak["telepon_ketua"].(string); ok {
+				ketuaTelepon = strings.TrimSpace(v)
+			}
+			if ketuaTelepon == "" {
+				if v, ok := kontak["telepon"].(string); ok {
+					ketuaTelepon = strings.TrimSpace(v)
+				}
+			}
+		}
+	}
+
 	c.HTML(http.StatusOK, "register.html", gin.H{
 		"NomorRekening":   nomorRekening,
 		"NominalSimpanan": nominalSimpanan,
+		"KetuaTelepon":    ketuaTelepon,
 	})
 }
 
@@ -142,6 +166,32 @@ func Register(c *gin.Context) {
 		nominalSimpanan = "100000" // Default jika belum diset
 	}
 
+	// Ambil nomor ketua dari konten halaman hubungi_kami (fallback ke telepon admin)
+	ketuaTelepon := ""
+	halaman, errHalaman := repository.GetHalamanBySlug("hubungi_kami")
+	if errHalaman == nil {
+		var kontak map[string]interface{}
+		if json.Unmarshal([]byte(halaman.Konten), &kontak) == nil {
+			if v, ok := kontak["telepon_ketua"].(string); ok {
+				ketuaTelepon = strings.TrimSpace(v)
+			}
+			if ketuaTelepon == "" {
+				if v, ok := kontak["telepon"].(string); ok {
+					ketuaTelepon = strings.TrimSpace(v)
+				}
+			}
+		}
+	}
+
+	renderRegisterError := func(status int, message string) {
+		c.HTML(status, "register.html", gin.H{
+			"error":           message,
+			"NomorRekening":   nomorRekening,
+			"NominalSimpanan": nominalSimpanan,
+			"KetuaTelepon":    ketuaTelepon,
+		})
+	}
+
 	var newAnggota models.Anggota
 
 	// Bind form data manually for multipart/form-data
@@ -159,14 +209,14 @@ func Register(c *gin.Context) {
 	newAnggota.JenisKelamin = c.PostForm("JenisKelamin")
 	newAnggota.StatusAnggota = c.PostForm("StatusAnggota")
 	newAnggota.Fakultas = c.PostForm("Fakultas")
+	metodePembayaran := c.PostForm("MetodePembayaran")
+	if metodePembayaran == "" {
+		metodePembayaran = "transfer"
+	}
 
 	// Validasi: Username dan No. Telepon tidak boleh sama
 	if newAnggota.Username == newAnggota.NoTelepon {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Nama Pengguna dan No. Telepon tidak boleh sama.",
-			"NomorRekening":   nomorRekening,
-			"NominalSimpanan": nominalSimpanan,
-		})
+		renderRegisterError(http.StatusBadRequest, "Nama Pengguna dan No. Telepon tidak boleh sama.")
 		return
 	}
 
@@ -174,11 +224,7 @@ func Register(c *gin.Context) {
 	var count int
 	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2", newAnggota.Username, newAnggota.NoTelepon).Scan(&count)
 	if err == nil && count > 0 {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Nama Pengguna atau No. Telepon sudah terdaftar. Silakan gunakan data lain.",
-			"NomorRekening":   nomorRekening,
-			"NominalSimpanan": nominalSimpanan,
-		})
+		renderRegisterError(http.StatusBadRequest, "Nama Pengguna atau No. Telepon sudah terdaftar. Silakan gunakan data lain.")
 		return
 	}
 
@@ -195,50 +241,45 @@ func Register(c *gin.Context) {
 		}
 	}
 
-	// Handle file upload
-	file, err := c.FormFile("BuktiTransfer")
-	if err != nil {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Bukti transfer wajib diupload",
-			"NomorRekening":   nomorRekening,
-			"NominalSimpanan": nominalSimpanan,
-		})
-		return
-	}
+	// Metode pembayaran simpanan pokok: transfer atau potong gaji
+	switch metodePembayaran {
+	case "transfer":
+		file, err := c.FormFile("BuktiTransfer")
+		if err != nil {
+			renderRegisterError(http.StatusBadRequest, "Bukti transfer wajib diupload jika memilih metode transfer.")
+			return
+		}
 
-	// Save the uploaded file
-	filename := time.Now().Format("20060102150405") + "_" + file.Filename
-	dst := "./static/uploads/" + filename
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.HTML(http.StatusInternalServerError, "register.html", gin.H{
-			"error":           "Gagal menyimpan file",
-			"NomorRekening":   nomorRekening,
-			"NominalSimpanan": nominalSimpanan,
-		})
+		filename := time.Now().Format("20060102150405") + "_" + file.Filename
+		dst := "./static/uploads/" + filename
+		if err := c.SaveUploadedFile(file, dst); err != nil {
+			renderRegisterError(http.StatusInternalServerError, "Gagal menyimpan file")
+			return
+		}
+		newAnggota.BuktiTransfer = filename
+	case "potong_gaji":
+		if newAnggota.StatusAnggota == "mahasiswa" {
+			renderRegisterError(http.StatusBadRequest, "Metode potong gaji hanya untuk anggota dengan gaji. Untuk mahasiswa gunakan transfer.")
+			return
+		}
+		newAnggota.BuktiTransfer = "POTONG_GAJI"
+	default:
+		renderRegisterError(http.StatusBadRequest, "Metode pembayaran tidak valid.")
 		return
 	}
-	newAnggota.BuktiTransfer = filename
 
 	// Validate required fields
 	if newAnggota.NamaAnggota == "" || newAnggota.Username == "" || newAnggota.Password == "" ||
 		newAnggota.TglLahir == "" || newAnggota.NoTelepon == "" ||
 		newAnggota.Alamat == "" || newAnggota.JenisKelamin == "" || newAnggota.StatusAnggota == "" ||
 		newAnggota.Fakultas == "" {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Semua field wajib diisi dengan benar",
-			"NomorRekening":   nomorRekening,
-			"NominalSimpanan": nominalSimpanan,
-		})
+		renderRegisterError(http.StatusBadRequest, "Semua field wajib diisi dengan benar")
 		return
 	}
 
 	// Validasi gaji hanya untuk non-mahasiswa
 	if newAnggota.StatusAnggota != "mahasiswa" && newAnggota.GajiBulanan <= 0 {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"error":           "Gaji bulanan wajib diisi untuk dosen dan tenaga pendidikan",
-			"NomorRekening":   nomorRekening,
-			"NominalSimpanan": nominalSimpanan,
-		})
+		renderRegisterError(http.StatusBadRequest, "Gaji bulanan wajib diisi untuk dosen dan tenaga pendidikan")
 		return
 	}
 
@@ -287,11 +328,164 @@ func Register(c *gin.Context) {
 	if err != nil {
 		// Tambahkan log error ke console/server log
 		println("[REGISTER ERROR]", err.Error())
-		c.HTML(http.StatusInternalServerError, "register.html", gin.H{"error": "Gagal menyimpan data: " + err.Error()})
+		renderRegisterError(http.StatusInternalServerError, "Gagal menyimpan data: "+err.Error())
 		return
 	}
 
+	// Notifikasi otomatis ke WhatsApp Ketua (jika gateway dikonfigurasi)
+	appBaseURL := resolveAppBaseURL(c, db)
+	if err := sendKetuaWhatsAppNotification(ketuaTelepon, newAnggota, metodePembayaran, appBaseURL); err != nil {
+		log.Printf("[WA NOTIF] gagal kirim notifikasi ketua: %v", err)
+	}
+
 	c.Redirect(http.StatusFound, "/login?status=success_register")
+}
+
+// sendKetuaWhatsAppNotification mengirim notifikasi pendaftaran baru ke WA Ketua.
+// Gunakan env:
+// - WA_GATEWAY_TOKEN (wajib)
+// - WA_GATEWAY_URL (opsional, default: https://api.fonnte.com/send)
+func resolveAppBaseURL(c *gin.Context, db *sql.DB) string {
+	baseURL := strings.TrimSpace(os.Getenv("APP_BASE_URL"))
+	if baseURL == "" {
+		var baseFromDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'app_base_url'").Scan(&baseFromDB); err == nil {
+			baseURL = strings.TrimSpace(baseFromDB)
+		}
+	}
+	if baseURL == "" && c != nil && c.Request != nil {
+		scheme := "http"
+		if c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
+			scheme = "https"
+		}
+		if host := strings.TrimSpace(c.Request.Host); host != "" {
+			baseURL = scheme + "://" + host
+		}
+	}
+	baseURL = strings.TrimRight(baseURL, "/")
+	return baseURL
+}
+
+func sendKetuaWhatsAppNotification(rawKetuaPhone string, anggota models.Anggota, metodePembayaran string, appBaseURL string) error {
+	db := config.GetDB()
+	token := strings.TrimSpace(os.Getenv("WA_GATEWAY_TOKEN"))
+	if token == "" {
+		var tokenDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_token'").Scan(&tokenDB); err == nil {
+			token = strings.TrimSpace(tokenDB)
+		}
+	}
+	if token == "" {
+		return fmt.Errorf("WA_GATEWAY_TOKEN belum diset (env/db)")
+	}
+
+	ketuaPhone := strings.TrimSpace(rawKetuaPhone)
+	if ketuaPhone == "" {
+		return fmt.Errorf("nomor ketua kosong")
+	}
+	ketuaPhone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", "+", "").Replace(ketuaPhone)
+	if strings.HasPrefix(ketuaPhone, "0") {
+		ketuaPhone = "62" + ketuaPhone[1:]
+	} else if !strings.HasPrefix(ketuaPhone, "62") {
+		ketuaPhone = "62" + ketuaPhone
+	}
+
+	waURL := strings.TrimSpace(os.Getenv("WA_GATEWAY_URL"))
+	if waURL == "" {
+		var urlDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_url'").Scan(&urlDB); err == nil {
+			waURL = strings.TrimSpace(urlDB)
+		}
+	}
+	if waURL == "" {
+		waURL = "https://api.fonnte.com/send"
+	}
+
+	metode := "Transfer"
+	if metodePembayaran == "potong_gaji" {
+		metode = "Potong Gaji"
+	}
+
+	message := "Notifikasi pendaftaran calon anggota baru:\n" +
+		"- Nama: " + anggota.NamaAnggota + "\n" +
+		"- Username: " + anggota.Username + "\n" +
+		"- No Telepon: +62" + anggota.NoTelepon + "\n" +
+		"- Jabatan: " + anggota.StatusAnggota + "\n" +
+		"- Unit Kerja: " + anggota.Fakultas + "\n" +
+		"- Metode Simpanan Pokok: " + metode + "\n"
+
+	if strings.TrimSpace(appBaseURL) == "" {
+		appBaseURL = "http://localhost:8081"
+	}
+	linkKonfirmasiKetua := strings.TrimRight(appBaseURL, "/") + "/ketua/konfirmasi"
+
+	message += "Silakan cek menu konfirmasi anggota:\n" + linkKonfirmasiKetua
+
+	form := url.Values{"target": {ketuaPhone}, "message": {message}}
+	jsonBody, _ := json.Marshal(map[string]string{
+		"target":  ketuaPhone,
+		"message": message,
+	})
+
+	type waAttempt struct {
+		name        string
+		contentType string
+		body        string
+		auth        string
+	}
+
+	attempts := []waAttempt{
+		{name: "form/raw-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: token},
+		{name: "form/bearer-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: "Bearer " + token},
+		{name: "json/raw-token", contentType: "application/json", body: string(jsonBody), auth: token},
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	var lastErr error
+
+	for _, at := range attempts {
+		req, err := http.NewRequest(http.MethodPost, waURL, strings.NewReader(at.body))
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("Content-Type", at.contentType)
+		req.Header.Set("Authorization", at.auth)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			log.Printf("[WA NOTIF] attempt=%s error=%v", at.name, err)
+			continue
+		}
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		log.Printf("[WA NOTIF] attempt=%s status=%d response=%s", at.name, resp.StatusCode, bodyStr)
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			lastErr = fmt.Errorf("gateway status %d", resp.StatusCode)
+			continue
+		}
+
+		var parsed map[string]interface{}
+		if json.Unmarshal(bodyBytes, &parsed) == nil {
+			if okVal, exists := parsed["status"]; exists {
+				if okBool, ok := okVal.(bool); ok && !okBool {
+					lastErr = fmt.Errorf("gateway reject: %s", bodyStr)
+					continue
+				}
+			}
+		}
+
+		return nil
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("semua percobaan kirim WA gagal")
 }
 
 // Login memproses otentikasi pengguna.

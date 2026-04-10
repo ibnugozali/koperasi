@@ -27,20 +27,23 @@ document.addEventListener('DOMContentLoaded', function(){
 {{end}}
 
 <!-- Info Limit Pinjaman -->
-<div class="alert alert-info" role="alert">
-    <h5>Informasi Kemampuan Bayar</h5>
+<div class="alert alert-info mb-3" role="alert">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <h5 class="mb-0">Informasi Kemampuan Bayar</h5>
+        <span class="fw-bold">Pinjaman</span>
+    </div>
     <p><strong>Jenis Anggota:</strong> {{ .JenisAnggota }}</p>
     <p><strong>Total Simpanan:</strong> Rp {{ if .TotalSimpanan }}{{ printf "%.0f" .TotalSimpanan }}{{ else }}0{{ end }}</p>
     <p id="limit_info">
         {{if eq .JenisAnggota "Mahasiswa"}}
             <strong>Kemampuan Bayar:</strong> Rp {{ printf "%.0f" .LimitPinjaman }} (5x total simpanan)
-        {{else if eq .JenisAnggota "Dosen/Staff"}}
+        {{else if eq .JenisAnggota "Dosen/Tenaga Pendidikan"}}
             <strong>Kemampuan Bayar:</strong> Dihitung berdasarkan gaji bulanan dan tenor
         {{else}}
             <strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan
         {{end}}
     </p>
-    <p id="bunga_info"><strong>Bunga:</strong> {{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}% (flat)</p>
+    <p id="bunga_info" class="mb-0"><strong>Bunga:</strong> {{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}% (flat)</p>
 </div>
 
 {{ if .Success }}
@@ -231,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gajiContainer.style.display = 'none';
         gajiInput.required = false;
         gajiInput.value = '';
-    } else { // Dosen atau Karyawan/Staff
+    } else { // Dosen atau Tenaga Pendidikan
         gajiContainer.style.display = 'block';
         gajiInput.required = true;
     }
@@ -287,14 +290,10 @@ function calculateAngsuran() {
     if (unitKerjaValue === '03') { // Mahasiswa
         jenisAnggota = 'Mahasiswa';
         limitPinjaman = 5 * totalSimpanan;
-    } else { // Dosen/Staff
-        jenisAnggota = 'Dosen/Staff';
+    } else { // Dosen/Tenaga Pendidikan
+        jenisAnggota = 'Dosen/Tenaga Pendidikan';
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
-            // Ambil bunga dari element bunga_info untuk konsistensi
-            const bungaTerkiniCalc = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
-            const bungaDecimal = bungaTerkiniCalc / 100;
-            const baseAmount = 0.4 * gajiBulanan * jangkaWaktu;
-            limitPinjaman = baseAmount - (bungaDecimal * baseAmount * jangkaWaktu);
+            limitPinjaman = 0.4 * gajiBulanan * jangkaWaktu;
         }
     }
 
@@ -307,11 +306,11 @@ function calculateAngsuran() {
     if (jenisAnggota === 'Mahasiswa') {
         limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
         bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
-    } else if (jenisAnggota === 'Dosen/Staff') {
+    } else if (jenisAnggota === 'Dosen/Tenaga Pendidikan') {
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
             // Hitung kemampuan bayar
             const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
-            limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 × gaji × tenor)';
+            limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor)';
             bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
         } else {
             limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
@@ -324,28 +323,28 @@ function calculateAngsuran() {
 
     // Check limit and show warning (menggunakan kemampuan bayar)
     const limitWarning = document.getElementById('limit_warning');
-    if (jenisAnggota === 'Dosen/Staff' && gajiBulanan > 0 && jangkaWaktu > 0) {
+    if (jenisAnggota === 'Dosen/Tenaga Pendidikan' && gajiBulanan > 0 && jangkaWaktu > 0) {
         const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
         if (jumlahPinjaman > kemampuanBayar) {
-            limitWarning.textContent = '⚠️ Jumlah pinjaman melebihi limit maksimal Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (berdasarkan kemampuan bayar)';
+            limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor).';
             limitWarning.style.color = 'red';
         } else {
-            limitWarning.textContent = '✓ Jumlah pinjaman dalam batas limit';
+            limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';
             limitWarning.style.color = 'green';
         }
     } else if (jenisAnggota === 'Mahasiswa' && limitPinjaman > 0) {
         if (jumlahPinjaman > limitPinjaman) {
-            limitWarning.textContent = '⚠️ Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID');
+            limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan).';
             limitWarning.style.color = 'red';
         } else {
-            limitWarning.textContent = '✓ Jumlah pinjaman dalam batas limit';
+            limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';
             limitWarning.style.color = 'green';
         }
     } else {
         limitWarning.textContent = '';
     }
 
-    // Calculate perkiraan angsuran menggunakan rumus: (pinjaman/tenor) + ((bunga × pinjaman) / tenor)
+    // Calculate perkiraan angsuran menggunakan rumus: (pinjaman/tenor) + ((bunga x pinjaman) / tenor)
     if (jumlahPinjaman > 0 && jangkaWaktu > 0) {
         // Ambil bunga dari element bunga_info untuk konsistensi
         const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;

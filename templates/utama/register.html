@@ -89,12 +89,25 @@
                                 <small class="form-text text-muted">Masukkan gaji bulanan dalam Rupiah (tanpa titik atau koma)</small>
                             </div>
                             <div class="mb-3">
+                                <label for="register_metode_pembayaran" class="form-label">Metode Pembayaran Simpanan Pokok</label>
+                                <select class="form-select" id="register_metode_pembayaran" name="MetodePembayaran" required>
+                                    <option value="transfer" selected>Transfer</option>
+                                    <option value="potong_gaji">Potong Gaji</option>
+                                </select>
+                                <small class="form-text text-muted">Pilih transfer atau potong gaji sesuai kebutuhan.</small>
+                            </div>
+                            <div class="mb-3" id="transfer_fields_wrapper">
                                 <label for="register_bukti_transfer" class="form-label">Bukti Transfer Simpanan Pokok Wajib Rp. {{ .NominalSimpanan }},-</label>
                                 <input type="file" class="form-control" id="register_bukti_transfer" name="BuktiTransfer" accept="image/*,.pdf" required>
                                 <small class="form-text text-muted">
                                     Upload bukti transfer/pembayaran (format gambar) | 
                                     <strong>Nomor rekening koperasi: {{ .NomorRekening }}</strong>
                                 </small>
+                            </div>
+                            <div class="mb-3 d-none" id="potong_gaji_info">
+                                <div class="alert alert-info mb-0">
+                                    Simpanan pokok akan diproses melalui potong gaji, jadi upload bukti transfer tidak diperlukan.
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="register_alamat" class="form-label">Alamat</label>
@@ -137,6 +150,10 @@
                 const optionRektorat = document.getElementById('option_rektorat');
                 const registerForm = document.querySelector('form');
                 const tglLahirInput = document.getElementById('register_tgl_lahir');
+                const metodePembayaranSelect = document.getElementById('register_metode_pembayaran');
+                const buktiTransferInput = document.getElementById('register_bukti_transfer');
+                const transferFieldsWrapper = document.getElementById('transfer_fields_wrapper');
+                const potongGajiInfo = document.getElementById('potong_gaji_info');
 
                 // Set max date for Tanggal Lahir (minimal 18 tahun)
                 (function() {
@@ -159,6 +176,11 @@
                     if (!fakultasHidden.value) {
                         e.preventDefault();
                         alert('Silakan pilih unit kerja terlebih dahulu');
+                        return false;
+                    }
+                    if (metodePembayaranSelect.value === 'transfer' && !buktiTransferInput.value) {
+                        e.preventDefault();
+                        alert('Silakan upload bukti transfer karena metode pembayaran yang dipilih adalah transfer.');
                         return false;
                     }
                     // Validasi keunikan Nama Pengguna, Kata Sandi, dan No. Telepon
@@ -192,6 +214,7 @@
                             return false;
                         }
                     }
+
                 });
 
                 function updateGajiBulananStatus() {
@@ -254,8 +277,32 @@
                     }
                 }
 
+                function updateMetodePembayaranUI() {
+                    const metode = metodePembayaranSelect.value;
+                    const isMahasiswa = statusAnggotaSelect.value === 'mahasiswa';
+
+                    if (isMahasiswa && metode === 'potong_gaji') {
+                        metodePembayaranSelect.value = 'transfer';
+                    }
+
+                    const metodeAktif = metodePembayaranSelect.value;
+                    if (metodeAktif === 'potong_gaji') {
+                        transferFieldsWrapper.classList.add('d-none');
+                        buktiTransferInput.required = false;
+                        buktiTransferInput.value = '';
+                        potongGajiInfo.classList.remove('d-none');
+                    } else {
+                        transferFieldsWrapper.classList.remove('d-none');
+                        buktiTransferInput.required = true;
+                        potongGajiInfo.classList.add('d-none');
+                    }
+                }
+
                 statusAnggotaSelect.addEventListener('change', updateGajiBulananStatus);
+                statusAnggotaSelect.addEventListener('change', updateMetodePembayaranUI);
+                metodePembayaranSelect.addEventListener('change', updateMetodePembayaranUI);
                 updateGajiBulananStatus();
+                updateMetodePembayaranUI();
             </script>
 </body>
 </html>

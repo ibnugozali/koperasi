@@ -637,8 +637,8 @@ func AjukanPinjaman(c *gin.Context) {
 	case "03": // Mahasiswa
 		jenisAnggota = "Mahasiswa"
 		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
-	case "01", "02": // Dosen (01) atau Staff (02)
-		jenisAnggota = "Dosen/Staff"
+	case "01", "02": // Dosen (01) atau Tenaga Pendidikan (02)
+		jenisAnggota = "Dosen/Tenaga Pendidikan"
 		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
 	default:
 		jenisAnggota = "Tidak Diketahui"
@@ -705,8 +705,8 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 	case "03": // Mahasiswa
 		jenisAnggota = "Mahasiswa"
 		limitPinjaman = 5 * totalSimpanan
-	case "01", "02": // Dosen/Staff
-		jenisAnggota = "Dosen/Staff"
+	case "01", "02": // Dosen/Tenaga Pendidikan
+		jenisAnggota = "Dosen/Tenaga Pendidikan"
 		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
 	default:
 		jenisAnggota = "Tidak Diketahui"
@@ -911,13 +911,13 @@ func AjukanPinjamanPost(c *gin.Context) {
 			return
 		}
 		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
-	case "01", "02": // Dosen (01) atau Staff (02)
-		jenisAnggota = "Dosen/Staff"
+	case "01", "02": // Dosen (01) atau Tenaga Pendidikan (02)
+		jenisAnggota = "Dosen/Tenaga Pendidikan"
 		// Ambil gaji dari form
 		gajiStr := c.PostForm("gaji_bulanan")
 		if gajiStr == "" {
 			templateData := getAjukanPinjamanTemplateData(userID, anggota)
-			templateData["Error"] = "Gaji bulanan wajib diisi untuk dosen/staff."
+			templateData["Error"] = "Gaji bulanan wajib diisi untuk dosen/tenaga pendidikan."
 			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
 			return
 		}
@@ -929,11 +929,9 @@ func AjukanPinjamanPost(c *gin.Context) {
 			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
 			return
 		}
-		// Langkah 1 - Kemampuan bayar: 0.4 × gaji × tenor
+		// Kemampuan bayar: 0.4 x gaji x tenor
 		kemampuanBayar := 0.4 * gaji * float64(pinjaman.JangkaWaktu)
-		// Langkah 3 - Limit Pinjaman (untuk informasi): (0.4 × gaji × tenor) × (1 - (bunga × tenor))
-		bungaDecimal := bungaTerkini / 100
-		limitPinjaman = kemampuanBayar * (1 - (bungaDecimal * float64(pinjaman.JangkaWaktu)))
+		limitPinjaman = kemampuanBayar
 
 	default:
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)

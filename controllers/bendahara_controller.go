@@ -1059,6 +1059,18 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		simpananWajib = make(map[string]float64) // Default ke map kosong jika error
 	}
 
+	// Ambil nominal simpanan pokok dan petakan ke semua anggota aktif
+	// (anggota pada list ini diambil dari GetAllAnggota yang hanya status aktif).
+	simpananPokok := make(map[string]float64)
+	var nominalSimpananPokok float64
+	err = config.GetDB().QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok)
+	if err != nil {
+		nominalSimpananPokok = 100000
+	}
+	for _, anggota := range anggotas {
+		simpananPokok[anggota.IDAnggota] = nominalSimpananPokok
+	}
+
 	// Ambil konfigurasi simpanan wajib
 	konfigSimpanan, err := repository.GetKonfigurasiSimpananWajib()
 	var nominalTargetSimpananWajib float64 = 0
@@ -1126,10 +1138,17 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		potongan := potonganBulanIni[anggota.IDAnggota]
 		// Sisa gaji = Gaji bulanan dikurangi potongan bulan ini saja
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
+
+		// Fallback tampilan: jika total simpanan wajib belum tercatat,
+		// gunakan potongan bulan ini agar kolom "Simpanan Wajib" tidak kosong.
+		if simpananWajib[anggota.IDAnggota] <= 0 && potongan > 0 {
+			simpananWajib[anggota.IDAnggota] = potongan
+		}
 	}
 
 	c.HTML(http.StatusOK, "bendahara_data_anggota.html", gin.H{
 		"Anggotas":         anggotas,
+		"SimpananPokok":    simpananPokok,
 		"SimpananWajib":    simpananWajib,
 		"PotonganBulanIni": potonganBulanIni,
 		"SisaGaji":         sisaGaji,
@@ -1981,8 +2000,8 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 	case "03": // Mahasiswa
 		jenisAnggota = "Mahasiswa"
 		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
-	case "01", "02": // Dosen/Staff
-		jenisAnggota = "Dosen/Staff"
+	case "01", "02": // Dosen/Tenaga Pendidikan
+		jenisAnggota = "Dosen/Tenaga Pendidikan"
 		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
 	default:
 		jenisAnggota = "Tidak Diketahui"
@@ -4344,8 +4363,8 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 	switch a.UnitKerja {
 	case "03": // Mahasiswa
 		jenisAnggota = "Mahasiswa"
-	case "01", "02": // Dosen/Staff
-		jenisAnggota = "Dosen/Staff"
+	case "01", "02": // Dosen/Tenaga Pendidikan
+		jenisAnggota = "Dosen/Tenaga Pendidikan"
 	default:
 		jenisAnggota = "Tidak Diketahui"
 	}

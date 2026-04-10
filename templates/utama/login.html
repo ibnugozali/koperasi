@@ -52,22 +52,23 @@
 
             <div class="text-center mt-4">
                 <p class="mb-0">Belum punya akun? <a href="/register">Daftar Anggota</a></p>
-                <small><a href="#" data-bs-toggle="modal" data-bs-target="#adminModal">Hubungi Admin</a></small>
+                <small><a href="#" data-bs-toggle="modal" data-bs-target="#adminModal">Hubungi Admin / Ketua</a></small>
             </div>
         </div>
         <div class="card-footer text-center">
-                <!-- Modal Hubungi Admin -->
+                <!-- Modal Hubungi Admin / Ketua -->
                 <div class="modal fade" id="adminModal" tabindex="-1" aria-labelledby="adminModalLabel" aria-hidden="true">
                     <div class="modal-dialog">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="adminModalLabel">Hubungi Admin</h5>
+                                <h5 class="modal-title" id="adminModalLabel">Hubungi Admin / Ketua</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
-                                <p>Kontak Admin:</p>
+                                <p>Kontak Admin / Ketua:</p>
                                 <ul class="list-unstyled">
-                                    <li><strong>Telepon:</strong> {{ index .Konten "telepon" }}</li>
+                                    <li><strong>Telepon Admin:</strong> {{ index .Konten "telepon" }}</li>
+                                    <li><strong>Telepon Ketua:</strong> {{ index .Konten "telepon_ketua" }}</li>
                                     <li><strong>Email:</strong> {{ index .Konten "email" }}</li>
                                     <li><strong>Alamat:</strong> {{ index .Konten "alamat" }}</li>
                                 </ul>

@@ -70,7 +70,7 @@
 <div class="mt-5">
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
-            <i class="fa-solid fa-chart-line"></i> Aktivitas Terbaru
+            <i class="fa-solid fa-chart-pie"></i> Aktivitas Terbaru
         </div>
         <div class="card-body">
             <div class="mb-2 text-center fw-bold" style="font-size: 1.1rem;">
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Grafik statistik line chart (bukan riwayat, hanya snapshot saat ini)
+    // Grafik statistik pie (snapshot saat ini)
     const canvas = document.getElementById('activityChart');
     if (!canvas) return;
     const labels = [
@@ -138,19 +138,15 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
     const ctx = canvas.getContext('2d');
     new Chart(ctx, {
-        type: 'line',
+        type: 'pie',
         data: {
             labels: labels,
             datasets: [{
                 label: 'Statistik',
                 data: data,
-                borderColor: 'purple',
-                backgroundColor: 'rgba(128,0,128,0.1)',
-                tension: 0.3,
-                fill: true,
-                pointBackgroundColor: datasetColors,
-                pointBorderColor: datasetColors,
-                pointRadius: 6
+                backgroundColor: datasetColors,
+                borderColor: '#ffffff',
+                borderWidth: 1
             }]
         },
         options: {
@@ -171,31 +167,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (label) label += ': ';
                             // Format rupiah hanya untuk data keuangan
                             if (context.dataIndex >= 2) {
-                                label += formatRupiah(context.parsed.y);
+                                label += formatRupiah(context.parsed);
                             } else {
-                                label += context.parsed.y;
+                                label += context.parsed;
                             }
                             return label;
                         }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value, idx) {
-                            // Format rupiah hanya untuk data keuangan
-                            if (value >= 1000) return formatRupiah(value);
-                            return value;
-                        }
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Kategori',
-                        font: { weight: 'bold' }
                     }
                 }
             }

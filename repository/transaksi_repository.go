@@ -509,7 +509,7 @@ func GetUnitKerjaName(unitKerja string) string {
 	case "01":
 		return "Dosen"
 	case "02":
-		return "Karyawan/Staff"
+		return "Tenaga Pendidikan"
 	case "03":
 		return "Mahasiswa"
 	default:
@@ -660,7 +660,11 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 // GetTotalSimpanan mengambil total simpanan semua anggota yang sudah dikonfirmasi
 func GetTotalSimpanan(db *sql.DB) (float64, error) {
 	var total float64
-	query := "SELECT COALESCE(SUM(jumlah_simpanan), 0) FROM detail WHERE COALESCE(status, 'confirmed') = 'confirmed'"
+	query := `
+		SELECT COALESCE(SUM(jumlah_simpanan), 0)
+		FROM detail
+		WHERE COALESCE(LOWER(status), 'pending') IN ('confirmed', 'diterima', 'lunas')
+	`
 	err := db.QueryRow(query).Scan(&total)
 	return total, err
 }
@@ -668,7 +672,11 @@ func GetTotalSimpanan(db *sql.DB) (float64, error) {
 // GetTotalPinjaman mengambil total pinjaman semua anggota yang aktif
 func GetTotalPinjaman(db *sql.DB) (float64, error) {
 	var total float64
-	query := "SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman WHERE status = 'aktif'"
+	query := `
+		SELECT COALESCE(SUM(jumlah_pinjaman), 0)
+		FROM pinjaman
+		WHERE LOWER(COALESCE(status, '')) = 'aktif'
+	`
 	err := db.QueryRow(query).Scan(&total)
 	return total, err
 }
@@ -676,7 +684,11 @@ func GetTotalPinjaman(db *sql.DB) (float64, error) {
 // GetTotalAngsuran mengambil total angsuran yang sudah dibayarkan
 func GetTotalAngsuran(db *sql.DB) (float64, error) {
 	var total float64
-	query := "SELECT COALESCE(SUM(sisa_pinjaman), 0) FROM angsuran WHERE COALESCE(status, 'confirmed') = 'confirmed'"
+	query := `
+		SELECT COALESCE(SUM(sisa_pinjaman), 0)
+		FROM angsuran
+		WHERE COALESCE(LOWER(status), 'pending') IN ('confirmed', 'diterima', 'lunas')
+	`
 	err := db.QueryRow(query).Scan(&total)
 	return total, err
 }
@@ -684,7 +696,11 @@ func GetTotalAngsuran(db *sql.DB) (float64, error) {
 // GetTotalPengambilan mengambil total pengambilan simpanan yang sudah disetujui
 func GetTotalPengambilan(db *sql.DB) (float64, error) {
 	var total float64
-	query := "SELECT COALESCE(SUM(jumlah), 0) FROM pengambilan_simpanan WHERE status = 'approved'"
+	query := `
+		SELECT COALESCE(SUM(jumlah), 0)
+		FROM pengambilan_simpanan
+		WHERE LOWER(COALESCE(status, '')) = 'approved'
+	`
 	err := db.QueryRow(query).Scan(&total)
 	return total, err
 }
@@ -1052,7 +1068,6 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 			), 0) as jasa_dibayar_periode
 		FROM anggota a
 		WHERE a.status = 'aktif'
-		  AND a.status_anggota IN ('dosen', 'karyawan')
 		ORDER BY a.id_anggota
 	`
 
@@ -1061,6 +1076,13 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 		return nil, err
 	}
 	defer rows.Close()
+
+	// Samakan dengan tampilan ketua/anggota:
+	// jika simpanan pokok belum tercatat di tabel detail, gunakan nominal default pengaturan.
+	nominalSimpananPokok := 100000.0
+	_ = db.QueryRow(
+		"SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'",
+	).Scan(&nominalSimpananPokok)
 
 	for rows.Next() {
 		var report map[string]interface{} = make(map[string]interface{})
@@ -1085,6 +1107,10 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 			&jangkaWaktu, &pokokPerBulan, &jasaPerBulan, &jasaDibayarPeriode,
 		); err != nil {
 			return nil, err
+		}
+
+		if simpananPokok <= 0 {
+			simpananPokok = nominalSimpananPokok
 		}
 
 		// Hitung jumlah angsuran per bulan (pokok + jasa)

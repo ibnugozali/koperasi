@@ -92,13 +92,59 @@
                         </form>
                     </div>
 
-                    <!-- Diagram Batang Ringkasan -->
+                    <style>
+                        .laporan-pie-wrap {
+                            position: relative;
+                            height: 320px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        .laporan-pie-legend {
+                            position: absolute;
+                            left: 12px;
+                            top: 50%;
+                            transform: translateY(-50%);
+                            width: 320px;
+                            font-size: 0.9rem;
+                            line-height: 1.4;
+                        }
+                        .laporan-pie-legend-item {
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            margin-bottom: 6px;
+                            white-space: normal;
+                        }
+                        .laporan-pie-color {
+                            width: 12px;
+                            height: 12px;
+                            border-radius: 2px;
+                            flex: 0 0 12px;
+                        }
+                        .laporan-pie-canvas {
+                            height: 100%;
+                            width: 100%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        .laporan-pie-canvas canvas {
+                            max-width: 300px !important;
+                            max-height: 300px !important;
+                        }
+                    </style>
+
+                    <!-- Diagram Pi Ringkasan -->
                     <div class="row">
                         <div class="col-12 mb-4">
                             <div class="stat-card">
-                                <h6 class="mb-3"><i class="fa-solid fa-chart-column me-2"></i>Diagram Batang Ringkasan Laporan</h6>
-                                <div style="height: 320px;">
-                                    <canvas id="laporanSummaryChart"></canvas>
+                                <h6 class="mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Diagram Pi Ringkasan Laporan</h6>
+                                <div class="laporan-pie-wrap">
+                                    <div id="laporanSummaryLegend" class="laporan-pie-legend"></div>
+                                    <div class="laporan-pie-canvas">
+                                        <canvas id="laporanSummaryChart"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -699,6 +745,22 @@ const laporanBasePath = '{{.LaporanBasePath}}';
 const laporanReadOnly = {{if .ReadOnlyMode}}true{{else}}false{{end}};
 
 let laporanSummaryChart = null;
+function renderLaporanSummaryLegend(labels, values, colors) {
+    const legendEl = document.getElementById('laporanSummaryLegend');
+    if (!legendEl) return;
+    let html = '';
+    labels.forEach((label, i) => {
+        const color = colors[i] || '#999';
+        const value = Number(values[i] || 0);
+        html += `
+            <div class="laporan-pie-legend-item">
+                <span class="laporan-pie-color" style="background:${color};"></span>
+                <span>${label}: Rp ${value.toLocaleString('id-ID')}</span>
+            </div>
+        `;
+    });
+    legendEl.innerHTML = html;
+}
 
 function initLaporanSummaryChart() {
     if (typeof Chart === 'undefined') return;
@@ -713,42 +775,35 @@ function initLaporanSummaryChart() {
         Number('{{if .Report.total_angsuran}}{{printf "%.0f" .Report.total_angsuran}}{{else}}0{{end}}') || 0,
         Number('{{if .Report.total_pengambilan}}{{printf "%.0f" .Report.total_pengambilan}}{{else}}0{{end}}') || 0
     ];
+    const colors = ['#198754', '#dc3545', '#0dcaf0', '#ffc107'];
+    renderLaporanSummaryLegend(labels, values, colors);
 
     if (laporanSummaryChart) {
         laporanSummaryChart.destroy();
     }
 
     laporanSummaryChart = new Chart(canvas, {
-        type: 'bar',
+        type: 'pie',
         data: {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: ['#198754', '#dc3545', '#0dcaf0', '#ffc107'],
-                borderColor: ['#198754', '#dc3545', '#0dcaf0', '#ffc107'],
-                borderWidth: 1,
-                borderRadius: 6
+                backgroundColor: colors,
+                borderColor: colors,
+                borderWidth: 1
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
+                legend: {
+                    display: false
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
                             return 'Rp ' + Number(context.raw || 0).toLocaleString('id-ID');
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'Rp ' + Number(value).toLocaleString('id-ID');
                         }
                     }
                 }

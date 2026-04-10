@@ -31,8 +31,12 @@
                                     <input type="text" class="form-control" id="alamat" name="alamat" value="{{ index .Konten "alamat" }}">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="telepon" class="form-label">Telepon</label>
+                                    <label for="telepon" class="form-label">Telepon Admin</label>
                                     <input type="text" class="form-control" id="telepon" name="telepon" value="{{ index .Konten "telepon" }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="telepon_ketua" class="form-label">Telepon Ketua</label>
+                                    <input type="text" class="form-control" id="telepon_ketua" name="telepon_ketua" value="{{ index .Konten "telepon_ketua" }}">
                                 </div>
                                 <div class="mb-3">
                                     <label for="email" class="form-label">Email</label>
@@ -57,8 +61,9 @@
             var judul = $('#judul_halaman').val();
             var alamat = $('#alamat').val();
             var telepon = $('#telepon').val();
+            var teleponKetua = $('#telepon_ketua').val();
             var email = $('#email').val();
-            var konten = JSON.stringify({ alamat: alamat, telepon: telepon, email: email });
+            var konten = JSON.stringify({ alamat: alamat, telepon: telepon, telepon_ketua: teleponKetua, email: email });
             // Ambil slug dari URL, misal: /admin/halaman/edit/hubungi_kami -> hubungi_kami
             var pathParts = window.location.pathname.split('/');
             var slug = pathParts[pathParts.length - 1];

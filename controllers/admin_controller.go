@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/png"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 
 	"koperasi-simpan-pinjam/config"
@@ -174,9 +176,479 @@ func AdminDataAnggota(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "admin_data_anggota.html", gin.H{
 		"Anggotas":    anggotas,
+		"Success":     c.Query("success"),
 		"ActivePage":  "anggota",
 		"LogoPath":    logoPath,
 		"CurrentLogo": logoPath,
+	})
+}
+
+func mapStatusToUnitKerja(statusAnggota string) string {
+	switch strings.ToLower(strings.TrimSpace(statusAnggota)) {
+	case "dosen":
+		return "01"
+	case "karyawan", "tenaga pendidikan":
+		return "02"
+	case "mahasiswa":
+		return "03"
+	default:
+		return ""
+	}
+}
+
+func mapFakultasToCode(fakultas string) string {
+	switch strings.TrimSpace(fakultas) {
+	case "Fakultas Agama Islam (FAI)":
+		return "01"
+	case "Fakultas Ekonomi (FE)":
+		return "02"
+	case "Fakultas Hukum (FH)":
+		return "03"
+	case "Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)":
+		return "04"
+	case "Fakultas Keguruan dan Ilmu Pendidikan (FKIP)":
+		return "05"
+	case "Fakultas Kesehatan Masyarakat (FKM)":
+		return "06"
+	case "Fakultas Pertanian (FAPERTA)":
+		return "07"
+	case "Fakultas Teknik (FT)":
+		return "08"
+	case "Rektorat / Yayasan", "Rektorat / Yayasan / Staff", "Rektoriat":
+		return "09"
+	case "Paskasarjana", "Pascasarjana":
+		return "10"
+	default:
+		return ""
+	}
+}
+
+func renderAdminTambahAnggota(c *gin.Context, status int, data gin.H) {
+	logoPath, exists := c.Get("LogoPath")
+	if !exists {
+		logoPath = "/static/images/placeholder.png"
+	}
+	data["ActivePage"] = "anggota"
+	data["LogoPath"] = logoPath
+	data["CurrentLogo"] = logoPath
+	c.HTML(status, "admin_data_anggota_tambah.html", data)
+}
+
+// AdminTambahAnggotaForm menampilkan form tambah anggota (langsung aktif tanpa acc ketua).
+func AdminTambahAnggotaForm(c *gin.Context) {
+	renderAdminTambahAnggota(c, http.StatusOK, gin.H{})
+}
+
+// AdminTambahAnggotaPost menyimpan anggota baru langsung aktif.
+func AdminTambahAnggotaPost(c *gin.Context) {
+	namaAnggota := strings.TrimSpace(c.PostForm("NamaAnggota"))
+	username := strings.TrimSpace(c.PostForm("Username"))
+	password := strings.TrimSpace(c.PostForm("Password"))
+	noTelepon := strings.TrimSpace(c.PostForm("NoTelepon"))
+	tglLahir := strings.TrimSpace(c.PostForm("TglLahir"))
+	jenisKelamin := strings.TrimSpace(c.PostForm("JenisKelamin"))
+	statusAnggota := strings.TrimSpace(c.PostForm("StatusAnggota"))
+	fakultas := strings.TrimSpace(c.PostForm("Fakultas"))
+	alamat := strings.TrimSpace(c.PostForm("Alamat"))
+	gajiBulananStr := strings.TrimSpace(c.PostForm("GajiBulanan"))
+
+	formData := gin.H{
+		"FormNamaAnggota":   namaAnggota,
+		"FormUsername":      username,
+		"FormNoTelepon":     noTelepon,
+		"FormTglLahir":      tglLahir,
+		"FormJenisKelamin":  jenisKelamin,
+		"FormStatusAnggota": statusAnggota,
+		"FormFakultas":      fakultas,
+		"FormAlamat":        alamat,
+		"FormGajiBulanan":   gajiBulananStr,
+	}
+
+	if namaAnggota == "" || username == "" || password == "" || noTelepon == "" || tglLahir == "" ||
+		jenisKelamin == "" || statusAnggota == "" || fakultas == "" || alamat == "" {
+		formData["Error"] = "Semua field wajib diisi."
+		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+		return
+	}
+
+	if username == noTelepon {
+		formData["Error"] = "Nama Pengguna dan No. Telepon tidak boleh sama."
+		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+		return
+	}
+
+	gajiBulanan := 0
+	if gajiBulananStr != "" {
+		parsedGaji, err := strconv.Atoi(gajiBulananStr)
+		if err != nil || parsedGaji < 0 {
+			formData["Error"] = "Format gaji bulanan tidak valid."
+			renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+			return
+		}
+		gajiBulanan = parsedGaji
+	}
+
+	if strings.ToLower(statusAnggota) != "mahasiswa" && gajiBulanan <= 0 {
+		formData["Error"] = "Gaji bulanan wajib diisi untuk dosen dan tenaga pendidikan."
+		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+		return
+	}
+
+	unitKerja := mapStatusToUnitKerja(statusAnggota)
+	fakultasCode := mapFakultasToCode(fakultas)
+	if unitKerja == "" || fakultasCode == "" {
+		formData["Error"] = "Jabatan atau Unit Kerja tidak valid."
+		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+		return
+	}
+
+	db := config.GetDB()
+
+	// Validasi unik username / telepon agar tidak bentrok akun.
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2", username, noTelepon).Scan(&count)
+	if err != nil {
+		formData["Error"] = "Gagal memvalidasi data anggota."
+		renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
+		return
+	}
+	if count > 0 {
+		formData["Error"] = "Nama Pengguna atau No. Telepon sudah terdaftar."
+		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+		return
+	}
+
+	// Generate nomor urut global seperti proses konfirmasi ketua/bendahara.
+	var lastNumber int
+	err = db.QueryRow("SELECT COALESCE(MAX(CAST(nomor_urut AS INTEGER)), 0) FROM anggota WHERE id_anggota NOT LIKE 'TEMP%'").Scan(&lastNumber)
+	if err != nil {
+		formData["Error"] = "Gagal membuat nomor anggota."
+		renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
+		return
+	}
+	nomorUrut := fmt.Sprintf("%04d", lastNumber+1)
+	tahun := time.Now().Format("2006")
+	idAnggota := fmt.Sprintf("%s%s%s%s", unitKerja, fakultasCode, tahun, nomorUrut)
+
+	// Nik KTP diisi otomatis agar tidak perlu input NIK di form user.
+	nikKTP := username
+
+	insertQuery := `
+		INSERT INTO anggota (
+			id_anggota, nama_anggota, username, password, tgl_lahir,
+			nik_ktp, no_telepon, tgl_gabung, alamat, jenis_kelamin,
+			status_anggota, fakultas, status, unit_kerja, fakultas_code,
+			bukti_transfer, gaji_bulanan, tahun, nomor_urut
+		) VALUES (
+			$1, $2, $3, $4, $5,
+			$6, $7, CURRENT_DATE, $8, $9,
+			$10, $11, 'aktif', $12, $13,
+			'', $14, $15, $16
+		)
+	`
+	_, err = db.Exec(
+		insertQuery,
+		idAnggota, namaAnggota, username, password, tglLahir,
+		nikKTP, noTelepon, alamat, jenisKelamin,
+		statusAnggota, fakultas, unitKerja, fakultasCode,
+		gajiBulanan, tahun, nomorUrut,
+	)
+	if err != nil {
+		formData["Error"] = "Gagal menyimpan anggota baru: " + err.Error()
+		renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin/anggota?success=Anggota baru berhasil ditambahkan dan langsung aktif")
+}
+
+func normalizeHeader(s string) string {
+	s = strings.TrimSpace(strings.ToLower(s))
+	replacer := strings.NewReplacer(" ", "", "_", "", ".", "", "-", "", "/", "")
+	return replacer.Replace(s)
+}
+
+func findHeaderIndex(headerMap map[string]int, keys ...string) int {
+	for _, k := range keys {
+		if idx, ok := headerMap[normalizeHeader(k)]; ok {
+			return idx
+		}
+	}
+	return -1
+}
+
+func getCell(row []string, idx int) string {
+	if idx >= 0 && idx < len(row) {
+		return strings.TrimSpace(row[idx])
+	}
+	return ""
+}
+
+func containsHeaderToken(cell string, tokens ...string) bool {
+	n := normalizeHeader(cell)
+	for _, t := range tokens {
+		if strings.Contains(n, normalizeHeader(t)) {
+			return true
+		}
+	}
+	return false
+}
+
+// AdminImportAnggotaExcel import anggota dari file Excel dan langsung aktif (tanpa acc ketua).
+func AdminImportAnggotaExcel(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak ditemukan."})
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".xlsx" && ext != ".xls" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format file harus .xlsx atau .xls"})
+		return
+	}
+
+	if file.Size > 10*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran file maksimal 10MB"})
+		return
+	}
+
+	tempPath := "./static/uploads/" + uuid.New().String() + ext
+	if err := c.SaveUploadedFile(file, tempPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file upload"})
+		return
+	}
+	defer os.Remove(tempPath)
+
+	f, err := excelize.OpenFile(tempPath)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak bisa dibaca"})
+		return
+	}
+	defer f.Close()
+
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak memiliki sheet"})
+		return
+	}
+
+	rows, err := f.GetRows(sheets[0])
+	if err != nil || len(rows) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data Excel kosong atau tidak valid"})
+		return
+	}
+
+	// Cari baris header secara dinamis (tidak selalu di baris pertama),
+	// agar file laporan/export juga bisa diimpor.
+	headerRowIdx := -1
+	headerMap := map[string]int{}
+	for r, row := range rows {
+		tmp := map[string]int{}
+		for i, h := range row {
+			norm := normalizeHeader(h)
+			if norm != "" {
+				tmp[norm] = i
+			}
+		}
+		idxNamaTmp := findHeaderIndex(tmp, "nama anggota", "nama", "nama_anggota")
+		if idxNamaTmp >= 0 {
+			headerRowIdx = r
+			headerMap = tmp
+			break
+		}
+		// Fallback khusus format laporan: baris yang berisi No|Kode|Nama Anggota|Unit
+		if len(row) >= 4 &&
+			containsHeaderToken(getCell(row, 0), "no") &&
+			containsHeaderToken(getCell(row, 1), "kode", "id") &&
+			containsHeaderToken(getCell(row, 2), "nama anggota", "nama") {
+			headerRowIdx = r
+			headerMap = tmp
+			break
+		}
+	}
+
+	idxNama := findHeaderIndex(headerMap, "nama anggota", "nama", "nama_anggota")
+	if idxNama < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Kolom 'Nama Anggota' tidak ditemukan di file Excel"})
+		return
+	}
+
+	idxUsername := findHeaderIndex(headerMap, "username", "nama pengguna")
+	idxPassword := findHeaderIndex(headerMap, "password", "kata sandi")
+	idxTelepon := findHeaderIndex(headerMap, "no telepon", "no hp", "telepon", "notelepon")
+	idxStatus := findHeaderIndex(headerMap, "jabatan", "status anggota", "status_anggota")
+	idxFakultas := findHeaderIndex(headerMap, "unit kerja", "fakultas")
+	idxTglLahir := findHeaderIndex(headerMap, "tanggal lahir", "tgl lahir", "tgllahir")
+	idxJenisKelamin := findHeaderIndex(headerMap, "jenis kelamin", "jeniskelamin")
+	idxAlamat := findHeaderIndex(headerMap, "alamat")
+	idxGaji := findHeaderIndex(headerMap, "gaji bulanan", "gaji", "gajibulanan")
+
+	db := config.GetDB()
+	var lastNumber int
+	if err := db.QueryRow("SELECT COALESCE(MAX(CAST(nomor_urut AS INTEGER)), 0) FROM anggota WHERE id_anggota NOT LIKE 'TEMP%'").Scan(&lastNumber); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca nomor urut anggota"})
+		return
+	}
+
+	successCount := 0
+	failedCount := 0
+	var parseErrors []string
+	tahun := time.Now().Format("2006")
+
+	// Fallback kolom untuk format laporan jika header tertentu tidak ada.
+	if idxStatus < 0 {
+		idxStatus = findHeaderIndex(headerMap, "unit")
+	}
+	if idxFakultas < 0 {
+		idxFakultas = findHeaderIndex(headerMap, "unit")
+	}
+
+	for i, row := range rows[headerRowIdx+1:] {
+		rowNum := headerRowIdx + i + 2
+
+		nama := getCell(row, idxNama)
+		if nama == "" || containsHeaderToken(nama, "nama", "anggota") {
+			// Lewati baris kosong / subheader tanpa dihitung gagal.
+			continue
+		}
+
+		username := getCell(row, idxUsername)
+		if username == "" {
+			username = strings.ToLower(strings.ReplaceAll(nama, " ", ""))
+			username = strings.ReplaceAll(username, ".", "")
+			if username == "" {
+				username = fmt.Sprintf("anggota%d", time.Now().UnixNano())
+			}
+		}
+
+		password := getCell(row, idxPassword)
+		if password == "" {
+			password = "12345678"
+		}
+
+		noTelepon := getCell(row, idxTelepon)
+		if noTelepon == "" {
+			noTelepon = fmt.Sprintf("8%d", time.Now().UnixNano()%1000000000000)
+		}
+
+		statusAnggota := strings.ToLower(getCell(row, idxStatus))
+		if statusAnggota == "" {
+			// Jika kolom status tidak ada, coba infer dari kolom unit.
+			unitText := strings.ToLower(getCell(row, idxFakultas))
+			if strings.Contains(unitText, "dosen") {
+				statusAnggota = "dosen"
+			} else if strings.Contains(unitText, "mahasiswa") {
+				statusAnggota = "mahasiswa"
+			} else {
+				statusAnggota = "karyawan"
+			}
+		}
+		if statusAnggota == "tenaga pendidikan" {
+			statusAnggota = "karyawan"
+		}
+
+		fakultas := getCell(row, idxFakultas)
+		if fakultas == "" {
+			fakultas = "Rektoriat"
+		}
+
+		tglLahir := getCell(row, idxTglLahir)
+		if tglLahir == "" {
+			tglLahir = "2000-01-01"
+		}
+
+		jenisKelamin := getCell(row, idxJenisKelamin)
+		if jenisKelamin == "" {
+			jenisKelamin = "Laki-laki"
+		}
+
+		alamat := getCell(row, idxAlamat)
+		if alamat == "" {
+			alamat = "-"
+		}
+
+		gajiBulanan := 0
+		gajiStr := getCell(row, idxGaji)
+		if gajiStr != "" {
+			gajiStr = strings.ReplaceAll(gajiStr, ".", "")
+			gajiStr = strings.ReplaceAll(gajiStr, ",", "")
+			if g, err := strconv.Atoi(gajiStr); err == nil && g >= 0 {
+				gajiBulanan = g
+			}
+		}
+
+		unitKerja := mapStatusToUnitKerja(statusAnggota)
+		fakultasCode := mapFakultasToCode(fakultas)
+		if unitKerja == "" {
+			unitKerja = "02"
+		}
+		if fakultasCode == "" {
+			fakultasCode = "09"
+			fakultas = "Rektoriat"
+		}
+
+		var exists int
+		if err := db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2", username, noTelepon).Scan(&exists); err != nil {
+			failedCount++
+			parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal validasi data", rowNum))
+			continue
+		}
+		if exists > 0 {
+			failedCount++
+			parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: username/no telepon sudah terdaftar", rowNum))
+			continue
+		}
+
+		lastNumber++
+		nomorUrut := fmt.Sprintf("%04d", lastNumber)
+		idAnggota := fmt.Sprintf("%s%s%s%s", unitKerja, fakultasCode, tahun, nomorUrut)
+		nikKTP := username
+
+		insertQuery := `
+			INSERT INTO anggota (
+				id_anggota, nama_anggota, username, password, tgl_lahir,
+				nik_ktp, no_telepon, tgl_gabung, alamat, jenis_kelamin,
+				status_anggota, fakultas, status, unit_kerja, fakultas_code,
+				bukti_transfer, gaji_bulanan, tahun, nomor_urut
+			) VALUES (
+				$1, $2, $3, $4, $5,
+				$6, $7, CURRENT_DATE, $8, $9,
+				$10, $11, 'aktif', $12, $13,
+				'', $14, $15, $16
+			)
+		`
+		_, err = db.Exec(
+			insertQuery,
+			idAnggota, nama, username, password, tglLahir,
+			nikKTP, noTelepon, alamat, jenisKelamin,
+			statusAnggota, fakultas, unitKerja, fakultasCode,
+			gajiBulanan, tahun, nomorUrut,
+		)
+		if err != nil {
+			failedCount++
+			parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal simpan (%v)", rowNum, err))
+			continue
+		}
+
+		successCount++
+	}
+
+	if successCount == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":       "Tidak ada data yang berhasil diimport",
+			"success":     successCount,
+			"failed":      failedCount,
+			"parseErrors": parseErrors,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Import anggota berhasil diproses",
+		"success":     successCount,
+		"failed":      failedCount,
+		"parseErrors": parseErrors,
 	})
 }
 
@@ -363,16 +835,16 @@ func ShowEditHalamanForm(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, templateName, gin.H{
-		"Halaman":    halaman,
-		"Konten":     konten,
-		"LogoPath":   c.MustGet("LogoPath"),
-		"CurrentKop": getLatestKopPath(),
-		"CurrentSignatureKetua":     getLatestSignaturePath("ketua"),
-		"CurrentSignatureBendahara": getLatestSignaturePath("bendahara"),
+		"Halaman":                    halaman,
+		"Konten":                     konten,
+		"LogoPath":                   c.MustGet("LogoPath"),
+		"CurrentKop":                 getLatestKopPath(),
+		"CurrentSignatureKetua":      getLatestSignaturePath("ketua"),
+		"CurrentSignatureBendahara":  getLatestSignaturePath("bendahara"),
 		"CurrentSignatureSekretaris": getLatestSignaturePath("sekretaris"),
-		"success":    c.Query("success"),
-		"error":      c.Query("error"),
-		"ActivePage": activePage,
+		"success":                    c.Query("success"),
+		"error":                      c.Query("error"),
+		"ActivePage":                 activePage,
 	})
 }
 
@@ -453,17 +925,17 @@ func AdminEditTandaTangan(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin_edit_tanda_tangan.html", gin.H{
-		"LogoPath":                 logoPath,
-		"CurrentLogo":              logoPath,
-		"CurrentSignatureKetua":    getLatestSignaturePath("ketua"),
-		"CurrentSignatureBendahara": getLatestSignaturePath("bendahara"),
+		"LogoPath":                   logoPath,
+		"CurrentLogo":                logoPath,
+		"CurrentSignatureKetua":      getLatestSignaturePath("ketua"),
+		"CurrentSignatureBendahara":  getLatestSignaturePath("bendahara"),
 		"CurrentSignatureSekretaris": getLatestSignaturePath("sekretaris"),
-		"NamaTtdKetua":             getNamaTtd("ttd_nama_ketua", "Ketua KOPMA"),
-		"NamaTtdBendahara":         getNamaTtd("ttd_nama_bendahara", "Bendahara"),
-		"NamaTtdSekretaris":        getNamaTtd("ttd_nama_sekretaris", "Sekretaris"),
-		"success":                  c.Query("success"),
-		"error":                    c.Query("error"),
-		"ActivePage":               "edit_tanda_tangan",
+		"NamaTtdKetua":               getNamaTtd("ttd_nama_ketua", "Ketua KOPMA"),
+		"NamaTtdBendahara":           getNamaTtd("ttd_nama_bendahara", "Bendahara"),
+		"NamaTtdSekretaris":          getNamaTtd("ttd_nama_sekretaris", "Sekretaris"),
+		"success":                    c.Query("success"),
+		"error":                      c.Query("error"),
+		"ActivePage":                 "edit_tanda_tangan",
 	})
 }
 
@@ -1001,13 +1473,73 @@ func AdminPengaturan(c *gin.Context) {
 	if !exists {
 		logoPath = "/static/images/placeholder.png"
 	}
+
+	db := config.GetDB()
+	getSetting := func(key string) string {
+		var val string
+		err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = $1", key).Scan(&val)
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(val)
+	}
+
 	c.HTML(http.StatusOK, "admin_pengaturan.html", gin.H{
 		"AllHalaman":  filteredHalaman,
 		"UserList":    userList,
 		"AnggotaList": anggotaList,
 		"ActivePage":  "pengaturan",
 		"LogoPath":    logoPath,
+		"WAToken":     getSetting("wa_gateway_token"),
+		"WAURL":       getSetting("wa_gateway_url"),
+		"AppBaseURL":  getSetting("app_base_url"),
+		"WASuccess":   c.Query("wa_success"),
+		"WAError":     c.Query("wa_error"),
+		"CurrentLogo": logoPath,
 	})
+}
+
+// AdminSaveWAGatewayConfig menyimpan konfigurasi token/url gateway WhatsApp notifikasi.
+func AdminSaveWAGatewayConfig(c *gin.Context) {
+	token := strings.TrimSpace(c.PostForm("wa_gateway_token"))
+	url := strings.TrimSpace(c.PostForm("wa_gateway_url"))
+	appBaseURL := strings.TrimSpace(c.PostForm("app_base_url"))
+
+	if token == "" {
+		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Token WA wajib diisi")
+		return
+	}
+	if url == "" {
+		url = "https://api.fonnte.com/send"
+	}
+
+	db := config.GetDB()
+	upsert := func(key, value string) error {
+		_, err := db.Exec(`
+			INSERT INTO pengaturan (nama_pengaturan, nilai, updated_at)
+			VALUES ($1, $2, NOW())
+			ON CONFLICT (nama_pengaturan)
+			DO UPDATE SET nilai = EXCLUDED.nilai, updated_at = NOW()
+		`, key, value)
+		return err
+	}
+
+	if err := upsert("wa_gateway_token", token); err != nil {
+		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan token WA")
+		return
+	}
+	if err := upsert("wa_gateway_url", url); err != nil {
+		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan URL gateway WA")
+		return
+	}
+	if appBaseURL != "" {
+		if err := upsert("app_base_url", appBaseURL); err != nil {
+			c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan App Base URL")
+			return
+		}
+	}
+
+	c.Redirect(http.StatusFound, "/admin/pengaturan?wa_success=Konfigurasi WA berhasil disimpan")
 }
 
 // UpdateAdminProfile memproses update username dan password admin

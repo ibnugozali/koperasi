@@ -61,11 +61,11 @@
                 <div class="col-12">
                     <div class="card shadow-sm">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="fa-solid fa-chart-bar me-2"></i>Aktivitas Terbaru</h5>
+                            <h5 class="mb-0"><i class="fa-solid fa-chart-pie me-2"></i>Aktivitas Terbaru</h5>
                         </div>
                         <div class="card-body">
                             <div class="mb-3 text-center">
-                                <h6 class="fw-bold text-muted">Riwayat Total Anggota, Simpanan, Pinjaman (30 Hari Terakhir)</h6>
+                                <h6 class="fw-bold text-muted">Komposisi: Total Anggota, Menunggu Konfirmasi, Total Simpanan, Total Pinjaman</h6>
                             </div>
                             <div class="chart-container-admin" style="position: relative; width: 100%; height: 400px;">
                                 <canvas id="activityChart"></canvas>
@@ -86,66 +86,42 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
-        <!-- Inject AktivitasData ke window agar bisa diakses JS -->
-
-        <!-- Inject AktivitasData ke window agar grafik selalu terisi -->
         <script>
-        window.AktivitasData = {{ toJson .AktivitasData }};
+        window.DashboardTotals = {
+            totalAnggota: {{ .TotalAnggota }},
+            menungguKonfirmasi: {{ .MenungguKonfirmasi }},
+            totalSimpanan: {{ printf "%.0f" .TotalSimpanan }},
+            totalPinjaman: {{ printf "%.0f" .TotalPinjaman }}
+        };
         </script>
 
         <script>
         document.addEventListener("DOMContentLoaded", function() {
-            if (typeof window.AktivitasData !== 'undefined' && document.getElementById('activityChart')) {
-                const aktivitas = window.AktivitasData;
-                if (!aktivitas || aktivitas.length === 0) {
-                    document.getElementById('activityChart').style.display = 'none';
-                    const chartContainer = document.querySelector('.chart-container-admin');
-                    if (chartContainer) {
-                        chartContainer.innerHTML = '<div class="text-center text-muted py-5">Belum ada data riwayat dalam 30 hari terakhir.</div>';
-                    }
-                    return;
-                }
-                // Ambil label tanggal unik
-                const labels = [...new Set(aktivitas.map(item => {
-                    const tgl = new Date(item.Tanggal);
-                    return tgl.toLocaleDateString('id-ID');
-                }))];
-                // Data per jenis
-                function getData(jenis) {
-                    return labels.map(label => {
-                        const found = aktivitas.find(x => x.Jenis === jenis && (new Date(x.Tanggal)).toLocaleDateString('id-ID') === label);
-                        return found ? found.Jumlah : 0;
-                    });
-                }
-                const datasets = [
-                    {
-                        label: 'Total Anggota',
-                        data: getData('Anggota'),
-                        borderColor: 'rgb(54, 162, 235)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.65)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Total Simpanan',
-                        data: getData('Simpanan'),
-                        borderColor: 'rgb(75, 192, 192)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.65)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Total Pinjaman',
-                        data: getData('Pinjaman'),
-                        borderColor: 'rgb(255, 99, 132)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.65)',
-                        borderWidth: 1
-                    }
+            if (typeof window.DashboardTotals !== 'undefined' && document.getElementById('activityChart')) {
+                const totals = window.DashboardTotals;
+                const labels = ['Total Anggota', 'Menunggu Konfirmasi', 'Total Simpanan', 'Total Pinjaman'];
+                const pieData = [
+                    parseFloat(totals.totalAnggota) || 0,
+                    parseFloat(totals.menungguKonfirmasi) || 0,
+                    parseFloat(totals.totalSimpanan) || 0,
+                    parseFloat(totals.totalPinjaman) || 0
                 ];
                 const ctx = document.getElementById('activityChart').getContext('2d');
                 new Chart(ctx, {
-                    type: 'bar',
+                    type: 'pie',
                     data: {
                         labels: labels,
-                        datasets: datasets
+                        datasets: [{
+                            data: pieData,
+                            backgroundColor: [
+                                'rgba(54, 162, 235, 0.8)',
+                                'rgba(255, 206, 86, 0.8)',
+                                'rgba(75, 192, 192, 0.8)',
+                                'rgba(255, 99, 132, 0.8)'
+                            ],
+                            borderColor: '#ffffff',
+                            borderWidth: 2
+                        }]
                     },
                     options: {
                         responsive: true,
@@ -155,48 +131,18 @@
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        let label = context.dataset.label + ': ';
-                                        if (context.dataset.label !== 'Total Anggota') {
-                                            label += 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                        let label = context.label + ': ';
+                                        if (context.label === 'Total Anggota' || context.label === 'Menunggu Konfirmasi') {
+                                            label += context.parsed.toLocaleString('id-ID') + ' orang';
                                         } else {
-                                            label += context.parsed.y.toLocaleString('id-ID') + ' orang';
+                                            label += 'Rp ' + context.parsed.toLocaleString('id-ID');
                                         }
                                         return label;
                                     }
                                 }
                             }
                         },
-                        layout: {
-                            padding: 0
-                        },
-                        datasets: {
-                            bar: {
-                                borderRadius: 6,
-                                barThickness: 16,
-                                maxBarThickness: 18
-                            }
-                        },
-                        scales: {
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Tanggal',
-                                    font: { weight: 'bold' }
-                                },
-                                ticks: {
-                                    maxRotation: 0,
-                                    autoSkip: true
-                                }
-                            },
-                            y: {
-                                title: {
-                                    display: true,
-                                    text: 'Jumlah',
-                                    font: { weight: 'bold' }
-                                },
-                                beginAtZero: true
-                            }
-                        }
+                        layout: { padding: 0 }
                     }
                 });
             }

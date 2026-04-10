@@ -78,11 +78,13 @@
                 <div class="col-12">
                     <div class="card shadow-sm">
                         <div class="card-header bg-primary text-white">
-                            <i class="fa-solid fa-chart-bar me-2"></i> Ringkasan Keuangan Koperasi
+                            <i class="fa-solid fa-chart-pie me-2"></i> Ringkasan Keuangan Koperasi
                         </div>
                         <div class="card-body">
                             <div style="position: relative; height: 400px; width: 100%;">
                                 <canvas id="activityChart" 
+                                    data-anggota="{{ .TotalAnggota }}"
+                                    data-menunggu="{{ .MenungguKonfirmasi }}"
                                     data-simpanan="{{ .TotalSimpanan }}"
                                     data-pinjaman="{{ .TotalPinjaman }}"
                                     data-angsuran="{{ .TotalAngsuran }}"
@@ -124,10 +126,14 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         const canvas = document.getElementById('activityChart');
+        const totalAnggota = parseFloat(canvas.dataset.anggota) || 0;
+        const menungguKonfirmasi = parseFloat(canvas.dataset.menunggu) || 0;
         const totalSimpanan = parseFloat(canvas.dataset.simpanan) || 0;
         const totalPinjaman = parseFloat(canvas.dataset.pinjaman) || 0;
         const totalAngsuran = parseFloat(canvas.dataset.angsuran) || 0;
         const totalPengambilan = parseFloat(canvas.dataset.pengambilan) || 0;
+        const rawValues = [totalAnggota, menungguKonfirmasi, totalSimpanan, totalPinjaman, totalAngsuran, totalPengambilan];
+        const isAllZero = rawValues.every(v => v <= 0);
 
         // Update display dengan format rupiah untuk card yang menampilkan angka rupiah
         document.querySelectorAll('.stat-number[data-value]').forEach((el) => {
@@ -140,24 +146,34 @@
 
         const ctx = canvas.getContext('2d');
         new Chart(ctx, {
-            type: 'bar',
+            type: 'pie',
             data: {
-                labels: ['Total Simpanan', 'Pinjaman Aktif', 'Angsuran Terbayar', 'Penarikan Simpanan'],
+                labels: isAllZero
+                    ? ['Belum ada data transaksi']
+                    : ['Total Anggota', 'Menunggu Konfirmasi', 'Total Simpanan', 'Total Pinjaman Aktif', 'Total Angsuran Terbayar', 'Total Penarikan Simpanan'],
                 datasets: [{
                     label: 'Jumlah (Rp)',
-                    data: [totalSimpanan, totalPinjaman, totalAngsuran, totalPengambilan],
-                    backgroundColor: [
-                        'rgba(40, 167, 69, 0.8)',
-                        'rgba(220, 53, 69, 0.8)',
-                        'rgba(23, 162, 184, 0.8)',
-                        'rgba(108, 117, 125, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgba(40, 167, 69, 1)',
-                        'rgba(220, 53, 69, 1)',
-                        'rgba(23, 162, 184, 1)',
-                        'rgba(108, 117, 125, 1)'
-                    ],
+                    data: isAllZero ? [1] : rawValues,
+                    backgroundColor: isAllZero
+                        ? ['rgba(173, 181, 189, 0.75)']
+                        : [
+                            'rgba(13, 110, 253, 0.8)',
+                            'rgba(255, 193, 7, 0.8)',
+                            'rgba(40, 167, 69, 0.8)',
+                            'rgba(220, 53, 69, 0.8)',
+                            'rgba(23, 162, 184, 0.8)',
+                            'rgba(108, 117, 125, 0.8)'
+                        ],
+                    borderColor: isAllZero
+                        ? ['rgba(173, 181, 189, 1)']
+                        : [
+                            'rgba(13, 110, 253, 1)',
+                            'rgba(255, 193, 7, 1)',
+                            'rgba(40, 167, 69, 1)',
+                            'rgba(220, 53, 69, 1)',
+                            'rgba(23, 162, 184, 1)',
+                            'rgba(108, 117, 125, 1)'
+                        ],
                     borderWidth: 2
                 }]
             },
@@ -166,7 +182,8 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: 'bottom'
                     },
                     title: {
                         display: true,
@@ -183,22 +200,15 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
+                                if (isAllZero) {
+                                    return 'Belum ada data transaksi';
                                 }
-                                label += formatRupiah(context.parsed.y);
-                                return label;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return formatRupiah(value);
+                                const label = context.label || '';
+                                const value = Number(context.raw || 0);
+                                if (label === 'Total Anggota' || label === 'Menunggu Konfirmasi') {
+                                    return `${label}: ${value}`;
+                                }
+                                return `${label}: ${formatRupiah(value)}`;
                             }
                         }
                     }

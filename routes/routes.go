@@ -185,6 +185,9 @@ func SetupRouter() *gin.Engine {
 	{
 		adminRoutes.GET("/dashboard", controllers.AdminDashboard)
 		adminRoutes.GET("/anggota", controllers.AdminDataAnggota)
+		adminRoutes.GET("/anggota/tambah", controllers.AdminTambahAnggotaForm)
+		adminRoutes.POST("/anggota/tambah", controllers.AdminTambahAnggotaPost)
+		adminRoutes.POST("/anggota/tambah/import", controllers.AdminImportAnggotaExcel)
 		adminRoutes.GET("/anggota/:id", controllers.AdminViewAnggota)
 		adminRoutes.GET("/halaman/edit/:slug", controllers.ShowEditHalamanForm)
 		adminRoutes.POST("/halaman/update/:slug", controllers.UpdateHalaman)
@@ -206,6 +209,7 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/laporan/get-neraca", controllers.AdminGetNeraca)
 		adminRoutes.GET("/tentang", controllers.AdminTentang)
 		adminRoutes.GET("/pengaturan", controllers.AdminPengaturan)
+		adminRoutes.POST("/pengaturan/wa-notif", controllers.AdminSaveWAGatewayConfig)
 		adminRoutes.POST("/update-user", controllers.UpdateUser)
 		adminRoutes.POST("/update-anggota", controllers.UpdateAnggota)
 		adminRoutes.GET("/keamanan/login", controllers.AdminKeamananLogin)

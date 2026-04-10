@@ -363,14 +363,15 @@
             if (unitKerjaValue === '03') {
                 limitPinjaman = 5 * totalSimpanan;
             } else if (gajiBulanan > 0 && jangkaWaktu > 0) {
-                limitPinjaman = (0.4 * gajiBulanan * jangkaWaktu) + totalSimpanan;
+                limitPinjaman = 0.4 * gajiBulanan * jangkaWaktu;
             }
 
             // Check limit warning
             const limitWarning = document.getElementById('limit_warning');
             if (limitWarning && jumlahPinjaman > 0 && limitPinjaman > 0) {
                 if (jumlahPinjaman > limitPinjaman) {
-                    limitWarning.innerHTML = '<span class="text-danger"><i class="fa-solid fa-exclamation-triangle me-1"></i>Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID') + '</span>';
+                    const alasanLimit = unitKerjaValue === '03' ? ' (5x total simpanan)' : ' (0.4 x gaji x tenor)';
+                    limitWarning.innerHTML = '<span class="text-danger"><i class="fa-solid fa-exclamation-triangle me-1"></i>Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID') + alasanLimit + '</span>';
                 } else {
                     limitWarning.innerHTML = '<span class="text-success"><i class="fa-solid fa-check-circle me-1"></i>Jumlah pinjaman dalam batas limit</span>';
                 }

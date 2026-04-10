@@ -117,13 +117,12 @@
             text-align: left;
         }
 
+        .table tbody td:nth-child(6),
         .table tbody td:nth-child(7),
         .table tbody td:nth-child(8),
         .table tbody td:nth-child(9),
         .table tbody td:nth-child(10),
-        .table tbody td:nth-child(11),
-        .table tbody td:nth-child(12),
-        .table tbody td:nth-child(13) {
+        .table tbody td:nth-child(11) {
             text-align: center;
             white-space: nowrap;
         }
@@ -343,8 +342,6 @@
                                     <th>No</th>
                                     <th>ID Anggota</th>
                                     <th>Nama</th>
-                                    <th>Unit Kerja</th>
-                                    <th>No. Telepon</th>
                                     <th>Gaji Bulanan</th>
                                     <th>
                                         Potongan Bulan Ini
@@ -353,6 +350,7 @@
                                     </th>
                                     <th>Sisa Gaji</th>
                                     <th>Simpanan Wajib</th>
+                                    <th>Simpanan Pokok</th>
                                     <th>Status</th>
                                     <th>Tanggal Gabung</th>
                                     <th>Aksi</th>
@@ -364,8 +362,6 @@
                                     <td>{{ add $index 1 }}</td>
                                     <td><strong>{{ if $anggota.IDAnggota }}{{ $anggota.IDAnggota }}{{ else }}-{{ end }}</strong></td>
                                     <td>{{ $anggota.NamaAnggota }}</td>
-                                    <td>{{ if or (eq $anggota.Fakultas "Rektorat / Yayasan / Staff") (eq $anggota.Fakultas "Rektorat / Yayasan") }}Rektoriat{{ else }}{{ $anggota.Fakultas }}{{ end }}</td>
-                                    <td>+62{{ $anggota.NoTelepon }}</td>
                                     <td>
                                         {{ if gt $anggota.GajiBulanan 0 }}
                                             <span class="gaji-bulanan" data-gaji="{{ $anggota.GajiBulanan }}">Rp {{ printf "%,d" $anggota.GajiBulanan }}</span>
@@ -393,6 +389,14 @@
                                         {{ $simpananWajib := index $.SimpananWajib $anggota.IDAnggota }}
                                         {{ if gt $simpananWajib 0.0 }}
                                             <span class="simpanan-wajib" data-simpanan="{{ $simpananWajib }}">Rp {{ printf "%.0f" $simpananWajib }}</span>
+                                        {{ else }}
+                                            <span class="text-muted">Rp 0</span>
+                                        {{ end }}
+                                    </td>
+                                    <td>
+                                        {{ $simpananPokok := index $.SimpananPokok $anggota.IDAnggota }}
+                                        {{ if gt $simpananPokok 0.0 }}
+                                            <span class="simpanan-pokok" data-simpanan-pokok="{{ $simpananPokok }}">Rp {{ printf "%.0f" $simpananPokok }}</span>
                                         {{ else }}
                                             <span class="text-muted">Rp 0</span>
                                         {{ end }}
@@ -522,6 +526,9 @@
             // Format simpanan wajib dengan pemisah ribuan
             formatSimpananWajib();
 
+            // Format simpanan pokok dengan pemisah ribuan
+            formatSimpananPokok();
+
             // Format potongan bulan ini
             formatPotonganBulanIni();
 
@@ -566,6 +573,17 @@
             });
         }
 
+        function formatSimpananPokok() {
+            const simpananPokokElements = document.querySelectorAll('.simpanan-pokok');
+            simpananPokokElements.forEach(element => {
+                const simpananPokokValue = element.getAttribute('data-simpanan-pokok');
+                if (simpananPokokValue && !isNaN(simpananPokokValue)) {
+                    const formatted = new Intl.NumberFormat('id-ID').format(parseFloat(simpananPokokValue));
+                    element.textContent = 'Rp ' + formatted;
+                }
+            });
+        }
+
         function formatPotonganBulanIni() {
             const potonganElements = document.querySelectorAll('.potongan-bulan-ini');
             potonganElements.forEach(element => {
@@ -595,7 +613,7 @@
             // Count from table rows
             const rows = document.querySelectorAll('#anggotaTable tbody tr');
             rows.forEach(row => {
-                const statusCell = row.querySelector('td:nth-child(10)'); // Updated index after column adjustment
+                const statusCell = row.querySelector('td:nth-child(9)');
                 if (statusCell) {
                     const statusText = statusCell.textContent.trim();
                     if (statusText.includes('Aktif')) {

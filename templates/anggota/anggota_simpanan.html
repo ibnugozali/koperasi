@@ -119,60 +119,138 @@
             </div>
             {{ end }}
             <form action="/anggota/simpanan" method="post" enctype="multipart/form-data">
-              <div class="row mb-3 align-items-center">
-                <label for="simpanan_wajib" class="col-sm-4 col-form-label">Simpanan Wajib</label>
-                <div class="col-sm-8">
-                  <div class="input-group">
-                    <span class="input-group-text">Rp</span>
-                    <input type="number" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" min="0" value="0" placeholder="0" {{ if .IsLocked }}readonly disabled{{ end }}>
-                  </div>
-                  {{ if .IsLocked }}
-                  <div class="form-text text-muted">
-                    <i class="bi bi-lock-fill me-1"></i>Simpanan Wajib sudah sesuai konfigurasi dan telah dikunci.
-                  </div>
-                  {{ else if gt .NominalSimpananWajib 0.0 }}
-                  <div class="form-text text-muted">
-                    <i class="bi bi-info-circle me-1"></i>Nominal yang diharapkan: Rp {{ printf "%.0f" .NominalSimpananWajib }}
-                  </div>
+              {{ if and .Konten (index .Konten "formulir_simpanan") }}
+                {{ range $idx, $field := index .Konten "formulir_simpanan" }}
+                  {{ $key := index $field "key" }}
+                  {{ $label := index $field "label" }}
+                  {{ $ph := index $field "placeholder" }}
+                  {{ if eq $key "simpanan_wajib" }}
+                    <div class="row mb-3 align-items-center">
+                      <label for="simpanan_wajib" class="col-sm-4 col-form-label">{{ if $label }}{{ $label }}{{ else }}Simpanan Wajib{{ end }}</label>
+                      <div class="col-sm-8">
+                        <div class="input-group">
+                          <span class="input-group-text">Rp</span>
+                          <input type="number" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" min="0" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}" {{ if $.IsLocked }}readonly disabled{{ end }}>
+                        </div>
+                        {{ if $.IsLocked }}
+                        <div class="form-text text-muted">
+                          <i class="bi bi-lock-fill me-1"></i>Simpanan Wajib sudah sesuai konfigurasi dan telah dikunci.
+                        </div>
+                        {{ else if gt $.NominalSimpananWajib 0.0 }}
+                        <div class="form-text text-muted">
+                          <i class="bi bi-info-circle me-1"></i>Nominal yang diharapkan: Rp {{ printf "%.0f" $.NominalSimpananWajib }}
+                        </div>
+                        {{ end }}
+                      </div>
+                    </div>
+                  {{ else if eq $key "simpanan_sukarela" }}
+                    <div class="row mb-3 align-items-center">
+                      <label for="simpanan_sukarela" class="col-sm-4 col-form-label">{{ if $label }}{{ $label }}{{ else }}Simpanan Sukarela{{ end }}</label>
+                      <div class="col-sm-8">
+                        <div class="input-group">
+                          <span class="input-group-text">Rp</span>
+                          <input type="number" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" min="0" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}">
+                        </div>
+                      </div>
+                    </div>
+                  {{ else if eq $key "simpanan_hari_raya" }}
+                    <div class="row mb-3 align-items-center">
+                      <label for="simpanan_hari_raya" class="col-sm-4 col-form-label">{{ if $label }}{{ $label }}{{ else }}Simpanan Hari Raya{{ end }}</label>
+                      <div class="col-sm-8">
+                        <div class="input-group">
+                          <span class="input-group-text">Rp</span>
+                          <input type="number" class="form-control simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" min="0" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}">
+                        </div>
+                      </div>
+                    </div>
+                  {{ else if eq $key "simpanan_umroh_haji" }}
+                    <div class="row mb-3 align-items-center">
+                      <label for="simpanan_umroh_haji" class="col-sm-4 col-form-label">{{ if $label }}{{ $label }}{{ else }}Simpanan Umroh/Haji{{ end }}</label>
+                      <div class="col-sm-8">
+                        <div class="input-group">
+                          <span class="input-group-text">Rp</span>
+                          <input type="number" class="form-control simpanan-input" id="simpanan_umroh_haji" name="simpanan_umroh_haji" min="0" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}">
+                        </div>
+                      </div>
+                    </div>
+                  {{ else if eq $key "simpanan_qurban" }}
+                    <div class="row mb-3 align-items-center">
+                      <label for="simpanan_qurban" class="col-sm-4 col-form-label">{{ if $label }}{{ $label }}{{ else }}Simpanan Qurban{{ end }}</label>
+                      <div class="col-sm-8">
+                        <div class="input-group">
+                          <span class="input-group-text">Rp</span>
+                          <input type="number" class="form-control simpanan-input" id="simpanan_qurban" name="simpanan_qurban" min="0" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}">
+                        </div>
+                      </div>
+                    </div>
+                  {{ else }}
+                    <div class="row mb-3 align-items-center">
+                      <label for="{{ $key }}" class="col-sm-4 col-form-label">{{ if $label }}{{ $label }}{{ else }}{{ $key }}{{ end }}</label>
+                      <div class="col-sm-8">
+                        <div class="input-group">
+                          <span class="input-group-text">Rp</span>
+                          <input type="number" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" min="0" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}">
+                        </div>
+                      </div>
+                    </div>
                   {{ end }}
-                </div>
-              </div>
-              <div class="row mb-3 align-items-center">
-                <label for="simpanan_sukarela" class="col-sm-4 col-form-label">Simpanan Sukarela</label>
-                <div class="col-sm-8">
-                  <div class="input-group">
-                    <span class="input-group-text">Rp</span>
-                    <input type="number" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" min="0" value="0" placeholder="0">
+                {{ end }}
+              {{ else }}
+                <div class="row mb-3 align-items-center">
+                  <label for="simpanan_wajib" class="col-sm-4 col-form-label">Simpanan Wajib</label>
+                  <div class="col-sm-8">
+                    <div class="input-group">
+                      <span class="input-group-text">Rp</span>
+                      <input type="number" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" min="0" value="0" placeholder="0" {{ if .IsLocked }}readonly disabled{{ end }}>
+                    </div>
+                    {{ if .IsLocked }}
+                    <div class="form-text text-muted">
+                      <i class="bi bi-lock-fill me-1"></i>Simpanan Wajib sudah sesuai konfigurasi dan telah dikunci.
+                    </div>
+                    {{ else if gt .NominalSimpananWajib 0.0 }}
+                    <div class="form-text text-muted">
+                      <i class="bi bi-info-circle me-1"></i>Nominal yang diharapkan: Rp {{ printf "%.0f" .NominalSimpananWajib }}
+                    </div>
+                    {{ end }}
                   </div>
                 </div>
-              </div>
-              <div class="row mb-3 align-items-center">
-                <label for="simpanan_hari_raya" class="col-sm-4 col-form-label">Simpanan Hari Raya</label>
-                <div class="col-sm-8">
-                  <div class="input-group">
-                    <span class="input-group-text">Rp</span>
-                    <input type="number" class="form-control simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" min="0" value="0" placeholder="0">
+                <div class="row mb-3 align-items-center">
+                  <label for="simpanan_sukarela" class="col-sm-4 col-form-label">Simpanan Sukarela</label>
+                  <div class="col-sm-8">
+                    <div class="input-group">
+                      <span class="input-group-text">Rp</span>
+                      <input type="number" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" min="0" value="0" placeholder="0">
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="row mb-3 align-items-center">
-                <label for="simpanan_umroh_haji" class="col-sm-4 col-form-label">Simpanan Umroh/Haji</label>
-                <div class="col-sm-8">
-                  <div class="input-group">
-                    <span class="input-group-text">Rp</span>
-                    <input type="number" class="form-control simpanan-input" id="simpanan_umroh_haji" name="simpanan_umroh_haji" min="0" value="0" placeholder="0">
+                <div class="row mb-3 align-items-center">
+                  <label for="simpanan_hari_raya" class="col-sm-4 col-form-label">Simpanan Hari Raya</label>
+                  <div class="col-sm-8">
+                    <div class="input-group">
+                      <span class="input-group-text">Rp</span>
+                      <input type="number" class="form-control simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" min="0" value="0" placeholder="0">
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="row mb-3 align-items-center">
-                <label for="simpanan_qurban" class="col-sm-4 col-form-label">Simpanan Qurban</label>
-                <div class="col-sm-8">
-                  <div class="input-group">
-                    <span class="input-group-text">Rp</span>
-                    <input type="number" class="form-control simpanan-input" id="simpanan_qurban" name="simpanan_qurban" min="0" value="0" placeholder="0">
+                <div class="row mb-3 align-items-center">
+                  <label for="simpanan_umroh_haji" class="col-sm-4 col-form-label">Simpanan Umroh/Haji</label>
+                  <div class="col-sm-8">
+                    <div class="input-group">
+                      <span class="input-group-text">Rp</span>
+                      <input type="number" class="form-control simpanan-input" id="simpanan_umroh_haji" name="simpanan_umroh_haji" min="0" value="0" placeholder="0">
+                    </div>
                   </div>
                 </div>
-              </div>
+                <div class="row mb-3 align-items-center">
+                  <label for="simpanan_qurban" class="col-sm-4 col-form-label">Simpanan Qurban</label>
+                  <div class="col-sm-8">
+                    <div class="input-group">
+                      <span class="input-group-text">Rp</span>
+                      <input type="number" class="form-control simpanan-input" id="simpanan_qurban" name="simpanan_qurban" min="0" value="0" placeholder="0">
+                    </div>
+                  </div>
+                </div>
+              {{ end }}
               <div class="row mb-3 align-items-center">
                 <label for="total_simpanan" class="col-sm-4 col-form-label">Total Simpanan</label>
                 <div class="col-sm-8">
