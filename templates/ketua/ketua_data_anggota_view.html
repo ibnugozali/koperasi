@@ -287,72 +287,15 @@
                             <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>Saldo Simpanan & Pinjaman</h5>
                         </div>
                         <div class="card-body">
+                            {{ range .ProfilSimpananRows }}
                             <div class="row mb-2">
-                                <div class="col-6"><strong>Simpanan Pokok:</strong></div>
+                                <div class="col-6"><strong>{{ .Label }}:</strong></div>
                                 <div class="col-6 text-end">
-                                    {{ if .SimpananPokok }}
-                                        <span class="saldo-value" data-value="{{ .SimpananPokok }}">Rp {{ printf "%.0f" .SimpananPokok }}</span>
-                                    {{ else }}
-                                        <span class="saldo-value" data-value="0">Rp 0</span>
-                                    {{ end }}
+                                    <span class="saldo-value" data-value="{{ .Amount }}">Rp {{ printf "%.0f" .Amount }}</span>
                                 </div>
                             </div>
                             <hr>
-                            <div class="row mb-2">
-                                <div class="col-6"><strong>Simpanan Wajib:</strong></div>
-                                <div class="col-6 text-end">
-                                    {{ if .SimpananWajib }}
-                                        <span class="saldo-value" data-value="{{ .SimpananWajib }}">Rp {{ printf "%.0f" .SimpananWajib }}</span>
-                                    {{ else }}
-                                        <span class="saldo-value" data-value="0">Rp 0</span>
-                                    {{ end }}
-                                </div>
-                            </div>
-                            <hr>
-                            <div class="row mb-2">
-                                <div class="col-6"><strong>Simpanan Sukarela:</strong></div>
-                                <div class="col-6 text-end">
-                                    {{ if .SimpananSukarela }}
-                                        <span class="saldo-value" data-value="{{ .SimpananSukarela }}">Rp {{ printf "%.0f" .SimpananSukarela }}</span>
-                                    {{ else }}
-                                        <span class="saldo-value" data-value="0">Rp 0</span>
-                                    {{ end }}
-                                </div>
-                            </div>
-                            <hr>
-                            <div class="row mb-2">
-                                <div class="col-6"><strong>Simpanan Hari Raya:</strong></div>
-                                <div class="col-6 text-end">
-                                    {{ if .SimpananHariRaya }}
-                                        <span class="saldo-value" data-value="{{ .SimpananHariRaya }}">Rp {{ printf "%.0f" .SimpananHariRaya }}</span>
-                                    {{ else }}
-                                        <span class="saldo-value" data-value="0">Rp 0</span>
-                                    {{ end }}
-                                </div>
-                            </div>
-                            <hr>
-                            <div class="row mb-2">
-                                <div class="col-6"><strong>Simpanan Umroh/Haji:</strong></div>
-                                <div class="col-6 text-end">
-                                    {{ if .SimpananUmrohHaji }}
-                                        <span class="saldo-value" data-value="{{ .SimpananUmrohHaji }}">Rp {{ printf "%.0f" .SimpananUmrohHaji }}</span>
-                                    {{ else }}
-                                        <span class="saldo-value" data-value="0">Rp 0</span>
-                                    {{ end }}
-                                </div>
-                            </div>
-                            <hr>
-                            <div class="row mb-2">
-                                <div class="col-6"><strong>Simpanan Qurban:</strong></div>
-                                <div class="col-6 text-end">
-                                    {{ if .SimpananQurban }}
-                                        <span class="saldo-value" data-value="{{ .SimpananQurban }}">Rp {{ printf "%.0f" .SimpananQurban }}</span>
-                                    {{ else }}
-                                        <span class="saldo-value" data-value="0">Rp 0</span>
-                                    {{ end }}
-                                </div>
-                            </div>
-                            <hr>
+                            {{ end }}
                             <div class="row mb-2">
                                 <div class="col-6"><strong>Total Simpanan:</strong></div>
                                 <div class="col-6 text-end">

@@ -972,6 +972,23 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 				AND s.jenis_simpanan = 'sukarela'
 				AND d.status = 'confirmed'
 			), 0) as total_simpanan_sukarela,
+			-- Simpanan Lainnya bulan ini (termasuk jenis simpanan baru/custom)
+			COALESCE((SELECT SUM(d.jumlah_simpanan)
+				FROM detail d
+				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+				WHERE d.id_anggota = a.id_anggota
+				AND s.jenis_simpanan NOT IN ('pokok', 'wajib', 'hari_raya', 'sukarela')
+				AND ($1 = 0 OR EXTRACT(MONTH FROM d.tgl_transaksi) = $1) AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+				AND d.status = 'confirmed'
+			), 0) as simpanan_lainnya_bulanan,
+			-- Total Simpanan Lainnya sampai saat ini
+			COALESCE((SELECT SUM(d.jumlah_simpanan)
+				FROM detail d
+				JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+				WHERE d.id_anggota = a.id_anggota
+				AND s.jenis_simpanan NOT IN ('pokok', 'wajib', 'hari_raya', 'sukarela')
+				AND d.status = 'confirmed'
+			), 0) as total_simpanan_lainnya,
 			-- Pinjaman yang diambil bulan ini
 			COALESCE((SELECT SUM(p.jumlah_pinjaman) 
 				FROM pinjaman p
@@ -1091,6 +1108,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 		var simpananPokok, simpananWajibBulanan, totalSimpananWajib float64
 		var simpananHariRayaBulanan, totalSimpananHariRaya float64
 		var simpananSukarelaBulanan, totalSimpananSukarela float64
+		var simpananLainnyaBulanan, totalSimpananLainnya float64
 		var pinjamanBulanan, totalPinjamanAktif, sisaPinjaman float64
 		var angsuranBulanan float64
 		var totalAngsuranDibayar, sisaAngsuran, jangkaWaktu int
@@ -1102,6 +1120,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 			&simpananWajibBulanan, &totalSimpananWajib,
 			&simpananHariRayaBulanan, &totalSimpananHariRaya,
 			&simpananSukarelaBulanan, &totalSimpananSukarela,
+			&simpananLainnyaBulanan, &totalSimpananLainnya,
 			&pinjamanBulanan, &totalPinjamanAktif, &sisaPinjaman,
 			&angsuranBulanan, &totalAngsuranDibayar, &sisaAngsuran,
 			&jangkaWaktu, &pokokPerBulan, &jasaPerBulan, &jasaDibayarPeriode,
@@ -1117,7 +1136,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 		jumlahAngsuranPerBulan := pokokPerBulan + jasaPerBulan
 
 		// Hitung total pembayaran bulan ini (simpanan + angsuran)
-		totalPembayaran := simpananWajibBulanan + simpananHariRayaBulanan + simpananSukarelaBulanan + angsuranBulanan
+		totalPembayaran := simpananWajibBulanan + simpananHariRayaBulanan + simpananSukarelaBulanan + simpananLainnyaBulanan + angsuranBulanan
 
 		report["id_anggota"] = idAnggota
 		report["nama_anggota"] = namaAnggota
@@ -1129,6 +1148,8 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 		report["total_simpanan_hariraya"] = totalSimpananHariRaya
 		report["simpanan_sukarela_bulanan"] = simpananSukarelaBulanan
 		report["total_simpanan_sukarela"] = totalSimpananSukarela
+		report["simpanan_lainnya_bulanan"] = simpananLainnyaBulanan
+		report["total_simpanan_lainnya"] = totalSimpananLainnya
 		report["pinjaman_bulanan"] = pinjamanBulanan
 		report["total_pinjaman_aktif"] = totalPinjamanAktif
 		report["sisa_pinjaman"] = sisaPinjaman
@@ -1141,7 +1162,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 		report["jumlah_angsuran_per_bulan"] = jumlahAngsuranPerBulan
 		report["total_pembayaran"] = totalPembayaran
 		report["jasa_dibayar_periode"] = jasaDibayarPeriode
-		report["kontribusi_simpanan_shu"] = simpananPokok + totalSimpananWajib + totalSimpananHariRaya + totalSimpananSukarela
+		report["kontribusi_simpanan_shu"] = simpananPokok + totalSimpananWajib + totalSimpananHariRaya + totalSimpananSukarela + totalSimpananLainnya
 
 		reports = append(reports, report)
 	}

@@ -75,6 +75,12 @@
                             {{ end }}
                         </div>
                     </div>
+                    {{ range .ProfilSimpananRows }}
+                    <div class="info-row">
+                        <div class="info-label">{{ .Label }}</div>
+                        <div class="info-value">Rp {{printf "%.0f" .Amount}}</div>
+                    </div>
+                    {{ end }}
                     <div class="info-row">
                         <div class="info-label">Total Simpanan</div>
                         <div class="info-value">Rp {{printf "%.0f" .TotalSimpanan}}</div>

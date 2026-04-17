@@ -676,6 +676,7 @@ func AdminViewAnggota(c *gin.Context) {
 	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
 		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
 		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
 	if err != nil {
@@ -688,19 +689,20 @@ func AdminViewAnggota(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin_data_anggota_view.html", gin.H{
-		"Anggota":           anggota,
-		"ActivePage":        "anggota",
-		"LogoPath":          logoPath,
-		"CurrentLogo":       logoPath,
-		"Title":             "Detail Anggota",
-		"SimpananPokok":     simpananByJenis["pokok"],
-		"SimpananWajib":     simpananByJenis["wajib"],
-		"SimpananSukarela":  simpananByJenis["sukarela"],
-		"SimpananHariRaya":  simpananByJenis["hari_raya"],
-		"SimpananUmrohHaji": simpananByJenis["umroh_haji"],
-		"SimpananQurban":    simpananByJenis["qurban"],
-		"TotalSimpanan":     totalSimpanan,
-		"TotalPinjaman":     totalPinjaman,
+		"Anggota":            anggota,
+		"ActivePage":         "anggota",
+		"LogoPath":           logoPath,
+		"CurrentLogo":        logoPath,
+		"Title":              "Detail Anggota",
+		"ProfilSimpananRows": profilSimpananRows,
+		"SimpananPokok":      simpananByJenis["pokok"],
+		"SimpananWajib":      simpananByJenis["wajib"],
+		"SimpananSukarela":   simpananByJenis["sukarela"],
+		"SimpananHariRaya":   simpananByJenis["hari_raya"],
+		"SimpananUmrohHaji":  simpananByJenis["umroh_haji"],
+		"SimpananQurban":     simpananByJenis["qurban"],
+		"TotalSimpanan":      totalSimpanan,
+		"TotalPinjaman":      totalPinjaman,
 	})
 }
 
@@ -1392,24 +1394,31 @@ func AdminLaporan(c *gin.Context) {
 	if err != nil {
 		laporanDetail = []map[string]interface{}{}
 	}
+	labelByKey, customSimpananColumns := getLaporanSimpananColumns()
+	hydrateCustomSimpananValuesToLaporanDetail(laporanDetail, customSimpananColumns, bulan, tahun)
 
 	c.HTML(http.StatusOK, "ketua_laporan.html", gin.H{
-		"ActivePage":       "laporan",
-		"Report":           report,
-		"Bulan":            bulan,
-		"Tahun":            tahun,
-		"TipeLaporan":      tipeLaporan,
-		"CurrentLogo":      logoPath,
-		"LogoPath":         logoPath,
-		"Anggotas":         anggotas,
-		"LaporanDetail":    laporanDetail,
-		"SisaGaji":         sisaGaji,
-		"GetUnitKerjaName": repository.GetUnitKerjaName,
-		"NeracaData2024":   data2024,
-		"NeracaData2023":   data2023,
-		"LaporanBasePath":  "/admin/laporan",
-		"UseAdminLayout":   true,
-		"ReadOnlyMode":     true,
+		"ActivePage":            "laporan",
+		"Report":                report,
+		"Bulan":                 bulan,
+		"Tahun":                 tahun,
+		"TipeLaporan":           tipeLaporan,
+		"CurrentLogo":           logoPath,
+		"LogoPath":              logoPath,
+		"Anggotas":              anggotas,
+		"LaporanDetail":         laporanDetail,
+		"SisaGaji":              sisaGaji,
+		"SimpananLabelPokok":    labelByKey["simpanan_pokok"],
+		"SimpananLabelWajib":    labelByKey["simpanan_wajib"],
+		"SimpananLabelHariRaya": labelByKey["simpanan_hari_raya"],
+		"SimpananLabelSukarela": labelByKey["simpanan_sukarela"],
+		"CustomSimpananColumns": customSimpananColumns,
+		"GetUnitKerjaName":      repository.GetUnitKerjaName,
+		"NeracaData2024":        data2024,
+		"NeracaData2023":        data2023,
+		"LaporanBasePath":       "/admin/laporan",
+		"UseAdminLayout":        true,
+		"ReadOnlyMode":          true,
 	})
 }
 

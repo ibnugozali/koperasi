@@ -82,6 +82,7 @@ func BendaharaViewAnggotaKeluar(c *gin.Context) {
 	// Hitung Total Simpanan dari semua simpanan yang ada
 	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
 		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"]
+	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Ambil total pinjaman
 	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
@@ -113,16 +114,17 @@ func BendaharaViewAnggotaKeluar(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "bendahara_data_anggota_keluar_view.html", gin.H{
-		"Anggota":          anggota,
-		"ActivePage":       "anggota_keluar",
-		"CurrentLogo":      latestLogo,
-		"Title":            "Detail Anggota Keluar",
-		"SimpananPokok":    simpananByJenis["pokok"],
-		"SimpananWajib":    simpananByJenis["wajib"],
-		"SimpananSukarela": simpananByJenis["sukarela"],
-		"SimpananHariRaya": simpananByJenis["hari_raya"],
-		"TotalSimpanan":    totalSimpanan,
-		"TotalPinjaman":    totalPinjaman,
+		"Anggota":            anggota,
+		"ActivePage":         "anggota_keluar",
+		"CurrentLogo":        latestLogo,
+		"Title":              "Detail Anggota Keluar",
+		"ProfilSimpananRows": profilSimpananRows,
+		"SimpananPokok":      simpananByJenis["pokok"],
+		"SimpananWajib":      simpananByJenis["wajib"],
+		"SimpananSukarela":   simpananByJenis["sukarela"],
+		"SimpananHariRaya":   simpananByJenis["hari_raya"],
+		"TotalSimpanan":      totalSimpanan,
+		"TotalPinjaman":      totalPinjaman,
 	})
 }
 
@@ -1182,6 +1184,7 @@ func BendaharaViewAnggota(c *gin.Context) {
 	// Hitung Total Simpanan dari semua simpanan yang ada
 	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
 		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"]
+	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Ambil total pinjaman
 	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
@@ -1214,16 +1217,17 @@ func BendaharaViewAnggota(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "bendahara_data_anggota_view.html", gin.H{
-		"Anggota":          anggota,
-		"ActivePage":       "anggota",
-		"CurrentLogo":      latestLogo,
-		"Title":            "Detail Anggota",
-		"SimpananPokok":    simpananByJenis["pokok"],
-		"SimpananWajib":    simpananByJenis["wajib"],
-		"SimpananSukarela": simpananByJenis["sukarela"],
-		"SimpananHariRaya": simpananByJenis["hari_raya"],
-		"TotalSimpanan":    totalSimpanan,
-		"TotalPinjaman":    totalPinjaman,
+		"Anggota":            anggota,
+		"ActivePage":         "anggota",
+		"CurrentLogo":        latestLogo,
+		"Title":              "Detail Anggota",
+		"ProfilSimpananRows": profilSimpananRows,
+		"SimpananPokok":      simpananByJenis["pokok"],
+		"SimpananWajib":      simpananByJenis["wajib"],
+		"SimpananSukarela":   simpananByJenis["sukarela"],
+		"SimpananHariRaya":   simpananByJenis["hari_raya"],
+		"TotalSimpanan":      totalSimpanan,
+		"TotalPinjaman":      totalPinjaman,
 	})
 }
 

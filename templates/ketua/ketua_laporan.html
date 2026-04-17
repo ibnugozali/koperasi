@@ -265,20 +265,26 @@
                                                     <th>Kode</th>
                                                     <th>Nama</th>
                                                     <th>Unit</th>
-                                                    <th>Pokok</th>
-                                                    <th>Wajib</th>
-                                                    <th>Jumlah Wajib</th>
-                                                    <th>Simpanan Hari Raya</th>
-                                                    <th>Jumlah Simpanan Hari Raya</th>
-                                                    <th>Sukarela</th>
-                                                    <th>Jumlah Sukarela</th>
+                                                    <th>{{ if .SimpananLabelPokok }}{{ .SimpananLabelPokok }}{{ else }}Pokok{{ end }}</th>
+                                                    <th>{{ if .SimpananLabelWajib }}{{ .SimpananLabelWajib }}{{ else }}Wajib{{ end }} (Bulan Ini)</th>
+                                                    <th>Total {{ if .SimpananLabelWajib }}{{ .SimpananLabelWajib }}{{ else }}Wajib{{ end }}</th>
+                                                    <th>{{ if .SimpananLabelHariRaya }}{{ .SimpananLabelHariRaya }}{{ else }}Simpanan Hari Raya{{ end }} (Bulan Ini)</th>
+                                                    <th>Total {{ if .SimpananLabelHariRaya }}{{ .SimpananLabelHariRaya }}{{ else }}Simpanan Hari Raya{{ end }}</th>
+                                                    <th>{{ if .SimpananLabelSukarela }}{{ .SimpananLabelSukarela }}{{ else }}Sukarela{{ end }} (Bulan Ini)</th>
+                                                    <th>Total {{ if .SimpananLabelSukarela }}{{ .SimpananLabelSukarela }}{{ else }}Sukarela{{ end }}</th>
+                                                    {{ if .CustomSimpananColumns }}
+                                                    {{ range $col := .CustomSimpananColumns }}
+                                                    <th>{{ $col.Label }} (Bulan Ini)</th>
+                                                    <th>Total {{ $col.Label }}</th>
+                                                    {{ end }}
+                                                    {{ end }}
                                                     <th>Jumlah Pembayaran</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {{ if .Error }}
                                                 <tr>
-                                                    <td colspan="12" class="text-center text-danger">
+                                                    <td colspan="24" class="text-center text-danger">
                                                         <i class="fas fa-exclamation-circle"></i> {{ .Error }}
                                                     </td>
                                                 </tr>
@@ -297,12 +303,18 @@
                                                         <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_hariraya }}</td>
                                                         <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_sukarela_bulanan }}</td>
                                                         <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_sukarela }}</td>
+                                                        {{ if $.CustomSimpananColumns }}
+                                                        {{ range $col := $.CustomSimpananColumns }}
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" (index $detail $col.BulananField) }}</td>
+                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" (index $detail $col.TotalField) }}</td>
+                                                        {{ end }}
+                                                        {{ end }}
                                                         <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_pembayaran }}</td>
                                                     </tr>
                                                     {{ end }}
                                                 {{ else }}
                                                     <tr>
-                                                        <td colspan="12" class="text-center text-muted">
+                                                        <td colspan="24" class="text-center text-muted">
                                                             <i class="fas fa-info-circle"></i> Tidak ada data simpanan anggota untuk periode ini
                                                         </td>
                                                     </tr>
@@ -335,18 +347,21 @@
                                                 <th>ID Anggota</th>
                                                 <th>Nama</th>
                                                 <th>Unit</th>
-                                                <th>Simpanan Pokok</th>
-                                                <th>Simpanan Wajib</th>
-                                                <th>Simpanan Hari Raya</th>
-                                                <th>Simpanan Umroh/Haji</th>
-                                                <th>Simpanan Qurban</th>
-                                                <th>Simpanan Sukarela</th>
+                                                <th>{{ if .SimpananLabelPokok }}{{ .SimpananLabelPokok }}{{ else }}Simpanan Pokok{{ end }}</th>
+                                                <th>{{ if .SimpananLabelWajib }}{{ .SimpananLabelWajib }}{{ else }}Simpanan Wajib{{ end }}</th>
+                                                <th>{{ if .SimpananLabelHariRaya }}{{ .SimpananLabelHariRaya }}{{ else }}Simpanan Hari Raya{{ end }}</th>
+                                                <th>{{ if .SimpananLabelSukarela }}{{ .SimpananLabelSukarela }}{{ else }}Simpanan Sukarela{{ end }}</th>
+                                                {{ if .CustomSimpananColumns }}
+                                                {{ range $col := .CustomSimpananColumns }}
+                                                <th>{{ $col.Label }}</th>
+                                                {{ end }}
+                                                {{ end }}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {{ if .Error }}
                                             <tr>
-                                                <td colspan="10" class="text-center text-danger">
+                                                <td colspan="18" class="text-center text-danger">
                                                     <i class="fas fa-exclamation-circle"></i> {{ .Error }}
                                                 </td>
                                             </tr>
@@ -361,14 +376,17 @@
                                                     <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_pokok }}</td>
                                                     <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_wajib }}</td>
                                                     <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_hariraya }}</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
-                                                    <td style="white-space: nowrap;">Rp 0</td>
                                                     <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_sukarela }}</td>
+                                                    {{ if $.CustomSimpananColumns }}
+                                                    {{ range $col := $.CustomSimpananColumns }}
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" (index $detail $col.TotalField) }}</td>
+                                                    {{ end }}
+                                                    {{ end }}
                                                 </tr>
                                                 {{ end }}
                                             {{ else }}
                                                 <tr>
-                                                    <td colspan="10" class="text-center text-muted">
+                                                    <td colspan="18" class="text-center text-muted">
                                                         <i class="fas fa-info-circle"></i> Tidak ada data simpanan anggota untuk periode ini
                                                         <br><small>Pastikan ada anggota aktif dan transaksi simpanan di tahun yang dipilih</small>
                                                     </td>

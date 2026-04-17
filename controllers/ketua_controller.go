@@ -3102,6 +3102,7 @@ func KetuaViewAnggota(c *gin.Context) {
 	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
 		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
 		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Ambil total pinjaman
 	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)
@@ -3133,18 +3134,19 @@ func KetuaViewAnggota(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "ketua_data_anggota_view.html", gin.H{
-		"Anggota":           anggota,
-		"ActivePage":        "anggota",
-		"CurrentLogo":       latestLogo,
-		"Title":             "Detail Anggota",
-		"SimpananPokok":     simpananByJenis["pokok"],
-		"SimpananWajib":     simpananByJenis["wajib"],
-		"SimpananSukarela":  simpananByJenis["sukarela"],
-		"SimpananHariRaya":  simpananByJenis["hari_raya"],
-		"SimpananUmrohHaji": simpananByJenis["umroh_haji"],
-		"SimpananQurban":    simpananByJenis["qurban"],
-		"TotalSimpanan":     totalSimpanan,
-		"TotalPinjaman":     totalPinjaman,
+		"Anggota":            anggota,
+		"ActivePage":         "anggota",
+		"CurrentLogo":        latestLogo,
+		"Title":              "Detail Anggota",
+		"ProfilSimpananRows": profilSimpananRows,
+		"SimpananPokok":      simpananByJenis["pokok"],
+		"SimpananWajib":      simpananByJenis["wajib"],
+		"SimpananSukarela":   simpananByJenis["sukarela"],
+		"SimpananHariRaya":   simpananByJenis["hari_raya"],
+		"SimpananUmrohHaji":  simpananByJenis["umroh_haji"],
+		"SimpananQurban":     simpananByJenis["qurban"],
+		"TotalSimpanan":      totalSimpanan,
+		"TotalPinjaman":      totalPinjaman,
 	})
 }
 
@@ -3315,24 +3317,31 @@ func KetuaLaporan(c *gin.Context) {
 		log.Printf("Error getting detailed report: %v", err)
 		laporanDetail = []map[string]interface{}{}
 	}
+	labelByKey, customSimpananColumns := getLaporanSimpananColumns()
+	hydrateCustomSimpananValuesToLaporanDetail(laporanDetail, customSimpananColumns, bulan, tahun)
 
 	c.HTML(http.StatusOK, "ketua_laporan.html", gin.H{
-		"ActivePage":       "laporan",
-		"Report":           report,
-		"Bulan":            bulan,
-		"Tahun":            tahun,
-		"TipeLaporan":      tipeLaporan,
-		"CurrentLogo":      latestLogo,
-		"Anggotas":         anggotas,
-		"LaporanDetail":    laporanDetail,
-		"SisaGaji":         sisaGaji,
-		"GetUnitKerjaName": repository.GetUnitKerjaName,
-		"success":          successMsg,
-		"NeracaData2024":   data2024,
-		"NeracaData2023":   data2023,
-		"LaporanBasePath":  "/ketua/laporan",
-		"UseAdminLayout":   false,
-		"ReadOnlyMode":     false,
+		"ActivePage":            "laporan",
+		"Report":                report,
+		"Bulan":                 bulan,
+		"Tahun":                 tahun,
+		"TipeLaporan":           tipeLaporan,
+		"CurrentLogo":           latestLogo,
+		"Anggotas":              anggotas,
+		"LaporanDetail":         laporanDetail,
+		"SisaGaji":              sisaGaji,
+		"SimpananLabelPokok":    labelByKey["simpanan_pokok"],
+		"SimpananLabelWajib":    labelByKey["simpanan_wajib"],
+		"SimpananLabelHariRaya": labelByKey["simpanan_hari_raya"],
+		"SimpananLabelSukarela": labelByKey["simpanan_sukarela"],
+		"CustomSimpananColumns": customSimpananColumns,
+		"GetUnitKerjaName":      repository.GetUnitKerjaName,
+		"success":               successMsg,
+		"NeracaData2024":        data2024,
+		"NeracaData2023":        data2023,
+		"LaporanBasePath":       "/ketua/laporan",
+		"UseAdminLayout":        false,
+		"ReadOnlyMode":          false,
 	})
 }
 
