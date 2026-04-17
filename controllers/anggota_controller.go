@@ -1662,22 +1662,17 @@ func AnggotaAngsuran(c *gin.Context) {
 	var angsuranKe int
 	var perkiraanAngsuranBulan float64
 
-	totalPinjamanAktif, totalSisaAktif, errTotal := getRingkasanPinjamanAktifByAnggotaID(userID)
 	pinjamanInfo, err := getPinjamanPrioritasAngsuran(pinjamans)
-	if errTotal == nil {
-		jumlahPinjaman = totalPinjamanAktif
-		sisaPinjaman = totalSisaAktif
-	}
-	if err == nil && pinjamanInfo != nil && sisaPinjaman > 0 {
+	if err == nil && pinjamanInfo != nil && pinjamanInfo.SisaPinjaman > 0 {
+		jumlahPinjaman = pinjamanInfo.Pinjaman.JumlahPinjaman
+		sisaPinjaman = pinjamanInfo.SisaPinjaman
 		angsuranKe = pinjamanInfo.AngsuranKe
 		if pinjamanInfo.Pinjaman.JangkaWaktu > 0 {
 			pokokPerBulan := pinjamanInfo.Pinjaman.JumlahPinjaman / float64(pinjamanInfo.Pinjaman.JangkaWaktu)
 			jasaPerBulan := (pinjamanInfo.Pinjaman.Bunga / 100 * pinjamanInfo.Pinjaman.JumlahPinjaman) / float64(pinjamanInfo.Pinjaman.JangkaWaktu)
 			perkiraanAngsuranBulan = pokokPerBulan + jasaPerBulan
 		}
-	}
-	// Jika sisaPinjaman sudah lunas, pastikan jumlahPinjaman juga 0
-	if sisaPinjaman <= 0 {
+	} else {
 		jumlahPinjaman = 0
 		sisaPinjaman = 0
 		angsuranKe = 0
