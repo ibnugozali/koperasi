@@ -1676,6 +1676,13 @@ func AnggotaAngsuran(c *gin.Context) {
 			perkiraanAngsuranBulan = pokokPerBulan + jasaPerBulan
 		}
 	}
+	// Jika sisaPinjaman sudah lunas, pastikan jumlahPinjaman juga 0
+	if sisaPinjaman <= 0 {
+		jumlahPinjaman = 0
+		sisaPinjaman = 0
+		angsuranKe = 0
+		perkiraanAngsuranBulan = 0
+	}
 
 	db := config.GetDB()
 
