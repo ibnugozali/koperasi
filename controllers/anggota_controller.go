@@ -421,60 +421,51 @@ func getRingkasanPinjamanAktifByAnggotaID(idAnggota string) (float64, float64, e
 func getResumePinjamanInfo(userID string) resumePinjamanInfo {
 	info := resumePinjamanInfo{}
 
-	pinjamanAktif, err := repository.GetPinjamanAktifByAnggotaID(userID)
-	if err != nil || len(pinjamanAktif) == 0 {
+	pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
+	if err != nil || len(pinjamans) == 0 {
 		return info
 	}
 
-	p := pinjamanAktif[0]
+	// Gunakan logika yang sama dengan halaman angsuran
+	pinjamanInfo, err := getPinjamanPrioritasAngsuran(pinjamans)
+	if err != nil || pinjamanInfo == nil || pinjamanInfo.SisaPinjaman <= 0 {
+		return info
+	}
+
+	p := pinjamanInfo.Pinjaman
 	info.HasActiveLoan = true
 	info.IDPinjaman = p.IDPinjaman
 	info.Status = p.Status
 	info.TglPinjaman = p.TglPinjaman
 	info.JumlahPinjaman = p.JumlahPinjaman
 	info.JangkaWaktu = p.JangkaWaktu
-
-	angsurans, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
-	if err != nil {
-		info.SisaPokok = p.JumlahPinjaman
-		info.SisaAngsuran = p.JangkaWaktu
-		return info
+	info.SisaPokok = pinjamanInfo.SisaPinjaman
+	info.AngsuranTerbayar = pinjamanInfo.AngsuranKe - 1
+	if info.AngsuranTerbayar < 0 {
+		info.AngsuranTerbayar = 0
 	}
-
-	totalAngsuranTerbayar := 0.0
-	angsuranTerbayar := 0
-	for _, a := range angsurans {
-		if isAngsuranTerbayar(a.Status) {
-			totalAngsuranTerbayar += a.SisaPinjaman
-			angsuranTerbayar++
-		}
+	info.SisaAngsuran = p.JangkaWaktu - info.AngsuranTerbayar
+	if info.SisaAngsuran < 0 {
+		info.SisaAngsuran = 0
 	}
-
-	persentase := 0.0
+	perkiraanAngsuranBulan := 0.0
+	if p.JangkaWaktu > 0 {
+		pokokPerBulan := p.JumlahPinjaman / float64(p.JangkaWaktu)
+		jasaPerBulan := (p.Bunga / 100 * p.JumlahPinjaman) / float64(p.JangkaWaktu)
+		perkiraanAngsuranBulan = pokokPerBulan + jasaPerBulan
+	}
+	info.TotalTerbayar = float64(info.AngsuranTerbayar) * perkiraanAngsuranBulan
+	info.PersentaseTerbayar = 0.0
 	if p.JumlahPinjaman > 0 {
-		persentase = (totalAngsuranTerbayar / p.JumlahPinjaman) * 100
-		if persentase > 100 {
-			persentase = 100
+		info.PersentaseTerbayar = float64(p.JumlahPinjaman-pinjamanInfo.SisaPinjaman) / float64(p.JumlahPinjaman) * 100
+		if info.PersentaseTerbayar < 0 {
+			info.PersentaseTerbayar = 0
+		}
+		if info.PersentaseTerbayar > 100 {
+			info.PersentaseTerbayar = 100
 		}
 	}
-
-	sisaPokok := p.JumlahPinjaman - totalAngsuranTerbayar
-	if sisaPokok < 0 {
-		sisaPokok = 0
-	}
-
-	sisaAngsuran := p.JangkaWaktu - angsuranTerbayar
-	if sisaAngsuran < 0 {
-		sisaAngsuran = 0
-	}
-
-	info.AngsuranTerbayar = angsuranTerbayar
-	info.SisaAngsuran = sisaAngsuran
-	info.TotalTerbayar = totalAngsuranTerbayar
-	info.SisaPokok = sisaPokok
-	info.PersentaseTerbayar = persentase
-	info.BisaAjukanLagi = persentase >= 50
-
+	info.BisaAjukanLagi = info.PersentaseTerbayar >= 50
 	return info
 }
 

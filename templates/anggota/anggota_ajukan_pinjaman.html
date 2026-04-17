@@ -73,9 +73,9 @@ document.addEventListener('DOMContentLoaded', function(){
                 <div class="col-md-6"><strong>Tanggal Pinjaman:</strong> {{ .ResumePinjaman.TglPinjaman.Format "02 Jan 2006" }}</div>
                 <div class="col-md-6"><strong>Tenor:</strong> {{ .ResumePinjaman.JangkaWaktu }} bulan</div>
                 <div class="col-md-6"><strong>Total Pinjaman:</strong> Rp {{ printf "%.0f" .ResumePinjaman.JumlahPinjaman }}</div>
-                <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{ printf "%.0f" .ResumePinjaman.TotalTerbayar }}</div>
-                <div class="col-md-6"><strong>Sisa Pokok:</strong> Rp {{ printf "%.0f" .ResumePinjaman.SisaPokok }}</div>
-                <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{ .ResumePinjaman.AngsuranTerbayar }} kali</div>
+                    <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{ printf "%.0f" .ResumePinjaman.TotalTerbayar }}</div>
+                    <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{ printf "%.0f" .ResumePinjaman.SisaPokok }}</div>
+                    <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{ .ResumePinjaman.AngsuranTerbayar }} kali</div>
             </div>
 
             <div class="mt-3">
