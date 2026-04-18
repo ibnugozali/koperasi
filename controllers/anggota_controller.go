@@ -50,6 +50,9 @@ type resumePinjamanInfo struct {
 	SisaPokok          float64
 	PersentaseTerbayar float64
 	BisaAjukanLagi     bool
+	MetodePencairan    string // ← tambahkan ini
+	MetodeAngsuran     string // ← tambahkan ini
+
 }
 
 type laporanSimpananColumn struct {

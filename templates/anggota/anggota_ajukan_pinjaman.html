@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-      <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
-    <title>KOPMA</title>
+  <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
+  <title>KOPMA</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <script src="/static/js/anggota_ajukan_pinjaman.js"></script>
@@ -30,8 +30,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <div class="alert alert-info mb-3" role="alert">
     <div class="d-flex justify-content-between align-items-start mb-2">
         <h5 class="mb-0">Informasi Kemampuan Bayar</h5>
-        <!-- <span class="fw-bold">Pinjaman</span> -->
-         <span class="fw-bold" style="font-size: 25px;">Pinjaman</span>
+        <span class="fw-bold" style="font-size: 25px;">Pinjaman</span>
     </div>
     <p><strong>Jenis Anggota:</strong> {{ .JenisAnggota }}</p>
     <p><strong>Total Simpanan:</strong> Rp {{ if .TotalSimpanan }}{{ printf "%.0f" .TotalSimpanan }}{{ else }}0{{ end }}</p>
@@ -68,14 +67,15 @@ document.addEventListener('DOMContentLoaded', function(){
     <div class="card-body">
         {{ if .ResumePinjaman.HasActiveLoan }}
             <div class="row g-2 mb-2">
-                <div class="col-md-6"><strong>ID Pinjaman:</strong> #{{ .ResumePinjaman.IDPinjaman }}</div>
                 <div class="col-md-6"><strong>Status:</strong> {{ .ResumePinjaman.Status }}</div>
                 <div class="col-md-6"><strong>Tanggal Pinjaman:</strong> {{ .ResumePinjaman.TglPinjaman.Format "02 Jan 2006" }}</div>
                 <div class="col-md-6"><strong>Tenor:</strong> {{ .ResumePinjaman.JangkaWaktu }} bulan</div>
                 <div class="col-md-6"><strong>Total Pinjaman:</strong> Rp {{ printf "%.0f" .ResumePinjaman.JumlahPinjaman }}</div>
-                    <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{ printf "%.0f" .ResumePinjaman.TotalTerbayar }}</div>
-                    <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{ printf "%.0f" .ResumePinjaman.SisaPokok }}</div>
-                    <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{ .ResumePinjaman.AngsuranTerbayar }} kali</div>
+                <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{ printf "%.0f" .ResumePinjaman.TotalTerbayar }}</div>
+                <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{ printf "%.0f" .ResumePinjaman.SisaPokok }}</div>
+                <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{ .ResumePinjaman.AngsuranTerbayar }} kali</div>
+                <div class="col-md-6"><strong>Metode Pencairan:</strong> {{ .ResumePinjaman.MetodePencairan }}</div>
+                <div class="col-md-6"><strong>Metode Angsuran:</strong> {{ .ResumePinjaman.MetodeAngsuran }}</div>
             </div>
 
             <div class="mt-3">
@@ -83,8 +83,12 @@ document.addEventListener('DOMContentLoaded', function(){
                     <small class="text-muted">Progress Pelunasan</small>
                     <small><strong>{{ printf "%.2f" .ResumePinjaman.PersentaseTerbayar }}%</strong></small>
                 </div>
-                <div class="progress" role="progressbar" aria-label="Progress pelunasan" aria-valuenow="{{ printf "%.0f" .ResumePinjaman.PersentaseTerbayar }}" aria-valuemin="0" aria-valuemax="100">
-                    <div class="progress-bar {{ if .ResumePinjaman.BisaAjukanLagi }}bg-success{{ else }}bg-warning{{ end }}" style="width: {{ printf "%.2f" .ResumePinjaman.PersentaseTerbayar }}%"></div>
+                <div class="progress" role="progressbar" aria-label="Progress pelunasan"
+                     aria-valuenow="{{ printf "%.0f" .ResumePinjaman.PersentaseTerbayar }}"
+                     aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar {{ if .ResumePinjaman.BisaAjukanLagi }}bg-success{{ else }}bg-warning{{ end }}"
+                         data-progress="{{ printf "%.2f" .ResumePinjaman.PersentaseTerbayar }}">
+                    </div>
                 </div>
             </div>
 
@@ -111,176 +115,213 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
 </div>
 
-   <form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman">
-        <!-- Bagian 1: Rincian Permohonan Pinjaman -->
-        <fieldset class="border p-3 mb-4">
-            <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
+<form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman">
+    <!-- Bagian 1: Rincian Permohonan Pinjaman -->
+    <fieldset class="border p-3 mb-4">
+        <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
 
-            <div class="row"> <div class="col-md-6" id="gaji_bulanan_container"> <div class="mb-3"> <label for="gaji_bulanan" class="form-label">Jumlah Gaji Bulanan (Rp)</label>
-                        <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" value="{{ .GajiBulanan }}" readonly required>
-                        <small class="form-text text-muted">
-                            <i class="bi bi-info-circle me-1"></i>
-                            Gaji bulanan otomatis diambil dari data yang terdaftar
-                        </small>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="jangka_waktu" class="form-label">Jangka Waktu Pinjaman (Tenor, bulan)</label>
-                        <select class="form-select" id="jangka_waktu" name="jangka_waktu" required>
-                            <option value="">Pilih tenor</option>
-                            <option value="10">10 bulan</option>
-                            <option value="20">20 bulan</option>
-                            <option value="30">30 bulan</option>
-                        </select>
-                        <div id="tenor_info" class="form-text mt-2 text-muted">Pilih tenor pinjaman.</div>
-                    </div>
+        <div class="row">
+            <div class="col-md-6" id="gaji_bulanan_container">
+                <div class="mb-3">
+                    <label for="gaji_bulanan" class="form-label">Jumlah Gaji Bulanan (Rp)</label>
+                    <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" value="{{ .GajiBulanan }}" readonly required>
+                    <small class="form-text text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Gaji bulanan otomatis diambil dari data yang terdaftar
+                    </small>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
-<input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} readonly {{end}}>
-                        <small class="form-text text-muted" id="limit_warning">
-                            {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}}
-                                ⚠️ Anda belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu untuk dapat mengajukan pinjaman.
-                            {{end}}
-                        </small>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="jumlah_pinjaman_terbilang" class="form-label">Jumlah Pinjaman Terbilang</label>
-                        <input type="text" class="form-control" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" required>
-                    </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="jangka_waktu" class="form-label">Jangka Waktu Pinjaman (Tenor, bulan)</label>
+                    <select class="form-select" id="jangka_waktu" name="jangka_waktu" required>
+                        <option value="">Pilih tenor</option>
+                        <option value="10">10 bulan</option>
+                        <option value="20">20 bulan</option>
+                        <option value="30">30 bulan</option>
+                    </select>
+                    <div id="tenor_info" class="form-text mt-2 text-muted">Pilih tenor pinjaman.</div>
                 </div>
             </div>
-            <div class="mb-3">
-                <label for="perkiraan_angsuran" class="form-label">Perkiraan Angsuran per Bulan (Rp)</label>
-                <input type="number" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran" readonly>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Metode Pencairan <span class="text-danger">*</span></label>
-                <select class="form-select" id="metodePencairan" name="metode_pencairan" required>
-                    <option value="">-- Pilih Metode Pencairan --</option>
-                    <option value="transfer_bank">Transfer Bank</option>
-                    <option value="tunai">Tunai</option>
-                </select>
-                <small class="form-text text-muted">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Pilih cara Anda ingin menerima dana pinjaman
-                </small>
-            </div>
+        </div>
 
-            <div class="mb-3" id="rekeningSection" style="display: none;">
-                <label for="noRekening" class="form-label">Nomor Rekening <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="noRekening" name="no_rekening" 
-                       placeholder="Masukkan nomor rekening bank">
-                <small class="form-text text-muted">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Nomor rekening untuk transfer dana pinjaman
-                </small>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
+                    <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required
+                        {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} readonly {{end}}>
+                    <small class="form-text text-muted" id="limit_warning">
+                        {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}}
+                            ⚠️ Anda belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu untuk dapat mengajukan pinjaman.
+                        {{end}}
+                    </small>
+                </div>
             </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="jumlah_pinjaman_terbilang" class="form-label">Jumlah Pinjaman Terbilang</label>
+                    <input type="text" class="form-control" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" required>
+                </div>
+            </div>
+        </div>
 
-            <div class="mb-3" id="namaBankSection" style="display: none;">
-                <label for="namaBank" class="form-label">Nama Bank <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="namaBank" name="nama_bank" 
-                       placeholder="Contoh: BCA, Mandiri, BNI">
-                <small class="form-text text-muted">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Nama bank tujuan transfer
-                </small>
-            </div>
+        <div class="mb-3">
+            <label for="perkiraan_angsuran" class="form-label">Perkiraan Angsuran per Bulan (Rp)</label>
+            <input type="number" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran" readonly>
+        </div>
 
-            <div class="mb-3" id="namaPemilikSection" style="display: none;">
-                <label for="namaPemilik" class="form-label">Nama Pemilik Rekening <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="namaPemilik" name="nama_pemilik" 
-                       placeholder="Nama sesuai rekening bank">
-                <small class="form-text text-muted">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Nama pemilik rekening bank
-                </small>
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label">Tujuan Penggunaan Pinjaman</label><br>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Biaya Pendidikan Anak" id="tujuan1">
-                    <label class="form-check-label" for="tujuan1">Biaya Pendidikan Anak</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Renovasi Rumah" id="tujuan2">
-                    <label class="form-check-label" for="tujuan2">Renovasi Rumah</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Pembelian Kendaraan" id="tujuan3">
-                    <label class="form-check-label" for="tujuan3">Pembelian Kendaraan</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Keperluan Konsumtif" id="tujuan4">
-                    <label class="form-check-label" for="tujuan4">Keperluan Konsumtif</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Modal Usaha" id="tujuan5">
-                    <label class="form-check-label" for="tujuan5">Modal Usaha</label>
-                </div>
-                <div class="mb-3 mt-2">
-                    <label for="tujuan_lain" class="form-label">Lain-lain</label>
-                    <input type="text" class="form-control" id="tujuan_lain" name="tujuan_lain">
+        <!-- Metode Pencairan & Metode Angsuran -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Metode Pencairan <span class="text-danger">*</span></label>
+                    <select class="form-select" id="metodePencairan" name="metode_pencairan" required>
+                        <option value="">-- Pilih Metode Pencairan --</option>
+                        <option value="transfer_bank">Transfer Bank</option>
+                        <option value="tunai">Tunai</option>
+                    </select>
+                    <small class="form-text text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Pilih cara Anda ingin menerima dana pinjaman
+                    </small>
                 </div>
             </div>
-        </fieldset>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Metode Angsuran <span class="text-danger">*</span></label>
+                    <select class="form-select" id="metodeAngsuran" name="metode_angsuran" required>
+                        <option value="">-- Pilih Metode Angsuran --</option>
+                        <option value="transfer_bank">Transfer Bank</option>
+                        <option value="potong_gaji">Potong Gaji</option>
+                        <option value="tunai">Tunai</option>
+                    </select>
+                    <small class="form-text text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Pilih cara pembayaran angsuran setiap bulan
+                    </small>
+                </div>
+            </div>
+        </div>
 
-        <!-- Bagian 3: Pernyataan dan Kuasa -->
-        <fieldset class="border p-3 mb-4">
-            <legend class="w-auto">Bagian 2: Pernyataan dan Kuasa</legend>
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="cek_semua" name="cek_semua">
-                <label class="form-check-label fw-bold" for="cek_semua">
-                    Centang Semua Pernyataan
-                </label>
-            </div>
-            <hr class="my-3">
-            <div class="form-check mb-2">
-                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="pernyataan_benar" name="pernyataan_benar" required>
-                <label class="form-check-label" for="pernyataan_benar">
-                    Menyatakan bahwa data yang diberikan adalah benar.
-                </label>
-            </div>
-            <div class="form-check mb-2">
-                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="sanggup_bayar" name="sanggup_bayar" required>
-                <label class="form-check-label" for="sanggup_bayar">
-                    Sanggup untuk membayar angsuran pinjaman setiap bulan sesuai jadwal.
-                </label>
-            </div>
-            <div class="form-check mb-2">
-                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="setuju_potong_gaji" name="setuju_potong_gaji" required>
-                <label class="form-check-label" for="setuju_potong_gaji">
-                    Bersedia jika gaji dipotong langsung oleh bendahara gaji universitas untuk pembayaran angsuran.
-                </label>
-            </div>
-            <div class="form-check mb-2">
-                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="kuasa_potong_gaji" name="kuasa_potong_gaji" required>
-                <label class="form-check-label" for="kuasa_potong_gaji">
-                    Memberikan kuasa kepada pengurus koperasi untuk melakukan pemotongan gaji melalui bendahara.
-                </label>
-            </div>
-            <div class="form-check mb-2">
-                <input class="form-check-input pernyataan-checkbox" type="checkbox" id="kuasa_pakai_simpanan" name="kuasa_pakai_simpanan" required>
-                <label class="form-check-label" for="kuasa_pakai_simpanan">
-                    Memberikan kuasa kepada koperasi untuk menggunakan simpanan (pokok dan wajib) untuk melunasi sisa pinjaman jika terjadi gagal bayar atau pemohon berhenti bekerja.
-                </label>
-            </div>
-        </fieldset>
+        <!-- Detail Rekening (muncul jika Metode Pencairan = Transfer Bank) -->
+        <div class="mb-3" id="rekeningSection" style="display: none;">
+            <label for="noRekening" class="form-label">Nomor Rekening <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="noRekening" name="no_rekening"
+                   placeholder="Masukkan nomor rekening bank">
+            <small class="form-text text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Nomor rekening untuk transfer dana pinjaman
+            </small>
+        </div>
 
-       
-        <button type="submit" class="btn btn-primary" {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} disabled {{end}}>Ajukan Pinjaman</button>
-    </form>
+        <div class="mb-3" id="namaBankSection" style="display: none;">
+            <label for="namaBank" class="form-label">Nama Bank <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="namaBank" name="nama_bank"
+                   placeholder="Contoh: BCA, Mandiri, BNI">
+            <small class="form-text text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Nama bank tujuan transfer
+            </small>
+        </div>
+
+        <div class="mb-3" id="namaPemilikSection" style="display: none;">
+            <label for="namaPemilik" class="form-label">Nama Pemilik Rekening <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="namaPemilik" name="nama_pemilik"
+                   placeholder="Nama sesuai rekening bank">
+            <small class="form-text text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Nama pemilik rekening bank
+            </small>
+        </div>
+
+        <!-- Tujuan Penggunaan Pinjaman -->
+        <div class="mb-3">
+            <label class="form-label">Tujuan Penggunaan Pinjaman</label><br>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Biaya Pendidikan Anak" id="tujuan1">
+                <label class="form-check-label" for="tujuan1">Biaya Pendidikan Anak</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Renovasi Rumah" id="tujuan2">
+                <label class="form-check-label" for="tujuan2">Renovasi Rumah</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Pembelian Kendaraan" id="tujuan3">
+                <label class="form-check-label" for="tujuan3">Pembelian Kendaraan</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Keperluan Konsumtif" id="tujuan4">
+                <label class="form-check-label" for="tujuan4">Keperluan Konsumtif</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Modal Usaha" id="tujuan5">
+                <label class="form-check-label" for="tujuan5">Modal Usaha</label>
+            </div>
+            <div class="mb-3 mt-2">
+                <label for="tujuan_lain" class="form-label">Lain-lain</label>
+                <input type="text" class="form-control" id="tujuan_lain" name="tujuan_lain">
+            </div>
+        </div>
+    </fieldset>
+
+    <!-- Bagian 2: Pernyataan dan Kuasa -->
+    <fieldset class="border p-3 mb-4">
+        <legend class="w-auto">Bagian 2: Pernyataan dan Kuasa</legend>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="cek_semua" name="cek_semua">
+            <label class="form-check-label fw-bold" for="cek_semua">
+                Centang Semua Pernyataan
+            </label>
+        </div>
+        <hr class="my-3">
+        <div class="form-check mb-2">
+            <input class="form-check-input pernyataan-checkbox" type="checkbox" id="pernyataan_benar" name="pernyataan_benar" required>
+            <label class="form-check-label" for="pernyataan_benar">
+                Menyatakan bahwa data yang diberikan adalah benar.
+            </label>
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input pernyataan-checkbox" type="checkbox" id="sanggup_bayar" name="sanggup_bayar" required>
+            <label class="form-check-label" for="sanggup_bayar">
+                Sanggup untuk membayar angsuran pinjaman setiap bulan sesuai jadwal.
+            </label>
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input pernyataan-checkbox" type="checkbox" id="setuju_potong_gaji" name="setuju_potong_gaji" required>
+            <label class="form-check-label" for="setuju_potong_gaji">
+                Bersedia jika gaji dipotong langsung oleh bendahara gaji universitas untuk pembayaran angsuran.
+            </label>
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input pernyataan-checkbox" type="checkbox" id="kuasa_potong_gaji" name="kuasa_potong_gaji" required>
+            <label class="form-check-label" for="kuasa_potong_gaji">
+                Memberikan kuasa kepada pengurus koperasi untuk melakukan pemotongan gaji melalui bendahara.
+            </label>
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input pernyataan-checkbox" type="checkbox" id="kuasa_pakai_simpanan" name="kuasa_pakai_simpanan" required>
+            <label class="form-check-label" for="kuasa_pakai_simpanan">
+                Memberikan kuasa kepada koperasi untuk menggunakan simpanan (pokok dan wajib) untuk melunasi sisa pinjaman jika terjadi gagal bayar atau pemohon berhenti bekerja.
+            </label>
+        </div>
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary"
+        {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} disabled {{end}}>
+        Ajukan Pinjaman
+    </button>
+</form>
 </div>
 
 <script>
+// Set progress bar width dari data-progress (menghindari warning CSS dari Go template)
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.progress-bar[data-progress]').forEach(function(el) {
+        el.style.width = el.getAttribute('data-progress') + '%';
+    });
+});
+
 // Initialize on page load based on unit kerja
 document.addEventListener('DOMContentLoaded', function() {
     const unitKerjaValue = '{{.Anggota.UnitKerja}}';
@@ -307,7 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const noRekening = document.getElementById('noRekening');
             const namaBank = document.getElementById('namaBank');
             const namaPemilik = document.getElementById('namaPemilik');
-            
+
             if (metode === 'transfer_bank') {
                 rekeningSection.style.display = 'block';
                 namaBankSection.style.display = 'block';
@@ -354,18 +395,17 @@ function calculateAngsuran() {
         }
     }
 
-    // Update limit info - ambil bunga dari element bunga_info
     const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
     const bungaPersenTampil = bungaTerkini.toFixed(2);
-    
+
     const limitInfo = document.getElementById('limit_info');
     const bungaInfo = document.getElementById('bunga_info');
+
     if (jenisAnggota === 'Mahasiswa') {
         limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
         bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
     } else if (jenisAnggota === 'Dosen/Tenaga Pendidikan') {
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
-            // Hitung kemampuan bayar
             const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
             limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor)';
             bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
@@ -378,7 +418,7 @@ function calculateAngsuran() {
         bungaInfo.innerHTML = '<strong>Bunga:</strong> -';
     }
 
-    // Check limit and show warning (menggunakan kemampuan bayar)
+    // Check limit and show warning
     const limitWarning = document.getElementById('limit_warning');
     if (jenisAnggota === 'Dosen/Tenaga Pendidikan' && gajiBulanan > 0 && jangkaWaktu > 0) {
         const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
@@ -401,9 +441,8 @@ function calculateAngsuran() {
         limitWarning.textContent = '';
     }
 
-    // Calculate perkiraan angsuran menggunakan rumus: (pinjaman/tenor) + ((bunga x pinjaman) / tenor)
+    // Calculate perkiraan angsuran: (pinjaman/tenor) + ((bunga x pinjaman) / tenor)
     if (jumlahPinjaman > 0 && jangkaWaktu > 0) {
-        // Ambil bunga dari element bunga_info untuk konsistensi
         const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
         const bungaDecimal = bungaTerkini / 100;
         const pokok = jumlahPinjaman / jangkaWaktu;
@@ -443,7 +482,6 @@ document.querySelectorAll('.pernyataan-checkbox').forEach(checkbox => {
 });
 </script>
 
-</div>
 {{ template "footer.html" . }}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
