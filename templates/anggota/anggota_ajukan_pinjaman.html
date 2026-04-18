@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </div>
 {{end}}
 
-<form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" {{if .ResumePinjaman.HasActiveLoan}}class="blurred-section"{{end}}>
+<form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" {{if .ResumeGabungan.HasActiveLoan}}class="blurred-section"{{end}}>
     </style>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -546,36 +546,6 @@ document.querySelectorAll('.pernyataan-checkbox').forEach(checkbox => {
 });
 </script>
 
-<!-- Histori Pinjaman -->
-<h3 class="mt-5">Histori Pinjaman</h3>
-<div class="table-responsive">
-  <table class="table table-bordered table-striped">
-    <thead>
-      <tr>
-        <th>No</th>
-        <th>Tanggal</th>
-        <th>Jumlah</th>
-        <th>Tenor</th>
-        <th>Bunga</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {{ range $i, $p := .RiwayatPinjaman }}
-      <tr>
-        <td>{{ add $i 1 }}</td>
-        <td>{{ $p.TglPinjaman.Format "02-01-2006" }}</td>
-        <td>Rp {{ formatRupiah $p.JumlahPinjaman }}</td>
-        <td>{{ $p.JangkaWaktu }} bulan</td>
-        <td>{{ $p.Bunga }}%</td>
-        <td>{{ $p.Status }}</td>
-      </tr>
-      {{ else }}
-      <tr><td colspan="6" class="text-center">Belum ada histori pinjaman.</td></tr>
-      {{ end }}
-    </tbody>
-  </table>
-</div>
 
 {{ template "footer.html" . }}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
