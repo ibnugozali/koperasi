@@ -1,46 +1,26 @@
-# Fix Total Pinjaman di Profil Anggota (/anggota/profil) - Tidak Sesuai Masa
+# Progress Fix Resume Pinjaman Lunas Tidak Hilang
 
-## Status: ✅ Approved & In Progress
+**Status: ✅ PLAN APPROVED - Executing step-by-step**
 
-### 1. [x] Gather Information (Completed)
-   - Analyzed files: controllers/anggota_controller.go, repository/anggota_repository.go, templates/anggota/anggota_profil.html, models/anggota.go
-   - Root cause: No date filter in pinjaman/angsuran queries (lifetime totals vs monthly)
+## TODO Steps (from approved plan):
+- [x] 1. Create TODO.md ✅
+- [✅] 2. Run DB UPDATE query: **UPDATE 0** rows (no pinjaman need fix, state already correct)"
+- [✅] 3. Strengthened repo query **with JOIN exclude sisa<=0** ✅
+- [✅] 4. Server restarted `go run main.go` → Running :8081 ✅
+- [ ] 5. Test /anggota/ajukan-pinjaman → Resume card hilang if sisa<=0
+- [ ] 6. Verify auto-update works on new angsuran lunas
+- [ ] 7. attempt_completion
 
-### 2. [✅] Add Period-Filtered Repository Functions
-   - `repository/anggota_repository.go`:
-     - `GetRingkasanPinjamanByPeriod(id, month, year) (totalAktif, sisa float64, err)` ✅
+**Next:** DB query execution...
 
-### 3. [✅] Update Controller Handler
-   - `controllers/anggota_controller.go` (AnggotaProfil):
-     - Parse query params `?bulan=X&tahun=Y` (default current month) ✅
-     - Use filtered repo functions ✅
-     - Pass period data to template ✅
-
-### 3. [✅] Update Controller Handler
-   - `controllers/anggota_controller.go` (AnggotaProfil):
-     - Parse query params `?bulan=X&tahun=Y` (default current month)
-     - Use filtered repo functions ✅
-     - Pass period data to template
-
-### 4. [✅] Update Profile Template
-   - `templates/anggota/anggota_profil.html`:
-     - Add month/year selector form ✅
-     - Display "Total Pinjaman [Period]" label ✅
-     - JS reload with params
-
-### 5. [ ] Test & Verify
-   - Restart: `go run main.go`
-   - Visit /anggota/profil → Check monthly totals match DB
-   - Test selectors, all-time fallback
-
-### 6. [ ] Completion
-   - Update TODO.md ✅
-   - attempt_completion
-
-### 5. [ ] Test & Verify
-   - Restart: `go run main.go`
-   - Visit /anggota/profil → Check monthly totals match DB
-   - Test selectors, all-time fallback
-
-**Next Step: Fix compilation errors & test**
+**DB Query Ready (safe, from koperasi.sql):**
+```
+UPDATE pinjaman SET status = 'lunas' WHERE id_pinjaman IN (
+  SELECT p.id_pinjaman FROM pinjaman p LEFT JOIN (
+    SELECT id_pinjaman, SUM(CASE WHEN status IN ('confirmed','lunas','diterima') THEN sisa_pinjaman ELSE 0 END) AS total_angsuran
+    FROM angsuran GROUP BY id_pinjaman
+  ) a ON p.id_pinjaman = a.id_pinjaman
+  WHERE (p.jumlah_pinjaman - COALESCE(a.total_angsuran,0)) <= 0 AND p.status != 'lunas'
+);
+```
 

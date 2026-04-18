@@ -89,84 +89,78 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 </style>
 
-{{if .ResumeGabungan.HasActiveLoan}}
-<div id="resumePinjamanCardGabungan" class="card shadow-sm mb-4 border-0 floating-resume-pinjaman">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center" style="font-size: 30px;">
-        <strong>Resume Pinjaman Gabungan</strong>
-        <span class="badge text-bg-primary">Pinjaman Aktif/Proses</span>
-    </div>
-    <div class="card-body">
-        <div class="row g-2 mb-2" style="font-size: 24px;">
-            <div class="col-md-6"><strong>Status:</strong> {{.ResumeGabungan.Status}}</div>
-            <div class="col-md-6"><strong>Tanggal Pinjaman (terbaru):</strong> {{.ResumeGabungan.TglPinjaman.Format "02 Jan 2006"}}</div>
-            <div class="col-md-6"><strong>Tenor Total:</strong> {{.ResumeGabungan.JangkaWaktu}} bulan</div>
-            <div class="col-md-6"><strong>Total Pinjaman:</strong> Rp {{ .ResumeGabungan.JumlahPinjaman | formatRupiah }}</div>
-            <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{ .ResumeGabungan.TotalTerbayar | formatRupiah }}</div>
-            <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{ .ResumeGabungan.SisaPokok | formatRupiah }}</div>
-            <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{.ResumeGabungan.AngsuranTerbayar}} kali</div>
-            <div class="col-md-6"><strong>Bunga Pinjaman Total:</strong> Rp {{ .ResumeGabungan.Bunga | formatRupiah }}</div>
-            <div class="col-md-6"><strong>Metode Pencairan (terbaru):</strong> {{.ResumeGabungan.MetodePencairan}}</div>
-            <div class="col-md-6"><strong>Metode Angsuran (terbaru):</strong> {{.ResumeGabungan.MetodeAngsuran}}</div>
-        </div>
-        <div class="mt-3">
-            <div class="d-flex justify-content-between mb-1">
-                <small class="text-muted">Progress Pelunasan Gabungan</small>
-                <small><strong>{{ printf "%.2f" .ResumeGabungan.PersentaseTerbayar }}%</strong></small>
+{{if .ResumeGabungan}}
+    {{range $i, $resume := .ResumeGabungan}}
+        <div id="resumePinjamanCardGabungan{{$i}}" class="card shadow-sm mb-4 border-0 floating-resume-pinjaman">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center" style="font-size: 30px;">
+                <strong>Resume Pinjaman Aktif #{{add $i 1}}</strong>
+                <span class="badge text-bg-primary">Pinjaman Aktif/Proses</span>
             </div>
-            <div class="progress" role="progressbar" aria-label="Progress pelunasan gabungan"
-                     aria-valuenow="{{ printf "%.0f" .ResumeGabungan.PersentaseTerbayar }}"
-                     aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar {{ if .ResumeGabungan.BisaAjukanLagi }}bg-success{{ else }}bg-warning{{ end }}"
-                         data-progress="{{ printf "%.2f" .ResumeGabungan.PersentaseTerbayar }}">
+            <div class="card-body">
+                <div class="row g-2 mb-2" style="font-size: 24px;">
+                    <div class="col-md-6"><strong>Status:</strong> {{$resume.Status}}</div>
+                    <div class="col-md-6"><strong>Tanggal Pinjaman:</strong> {{$resume.TglPinjaman.Format "02 Jan 2006"}}</div>
+                    <div class="col-md-6"><strong>Tenor Total:</strong> {{$resume.JangkaWaktu}} bulan</div>
+                    <div class="col-md-6"><strong>Total Pinjaman:</strong> Rp {{$resume.JumlahPinjaman | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{$resume.TotalTerbayar | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{$resume.SisaPokok | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{$resume.AngsuranTerbayar}} kali</div>
+                    <div class="col-md-6"><strong>Bunga Pinjaman Total:</strong> Rp {{$resume.Bunga | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Metode Pencairan:</strong> {{$resume.MetodePencairan}}</div>
+                    <div class="col-md-6"><strong>Metode Angsuran:</strong> {{$resume.MetodeAngsuran}}</div>
+                </div>
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted">Progress Pelunasan</small>
+                        <small><strong>{{printf "%.2f" $resume.PersentaseTerbayar}}%</strong></small>
+                    </div>
+                    <div class="progress" role="progressbar" aria-label="Progress pelunasan gabungan"
+                             aria-valuenow="{{printf "%.0f" $resume.PersentaseTerbayar}}"
+                             aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar {{if $resume.BisaAjukanLagi}}bg-success{{else}}bg-warning{{end}}"
+                                 data-progress="{{printf "%.2f" $resume.PersentaseTerbayar}}">
+                        </div>
+                    </div>
+                </div>
+                <div class="alert {{if $resume.BisaAjukanLagi}}alert-success{{else}}alert-warning{{end}} mt-3 mb-0">
+                    {{if $resume.BisaAjukanLagi}}
+                        Pinjaman ini sudah lunas <b>atau progress pelunasan sudah minimal 50%</b>. Anda bisa mengajukan pinjaman baru.
+                    {{else}}
+                        Anda hanya dapat mengajukan pinjaman baru jika pinjaman ini sudah lunas <b>atau progress pelunasan sudah minimal 50%</b>.
+                    {{end}}
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                    {{if $resume.BisaAjukanLagi}}
+                        <a href="#ajukanPinjamanForm" class="btn btn-success">Melakukan Pinjaman Lagi</a>
+                    {{else}}
+                        <a href="/anggota/angsuran" class="btn btn-outline-primary">Lanjut Bayar Angsuran</a>
+                    {{end}}
+                    <a href="/anggota/riwayat" class="btn btn-outline-secondary">Lihat Riwayat</a>
                 </div>
             </div>
         </div>
-        <div class="alert {{ if .ResumeGabungan.BisaAjukanLagi }}alert-success{{ else }}alert-warning{{ end }} mt-3 mb-0">
-            {{ if .ResumeGabungan.BisaAjukanLagi }}
-                Anda sudah melunasi minimal 50%. Anda bisa mengajukan pinjaman lagi.
-            {{ else }}
-                Anda belum mencapai 50% pelunasan. Selesaikan angsuran lebih dulu untuk bisa pinjam lagi.
-            {{ end }}
-        </div>
-        <div class="d-flex gap-2 mt-3">
-            {{ if .ResumeGabungan.BisaAjukanLagi }}
-                <a href="#ajukanPinjamanForm" class="btn btn-success">Melakukan Pinjaman Lagi</a>
-            {{ else }}
-                <a href="/anggota/angsuran" class="btn btn-outline-primary">Lanjut Bayar Angsuran</a>
-            {{ end }}
-            <a href="/anggota/riwayat" class="btn btn-outline-secondary">Lihat Riwayat</a>
-        </div>
-    </div>
-</div>
+    {{end}}
 {{end}}
 
-<form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" {{if .ResumeGabungan.HasActiveLoan}}class="blurred-section"{{end}}>
+<form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" class="{{if .ResumeGabungan}}blurred-section{{end}}">
     </style>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var btnPinjamLagi = document.querySelector('.btn-success[href="#ajukanPinjamanForm"], #btnPinjamLagi');
-        if (btnPinjamLagi) {
+        var btnPinjamLagi = document.querySelector('.btn-success[href="#ajukanPinjamanForm"]');
+        var resumeCard = document.getElementById('resumePinjamanCardGabungan');
+        var form = document.getElementById('ajukanPinjamanForm');
+        if (btnPinjamLagi && resumeCard && form) {
             btnPinjamLagi.addEventListener('click', function(e) {
                 e.preventDefault();
                 // Hilangkan blur pada form
-                var form = document.getElementById('ajukanPinjamanForm');
-                if (form) form.classList.remove('blurred-section');
-                // Ubah posisi Resume Pinjaman ke static (kanan Info Kemampuan Bayar)
-                var card = document.getElementById('resumePinjamanCard');
-                if (card) {
-                    card.classList.remove('floating-resume-pinjaman');
-                    card.classList.add('resume-pinjaman-static');
-                    // Pindahkan card ke setelah Info Kemampuan Bayar
-                    var info = document.querySelector('.alert-info');
-                    if (info && card.parentNode !== info.parentNode) {
-                        info.parentNode.insertBefore(card, info.nextSibling);
-                    }
-                    // Samakan lebar Resume Pinjaman dengan Info Kemampuan Bayar
-                    if (info) {
-                        var infoWidth = info.offsetWidth;
-                        card.style.width = infoWidth + 'px';
-                    }
-                }
+                form.classList.remove('blurred-section');
+                // Ubah class agar tidak floating
+                resumeCard.classList.remove('floating-resume-pinjaman');
+                resumeCard.classList.add('resume-pinjaman-static');
+                // Pindahkan Resume Pinjaman ke atas form
+                form.parentNode.insertBefore(resumeCard, form);
+                // Scroll ke form
+                form.scrollIntoView({behavior: 'smooth'});
             });
         }
     });

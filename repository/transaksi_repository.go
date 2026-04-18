@@ -800,7 +800,7 @@ func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
 func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
-	query := "SELECT id_pinjaman, id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status FROM pinjaman WHERE id_anggota = $1 AND (status = 'aktif' OR status = 'proses') ORDER BY tgl_pinjaman DESC, id_pinjaman DESC"
+	query := ` SELECT p.id_pinjaman, p.id_anggota, p.id_pengelola, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status FROM pinjaman p LEFT JOIN ( SELECT id_pinjaman, SUM(CASE WHEN status IN ('confirmed','lunas','diterima') THEN sisa_pinjaman ELSE 0 END) AS total_angsuran FROM angsuran GROUP BY id_pinjaman ) a ON p.id_pinjaman = a.id_pinjaman WHERE p.id_anggota = $1 AND (p.status = 'aktif' OR p.status = 'proses') AND (p.jumlah_pinjaman - COALESCE(a.total_angsuran,0)) > 0 ORDER BY p.tgl_pinjaman DESC, p.id_pinjaman DESC `
 	rows, err := db.Query(query, idAnggota)
 	if err != nil {
 		return nil, err

@@ -1,3 +1,77 @@
+-- ===============================
+-- QUERY BANTUAN CEK & UPDATE STATUS PINJAMAN
+--
+-- ===============================
+-- UPDATE OTOMATIS STATUS PINJAMAN LUNAS (TANPA GANTI ID)
+-- ===============================
+-- Jalankan query berikut untuk mengubah status SEMUA pinjaman yang sisa pinjamannya sudah 0 menjadi 'lunas' secara otomatis.
+-- Tidak perlu mengganti ID apapun!
+UPDATE pinjaman
+SET status = 'lunas'
+WHERE id_pinjaman IN (
+  SELECT p.id_pinjaman
+  FROM pinjaman p
+  LEFT JOIN (
+    SELECT id_pinjaman, SUM(CASE WHEN status IN ('confirmed','lunas','diterima') THEN sisa_pinjaman ELSE 0 END) AS total_angsuran
+    FROM angsuran
+    GROUP BY id_pinjaman
+  ) a ON p.id_pinjaman = a.id_pinjaman
+  WHERE (p.jumlah_pinjaman - COALESCE(a.total_angsuran,0)) = 0
+    AND p.status != 'lunas'
+);
+
+--
+-- Update otomatis status pinjaman menjadi 'lunas' untuk SEMUA pinjaman yang sisa pinjamannya sudah 0
+UPDATE pinjaman
+SET status = 'lunas'
+WHERE id_pinjaman IN (
+  SELECT p.id_pinjaman
+  FROM pinjaman p
+  LEFT JOIN (
+    SELECT id_pinjaman, SUM(CASE WHEN status IN ('confirmed','lunas','diterima') THEN sisa_pinjaman ELSE 0 END) AS total_angsuran
+    FROM angsuran
+    GROUP BY id_pinjaman
+  ) a ON p.id_pinjaman = a.id_pinjaman
+  WHERE (p.jumlah_pinjaman - COALESCE(a.total_angsuran,0)) = 0
+    AND p.status != 'lunas'
+);
+
+-- Update otomatis status pinjaman menjadi 'lunas' untuk SEMUA pinjaman milik anggota tertentu (ganti 'ID_ANGGOTA_ANDA')
+UPDATE pinjaman
+SET status = 'lunas'
+WHERE id_anggota = 'ID_ANGGOTA_ANDA'
+  AND id_pinjaman IN (
+    SELECT p.id_pinjaman
+    FROM pinjaman p
+    LEFT JOIN (
+      SELECT id_pinjaman, SUM(CASE WHEN status IN ('confirmed','lunas','diterima') THEN sisa_pinjaman ELSE 0 END) AS total_angsuran
+      FROM angsuran
+      GROUP BY id_pinjaman
+    ) a ON p.id_pinjaman = a.id_pinjaman
+    WHERE p.id_anggota = 'ID_ANGGOTA_ANDA'
+      AND (p.jumlah_pinjaman - COALESCE(a.total_angsuran,0)) = 0
+      AND p.status != 'lunas'
+  );
+-- ===============================
+
+-- Cek status pinjaman anggota tertentu (ganti 'ID_ANGGOTA_ANDA' dengan ID anggota yang ingin dicek)
+
+-- Cek status pinjaman anggota tertentu (ganti 'ID_ANGGOTA_ANDA' dengan ID anggota yang ingin dicek)
+SELECT id_pinjaman, status, jumlah_pinjaman FROM pinjaman WHERE id_anggota = 'ID_ANGGOTA_ANDA' ORDER BY tgl_pinjaman DESC;
+
+-- Update status pinjaman menjadi lunas secara manual
+
+
+
+-- Cek status angsuran untuk pinjaman tertentu (ganti ANGKA_ID_PINJAMAN dengan ID pinjaman yang ingin dicek)
+
+-- Cek status angsuran untuk pinjaman tertentu (ganti ANGKA_ID_PINJAMAN dengan ID pinjaman yang ingin dicek)
+
+-- Cek status angsuran untuk pinjaman tertentu (ganti 7 dengan ID pinjaman yang ingin dicek, HARUS ANGKA)
+-- Contoh yang BENAR:
+SELECT id_angsuran, sisa_pinjaman, status FROM angsuran WHERE id_pinjaman = 7 ORDER BY tgl_bayar;
+
+-- ===============================
 -- Tambahan agar /pelayanan/pinjaman dan /pelayanan/angsuran tidak 404
 INSERT INTO halaman (slug, judul, kategori, konten) VALUES
 ('pinjaman', 'Pinjaman', 'pelayanan', '{"judul":"Pinjaman","deskripsi":"Informasi dan pengajuan pinjaman koperasi."}'),
