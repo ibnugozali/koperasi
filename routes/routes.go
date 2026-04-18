@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"net/http"
 	"time"
@@ -63,6 +64,23 @@ func SetupRouter() *gin.Engine {
 			}
 			return sum
 		},
+		"mul": func(a, b, c float64) float64 {
+			return a * b * c
+		},
+		"formatRupiah": func(n float64) string {
+			s := fmt.Sprintf("%.0f", n)
+			run := []rune(s)
+			var out []rune
+			count := 0
+			for i := len(run) - 1; i >= 0; i-- {
+				if count > 0 && count%3 == 0 {
+					out = append([]rune{'.'}, out...)
+				}
+				out = append([]rune{run[i]}, out...)
+				count++
+			}
+			return string(out)
+		},
 		"json": func(v interface{}) template.JS {
 			a, _ := json.Marshal(v)
 			return template.JS(a)
@@ -99,6 +117,23 @@ func SetupRouter() *gin.Engine {
 				}
 			}
 			return sum
+		},
+		"mul": func(a, b, c float64) float64 {
+			return a * b * c
+		},
+		"formatRupiah": func(n float64) string {
+			s := fmt.Sprintf("%.0f", n)
+			run := []rune(s)
+			var out []rune
+			count := 0
+			for i := len(run) - 1; i >= 0; i-- {
+				if count > 0 && count%3 == 0 {
+					out = append([]rune{'.'}, out...)
+				}
+				out = append([]rune{run[i]}, out...)
+				count++
+			}
+			return string(out)
 		},
 		"json": func(v interface{}) string {
 			a, _ := json.Marshal(v)

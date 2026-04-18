@@ -39,6 +39,7 @@ type Pinjaman struct {
 	Bunga               float64       `form:"bunga" json:"bunga" db:"bunga"`
 	Status              string        `json:"status" db:"status"`
 	MetodePencairan     string        `form:"metode_pencairan" json:"metode_pencairan" db:"metode_pencairan"`
+	MetodeAngsuran      string        `form:"metode_angsuran" json:"metode_angsuran" db:"metode_angsuran"`
 	NomorRekening       string        `form:"nomor_rekening" json:"nomor_rekening" db:"nomor_rekening"`
 	NamaBank            string        `form:"nama_bank" json:"nama_bank" db:"nama_bank"`
 	NamaPemilikRekening string        `form:"nama_pemilik" json:"nama_pemilik_rekening" db:"nama_pemilik_rekening"`

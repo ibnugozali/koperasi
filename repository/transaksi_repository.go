@@ -105,13 +105,13 @@ func CreateSimpanan(detail models.Detail) error {
 }
 
 // CreatePinjaman mencatat pinjaman baru
+// BARU
 func CreatePinjaman(pinjaman models.Pinjaman) error {
 	db := config.GetDB()
-	// Set waktu pinjaman ke saat ini (server-side)
 	pinjaman.TglPinjaman = time.Now()
 	query := `
-		INSERT INTO pinjaman (id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, metode_pencairan, nomor_rekening, nama_bank, nama_pemilik_rekening, gaji_bulanan, tujuan_pinjaman)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		INSERT INTO pinjaman (id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, metode_pencairan, metode_angsuran, nomor_rekening, nama_bank, nama_pemilik_rekening, gaji_bulanan, tujuan_pinjaman)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`
 	_, err := db.Exec(query,
 		pinjaman.IDAnggota,
@@ -122,6 +122,7 @@ func CreatePinjaman(pinjaman models.Pinjaman) error {
 		pinjaman.Bunga,
 		pinjaman.Status,
 		pinjaman.MetodePencairan,
+		pinjaman.MetodeAngsuran, // ← tambahan
 		pinjaman.NomorRekening,
 		pinjaman.NamaBank,
 		pinjaman.NamaPemilikRekening,
@@ -799,7 +800,7 @@ func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
 func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
-	query := "SELECT id_pinjaman, id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status FROM pinjaman WHERE id_anggota = $1 AND (status = 'aktif' OR status = 'proses')"
+	query := "SELECT id_pinjaman, id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status FROM pinjaman WHERE id_anggota = $1 AND (status = 'aktif' OR status = 'proses') ORDER BY tgl_pinjaman DESC, id_pinjaman DESC"
 	rows, err := db.Query(query, idAnggota)
 	if err != nil {
 		return nil, err

@@ -18,8 +18,6 @@ import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
-)
-
 func isAngsuranTerbayar(status string) bool {
 	s := strings.ToLower(strings.TrimSpace(status))
 	return s == "confirmed" || s == "lunas" || s == "diterima"
@@ -50,9 +48,9 @@ type resumePinjamanInfo struct {
 	SisaPokok          float64
 	PersentaseTerbayar float64
 	BisaAjukanLagi     bool
-	MetodePencairan    string // ← tambahkan ini
-	MetodeAngsuran     string // ← tambahkan ini
-
+	MetodePencairan    string
+	MetodeAngsuran     string
+	Bunga              float64 // ← tambahkan ini
 }
 
 type laporanSimpananColumn struct {
@@ -421,56 +419,126 @@ func getRingkasanPinjamanAktifByAnggotaID(idAnggota string) (float64, float64, e
 	return totalPinjamanAktif, totalSisa, nil
 }
 
+// BARU — tambahkan query DB di bagian akhir sebelum return
 func getResumePinjamanInfo(userID string) resumePinjamanInfo {
 	info := resumePinjamanInfo{}
 
-	pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
-	if err != nil || len(pinjamans) == 0 {
-		return info
-	}
+	       pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
+	       if err != nil || len(pinjamans) == 0 {
+		       return info
+	       }
 
-	// Gunakan logika yang sama dengan halaman angsuran
-	pinjamanInfo, err := getPinjamanPrioritasAngsuran(pinjamans)
-	if err != nil || pinjamanInfo == nil || pinjamanInfo.SisaPinjaman <= 0 {
-		return info
-	}
+	       // Ambil pinjaman terbaru (paling akhir, diasumsikan sudah diurutkan DESC di repository)
+	       p := pinjamans[0]
+	       info.HasActiveLoan = true
+	       info.IDPinjaman = p.IDPinjaman
+	       info.Status = p.Status
+	       info.TglPinjaman = p.TglPinjaman
+	       info.JumlahPinjaman = p.JumlahPinjaman
+	       info.JangkaWaktu = p.JangkaWaktu
 
-	p := pinjamanInfo.Pinjaman
-	info.HasActiveLoan = true
-	info.IDPinjaman = p.IDPinjaman
-	info.Status = p.Status
-	info.TglPinjaman = p.TglPinjaman
-	info.JumlahPinjaman = p.JumlahPinjaman
-	info.JangkaWaktu = p.JangkaWaktu
-	info.SisaPokok = pinjamanInfo.SisaPinjaman
-	info.AngsuranTerbayar = pinjamanInfo.AngsuranKe - 1
-	if info.AngsuranTerbayar < 0 {
-		info.AngsuranTerbayar = 0
-	}
-	info.SisaAngsuran = p.JangkaWaktu - info.AngsuranTerbayar
-	if info.SisaAngsuran < 0 {
-		info.SisaAngsuran = 0
-	}
-	perkiraanAngsuranBulan := 0.0
-	if p.JangkaWaktu > 0 {
-		pokokPerBulan := p.JumlahPinjaman / float64(p.JangkaWaktu)
-		jasaPerBulan := (p.Bunga / 100 * p.JumlahPinjaman) / float64(p.JangkaWaktu)
-		perkiraanAngsuranBulan = pokokPerBulan + jasaPerBulan
-	}
-	info.TotalTerbayar = float64(info.AngsuranTerbayar) * perkiraanAngsuranBulan
-	info.PersentaseTerbayar = 0.0
-	if p.JumlahPinjaman > 0 {
-		info.PersentaseTerbayar = float64(p.JumlahPinjaman-pinjamanInfo.SisaPinjaman) / float64(p.JumlahPinjaman) * 100
-		if info.PersentaseTerbayar < 0 {
-			info.PersentaseTerbayar = 0
-		}
-		if info.PersentaseTerbayar > 100 {
-			info.PersentaseTerbayar = 100
-		}
-	}
-	info.BisaAjukanLagi = info.PersentaseTerbayar >= 50
-	return info
+	       // Hitung angsuran dan sisa pinjaman
+	       angsurans, _ := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+	       totalAngsuranTerbayar := 0.0
+	       jumlahAngsuranTerbayar := 0
+	       for _, a := range angsurans {
+		       if isAngsuranTerbayar(a.Status) {
+			       totalAngsuranTerbayar += a.SisaPinjaman
+			       jumlahAngsuranTerbayar++
+		       }
+	       }
+	       sisaPinjaman := p.JumlahPinjaman - totalAngsuranTerbayar
+	       if sisaPinjaman < 0 {
+		       sisaPinjaman = 0
+	       }
+	       info.SisaPokok = sisaPinjaman
+	       info.AngsuranTerbayar = jumlahAngsuranTerbayar
+	       info.SisaAngsuran = p.JangkaWaktu - jumlahAngsuranTerbayar
+	       if info.SisaAngsuran < 0 {
+		       info.SisaAngsuran = 0
+	       }
+	       perkiraanAngsuranBulan := 0.0
+	       if p.JangkaWaktu > 0 {
+		       pokokPerBulan := p.JumlahPinjaman / float64(p.JangkaWaktu)
+		       jasaPerBulan := (p.Bunga / 100 * p.JumlahPinjaman) / float64(p.JangkaWaktu)
+		       perkiraanAngsuranBulan = pokokPerBulan + jasaPerBulan
+	       }
+	       info.TotalTerbayar = float64(jumlahAngsuranTerbayar) * perkiraanAngsuranBulan
+	       info.PersentaseTerbayar = 0.0
+	       if p.JumlahPinjaman > 0 {
+		       info.PersentaseTerbayar = float64(p.JumlahPinjaman-sisaPinjaman) / float64(p.JumlahPinjaman) * 100
+		       if info.PersentaseTerbayar < 0 {
+			       info.PersentaseTerbayar = 0
+		       }
+		       if info.PersentaseTerbayar > 100 {
+			       info.PersentaseTerbayar = 100
+		       }
+	       }
+	       info.BisaAjukanLagi = info.PersentaseTerbayar >= 50
+	       info.Bunga = p.Bunga
+
+	       // Ambil metode pencairan & angsuran
+	       db := config.GetDB()
+	       db.QueryRow(
+		       `SELECT COALESCE(metode_pencairan, ''), COALESCE(metode_angsuran, '') 
+			FROM pinjaman WHERE id_pinjaman = $1`,
+		       p.IDPinjaman,
+	       ).Scan(&info.MetodePencairan, &info.MetodeAngsuran)
+	       fmt.Printf("DEBUG ResumePinjaman: metode_pencairan=%s, metode_angsuran=%s, id_pinjaman=%d\n", info.MetodePencairan, info.MetodeAngsuran, p.IDPinjaman)
+
+	       return info
 }
+
+// func getResumePinjamanInfo(userID string) resumePinjamanInfo {
+// 	info := resumePinjamanInfo{}
+
+// 	pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
+// 	if err != nil || len(pinjamans) == 0 {
+// 		return info
+// 	}
+
+// 	// Gunakan logika yang sama dengan halaman angsuran
+// 	pinjamanInfo, err := getPinjamanPrioritasAngsuran(pinjamans)
+// 	if err != nil || pinjamanInfo == nil || pinjamanInfo.SisaPinjaman <= 0 {
+// 		return info
+// 	}
+
+// 	p := pinjamanInfo.Pinjaman
+// 	info.HasActiveLoan = true
+// 	info.IDPinjaman = p.IDPinjaman
+// 	info.Status = p.Status
+// 	info.TglPinjaman = p.TglPinjaman
+// 	info.JumlahPinjaman = p.JumlahPinjaman
+// 	info.JangkaWaktu = p.JangkaWaktu
+// 	info.SisaPokok = pinjamanInfo.SisaPinjaman
+// 	info.AngsuranTerbayar = pinjamanInfo.AngsuranKe - 1
+// 	if info.AngsuranTerbayar < 0 {
+// 		info.AngsuranTerbayar = 0
+// 	}
+// 	info.SisaAngsuran = p.JangkaWaktu - info.AngsuranTerbayar
+// 	if info.SisaAngsuran < 0 {
+// 		info.SisaAngsuran = 0
+// 	}
+// 	perkiraanAngsuranBulan := 0.0
+// 	if p.JangkaWaktu > 0 {
+// 		pokokPerBulan := p.JumlahPinjaman / float64(p.JangkaWaktu)
+// 		jasaPerBulan := (p.Bunga / 100 * p.JumlahPinjaman) / float64(p.JangkaWaktu)
+// 		perkiraanAngsuranBulan = pokokPerBulan + jasaPerBulan
+// 	}
+// 	info.TotalTerbayar = float64(info.AngsuranTerbayar) * perkiraanAngsuranBulan
+// 	info.PersentaseTerbayar = 0.0
+// 	if p.JumlahPinjaman > 0 {
+// 		info.PersentaseTerbayar = float64(p.JumlahPinjaman-pinjamanInfo.SisaPinjaman) / float64(p.JumlahPinjaman) * 100
+// 		if info.PersentaseTerbayar < 0 {
+// 			info.PersentaseTerbayar = 0
+// 		}
+// 		if info.PersentaseTerbayar > 100 {
+// 			info.PersentaseTerbayar = 100
+// 		}
+// 	}
+// 	info.BisaAjukanLagi = info.PersentaseTerbayar >= 50
+// 	return info
+// }
 
 // AnggotaDashboard menampilkan halaman utama untuk anggota.
 func AnggotaDashboard(c *gin.Context) {
@@ -996,6 +1064,9 @@ func AjukanPinjaman(c *gin.Context) {
 	templateData := getAjukanPinjamanTemplateData(userID, anggota)
 	templateData["CurrentLogo"] = latestLogo
 	templateData["Judul"] = "Ajukan Pinjaman"
+	// Tambahkan histori pinjaman ke template
+	riwayatPinjaman, _ := repository.GetRiwayatPinjamanByAnggotaID(userID, "")
+	templateData["RiwayatPinjaman"] = riwayatPinjaman
 	c.HTML(http.StatusOK, "anggota_ajukan_pinjaman.html", templateData)
 }
 
@@ -1031,16 +1102,86 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 		bungaTerkini = 2.0
 	}
 
-	return gin.H{
-		"Judul":          "Ajukan Pinjaman",
-		"Anggota":        anggota,
-		"TotalSimpanan":  totalSimpanan,
-		"LimitPinjaman":  limitPinjaman,
-		"JenisAnggota":   jenisAnggota,
-		"Bunga":          bungaTerkini,
-		"GajiBulanan":    anggota.GajiBulanan, // Tambahkan gaji bulanan
-		"ResumePinjaman": getResumePinjamanInfo(userID),
-	}
+       // Ambil semua pinjaman aktif/proses
+	       pinjamans, _ := repository.GetPinjamanAktifByAnggotaID(userID)
+	       var totalPinjaman, totalTerbayar, totalSisa, totalBunga float64
+	       var totalAngsuranTerbayar, totalJangkaWaktu, totalAngsuran, totalSisaAngsuran int
+	       var metodePencairan, metodeAngsuran string
+	       var tglPinjaman time.Time
+	       var statusGabungan string
+	       hasActiveLoan := false
+		var sisaPinjaman float64
+		for i, p := range pinjamans {
+		       hasActiveLoan = true
+		       totalPinjaman += p.JumlahPinjaman
+		       totalBunga += p.Bunga * p.JumlahPinjaman * 0.01
+		       totalJangkaWaktu += p.JangkaWaktu
+		       if i == 0 {
+			       tglPinjaman = p.TglPinjaman
+			       statusGabungan = p.Status
+				       db = config.GetDB()
+				       db.QueryRow(
+					       `SELECT COALESCE(metode_pencairan, ''), COALESCE(metode_angsuran, '') 
+						FROM pinjaman WHERE id_pinjaman = $1`,
+					       p.IDPinjaman,
+				       ).Scan(&metodePencairan, &metodeAngsuran)
+		       }
+		       angsurans, _ := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+		       angsuranTerbayar := 0.0
+		       jumlahAngsuranTerbayar := 0
+		       for _, a := range angsurans {
+			       if isAngsuranTerbayar(a.Status) {
+				       angsuranTerbayar += a.SisaPinjaman
+				       jumlahAngsuranTerbayar++
+			       }
+		       }
+			       sisaPinjaman = p.JumlahPinjaman - angsuranTerbayar
+			       if sisaPinjaman < 0 {
+				       sisaPinjaman = 0
+			       }
+		       totalTerbayar += angsuranTerbayar
+		       totalSisa += sisaPinjaman
+			   totalAngsuranTerbayar = totalAngsuranTerbayar + jumlahAngsuranTerbayar
+		       totalAngsuran += p.JangkaWaktu
+	       }
+		       totalSisaAngsuran = totalAngsuran - totalAngsuranTerbayar
+		       if totalSisaAngsuran < 0 {
+			       totalSisaAngsuran = 0
+		       }
+	       persentaseTerbayar := 0.0
+	       if totalPinjaman > 0 {
+		       persentaseTerbayar = (totalTerbayar / totalPinjaman) * 100
+		       if persentaseTerbayar > 100 {
+			       persentaseTerbayar = 100
+		       }
+	       }
+	       bisaAjukanLagi := persentaseTerbayar >= 50
+	       resumeGabungan := resumePinjamanInfo{
+		       HasActiveLoan:      hasActiveLoan,
+		       Status:             statusGabungan,
+		       TglPinjaman:        tglPinjaman,
+		       JumlahPinjaman:     totalPinjaman,
+		       JangkaWaktu:        totalAngsuran,
+		       AngsuranTerbayar:   totalAngsuranTerbayar,
+		       SisaAngsuran:       totalSisaAngsuran,
+		       TotalTerbayar:      totalTerbayar,
+		       SisaPokok:          totalSisa,
+		       PersentaseTerbayar: persentaseTerbayar,
+		       BisaAjukanLagi:     bisaAjukanLagi,
+		       MetodePencairan:    metodePencairan,
+		       MetodeAngsuran:     metodeAngsuran,
+		       Bunga:              totalBunga,
+	       }
+	       return gin.H{
+		       "Judul":          "Ajukan Pinjaman",
+		       "Anggota":        anggota,
+		       "TotalSimpanan":  totalSimpanan,
+		       "LimitPinjaman":  limitPinjaman,
+		       "JenisAnggota":   jenisAnggota,
+		       "Bunga":          bungaTerkini,
+		       "GajiBulanan":    anggota.GajiBulanan,
+		       "ResumeGabungan": resumeGabungan,
+	       }
 }
 
 // AjukanPinjamanPost memproses pengajuan pinjaman
@@ -1076,9 +1217,25 @@ func AjukanPinjamanPost(c *gin.Context) {
 	jangkaWaktuStr := c.PostForm("jangka_waktu")
 	bungaStr := c.PostForm("bunga")
 	gajiBulananStr := c.PostForm("gaji_bulanan")
+	metodePencairanStr := c.PostForm("metode_pencairan")
+	metodeAngsuranStr := c.PostForm("metode_angsuran")
 
-	fmt.Printf("DEBUG: Form Inputs - jumlah_pinjaman: %s, jangka_waktu: %s, bunga: %s, gaji_bulanan: %s\n",
-		jumlahPinjamanStr, jangkaWaktuStr, bungaStr, gajiBulananStr)
+	fmt.Printf("DEBUG: Form Inputs - jumlah_pinjaman: %s, jangka_waktu: %s, bunga: %s, gaji_bulanan: %s, metode_pencairan: %s, metode_angsuran: %s\n",
+		jumlahPinjamanStr, jangkaWaktuStr, bungaStr, gajiBulananStr, metodePencairanStr, metodeAngsuranStr)
+
+	// Validasi wajib pilih metode pencairan dan angsuran
+	if metodePencairanStr == "" {
+		templateData := getAjukanPinjamanTemplateData(userID, anggota)
+		templateData["Error"] = "Metode pencairan wajib dipilih."
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		return
+	}
+	if metodeAngsuranStr == "" {
+		templateData := getAjukanPinjamanTemplateData(userID, anggota)
+		templateData["Error"] = "Metode angsuran wajib dipilih."
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		return
+	}
 
 	if bindErr != nil {
 		errMsg := fmt.Sprintf("Data tidak valid. Pastikan semua field diisi dengan benar. Error: %v, Form Data: %v", bindErr, formDebug)
@@ -1273,11 +1430,13 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	// Set bunga from previously fetched value
 	pinjaman.Bunga = bungaTerkini
-
 	pinjaman.IDAnggota = userID
 	pinjaman.NamaAnggota = anggota.NamaAnggota
 	// Capture metode pencairan from the form (transfer_bank / tunai)
+	// pinjaman.MetodePencairan = c.PostForm("metode_pencairan")
+	// BARU
 	pinjaman.MetodePencairan = c.PostForm("metode_pencairan")
+	pinjaman.MetodeAngsuran = c.PostForm("metode_angsuran") // ← tambahan
 	pinjaman.NomorRekening = c.PostForm("no_rekening")
 	pinjaman.NamaBank = c.PostForm("nama_bank")
 	pinjaman.NamaPemilikRekening = c.PostForm("nama_pemilik")
@@ -1334,8 +1493,8 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
-	// Berhasil, redirect ke riwayat untuk melihat data pinjaman
-	c.Redirect(http.StatusFound, "/anggota/riwayat")
+	// Berhasil, redirect ke halaman pengajuan pinjaman agar Resume Pinjaman update otomatis
+	c.Redirect(http.StatusFound, "/anggota/ajukan-pinjaman")
 }
 
 // AnggotaSimpanan menampilkan halaman simpanan untuk anggota.
