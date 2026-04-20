@@ -567,13 +567,13 @@ func KetuaDetailAngsuran(c *gin.Context) {
 	var angsuran models.Angsuran
 	var tglBayar sql.NullTime
 	err = db.QueryRow(`
-		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, COALESCE(a.sisa_pinjaman, 0), COALESCE(a.bukti_angsuran, ''), COALESCE(a.status_angsuran, ''), COALESCE(a.status, ''), ang.nama_anggota
-		FROM angsuran a
-		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
-		JOIN anggota ang ON p.id_anggota = ang.id_anggota
-		WHERE a.id_angsuran = $1`, id).Scan(
+		       SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, COALESCE(a.sisa_pinjaman, 0), COALESCE(a.bukti_angsuran, ''), COALESCE(a.status_angsuran, ''), COALESCE(a.status, ''), ang.nama_anggota
+		       FROM angsuran a
+		       JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
+		       JOIN anggota ang ON p.id_anggota = ang.id_anggota
+		       WHERE a.id_angsuran = $1`, id).Scan(
 		&angsuran.IDAngsuran, &angsuran.IDPinjaman, &angsuran.IDAnggota, &angsuran.IDPengelola,
-		&tglBayar, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran,
+		&tglBayar, &angsuran.JumlahAngsuran, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran,
 		&angsuran.StatusAngsuran, &angsuran.Status, &angsuran.NamaAnggota,
 	)
 	if err != nil {
@@ -610,11 +610,11 @@ func KetuaDetailAngsuran(c *gin.Context) {
 
 	// Ambil semua angsuran untuk riwayat
 	angsurans := []models.Angsuran{}
-	rows2, _ := db.Query(`SELECT id_angsuran, tgl_bayar, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	rows2, _ := db.Query(`SELECT id_angsuran, tgl_bayar, jumlah_angsuran, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
 	defer rows2.Close()
 	for rows2.Next() {
 		var a models.Angsuran
-		rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran)
+		rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran)
 		angsurans = append(angsurans, a)
 	}
 

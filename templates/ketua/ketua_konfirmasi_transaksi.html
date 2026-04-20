@@ -82,7 +82,7 @@
                                                         <tr>
                                                             <td>{{.NamaAnggota}}</td>
                                                             <td>{{.Simpanan.JenisSimpanan}}</td>
-                                                            <td class="text-end">Rp {{printf "%.0f" .JumlahSimpanan}}</td>
+                                                            <td class="text-end">Rp {{formatRupiah .JumlahSimpanan}}</td>
                                                             <td class="text-center"><span class="small text-muted">{{.TglTransaksi.Format "2006-01-02"}}</span></td>
                                                             <td class="text-center">
                                                                 <div class="btn-group" role="group">
@@ -123,7 +123,7 @@
                                                         {{range .PendingPinjaman}}
                                                         <tr>
                                                             <td>{{.NamaAnggota}}</td>
-                                                            <td class="text-end">Rp {{printf "%.0f" .JumlahPinjaman}}</td>
+                                                            <td class="text-end">Rp {{formatRupiah .JumlahPinjaman}}</td>
                                                             <td class="text-center">{{.JangkaWaktu}} bulan</td>
                                                             <td class="text-center">{{.Bunga}}%</td>
                                                             <td class="text-center"><span class="small text-muted">{{.TglPinjaman.Format "2006-01-02"}}</span></td>
@@ -166,7 +166,8 @@
                                                         <tr>
                                                             <td class="text-center">{{$i | add 1}}</td>
                                                             <td>{{$a.NamaAnggota}}</td>
-                                                            <td class="text-end">Rp {{printf "%.0f" $a.SisaPinjaman}}</td>
+                                                            <td class="text-end">Rp {{formatRupiah $a.JumlahAngsuran}}</td>
+                                                            <!-- <td class="text-end">Rp {{formatRupiah $a.SisaPinjaman}} -- Komentar: gunakan formatRupiah untuk konsistensi -->
                                                             <td class="text-center"><span class="small text-muted">{{$a.TglBayar.Format "2006-01-02"}}</span></td>
                                                             <td class="text-center">
                                                                 <div class="btn-group" role="group">
@@ -207,7 +208,7 @@
                                                         <tr>
                                                             <td>{{.NamaAnggota}}</td>
                                                             <td>{{.JenisSimpanan}}</td>
-                                                            <td class="text-end">Rp {{printf "%.0f" .Jumlah}}</td>
+                                                            <td class="text-end">Rp {{formatRupiah .Jumlah}}</td>
                                                             <td><span class="small">{{.Alasan}}</span></td>
                                                             <td class="text-center"><span class="small text-muted">{{.TglPengajuan.Format "2006-01-02"}}</span></td>
                                                             <td class="text-center">

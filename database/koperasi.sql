@@ -1,3 +1,5 @@
+-- MIGRATION: Tambah kolom jumlah_angsuran pada tabel angsuran
+ALTER TABLE angsuran ADD COLUMN IF NOT EXISTS jumlah_angsuran DOUBLE PRECISION DEFAULT 0;
 -- ===============================
 -- QUERY BANTUAN CEK & UPDATE STATUS PINJAMAN
 --

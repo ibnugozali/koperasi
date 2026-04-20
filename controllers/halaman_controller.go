@@ -14,7 +14,6 @@ import (
 
 	"koperasi-simpan-pinjam/models"
 	"koperasi-simpan-pinjam/repository"
-
 )
 
 func ShowHalaman(c *gin.Context) {
@@ -462,7 +461,7 @@ func ShowRiwayatPage(c *gin.Context) {
 	// Add angsuran transactions
 	for _, a := range riwayatAngsuran {
 		desc := "Angsuran"
-		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", a.SisaPinjaman)), " ", "")
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", a.JumlahAngsuran)), " ", "")
 		var status string
 		switch a.Status {
 		case "pending":

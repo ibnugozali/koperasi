@@ -72,13 +72,13 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 	db := config.GetDB()
 	var angsurans []models.Angsuran
 	query := `
-		SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.sisa_pinjaman, a.bukti_angsuran, 
-		       a.status, ang.nama_anggota
-		FROM angsuran a
-		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
-		JOIN anggota ang ON p.id_anggota = ang.id_anggota
-		WHERE p.id_anggota = $1
-	`
+        SELECT a.id_angsuran, a.id_pinjaman, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, a.sisa_pinjaman, a.bukti_angsuran, 
+               a.status, ang.nama_anggota
+        FROM angsuran a
+        JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
+        JOIN anggota ang ON p.id_anggota = ang.id_anggota
+        WHERE p.id_anggota = $1
+    `
 	args := []interface{}{id}
 	if search != "" {
 		query += ` AND (a.status ILIKE $2 OR CAST(a.sisa_pinjaman AS TEXT) ILIKE $2)`
@@ -93,7 +93,7 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 
 	for rows.Next() {
 		var a models.Angsuran
-		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.BuktiAngsuran, &a.Status, &a.NamaAnggota); err != nil {
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.BuktiAngsuran, &a.Status, &a.NamaAnggota); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)
@@ -106,17 +106,23 @@ func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 	db := config.GetDB()
 	var riwayats []models.Riwayat
 	query := `
-        SELECT d.id_detail AS id, d.tgl_transaksi AS tanggal, 'Simpanan' AS jenis, d.jumlah_simpanan AS jumlah, d.status AS status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
-        FROM detail d
-        JOIN anggota a ON d.id_anggota = a.id_anggota
-        WHERE d.id_anggota = $1
-        UNION ALL
-        SELECT p.id_pinjaman AS id, p.tgl_pinjaman AS tanggal, 'Pinjaman' AS jenis, p.jumlah_pinjaman AS jumlah, p.status AS status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
-        FROM pinjaman p
-        JOIN anggota a ON p.id_anggota = a.id_anggota
-        WHERE p.id_anggota = $1
-        ORDER BY tanggal DESC, id DESC
-    `
+		SELECT d.id_detail AS id, d.tgl_transaksi AS tanggal, 'Simpanan' AS jenis, d.jumlah_simpanan AS jumlah, d.status AS status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
+		FROM detail d
+		JOIN anggota a ON d.id_anggota = a.id_anggota
+		WHERE d.id_anggota = $1
+		UNION ALL
+		SELECT p.id_pinjaman AS id, p.tgl_pinjaman AS tanggal, 'Pinjaman' AS jenis, p.jumlah_pinjaman AS jumlah, p.status AS status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
+		FROM pinjaman p
+		JOIN anggota a ON p.id_anggota = a.id_anggota
+		WHERE p.id_anggota = $1
+		UNION ALL
+		SELECT ag.id_angsuran AS id, ag.tgl_bayar AS tanggal, 'Angsuran' AS jenis, ag.jumlah_angsuran AS jumlah, ag.status AS status, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
+		FROM angsuran ag
+		JOIN pinjaman p ON ag.id_pinjaman = p.id_pinjaman
+		JOIN anggota a ON p.id_anggota = a.id_anggota
+		WHERE p.id_anggota = $1
+		ORDER BY tanggal DESC, id DESC
+	`
 	rows, err := db.Query(query, id)
 	if err != nil {
 		return nil, err
