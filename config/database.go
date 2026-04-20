@@ -120,7 +120,7 @@ func ensureSimpananWajibTables() error {
 	CREATE TABLE IF NOT EXISTS konfigurasi_simpanan_wajib (
 		id SERIAL PRIMARY KEY,
 		tanggal_potong INT NOT NULL CHECK (tanggal_potong >= 1 AND tanggal_potong <= 31),
-		persentase_potong DECIMAL(15,2) NOT NULL DEFAULT 5.00 CHECK (persentase_potong >= 0),
+		persentase_potong DECIMAL(15,2) NOT NULL DEFAULT 100000.00 CHECK (persentase_potong >= 0),
 		nominal_tetap DECIMAL(15,2) DEFAULT 0,
 		tipe_pemotongan VARCHAR(20) DEFAULT 'persentase' CHECK (tipe_pemotongan IN ('persentase', 'nominal_tetap')),
 		status_aktif BOOLEAN DEFAULT true,
@@ -199,7 +199,7 @@ func ensureSimpananWajibTables() error {
 	if count == 0 {
 		defaultSQL := `
 		INSERT INTO konfigurasi_simpanan_wajib (tanggal_potong, persentase_potong, nominal_tetap, tipe_pemotongan, status_aktif)
-		VALUES (1, 5.00, 0, 'persentase', false)
+		VALUES (1, 100000.00, 0, 'persentase', false)
 		`
 		_, err = db.Exec(defaultSQL)
 		if err != nil {

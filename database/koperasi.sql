@@ -273,7 +273,7 @@ DROP TABLE IF EXISTS konfigurasi_simpanan_wajib CASCADE;
 CREATE TABLE konfigurasi_simpanan_wajib (
     id SERIAL PRIMARY KEY,
     tanggal_potong INT NOT NULL CHECK (tanggal_potong >= 1 AND tanggal_potong <= 31),
-    persentase_potong DECIMAL(5,2) NOT NULL DEFAULT 5.00 CHECK (persentase_potong >= 0 AND persentase_potong <= 100),
+    persentase_potong DECIMAL(15,2) NOT NULL DEFAULT 100000.00 CHECK (persentase_potong >= 0),
     nominal_tetap DECIMAL(15,2) DEFAULT 0,
     tipe_pemotongan VARCHAR(20) DEFAULT 'persentase' CHECK (tipe_pemotongan IN ('persentase', 'nominal_tetap')),
     status_aktif BOOLEAN DEFAULT true,

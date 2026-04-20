@@ -9,6 +9,9 @@ import (
 
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
+
+
+
 )
 
 // GetRiwayatTotalAnggotaPerHari mengambil jumlah anggota aktif per hari selama 30 hari terakhir
@@ -620,13 +623,13 @@ func GetKonfigurasiSimpananWajib() (map[string]interface{}, error) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// Return default values
-			return map[string]interface{}{
-				"TanggalPotong":    1,
-				"PersentasePotong": 5.0,
-				"NominalTetap":     0.0,
-				"TipePemotongan":   "persentase",
-				"StatusAktif":      false,
-			}, nil
+            return map[string]interface{}{
+                "TanggalPotong":    1,
+                "PersentasePotong": 100000.0,
+                "NominalTetap":     0.0,
+                "TipePemotongan":   "persentase",
+                "StatusAktif":      false,
+            }, nil
 		}
 		return nil, err
 	}
