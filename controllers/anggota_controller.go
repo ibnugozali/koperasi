@@ -1774,6 +1774,7 @@ func AnggotaSimpananPost(c *gin.Context) {
 
 // AnggotaAngsuran menampilkan halaman angsuran untuk anggota.
 func AnggotaAngsuran(c *gin.Context) {
+	fmt.Println("[DEBUG] Handler AnggotaAngsuran dieksekusi")
 	session := sessions.Default(c)
 	userID, ok := session.Get("user_id").(string)
 	if !ok {
@@ -1868,6 +1869,11 @@ func AnggotaAngsuran(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	metodeAngsuranDebug := ""
+	if resumeGabungan != nil {
+		metodeAngsuranDebug = resumeGabungan.MetodeAngsuran
+	}
+	fmt.Printf("[DEBUG] MetodeAngsuran yang dikirim ke template: '%s'\n", metodeAngsuranDebug)
 	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
 		"Judul":                  "Angsuran",
 		"Anggota":                anggota,
@@ -1882,6 +1888,7 @@ func AnggotaAngsuran(c *gin.Context) {
 		"CurrentLogo":            latestLogo,
 		"PersentasePelunasan":    persentasePelunasan,
 		"PerkiraanAngsuranBulan": perkiraanAngsuranBulan,
+		"MetodeAngsuran":         metodeAngsuranDebug,
 	})
 }
 
