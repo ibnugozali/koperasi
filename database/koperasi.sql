@@ -132,7 +132,7 @@ CREATE TABLE anggota (
   tgl_lahir DATE,
   nik_ktp VARCHAR(25),
   no_telepon VARCHAR(20),
-  tgl_gabung DATE DEFAULT CURRENT_DATE,
+  tgl_gabung TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   alamat VARCHAR(50),
   -- provinsi VARCHAR(50),
   jenis_kelamin VARCHAR(12),
@@ -143,7 +143,7 @@ CREATE TABLE anggota (
   unit_kerja VARCHAR(50),  -- Dosen, Staff, Mahasiswa (nama lengkap)
   fakultas_code VARCHAR(2),  -- 01=FAI, 02=FE, 03=FH, 04=FISIP, 05=FKIP, 06=FKM, 07=FAPERTA, 08=FT, 09=Rektorat/Yayasan/Staff
   tahun VARCHAR(4),  -- Tahun konfirmasi
-  nomor_urut SERIAL,  -- Nomor urut auto-increment, NULLABLE
+  nomor_urut VARCHAR(4),  -- Nomor urut auto-increment, NULLABLE
   bukti_transfer VARCHAR(255),
   gaji_bulanan INTEGER DEFAULT 0,  -- Gaji bulanan anggota dalam Rupiah
   tgl_keluar TIMESTAMP NULL  -- Tanggal keluar anggota

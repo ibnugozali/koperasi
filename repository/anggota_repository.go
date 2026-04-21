@@ -167,8 +167,8 @@ func UpdateAnggotaStatusWithCode(id string, newStatus string, memberCode string)
 // Membuat anggota baru (registrasi)
 func CreateAnggota(anggota models.Anggota) error {
 	db := config.GetDB()
-	// Ambil tahun konfirmasi (tahun sekarang)
-	tahun := time.Now().Format("2006")
+	// Ambil tahun konfirmasi (tahun sekarang, 2 digit)
+	tahun := time.Now().Format("06")
 	anggota.Tahun = tahun
 
 	// Generate temporary ID for pending members: TEMP{timestamp}
@@ -177,6 +177,9 @@ func CreateAnggota(anggota models.Anggota) error {
 
 	// nomor_urut will be set to NULL during registration and assigned during confirmation
 	anggota.NomorUrut = "NULL"
+
+	// Pastikan waktu gabung menyimpan jam-menit-detik
+	anggota.TglGabung = time.Now()
 	query := `
 	INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer, gaji_bulanan, tahun, nomor_urut)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)

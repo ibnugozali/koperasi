@@ -327,7 +327,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		return
 	}
 	nomorUrut := fmt.Sprintf("%04d", lastNumber+1)
-	tahun := time.Now().Format("2006")
+	tahun := time.Now().Format("06")
 	idAnggota := fmt.Sprintf("%s%s%s%s", unitKerja, fakultasCode, tahun, nomorUrut)
 
 	// Nik KTP diisi otomatis agar tidak perlu input NIK di form user.

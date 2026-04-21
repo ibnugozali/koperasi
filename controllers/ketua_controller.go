@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	// "strconv" // Uncomment jika tahunKonfirmasi integer
 	"bytes"
 	"crypto/sha1"
 	"database/sql"
@@ -3559,8 +3560,17 @@ func KetuaConfirmMembership(c *gin.Context) {
 	newNumber := lastNumber + 1
 	nomorUrut := fmt.Sprintf("%04d", newNumber)
 
-	// Generate ID anggota baru: {unit_kerja}{fakultas_code}{tahun}{nomor_urut}
-	newIDAnggota := fmt.Sprintf("%s%s%s%s", anggota.UnitKerja, anggota.FakultasCode, tahunKonfirmasi, nomorUrut)
+	// Pastikan tahunKonfirmasi string, ambil 2 digit terakhir
+	tahunKonfirmasiStr := tahunKonfirmasi
+	tahun2Digit := tahunKonfirmasiStr
+	if len(tahunKonfirmasiStr) == 4 {
+		tahun2Digit = tahunKonfirmasiStr[2:]
+	}
+	newIDAnggota := fmt.Sprintf("%s%s%s%s", anggota.UnitKerja, anggota.FakultasCode, tahun2Digit, nomorUrut)
+	// import (
+	//   "strconv"
+	//   "reflect"
+	// )
 
 	// Update id_anggota, status, tahun, dan nomor_urut
 	updateQuery := `UPDATE anggota 
