@@ -17,6 +17,9 @@
         <h5 class="mt-2">KOPMA</h5>
     </div>
     <a href="/bendahara/dashboard" class="{{ if eq .ActivePage "dashboard" }}active{{ end }}"><i class="fa-solid fa-gauge me-2"></i> Dasbor</a>
+
+    <!-- Konfirmasi Transaksi (Simpanan & Angsuran) -->
+    <a href="/bendahara/konfirmasi-transaksi" class="{{ if eq .ActivePage "konfirmasi-transaksi" }}active{{ end }}"><i class="fa-solid fa-check-circle me-2"></i> Konfirmasi Transaksi</a>
     
     <a href="/bendahara/anggota" class="{{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
 
