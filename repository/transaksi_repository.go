@@ -583,7 +583,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Angsuran
 	queryAngsuran := `
-		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, a.sisa_pinjaman, a.status, ang.nama_anggota, ang.id_anggota, ang.no_telepon, ang.unit_kerja, ang.gaji_bulanan
+		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, a.jumlah_angsuran, a.status, ang.nama_anggota, ang.id_anggota, ang.no_telepon, ang.unit_kerja, ang.gaji_bulanan
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
@@ -632,7 +632,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Anggota aktif (untuk menampilkan semua anggota di laporan)
 	queryAnggota := `
-		SELECT '0' as id, a.tgl_gabung as tanggal, 'Pendaftaran' as jenis, 0.0 as jumlah, 'Aktif' as status,
+		SELECT '0' as id, a.tgl_gabung as tanggal, 'Pendaftaran' as jenis, a.bukti_transfer, 'Aktif' as status,
 		       a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
 		FROM anggota a
 		WHERE a.status = 'aktif'
@@ -643,20 +643,68 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 	}
 	defer rows5.Close()
 
-	for rows5.Next() {
-		var r models.Riwayat
-		if err := rows5.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.UnitKerja, &r.GajiBulanan); err != nil {
-			return nil, err
-		}
-		// Konversi kode unit kerja ke nama readable
-		r.UnitKerja = GetUnitKerjaName(r.UnitKerja)
-		// Hitung sisa gaji: Gaji Bulanan - Potongan Bulan Ini
-		potongan := int(potonganBulanIni[r.IDAnggota])
-		r.SisaGaji = r.GajiBulanan - potongan
-		riwayats = append(riwayats, r)
+	var nominalSimpananPokok float64
+	errNominal := db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok)
+	if errNominal != nil {
+		nominalSimpananPokok = 100000
 	}
 
-	return riwayats, nil
+	// Map untuk memastikan hanya satu data pendaftaran per anggota
+	pendaftaranMap := make(map[string]bool)
+	for rows5.Next() {
+		var id int
+		var tanggal time.Time
+		var jenis string
+		var buktiTransfer string
+		var status string
+		var namaAnggota, idAnggota, noTelepon, unitKerja string
+		var gajiBulanan int
+		if err := rows5.Scan(&id, &tanggal, &jenis, &buktiTransfer, &status, &namaAnggota, &idAnggota, &noTelepon, &unitKerja, &gajiBulanan); err != nil {
+			return nil, err
+		}
+		if pendaftaranMap[idAnggota] {
+			continue // skip jika sudah ada data pendaftaran untuk anggota ini
+		}
+		pendaftaranMap[idAnggota] = true
+		jumlah := nominalSimpananPokok
+		unitKerja = GetUnitKerjaName(unitKerja)
+		potongan := int(potonganBulanIni[idAnggota])
+		sisaGaji := gajiBulanan - potongan
+		riwayats = append(riwayats, models.Riwayat{
+			ID:          id,
+			Tanggal:     tanggal,
+			Jenis:       jenis,
+			Jumlah:      jumlah,
+			Status:      status,
+			NamaAnggota: namaAnggota,
+			IDAnggota:   idAnggota,
+			NoTelepon:   noTelepon,
+			UnitKerja:   unitKerja,
+			GajiBulanan: gajiBulanan,
+			SisaGaji:    sisaGaji,
+		})
+	}
+	// Filter: untuk setiap anggota, jika ada lebih dari satu transaksi Pendaftaran, ambil yang nominalnya paling besar
+	filtered := make([]models.Riwayat, 0, len(riwayats))
+	pendaftaranMapRiwayat := make(map[string]models.Riwayat)
+	for _, r := range riwayats {
+		if r.Jenis == "Pendaftaran" {
+			if prev, ok := pendaftaranMapRiwayat[r.IDAnggota]; ok {
+				if r.Jumlah > prev.Jumlah {
+					pendaftaranMapRiwayat[r.IDAnggota] = r
+				}
+			} else {
+				pendaftaranMapRiwayat[r.IDAnggota] = r
+			}
+		} else {
+			filtered = append(filtered, r)
+		}
+	}
+	// Tambahkan hasil pendaftaran yang sudah difilter
+	for _, r := range pendaftaranMapRiwayat {
+		filtered = append(filtered, r)
+	}
+	return filtered, nil
 }
 
 // GetTotalSimpanan mengambil total simpanan semua anggota yang sudah dikonfirmasi

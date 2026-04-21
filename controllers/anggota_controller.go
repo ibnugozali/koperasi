@@ -1792,16 +1792,30 @@ func AnggotaAngsuran(c *gin.Context) {
 	var jumlahPinjaman, sisaPinjaman, totalTerbayar, bunga float64
 	var angsuranKe, sisaAngsuran, jangkaWaktu int
 	var persentasePelunasan float64
+	var statusPinjaman string
 	if resumeGabungan != nil && resumeGabungan.SisaPokok > 0 {
-		jumlahPinjaman = resumeGabungan.JumlahPinjaman
-		sisaPinjaman = resumeGabungan.SisaPokok
-		totalTerbayar = resumeGabungan.TotalTerbayar
-		bunga = resumeGabungan.Bunga
-		angsuranKe = resumeGabungan.AngsuranTerbayar + 1
-		sisaAngsuran = resumeGabungan.SisaAngsuran
-		jangkaWaktu = resumeGabungan.JangkaWaktu
-		persentasePelunasan = resumeGabungan.PersentaseTerbayar
-		if persentasePelunasan < 0 {
+		statusPinjaman = strings.ToLower(strings.TrimSpace(resumeGabungan.Status))
+		if statusPinjaman == "aktif" || statusPinjaman == "lunas" {
+			jumlahPinjaman = resumeGabungan.JumlahPinjaman
+			sisaPinjaman = resumeGabungan.SisaPokok
+			totalTerbayar = resumeGabungan.TotalTerbayar
+			bunga = resumeGabungan.Bunga
+			angsuranKe = resumeGabungan.AngsuranTerbayar + 1
+			sisaAngsuran = resumeGabungan.SisaAngsuran
+			jangkaWaktu = resumeGabungan.JangkaWaktu
+			persentasePelunasan = resumeGabungan.PersentaseTerbayar
+			if persentasePelunasan < 0 {
+				persentasePelunasan = 0
+			}
+		} else {
+			// Pinjaman belum aktif atau masih proses, treat as tidak ada pinjaman aktif
+			jumlahPinjaman = 0
+			sisaPinjaman = 0
+			totalTerbayar = 0
+			bunga = 0
+			angsuranKe = 0
+			sisaAngsuran = 0
+			jangkaWaktu = 0
 			persentasePelunasan = 0
 		}
 	} else {

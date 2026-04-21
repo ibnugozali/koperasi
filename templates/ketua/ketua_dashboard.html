@@ -67,17 +67,23 @@
 </div>
 
 <!-- Aktivitas Terbaru - Grafik -->
-<div class="mt-5">
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <i class="fa-solid fa-chart-pie"></i> Aktivitas Terbaru
-        </div>
-        <div class="card-body">
-            <div class="mb-2 text-center fw-bold" style="font-size: 1.1rem;">
-                Statistik Koperasi (Saat Ini)
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <i class="fa-solid fa-chart-pie me-2"></i> Ringkasan Keuangan Koperasi
             </div>
-            <div style="position: relative; width: 100%; min-height: 300px;">
-                <canvas id="activityChart" style="display: block; width: 100% !important; height: 300px;"></canvas>
+            <div class="card-body">
+                <div style="position: relative; height: 400px; width: 100%;">
+                    <canvas id="activityChart"
+                        data-anggota="{{ .TotalAnggota }}"
+                        data-menunggu="{{ .MenungguKonfirmasi }}"
+                        data-simpanan="{{ .TotalSimpanan }}"
+                        data-pinjaman="{{ .TotalPinjaman }}"
+                        data-angsuran="{{ .TotalAngsuran }}"
+                        data-pengambilan="{{ .TotalPengambilan }}">
+                    </canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -88,6 +94,7 @@
 
 {{ template "ketua_footer" . }} 
 
+<!-- CHARTJS PIE START -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Helper function untuk format rupiah
@@ -106,7 +113,17 @@ function formatRupiah(angka) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Format angka rupiah pada stat-card
+    const canvas = document.getElementById('activityChart');
+    const totalAnggota = parseFloat(canvas.dataset.anggota) || 0;
+    const menungguKonfirmasi = parseFloat(canvas.dataset.menunggu) || 0;
+    const totalSimpanan = parseFloat(canvas.dataset.simpanan) || 0;
+    const totalPinjaman = parseFloat(canvas.dataset.pinjaman) || 0;
+    const totalAngsuran = parseFloat(canvas.dataset.angsuran) || 0;
+    const totalPengambilan = parseFloat(canvas.dataset.pengambilan) || 0;
+    const rawValues = [totalAnggota, menungguKonfirmasi, totalSimpanan, totalPinjaman, totalAngsuran, totalPengambilan];
+    const isAllZero = rawValues.every(v => v <= 0);
+
+    // Update display dengan format rupiah untuk card yang menampilkan angka rupiah
     document.querySelectorAll('.stat-number[data-value]').forEach((el) => {
         const value = parseFloat(el.getAttribute('data-value')) || 0;
         if (value >= 1000) {
@@ -114,64 +131,71 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Grafik statistik pie (snapshot saat ini)
-    const canvas = document.getElementById('activityChart');
-    if (!canvas) return;
-    const labels = [
-        'Total Anggota',
-        'Menunggu Konfirmasi',
-        'Total Simpanan',
-        'Total Pinjaman Aktif',
-        'Total Angsuran Terbayar',
-        'Total Penarikan Simpanan'
-    ];
-    const data = [
-        parseFloat({{ .TotalAnggota }}),
-        parseFloat({{ .MenungguKonfirmasi }}),
-        parseFloat({{ printf "%.0f" .TotalSimpanan }}),
-        parseFloat({{ printf "%.0f" .TotalPinjaman }}),
-        parseFloat({{ printf "%.0f" .TotalAngsuran }}),
-        parseFloat({{ printf "%.0f" .TotalPengambilan }})
-    ];
-    const datasetColors = [
-        'blue', 'orange', 'green', 'red', 'teal', 'gray'
-    ];
     const ctx = canvas.getContext('2d');
     new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: labels,
+            labels: isAllZero
+                ? ['Belum ada data transaksi']
+                : ['Total Anggota', 'Menunggu Konfirmasi', 'Total Simpanan', 'Total Pinjaman Aktif', 'Total Angsuran Terbayar', 'Total Penarikan Simpanan'],
             datasets: [{
-                label: 'Statistik',
-                data: data,
-                backgroundColor: datasetColors,
-                borderColor: '#ffffff',
-                borderWidth: 1
+                label: 'Jumlah (Rp)',
+                data: isAllZero ? [1] : rawValues,
+                backgroundColor: isAllZero
+                    ? ['rgba(173, 181, 189, 0.75)']
+                    : [
+                        'rgba(13, 110, 253, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(220, 53, 69, 0.8)',
+                        'rgba(23, 162, 184, 0.8)',
+                        'rgba(108, 117, 125, 0.8)'
+                    ],
+                borderColor: isAllZero
+                    ? ['rgba(173, 181, 189, 1)']
+                    : [
+                        'rgba(13, 110, 253, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(220, 53, 69, 1)',
+                        'rgba(23, 162, 184, 1)',
+                        'rgba(108, 117, 125, 1)'
+                    ],
+                borderWidth: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'top' },
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                },
                 title: {
                     display: true,
-                    text: 'Statistik Koperasi',
-                    font: { size: 16, weight: 'bold' },
-                    padding: { top: 10, bottom: 30 }
+                    text: 'Ringkasan Keuangan Koperasi',
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 30
+                    }
                 },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            let label = context.label || '';
-                            if (label) label += ': ';
-                            // Format rupiah hanya untuk data keuangan
-                            if (context.dataIndex >= 2) {
-                                label += formatRupiah(context.parsed);
-                            } else {
-                                label += context.parsed;
+                            if (isAllZero) {
+                                return 'Belum ada data transaksi';
                             }
-                            return label;
+                            const label = context.label || '';
+                            const value = Number(context.raw || 0);
+                            if (label === 'Total Anggota' || label === 'Menunggu Konfirmasi') {
+                                return `${label}: ${value}`;
+                            }
+                            return `${label}: ${formatRupiah(value)}`;
                         }
                     }
                 }
@@ -180,6 +204,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+<!-- CHARTJS PIE END -->
+<!-- END OF FILE: ketua_dashboard.html -->
 </body>
 </html>
 

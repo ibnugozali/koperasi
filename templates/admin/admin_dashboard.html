@@ -106,20 +106,32 @@
                     parseFloat(totals.totalSimpanan) || 0,
                     parseFloat(totals.totalPinjaman) || 0
                 ];
+                const isAllZero = pieData.every(v => v <= 0);
+                const backgroundColors = isAllZero
+                    ? ['rgba(173, 181, 189, 0.75)']
+                    : [
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(255, 99, 132, 0.8)'
+                    ];
+                const borderColors = isAllZero
+                    ? ['rgba(173, 181, 189, 1)']
+                    : [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 99, 132, 1)'
+                    ];
                 const ctx = document.getElementById('activityChart').getContext('2d');
                 new Chart(ctx, {
                     type: 'pie',
                     data: {
-                        labels: labels,
+                        labels: isAllZero ? ['Belum ada data transaksi'] : labels,
                         datasets: [{
-                            data: pieData,
-                            backgroundColor: [
-                                'rgba(54, 162, 235, 0.8)',
-                                'rgba(255, 206, 86, 0.8)',
-                                'rgba(75, 192, 192, 0.8)',
-                                'rgba(255, 99, 132, 0.8)'
-                            ],
-                            borderColor: '#ffffff',
+                            data: isAllZero ? [1] : pieData,
+                            backgroundColor: backgroundColors,
+                            borderColor: borderColors,
                             borderWidth: 2
                         }]
                     },
@@ -131,6 +143,9 @@
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
+                                        if (isAllZero) {
+                                            return 'Belum ada data transaksi';
+                                        }
                                         let label = context.label + ': ';
                                         if (context.label === 'Total Anggota' || context.label === 'Menunggu Konfirmasi') {
                                             label += context.parsed.toLocaleString('id-ID') + ' orang';

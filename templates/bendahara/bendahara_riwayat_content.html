@@ -64,8 +64,11 @@
                         <td>{{ if .NoTelepon }}{{ .NoTelepon }}{{ else }}-{{ end }}</td>
                         <td>{{ if .Jenis }}{{ .Jenis }}{{ else }}-{{ end }}</td>
                         <td class="{{ if eq .Jenis "Pendaftaran" }}text-secondary{{ else if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}text-success{{ else }}text-danger{{ end }}">
-                            {{ if eq .Jenis "Pendaftaran" }}-
-                            {{ else }}{{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}+{{ else }}-{{ end }}Rp {{ if .Jumlah }}{{ printf "%.0f" .Jumlah }}{{ else }}0{{ end }}{{ end }}
+                            {{ if eq .Jenis "Pendaftaran" }}
+                                {{ if gt .Jumlah 0.0 }}Rp {{ printf "%.0f" .Jumlah }}{{ else }}-{{ end }}
+                            {{ else }}
+                                {{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}+{{ else }}-{{ end }}Rp {{ if .Jumlah }}{{ printf "%.0f" .Jumlah }}{{ else }}0{{ end }}
+                            {{ end }}
                         </td>
                         <td>
                             <span class="badge bg-success">Selesai</span>

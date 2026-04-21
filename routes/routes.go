@@ -101,7 +101,7 @@ func SetupRouter() *gin.Engine {
 	})
 
 	// Load templates from subdirectories and root templates folder
-	templ := template.Must(template.New("").Funcs(template.FuncMap{
+	templ := template.New("").Funcs(template.FuncMap{
 		"add": func(nums ...interface{}) float64 {
 			sum := 0.0
 			for _, num := range nums {
@@ -156,7 +156,7 @@ func SetupRouter() *gin.Engine {
 			}
 			return items
 		},
-	}).ParseGlob("templates/**/*.html"))
+	})
 
 	// Load templates from each subfolder explicitly
 	templ = template.Must(templ.ParseGlob("templates/admin/*.html"))
