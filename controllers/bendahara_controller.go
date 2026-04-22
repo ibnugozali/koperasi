@@ -1806,6 +1806,21 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	// Ambil jenis simpanan dari halaman (slug: simpanan)
+	halamanSimpanan, err := repository.GetHalamanBySlug("simpanan")
+	var simpananTypes []map[string]interface{}
+	if err == nil && len(halamanSimpanan.Konten) > 0 {
+		var konten map[string]interface{}
+		if err := json.Unmarshal([]byte(halamanSimpanan.Konten), &konten); err == nil {
+			if jenisList, ok := konten["jenis_simpanan"].([]interface{}); ok {
+				for _, item := range jenisList {
+					if m, ok := item.(map[string]interface{}); ok {
+						simpananTypes = append(simpananTypes, m)
+					}
+				}
+			}
+		}
+	}
 	c.HTML(http.StatusOK, "bendahara_konfirmasi_transaksi.html", gin.H{
 		"PendingSimpanan":    numberedSimpanan,
 		"PendingPinjaman":    numberedPinjamans,
@@ -1813,8 +1828,8 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 		"PendingPengambilan": numberedPengambilans,
 		"ActivePage":         "konfirmasi-transaksi",
 		"CurrentLogo":        latestLogo,
-		// "CurrentLogo":        latestLogo,
-		"Title": "Konfirmasi Transaksi",
+		"Title":              "Konfirmasi Transaksi",
+		"SimpananTypes":      simpananTypes,
 	})
 }
 

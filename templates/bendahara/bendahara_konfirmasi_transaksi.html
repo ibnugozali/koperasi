@@ -121,6 +121,50 @@
                         </div>
                         {{end}}
                     </div>
+                    <!-- Entri Simpanan & Angsuran Baru -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <i class="fa-solid fa-plus me-2"></i>Entri Simpanan & Angsuran Baru
+                        </div>
+                        <div class="card-body">
+                            <form class="row g-3" method="POST" action="/bendahara/transaksi/simpanan">
+                                <div class="col-md-4">
+                                    <label class="form-label">ID Anggota</label>
+                                    <input type="text" class="form-control" name="id_anggota" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Jenis Simpanan</label>
+                                    <select class="form-select" id="jenisSimpananSelect" name="jenis_simpanan" required>
+                                        <option value="">Memuat data...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Jumlah</label>
+                                    <input type="number" class="form-control" name="jumlah" min="1000" required>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-plus"></i> Simpanan</button>
+                                </div>
+                            </form>
+                            <form class="row g-3 mt-2" method="POST" action="/bendahara/transaksi/angsuran">
+                                <div class="col-md-4">
+                                    <label class="form-label">ID Anggota</label>
+                                    <input type="text" class="form-control" name="id_anggota" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">ID Pinjaman</label>
+                                    <input type="text" class="form-control" name="id_pinjaman" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Jumlah Angsuran</label>
+                                    <input type="number" class="form-control" name="jumlah_angsuran" min="1000" required>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-plus"></i> Angsuran</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

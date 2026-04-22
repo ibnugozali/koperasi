@@ -2557,3 +2557,23 @@ func AnggotaRiwayatPage(c *gin.Context) {
 		"CurrentLogo": latestLogo,
 	})
 }
+
+// AnggotaSimpananJSON mengembalikan data jenis_simpanan dalam format JSON
+func AnggotaSimpananJSON(c *gin.Context) {
+	if c.GetHeader("Accept") == "application/json" {
+		halamanSimpanan, err := repository.GetHalamanBySlug("simpanan")
+		if err != nil || len(halamanSimpanan.Konten) == 0 {
+			c.JSON(200, gin.H{"konten": gin.H{"jenis_simpanan": []interface{}{}}})
+			return
+		}
+		var konten map[string]interface{}
+		if err := json.Unmarshal([]byte(halamanSimpanan.Konten), &konten); err != nil {
+			c.JSON(200, gin.H{"konten": gin.H{"jenis_simpanan": []interface{}{}}})
+			return
+		}
+		c.JSON(200, gin.H{"konten": konten})
+		return
+	}
+	// fallback ke handler lama jika bukan JSON
+	AnggotaSimpanan(c)
+}

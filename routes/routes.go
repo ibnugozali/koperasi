@@ -189,6 +189,7 @@ func SetupRouter() *gin.Engine {
 		c.Redirect(http.StatusFound, "/anggota/riwayat")
 	})
 	router.GET("/hubungi-kami", controllers.ShowHubungiKami)
+	router.GET("/api/jenis-simpanan", controllers.PublicJenisSimpananJSON)
 	// --- Rute Anggota (Dilindungi Middleware) ---
 	anggotaRoutes := router.Group("/anggota")
 	anggotaRoutes.Use(middleware.AuthRequired())
@@ -201,7 +202,7 @@ func SetupRouter() *gin.Engine {
 		anggotaRoutes.POST("/keluar", controllers.KeluarKoperasi)
 		anggotaRoutes.GET("/ajukan-pinjaman", controllers.AjukanPinjaman)
 		anggotaRoutes.POST("/ajukan-pinjaman", controllers.AjukanPinjamanPost)
-		anggotaRoutes.GET("/simpanan", controllers.AnggotaSimpanan)
+		anggotaRoutes.GET("/simpanan", controllers.AnggotaSimpananJSON)
 		anggotaRoutes.POST("/simpanan", controllers.AnggotaSimpananPost)
 		anggotaRoutes.GET("/ajukan-pengambilan-simpanan", controllers.AjukanPengambilanSimpanan)
 		anggotaRoutes.POST("/ajukan-pengambilan-simpanan", controllers.AjukanPengambilanSimpananPost)
