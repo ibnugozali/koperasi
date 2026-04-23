@@ -47,8 +47,7 @@ import (
 // 			   TglPinjaman:        tglPinjamanGabungan,
 // 			   JumlahPinjaman:     totalPinjaman,
 // 			   TotalTerbayar:      0,
-// 			   SisaPokok:          totalPinjaman,
-// 			   PersentaseTerbayar: 0,
+// 			   SisaPokok:          to
 // 			   BisaAjukanLagi:     false,
 // 			   Bunga:              bungaNominal,
 // 			   MetodePencairan:    metodePencairanGabungan,
@@ -80,6 +79,7 @@ import (
 // 		   }r _, a := range angsurans {
 // 		   if isAngsuranTerbayar(a.Status) {
 // 			   angsuranTerbayar++
+// 		   }angsuranTerbayar++
 // 		   }
 // 	   }
 // 	   sisaAngsuran := p.JangkaWaktu - angsuranTerbayar
@@ -435,6 +435,25 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 	// Syarat pengajuan baru: minimal 50% sudah terbayar dan status BUKAN proses
 	bisaAjukanLagi := (persentaseGabungan >= 50) && (statusGabungan != "proses")
 
+	// Jika progress pelunasan 100% (lunas), tetap kembalikan resume dengan status 'lunas' dan BisaAjukanLagi: true
+	if persentaseGabungan >= 100 {
+		return &resumePinjamanInfo{
+			IDPinjaman:         p.IDPinjaman,
+			Status:             "lunas",
+			TglPinjaman:        tglPinjamanGabungan,
+			JumlahPinjaman:     totalPinjaman,
+			JangkaWaktu:        totalJangkaWaktu,
+			AngsuranTerbayar:   angsuranTerbayar,
+			SisaAngsuran:       0,
+			TotalTerbayar:      totalPinjaman,
+			SisaPokok:          0,
+			PersentaseTerbayar: 100,
+			BisaAjukanLagi:     true,
+			Bunga:              bungaNominal,
+			MetodePencairan:    metodePencairanGabungan,
+			MetodeAngsuran:     metodeAngsuranGabungan,
+		}
+	}
 	return &resumePinjamanInfo{
 		IDPinjaman:         p.IDPinjaman,
 		Status:             statusGabungan,
@@ -1506,53 +1525,17 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
-	// Cek apakah anggota sudah punya pinjaman aktif
-	pinjamanAktif, err := repository.GetPinjamanAktifByAnggotaID(userID)
-	if err != nil {
+	// PATCH: Validasi pengajuan pinjaman baru menggunakan resumeGabungan
+	resumeGabungan := getResumePinjamanGabungan(userID)
+	if resumeGabungan != nil && !resumeGabungan.BisaAjukanLagi {
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Gagal memeriksa status pinjaman aktif."
-		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
+		errMsg := "Anda belum memenuhi syarat untuk mengajukan pinjaman baru."
+		if resumeGabungan.PersentaseTerbayar < 50 {
+			errMsg = fmt.Sprintf("Anda baru melunasi %.2f%% pinjaman. Minimal harus 50%% untuk mengajukan pinjaman baru.", resumeGabungan.PersentaseTerbayar)
+		}
+		templateData["Error"] = errMsg
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
 		return
-	}
-
-	if len(pinjamanAktif) > 0 {
-		// Ambil pinjaman aktif pertama
-		p := pinjamanAktif[0]
-
-		// Ambil semua angsuran
-		angsurans, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
-		if err != nil {
-			templateData := getAjukanPinjamanTemplateData(userID, anggota)
-			templateData["Error"] = "Gagal memeriksa status angsuran pinjaman aktif."
-			c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
-			return
-		}
-
-		// Hitung persentase pelunasan berdasarkan sisa pinjaman terakhir
-		sisaTerakhir := p.JumlahPinjaman
-		for _, a := range angsurans {
-			if a.Status == "lunas" || a.Status == "confirmed" || a.Status == "diterima" {
-				sisaTerakhir = a.SisaPinjaman
-			}
-		}
-		totalDibayar := p.JumlahPinjaman - sisaTerakhir
-		persentase := 0.0
-		if p.JumlahPinjaman > 0 {
-			persentase = (totalDibayar / p.JumlahPinjaman) * 100
-			if persentase > 100 {
-				persentase = 100
-			}
-		}
-		// Syarat: minimal 50% nominal pinjaman harus sudah terbayar
-		if persentase < 50 {
-			templateData := getAjukanPinjamanTemplateData(userID, anggota)
-			templateData["Error"] = fmt.Sprintf(
-				"Anda baru melunasi %.2f%% pinjaman. Minimal harus 50%% untuk mengajukan pinjaman baru.",
-				persentase,
-			)
-			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
-			return
-		}
 	}
 
 	// // Cek apakah anggota sudah punya pinjaman aktif
