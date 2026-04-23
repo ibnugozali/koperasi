@@ -214,6 +214,10 @@ document.addEventListener('DOMContentLoaded', function(){
                             ⚠️ Anda belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu untuk dapat mengajukan pinjaman.
                         {{end}}
                     </small>
+                    <div class="mt-2">
+                        <strong>Total Pinjaman (Pokok + Bunga):</strong>
+                        <span id="total_pinjaman_rp" class="text-primary">Rp 0</span>
+                    </div>
                 </div>
             </div>
             <div class="col-md-6">
@@ -499,15 +503,28 @@ function calculateAngsuran() {
         limitWarning.textContent = '';
     }
 
-    // Calculate perkiraan angsuran: (pinjaman/tenor) + ((bunga x pinjaman) / tenor)
-    if (jumlahPinjaman > 0 && jangkaWaktu > 0) {
+    // Calculate total pinjaman (pokok + bunga) dan tampilkan
+    const totalPinjamanRp = document.getElementById('total_pinjaman_rp');
+    if (jumlahPinjaman > 0) {
         const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
         const bungaDecimal = bungaTerkini / 100;
-        const pokok = jumlahPinjaman / jangkaWaktu;
         const bungaTotal = bungaDecimal * jumlahPinjaman;
-        const bungaPerBulan = bungaTotal / jangkaWaktu;
-        const totalAngsuran = pokok + bungaPerBulan;
-        document.getElementById('perkiraan_angsuran').value = Math.round(totalAngsuran);
+        const totalPinjaman = jumlahPinjaman + bungaTotal;
+        if (totalPinjamanRp) {
+            totalPinjamanRp.textContent = 'Rp ' + totalPinjaman.toLocaleString('id-ID');
+        }
+        // Perkiraan angsuran per bulan
+        if (jangkaWaktu > 0) {
+            const pokok = jumlahPinjaman / jangkaWaktu;
+            const bungaPerBulan = bungaTotal / jangkaWaktu;
+            const totalAngsuran = pokok + bungaPerBulan;
+            document.getElementById('perkiraan_angsuran').value = Math.round(totalAngsuran);
+        }
+    } else {
+        if (totalPinjamanRp) {
+            totalPinjamanRp.textContent = 'Rp 0';
+        }
+        document.getElementById('perkiraan_angsuran').value = '';
     }
 }
 
