@@ -44,11 +44,7 @@ import (
 // 		   bungaNominal := totalPinjaman * bungaVal / 100
 // 		   info := &resumePinjamanInfo{
 // 			   Status:             statusGabungan,
-// 			   TglPinjaman:        tglPinjamanGabungan,
-// 			   JumlahPinjaman:     totalPinjaman,
-// 			   TotalTerbayar:      0,
-// 			   SisaPokok:          to
-// 			   BisaAjukanLagi:     false,
+// 			   TglPinjaman:        tglPin
 // 			   Bunga:              bungaNominal,
 // 			   MetodePencairan:    metodePencairanGabungan,
 // 			   MetodeAngsuran:     metodeAngsuranGabungan,
@@ -76,6 +72,10 @@ import (
 // 	   for _, a := range angsurans {
 // 		   if isAngsuranTerbayar(a.Status) {
 // 			   angsuranTerbayar++
+// 		   }r _, a := range angsurans {
+// 		   if isAngsuranTerbayar(a.Status) {
+// 			   angsuranTerbayar++
+// 		   }angsuranTerbayar++
 // 		   }r _, a := range angsurans {
 // 		   if isAngsuranTerbayar(a.Status) {
 // 			   angsuranTerbayar++
@@ -990,8 +990,14 @@ func AnggotaProfil(c *gin.Context) {
 
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
-	// Ambil total pinjaman (sisa pinjaman) dari repository agar sinkron dengan backend
-	_, totalPinjaman, _, _ := repository.GetSaldoAnggota(userID)
+	// Ambil resume pinjaman gabungan untuk dapatkan pokok + bunga
+	resume := getResumePinjamanGabungan(userID)
+	var totalPinjaman float64
+	if resume != nil {
+		totalPinjaman = resume.JumlahPinjaman + resume.Bunga
+	} else {
+		totalPinjaman = 0
+	}
 
 	// Cari logo terbaru di static/images
 	dirFiles, errLogo := os.ReadDir("static/images")

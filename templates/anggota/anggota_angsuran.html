@@ -19,7 +19,9 @@
 
         {{if ne .JumlahPinjaman 0.0}}
           <p class="text-muted">
-            Jumlah Pinjaman: Rp {{if gt .JumlahPinjaman 0.0}}{{printf "%.0f" .JumlahPinjaman}}{{else}}0{{end}},
+            Jumlah Pinjaman (Pokok): Rp {{if gt .JumlahPinjaman 0.0}}{{printf "%.0f" .JumlahPinjaman}}{{else}}0{{end}},
+            Bunga Pinjaman: Rp {{if .Bunga}}{{printf "%.0f" .Bunga}}{{else}}0{{end}},
+            Total Pinjaman (Pokok + Bunga): Rp {{printf "%.0f" (add .JumlahPinjaman .Bunga)}},
             Sisa Pinjaman: Rp {{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}},
             Angsuran Ke: {{if gt .AngsuranKe 0}}{{.AngsuranKe}}{{else}}-{{end}},
             Jumlah Pelunasan: {{printf "%.2f" .PersentasePelunasan}}%
