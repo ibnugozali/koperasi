@@ -2,11 +2,31 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 )
+
+// GetPinjamanAktifByAnggota mengembalikan daftar pinjaman status proses/aktif milik anggota beserta metode angsuran
+func GetPinjamanAktifByAnggota(idAnggota string) ([]models.Pinjaman, error) {
+	db := config.GetDB()
+	var pinjamans []models.Pinjaman
+	rows, err := db.Query("SELECT id_pinjaman, status, metode_angsuran FROM pinjaman WHERE id_anggota = $1 AND status IN ('proses', 'aktif')", idAnggota)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var p models.Pinjaman
+		if err := rows.Scan(&p.IDPinjaman, &p.Status, &p.MetodeAngsuran); err != nil {
+			return nil, err
+		}
+		pinjamans = append(pinjamans, p)
+	}
+	return pinjamans, nil
+}
 
 // GetRiwayatTotalSimpananPerHari mengambil total simpanan per hari selama 30 hari terakhir
 func GetRiwayatTotalSimpananPerHari(db *sql.DB) ([]map[string]interface{}, error) {
@@ -108,6 +128,7 @@ func CreateSimpanan(detail models.Detail) error {
 // BARU
 func CreatePinjaman(pinjaman models.Pinjaman) error {
 	db := config.GetDB()
+	fmt.Printf("DEBUG: Akan insert pinjaman: %+v\n", pinjaman)
 	pinjaman.TglPinjaman = time.Now()
 	query := `
 		INSERT INTO pinjaman (id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, metode_pencairan, metode_angsuran, nomor_rekening, nama_bank, nama_pemilik_rekening, gaji_bulanan, tujuan_pinjaman)
@@ -129,6 +150,7 @@ func CreatePinjaman(pinjaman models.Pinjaman) error {
 		pinjaman.GajiBulanan,
 		pinjaman.TujuanPinjaman,
 	)
+	fmt.Printf("DEBUG: Insert pinjaman selesai, err: %v\n", err)
 	return err
 }
 
@@ -206,8 +228,12 @@ func UpdateSimpananStatus(id int, status string) error {
 // UpdateAngsuranStatus memperbarui status angsuran
 func UpdateAngsuranStatus(id int, status string) error {
 	db := config.GetDB()
+	fmt.Printf("[DEBUG] UpdateAngsuranStatus: id=%d, status=%s\n", id, status)
 	query := "UPDATE angsuran SET status = $1 WHERE id_angsuran = $2"
 	_, err := db.Exec(query, status, id)
+	if err != nil {
+		fmt.Printf("[ERROR] UpdateAngsuranStatus gagal: %v\n", err)
+	}
 	return err
 }
 
@@ -254,6 +280,15 @@ func GetPendingPinjaman() ([]models.Pinjaman, error) {
 		// Override bunga dengan nilai terkini dari pengaturan
 		p.Bunga = currentBunga
 		pinjamans = append(pinjamans, p)
+	}
+	// DEBUG LOG
+	if len(pinjamans) == 0 {
+		fmt.Println("DEBUG: Tidak ada pinjaman status 'proses' ditemukan di database!")
+	} else {
+		fmt.Printf("DEBUG: Jumlah pinjaman status 'proses': %d\n", len(pinjamans))
+		for _, p := range pinjamans {
+			fmt.Printf("DEBUG: Pinjaman: %+v\n", p)
+		}
 	}
 	return pinjamans, nil
 }
@@ -849,7 +884,7 @@ func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
 func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
-	query := ` SELECT p.id_pinjaman, p.id_anggota, p.id_pengelola, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status FROM pinjaman p LEFT JOIN ( SELECT id_pinjaman, SUM(CASE WHEN status IN ('confirmed','lunas','diterima') THEN sisa_pinjaman ELSE 0 END) AS total_angsuran FROM angsuran GROUP BY id_pinjaman ) a ON p.id_pinjaman = a.id_pinjaman WHERE p.id_anggota = $1 AND (p.status = 'aktif' OR p.status = 'proses') AND (p.jumlah_pinjaman - COALESCE(a.total_angsuran,0)) > 0 ORDER BY p.tgl_pinjaman DESC, p.id_pinjaman DESC `
+	query := ` SELECT p.id_pinjaman, p.id_anggota, p.id_pengelola, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status, p.metode_pencairan, p.metode_angsuran FROM pinjaman p LEFT JOIN ( SELECT id_pinjaman, SUM(CASE WHEN status IN ('confirmed','lunas','diterima') THEN sisa_pinjaman ELSE 0 END) AS total_angsuran FROM angsuran GROUP BY id_pinjaman ) a ON p.id_pinjaman = a.id_pinjaman WHERE p.id_anggota = $1 AND (p.status = 'aktif' OR p.status = 'proses') AND (p.jumlah_pinjaman - COALESCE(a.total_angsuran,0)) > 0 ORDER BY p.tgl_pinjaman DESC, p.id_pinjaman DESC `
 	rows, err := db.Query(query, idAnggota)
 	if err != nil {
 		return nil, err
@@ -858,7 +893,18 @@ func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 
 	for rows.Next() {
 		var p models.Pinjaman
-		if err := rows.Scan(&p.IDPinjaman, &p.IDAnggota, &p.IDPengelola, &p.TglPinjaman, &p.JumlahPinjaman, &p.JangkaWaktu, &p.Bunga, &p.Status); err != nil {
+		if err := rows.Scan(
+			&p.IDPinjaman,
+			&p.IDAnggota,
+			&p.IDPengelola,
+			&p.TglPinjaman,
+			&p.JumlahPinjaman,
+			&p.JangkaWaktu,
+			&p.Bunga,
+			&p.Status,
+			&p.MetodePencairan,
+			&p.MetodeAngsuran,
+		); err != nil {
 			return nil, err
 		}
 		pinjamans = append(pinjamans, p)
@@ -870,7 +916,7 @@ func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
 	db := config.GetDB()
 	var angsurans []models.Angsuran
-	query := "SELECT id_angsuran, id_pinjaman, id_pengelola, tgl_bayar, sisa_pinjaman, COALESCE(bukti_angsuran, ''), status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar DESC"
+	query := "SELECT id_angsuran, id_pinjaman, id_pengelola, tgl_bayar, jumlah_angsuran, sisa_pinjaman, COALESCE(bukti_angsuran, ''), status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar DESC"
 	rows, err := db.Query(query, idPinjaman)
 	if err != nil {
 		return nil, err
@@ -878,7 +924,7 @@ func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var a models.Angsuran
-		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.SisaPinjaman, &a.BuktiAngsuran, &a.Status); err != nil {
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.BuktiAngsuran, &a.Status); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)

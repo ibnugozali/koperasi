@@ -238,4 +238,23 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // --- ISI DROPDOWN METODE ANGSURAN OTOMATIS ---
+    const metodeAngsuranSelect = document.getElementById('metodeAngsuran');
+    if (metodeAngsuranSelect) {
+        fetch('/api/metode-angsuran')
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.metode_angsuran) {
+                    // Hapus semua opsi kecuali placeholder
+                    metodeAngsuranSelect.innerHTML = '<option value="">-- Pilih Metode Angsuran --</option>';
+                    data.metode_angsuran.forEach(function(item) {
+                        var opt = document.createElement('option');
+                        opt.value = item.key;
+                        opt.textContent = item.nama;
+                        metodeAngsuranSelect.appendChild(opt);
+                    });
+                }
+            });
+    }
 });

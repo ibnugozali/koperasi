@@ -114,6 +114,8 @@
                                                             <th class="text-end">Jumlah</th>
                                                             <th class="text-center">Jangka Waktu</th>
                                                             <th class="text-center">Bunga</th>
+                                                            <th class="text-center">Metode Pencairan</th>
+                                                            <th class="text-center">Metode Angsuran</th>
                                                             <th style="width:12%" class="text-center">Tanggal</th>
                                                             <th style="width:10%" class="text-center">Waktu</th>
                                                             <th style="width:18%" class="text-center">Aksi</th>
@@ -126,6 +128,8 @@
                                                             <td class="text-end">Rp {{formatRupiah .JumlahPinjaman}}</td>
                                                             <td class="text-center">{{.JangkaWaktu}} bulan</td>
                                                             <td class="text-center">{{.Bunga}}%</td>
+                                                            <td class="text-center">{{.MetodePencairan}}</td>
+                                                            <td class="text-center">{{.MetodeAngsuran}}</td>
                                                             <td class="text-center"><span class="small text-muted">{{.TglPinjaman.Format "2006-01-02"}}</span></td>
                                                             <td class="text-center"><span class="small text-muted">{{.TglPinjaman.Format "15:04:05"}}</span></td>
                                                             <td class="text-center">

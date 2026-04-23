@@ -47,3 +47,45 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+// AJAX submit untuk form angsuran (tanpa reload)
+document.addEventListener('DOMContentLoaded', function() {
+    var formAngsuran = document.querySelector('form[action="/bendahara/transaksi/angsuran"]');
+    if (formAngsuran) {
+        formAngsuran.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(formAngsuran);
+            fetch('/bendahara/transaksi/angsuran', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.message) {
+                    showAngsuranNotif('success', data.message);
+                    formAngsuran.reset();
+                } else {
+                    showAngsuranNotif('danger', data.error || 'Gagal mencatat angsuran');
+                }
+            })
+            .catch(() => showAngsuranNotif('danger', 'Terjadi kesalahan jaringan'));
+        });
+    }
+});
+
+// Fungsi notifikasi angsuran
+function showAngsuranNotif(type, msg) {
+    var notifId = 'angsuranNotif';
+    var notif = document.getElementById(notifId);
+    if (!notif) {
+        notif = document.createElement('div');
+        notif.id = notifId;
+        notif.className = 'alert alert-' + type + ' mt-2';
+        var parent = document.querySelector('form[action="/bendahara/transaksi/angsuran"]').parentNode;
+        parent.insertBefore(notif, parent.firstChild);
+    }
+    notif.className = 'alert alert-' + type + ' mt-2';
+    notif.textContent = msg;
+    setTimeout(function() {
+        if (notif) notif.remove();
+    }, 3500);
+}

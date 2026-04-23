@@ -21,12 +21,10 @@
                         <h5 class="mb-0"><i class="fa-solid fa-check-circle me-2"></i>Konfirmasi Transaksi</h5>
                         <div class="small text-white-50">Kelola pengajuan simpanan, pinjaman, dan angsuran yang menunggu konfirmasi</div>
                     </div>
-                    <div class="text-end">
-                        <span class="badge bg-light text-dark ms-1">Simpanan: {{len .PendingSimpanan}}</span>
-                        <span class="badge bg-light text-dark ms-1">Pinjaman: {{len .PendingPinjaman}}</span>
-                        <span class="badge bg-light text-dark ms-1">Angsuran: {{len .PendingAngsuran}}</span>
-                        <span class="badge bg-light text-dark ms-1">Penarikan: {{len .PendingPengambilan}}</span>
-                    </div>
+                        <div class="text-end">
+                            <span class="badge bg-light text-dark ms-1">Simpanan: {{len .PendingSimpanan}}</span>
+                            <span class="badge bg-light text-dark ms-1">Angsuran: {{len .PendingAngsuran}}</span>
+                        </div>
                 </div>
                 <div class="card-body">
                     <!-- Pending Simpanan -->
@@ -152,8 +150,10 @@
                                     <input type="text" class="form-control" name="id_anggota" required>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">ID Pinjaman</label>
-                                    <input type="text" class="form-control" name="id_pinjaman" required>
+                                    <label class="form-label">Jenis Angsuran</label>
+                                    <select class="form-select" id="jenisAngsuranSelect" name="jenis_angsuran" required>
+                                        <option value="">Pilih jenis angsuran...</option>
+                                    </select>
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label">Jumlah Angsuran</label>
@@ -170,6 +170,41 @@
         </div>
     </div>
     <script src="/static/js/bendahara_konfirmasi_transaksi.js"></script>
+    <script>
+    // Otomatisasi dropdown jenis angsuran berdasarkan ID Anggota
+    document.addEventListener('DOMContentLoaded', function() {
+        var idAnggotaInput = document.querySelector('form[action="/bendahara/transaksi/angsuran"] input[name="id_anggota"]');
+        var jenisAngsuranSelect = document.getElementById('jenisAngsuranSelect');
+        if (idAnggotaInput && jenisAngsuranSelect) {
+            idAnggotaInput.addEventListener('change', function() {
+                var idAnggota = idAnggotaInput.value;
+                jenisAngsuranSelect.innerHTML = '<option value="">Memuat data...</option>';
+                if (idAnggota) {
+                    fetch('/api/jenis-angsuran?id_anggota=' + encodeURIComponent(idAnggota))
+                        .then(res => res.json())
+                        .then(data => {
+                            jenisAngsuranSelect.innerHTML = '';
+                            if (data && Array.isArray(data.jenis_angsuran) && data.jenis_angsuran.length > 0) {
+                                data.jenis_angsuran.forEach(function(item) {
+                                    var opt = document.createElement('option');
+                                    opt.value = item.key;
+                                    opt.textContent = item.nama;
+                                    jenisAngsuranSelect.appendChild(opt);
+                                });
+                            } else {
+                                jenisAngsuranSelect.innerHTML = '<option value="">Tidak ada angsuran tersedia</option>';
+                            }
+                        })
+                        .catch(() => {
+                            jenisAngsuranSelect.innerHTML = '<option value="">Gagal memuat data</option>';
+                        });
+                } else {
+                    jenisAngsuranSelect.innerHTML = '<option value="">Pilih jenis angsuran...</option>';
+                }
+            });
+        }
+    });
+    </script>
 </body>
 </html>
 {{end}}

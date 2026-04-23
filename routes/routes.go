@@ -190,6 +190,8 @@ func SetupRouter() *gin.Engine {
 	})
 	router.GET("/hubungi-kami", controllers.ShowHubungiKami)
 	router.GET("/api/jenis-simpanan", controllers.PublicJenisSimpananJSON)
+	router.GET("/api/jenis-angsuran", controllers.ApiJenisAngsuran)
+	router.GET("/api/metode-angsuran", controllers.ApiMetodeAngsuran)
 	// --- Rute Anggota (Dilindungi Middleware) ---
 	anggotaRoutes := router.Group("/anggota")
 	anggotaRoutes.Use(middleware.AuthRequired())
@@ -285,6 +287,7 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.GET("/transaksi", controllers.BendaharaTransaksi)
 		bendaharaRoutes.POST("/transaksi/simpanan", controllers.BendaharaCatatSimpanan)
 		bendaharaRoutes.POST("/transaksi/pinjaman", controllers.BendaharaCatatPinjaman)
+		bendaharaRoutes.POST("/transaksi/angsuran", controllers.BendaharaCatatAngsuran)
 		bendaharaRoutes.GET("/riwayat", controllers.BendaharaRiwayat)
 		bendaharaRoutes.GET("/transaksi-anggota", controllers.BendaharaTransaksiDataAnggota)
 		bendaharaRoutes.GET("/tentang", controllers.BendaharaTentang)

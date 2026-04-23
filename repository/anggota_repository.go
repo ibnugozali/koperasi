@@ -350,21 +350,32 @@ func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float
 
 	totalSimpanan = simpananPokok + totalSimpananLainnya
 
-	// Hitung total pinjaman yang aktif (status = 'aktif')
-	queryPinjaman := `
-		SELECT COALESCE(SUM(p.jumlah_pinjaman), 0)
-		FROM pinjaman p
-		WHERE p.id_anggota = $1 AND p.status = 'aktif'
-	`
-	err = db.QueryRow(queryPinjaman, id).Scan(&totalPinjaman)
+	// Hitung total sisa pinjaman aktif (berdasarkan sisa_pinjaman terakhir dari angsuran yang sudah dikonfirmasi)
+	var totalSisaPinjaman float64
+	rows, err := db.Query(`SELECT id_pinjaman, jumlah_pinjaman FROM pinjaman WHERE id_anggota = $1 AND status = 'aktif'`, id)
 	if err != nil {
-		return 0, 0, 0, err
+		return totalSimpanan, 0, totalSimpanan, err
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var idPinjaman int
+		var jumlahPinjaman float64
+		err := rows.Scan(&idPinjaman, &jumlahPinjaman)
+		if err != nil {
+			continue
+		}
+		var sisaPinjaman float64
+		err = db.QueryRow(`SELECT sisa_pinjaman FROM angsuran WHERE id_pinjaman = $1 AND status IN ('confirmed','lunas','diterima') ORDER BY tgl_bayar DESC, id_angsuran DESC LIMIT 1`, idPinjaman).Scan(&sisaPinjaman)
+		if err != nil {
+			sisaPinjaman = jumlahPinjaman // Jika belum ada angsuran, gunakan jumlah pinjaman
+		}
+		totalSisaPinjaman += sisaPinjaman
+	}
+	fmt.Printf("[DEBUG] GetSaldoAnggota: id=%s, totalSisaPinjaman=%.2f\n", id, totalSisaPinjaman)
 
-	// Saldo bersih = total simpanan - total pinjaman aktif
-	saldoBersih = totalSimpanan - totalPinjaman
+	saldoBersih = totalSimpanan - totalSisaPinjaman
 
-	return totalSimpanan, totalPinjaman, saldoBersih, nil
+	return totalSimpanan, totalSisaPinjaman, saldoBersih, nil
 }
 
 // GetDetailSimpananByJenis mengambil total simpanan per jenis (menggunakan total_simpanan terbaru)

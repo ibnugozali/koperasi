@@ -27,13 +27,40 @@
                     <p><strong>Jumlah Pinjaman:</strong> Rp {{printf "%.0f" .JumlahPinjaman}}</p>
                     <p><strong>Sisa Pinjaman:</strong> Rp {{printf "%.0f" .SisaPinjaman}}</p>
                     <p><strong>Angsuran Ke:</strong> {{.AngsuranKe}}</p>
-                    <p><strong>Metode Pembayaran:</strong> 
+                    <p><strong>Metode Pencairan:</strong> 
                         {{if eq .MetodePencairan "transfer_bank"}}
                             Transfer Bank
                         {{else if eq .MetodePencairan "tunai"}}
                             Tunai
                         {{else}}
                             {{.MetodePencairan}}
+                        {{end}}
+                    </p>
+                    <p><strong>Metode Angsuran:</strong> 
+                        {{if eq .MetodeAngsuran "transfer_bank"}}
+                            Transfer Bank
+                        {{else if eq .MetodeAngsuran "tunai"}}
+                            Tunai
+                        {{else}}
+                            {{.MetodeAngsuran}}
+                        {{end}}
+                    </p>
+                    <p><strong>Metode Pencairan:</strong> 
+                        {{if eq .MetodePencairan "transfer_bank"}}
+                            Transfer Bank
+                        {{else if eq .MetodePencairan "tunai"}}
+                            Tunai
+                        {{else}}
+                            {{.MetodePencairan}}
+                        {{end}}
+                    </p>
+                    <p><strong>Metode Angsuran:</strong> 
+                        {{if eq .MetodeAngsuran "transfer_bank"}}
+                            Transfer Bank
+                        {{else if eq .MetodeAngsuran "tunai"}}
+                            Tunai
+                        {{else}}
+                            {{.MetodeAngsuran}}
                         {{end}}
                     </p>
                     

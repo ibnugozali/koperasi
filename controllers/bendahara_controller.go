@@ -1284,7 +1284,7 @@ func BendaharaEditAnggota(c *gin.Context) {
 	})
 }
 
-// UpdateAnggota memproses update data anggotac.Redirect(http.StatusFound, "/bendahara/anggota/keluar")
+// UpdateAnggota memproses update data anggota
 func BendaharaUpdateAnggota(c *gin.Context) {
 	idStr := c.Param("id")
 
@@ -1373,7 +1373,7 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 
 	detail.IDPengelola = bendaharaID.(int)
 	detail.TglTransaksi = time.Now()
-	detail.Status = "confirmed" // Langsung confirmed karena dicatat bendahara
+	detail.Status = "" // Biarkan kosong agar default 'pending' di repository
 
 	// Tentukan id_simpanan berdasarkan jenis_simpanan
 	jenisSimpanan := c.PostForm("jenis_simpanan")
@@ -3043,8 +3043,7 @@ func BendaharaImportAnggota(c *gin.Context) {
 
 		if err == nil && existingID != "" {
 			// Anggota sudah ada, lakukan UPDATE
-			// PENTING: gaji_bulanan di anggota.GajiBulanan sudah berisi sisa gaji dari database
-			// (diambil saat parsing Excel di atas)
+			// PENTING: gaji_bulanan di anggota.GajiBulanan sudah berisi sisa gaji dari database (diambil saat parsing Excel di atas)
 			updateQuery := `
 				UPDATE anggota SET
 					nama_anggota = $1,
@@ -3691,7 +3690,7 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 	var angsurans []models.Angsuran
 	queryAngsuran := `
 		SELECT ang.id_angsuran, ang.id_pinjaman, ang.id_anggota, a.nama_anggota,
-			   ang.tgl_bayar, ang.sisa_pinjaman, ang.status
+			   ang.tgl_bayar, ang.sisa_pinjaman, ang.Status
 		FROM angsuran ang
 		JOIN anggota a ON ang.id_anggota = a.id_anggota` + whereClause
 
@@ -3743,7 +3742,7 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 	var pengambilans []models.PengambilanSimpanan
 	queryPengambilan := `
 		SELECT ps.id_pengambilan, ps.id_anggota, a.nama_anggota, s.jenis_simpanan,
-			   ps.tgl_pengajuan, ps.jumlah, ps.alasan, ps.status
+			   ps.tgl_pengajuan, ps.jumlah, ps.alasan, ps.Status
 		FROM pengambilan_simpanan ps
 		JOIN anggota a ON ps.id_anggota = a.id_anggota
 		JOIN simpanan s ON ps.id_simpanan = s.id_simpanan` + whereClause
@@ -4535,4 +4534,115 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 		"CurrentLogo":     latestLogo,
 		"ActivePage":      "riwayat",
 	})
+}
+
+// ApiJenisAngsuran mengembalikan daftar metode angsuran dari pinjaman aktif/proses milik anggota
+func ApiJenisAngsuran(c *gin.Context) {
+	idAnggota := c.Query("id_anggota")
+	pinjamans, err := repository.GetPinjamanAktifByAnggota(idAnggota)
+	var result []map[string]interface{}
+	if err != nil || len(pinjamans) == 0 {
+		// Fallback: Selalu kirim satu opsi default jika tidak ada pinjaman aktif
+		result = append(result, map[string]interface{}{
+			"key":  0,
+			"nama": "Manual / Tidak Ditentukan",
+		})
+		c.JSON(200, gin.H{"jenis_angsuran": result})
+		return
+	}
+	for _, p := range pinjamans {
+		label := p.MetodeAngsuran
+		if strings.TrimSpace(label) == "" {
+			label = "Manual / Tidak Ditentukan"
+		}
+		result = append(result, map[string]interface{}{
+			"key":  p.IDPinjaman,
+			"nama": label,
+		})
+	}
+	c.JSON(200, gin.H{"jenis_angsuran": result})
+}
+
+// BendaharaCatatAngsuran memproses pencatatan angsuran baru oleh bendahara
+func BendaharaCatatAngsuran(c *gin.Context) {
+	// ...existing code...
+	// ...existing code...
+	var angsuran models.Angsuran
+	var err error
+	var pinjaman models.Pinjaman
+	session := sessions.Default(c)
+	bendaharaID := session.Get("user_id")
+	if bendaharaID == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Debug print setelah angsuran diinisialisasi
+	fmt.Printf("[DEBUG] SisaPinjaman sebelum simpan: %.2f\n", angsuran.SisaPinjaman)
+
+	if err = c.ShouldBind(&angsuran); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		return
+	}
+
+	// Ambil id_pinjaman dari jenis_angsuran (dropdown)
+	idPinjamanStr := c.PostForm("jenis_angsuran")
+	idPinjaman, err := strconv.Atoi(idPinjamanStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID pinjaman tidak valid"})
+		return
+	}
+	angsuran.IDPinjaman = idPinjaman
+	angsuran.IDPengelola.Int64 = int64(bendaharaID.(int))
+	// Pastikan status angsuran selalu confirmed (bendahara = validasi langsung)
+	angsuran.Status = "confirmed"
+	// Ambil data pinjaman untuk mengisi IDAnggota
+	pinjaman, err = repository.GetPinjamanByID(idPinjaman)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data pinjaman"})
+		return
+	}
+	angsuran.IDAnggota = pinjaman.IDAnggota
+
+	jumlahAngsuranStr := c.PostForm("jumlah_angsuran")
+	jumlahAngsuran, err := strconv.ParseFloat(jumlahAngsuranStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Jumlah angsuran tidak valid"})
+		return
+	}
+	angsuran.JumlahAngsuran = jumlahAngsuran
+
+	// Ambil sisa pinjaman terakhir dari DB
+	pinjaman, err = repository.GetPinjamanByID(idPinjaman)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data pinjaman"})
+		return
+	}
+	// Ambil angsuran terakhir yang statusnya confirmed/lunas/diterima (urut ASC)
+	angsuransSebelum, _ := repository.GetAngsuranByPinjamanID(idPinjaman)
+	sisaSebelum := pinjaman.JumlahPinjaman
+	if len(angsuransSebelum) > 0 {
+		for i := len(angsuransSebelum) - 1; i >= 0; i-- {
+			a := angsuransSebelum[i]
+			if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
+				sisaSebelum = a.SisaPinjaman
+				break
+			}
+		}
+	}
+	sisaSetelah := sisaSebelum - jumlahAngsuran
+	if sisaSetelah < 0 {
+		sisaSetelah = 0
+	}
+	angsuran.SisaPinjaman = sisaSetelah
+	// Setelah seluruh field angsuran terisi, pastikan status kosong agar default 'pending' di repository
+	angsuran.Status = ""
+	fmt.Printf("[DEBUG] Input Angsuran: IDPinjaman=%d, IDAnggota=%s, JumlahAngsuran=%.2f, Status=%s\n", angsuran.IDPinjaman, angsuran.IDAnggota, angsuran.JumlahAngsuran, angsuran.Status)
+	err = repository.CreateAngsuran(angsuran)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat angsuran"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Angsuran berhasil dicatat"})
 }
