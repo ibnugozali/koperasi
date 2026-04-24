@@ -5,6 +5,24 @@ import (
 	"koperasi-simpan-pinjam/models"
 )
 
+// GetBendahara mengambil satu data bendahara yang memiliki nomor telepon.
+// Prioritas diberikan pada bendahara berstatus aktif.
+func GetBendahara() (models.Pengelola, error) {
+	db := config.GetDB()
+	var p models.Pengelola
+	err := db.QueryRow(`
+		SELECT id_pengelola, nama_pengelola, COALESCE(no_telepon, '')
+		FROM pengelola
+		WHERE LOWER(TRIM(level)) = 'bendahara'
+		  AND TRIM(COALESCE(no_telepon, '')) <> ''
+		ORDER BY
+		  CASE WHEN LOWER(TRIM(COALESCE(status, ''))) = 'aktif' THEN 0 ELSE 1 END,
+		  id_pengelola ASC
+		LIMIT 1
+	`).Scan(&p.IDPengelola, &p.NamaPengelola, &p.NoTelepon)
+	return p, err
+}
+
 // GetAllPengelola mengambil semua data pengelola (user) dari tabel pengelola
 func GetAllPengelola() ([]models.Pengelola, error) {
 	db := config.GetDB()

@@ -1502,6 +1502,7 @@ func AdminPengaturan(c *gin.Context) {
 		"WAToken":     getSetting("wa_gateway_token"),
 		"WAURL":       getSetting("wa_gateway_url"),
 		"AppBaseURL":  getSetting("app_base_url"),
+		"WABendahara": getSetting("wa_bendahara_phone"),
 		"WASuccess":   c.Query("wa_success"),
 		"WAError":     c.Query("wa_error"),
 		"CurrentLogo": logoPath,
@@ -1513,6 +1514,7 @@ func AdminSaveWAGatewayConfig(c *gin.Context) {
 	token := strings.TrimSpace(c.PostForm("wa_gateway_token"))
 	url := strings.TrimSpace(c.PostForm("wa_gateway_url"))
 	appBaseURL := strings.TrimSpace(c.PostForm("app_base_url"))
+	bendaharaPhone := strings.TrimSpace(c.PostForm("wa_bendahara_phone"))
 
 	if token == "" {
 		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Token WA wajib diisi")
@@ -1544,6 +1546,12 @@ func AdminSaveWAGatewayConfig(c *gin.Context) {
 	if appBaseURL != "" {
 		if err := upsert("app_base_url", appBaseURL); err != nil {
 			c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan App Base URL")
+			return
+		}
+	}
+	if bendaharaPhone != "" {
+		if err := upsert("wa_bendahara_phone", bendaharaPhone); err != nil {
+			c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan nomor WA Bendahara")
 			return
 		}
 	}

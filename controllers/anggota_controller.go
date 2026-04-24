@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -1955,6 +1956,20 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
+	// Kirim notifikasi WA ke bendahara
+	bendahara, err := repository.GetBendahara()
+	if err == nil && bendahara.NoTelepon != "" {
+		anggota, _ := repository.GetAnggotaByID(userID)
+		appBaseURL := resolveAppBaseURL(c, config.GetDB())
+		totalStr := fmt.Sprintf("%.2f", total)
+		if errWA := sendBendaharaWhatsAppNotification(bendahara.NoTelepon, anggota.NamaAnggota, "Simpanan", totalStr, appBaseURL); errWA != nil {
+			log.Printf("[WA NOTIF] gagal kirim notifikasi bendahara (simpanan): %v", errWA)
+		}
+	} else if err != nil {
+		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi simpanan: %v", err)
+	} else {
+		log.Printf("[WA NOTIF] nomor bendahara kosong, notifikasi simpanan tidak dikirim")
+	}
 	// Berhasil, return JSON
 	c.JSON(http.StatusOK, gin.H{
 		"success":  true,
@@ -2356,6 +2371,20 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		}
 	}
 
+	// Kirim notifikasi WA ke bendahara
+	bendahara, err := repository.GetBendahara()
+	if err == nil && bendahara.NoTelepon != "" {
+		anggota, _ := repository.GetAnggotaByID(userID)
+		appBaseURL := resolveAppBaseURL(c, config.GetDB())
+		jumlahStr := fmt.Sprintf("%.2f", jumlahAngsuran)
+		if errWA := sendBendaharaWhatsAppNotification(bendahara.NoTelepon, anggota.NamaAnggota, "Angsuran", jumlahStr, appBaseURL); errWA != nil {
+			log.Printf("[WA NOTIF] gagal kirim notifikasi bendahara (angsuran): %v", errWA)
+		}
+	} else if err != nil {
+		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi angsuran: %v", err)
+	} else {
+		log.Printf("[WA NOTIF] nomor bendahara kosong, notifikasi angsuran tidak dikirim")
+	}
 	// Berhasil, redirect ke halaman riwayat sehingga angsuran baru muncul di sana
 	c.Redirect(http.StatusFound, "/anggota/riwayat")
 }

@@ -22,6 +22,128 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
+// sendBendaharaWhatsAppNotification mengirim notifikasi ke WA Bendahara (mirip ketua)
+func sendBendaharaWhatsAppNotification(rawBendaharaPhone, namaAnggota, jenisTransaksi, nominal, appBaseURL string) error {
+	db := config.GetDB()
+	token := strings.TrimSpace(os.Getenv("WA_GATEWAY_TOKEN"))
+	if token == "" {
+		var tokenDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_token'").Scan(&tokenDB); err == nil {
+			token = strings.TrimSpace(tokenDB)
+		}
+	}
+	if token == "" {
+		return fmt.Errorf("WA_GATEWAY_TOKEN belum diset (env/db)")
+	}
+	configuredPhone := ""
+	if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_bendahara_phone'").Scan(&configuredPhone); err != nil && err != sql.ErrNoRows {
+		log.Printf("[WA NOTIF] gagal baca wa_bendahara_phone: %v", err)
+	}
+
+	bendaharaPhone := strings.TrimSpace(configuredPhone)
+	if bendaharaPhone == "" {
+		bendaharaPhone = strings.TrimSpace(rawBendaharaPhone)
+	}
+	if bendaharaPhone == "" {
+		return fmt.Errorf("nomor bendahara kosong")
+	}
+	bendaharaPhone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", "+", "").Replace(bendaharaPhone)
+	if strings.HasPrefix(bendaharaPhone, "0") {
+		bendaharaPhone = "62" + bendaharaPhone[1:]
+	} else if !strings.HasPrefix(bendaharaPhone, "62") {
+		bendaharaPhone = "62" + bendaharaPhone
+	}
+
+	waURL := strings.TrimSpace(os.Getenv("WA_GATEWAY_URL"))
+	if waURL == "" {
+		var urlDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_url'").Scan(&urlDB); err == nil {
+			waURL = strings.TrimSpace(urlDB)
+		}
+	}
+	if waURL == "" {
+		waURL = "https://api.fonnte.com/send"
+	}
+
+	if strings.TrimSpace(appBaseURL) == "" {
+		appBaseURL = "http://localhost:8081"
+	}
+
+	message := "Notifikasi transaksi anggota baru:\n" +
+		"- Nama: " + namaAnggota + "\n" +
+		"- Jenis Transaksi: " + jenisTransaksi + "\n" +
+		"- Nominal: " + nominal + "\n"
+
+	linkKonfirmasiBendahara := strings.TrimRight(appBaseURL, "/") + "/bendahara/konfirmasi-transaksi"
+	message += "Silakan cek menu konfirmasi transaksi:\n" + linkKonfirmasiBendahara
+
+	form := url.Values{"target": {bendaharaPhone}, "message": {message}}
+	jsonBody, _ := json.Marshal(map[string]string{
+		"target":  bendaharaPhone,
+		"message": message,
+	})
+
+	type waAttempt struct {
+		name        string
+		contentType string
+		body        string
+		auth        string
+	}
+
+	attempts := []waAttempt{
+		{name: "form/raw-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: token},
+		{name: "form/bearer-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: "Bearer " + token},
+		{name: "json/raw-token", contentType: "application/json", body: string(jsonBody), auth: token},
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	var lastErr error
+
+	for _, at := range attempts {
+		req, err := http.NewRequest(http.MethodPost, waURL, strings.NewReader(at.body))
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("Content-Type", at.contentType)
+		req.Header.Set("Authorization", at.auth)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			log.Printf("[WA NOTIF] attempt=%s error=%v", at.name, err)
+			continue
+		}
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		log.Printf("[WA NOTIF] attempt=%s status=%d response=%s", at.name, resp.StatusCode, bodyStr)
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			lastErr = fmt.Errorf("gateway status %d", resp.StatusCode)
+			continue
+		}
+
+		var parsed map[string]interface{}
+		if json.Unmarshal(bodyBytes, &parsed) == nil {
+			if okVal, exists := parsed["status"]; exists {
+				if okBool, ok := okVal.(bool); ok && !okBool {
+					lastErr = fmt.Errorf("gateway reject: %s", bodyStr)
+					continue
+				}
+			}
+		}
+
+		return nil
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("semua percobaan kirim WA gagal")
+}
+
 // ShowLoginPage menampilkan halaman login utama.
 func ShowLoginPage(c *gin.Context) {
 	status := c.Query("status")

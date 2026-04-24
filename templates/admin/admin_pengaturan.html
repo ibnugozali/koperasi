@@ -21,7 +21,7 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header bg-dark text-white">
-                            <h5 class="mb-0"><i class="fa-brands fa-whatsapp me-2"></i> Konfigurasi Notifikasi WhatsApp Ketua</h5>
+                            <h5 class="mb-0"><i class="fa-brands fa-whatsapp me-2"></i> Konfigurasi Notifikasi WhatsApp</h5>
                         </div>
                         <div class="card-body">
                             {{if .WASuccess}}
@@ -43,6 +43,11 @@
                                     <label class="form-label">App Base URL (untuk link klik di WhatsApp)</label>
                                     <input type="text" class="form-control" name="app_base_url" value="{{.AppBaseURL}}" placeholder="Contoh: https://koperasi-kampus.com">
                                     <small class="text-muted">Isi domain publik aplikasi. Jika kosong, sistem pakai host request saat ini.</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Nomor WA Bendahara (untuk notifikasi simpanan/angsuran)</label>
+                                    <input type="text" class="form-control" name="wa_bendahara_phone" value="{{.WABendahara}}" placeholder="Contoh: 081234567890 atau 6281234567890">
+                                    <small class="text-muted">Jika diisi, nomor ini diprioritaskan untuk menerima notifikasi transaksi anggota.</small>
                                 </div>
                                 <button type="submit" class="btn btn-primary">Simpan Konfigurasi WA</button>
                             </form>
