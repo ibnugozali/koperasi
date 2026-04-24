@@ -24,7 +24,7 @@
     <a href="/bendahara/anggota" class="{{ if eq .ActivePage "anggota" }}active{{ end }}"><i class="fa-solid fa-users me-2"></i> Data Anggota</a>
 
     <!-- Konten Website -->
-    <a href="#" onclick="toggleSubmenu(this, 'kontenWebsite'); return false;" class="dropdown-toggle"><i class="fa-solid fa-globe me-2"></i> Konfigurasi Simopan</a>
+    <a href="#" onclick="toggleSubmenu(this, 'kontenWebsite'); return false;" class="dropdown-toggle"><i class="fa-solid fa-globe me-2"></i> Konfigurasi Simpanan</a>
     <div class="collapse {{ if or (eq .ActivePage "setting_simpanan_wajib") (eq .ActivePage "edit-rekening-register") (eq .ActivePage "edit-bunga") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "setting_simpanan_wajib") (eq .ActivePage "edit-rekening-register") (eq .ActivePage "edit-bunga") }}style="display: block;"{{ end }}>
         <a href="/bendahara/setting-simpanan-wajib" class="ms-3 {{ if eq .ActivePage "setting_simpanan_wajib" }}active{{ end }}"><i class="fa-solid fa-cog me-2"></i> Simpanan Wajib</a>
         <a href="/bendahara/edit-rekening-register" class="ms-3 {{ if eq .ActivePage "edit-rekening-register" }}active{{ end }}"><i class="fa-solid fa-edit me-2"></i> Nomor Rekening</a>

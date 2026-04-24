@@ -2708,9 +2708,9 @@ func ExportLaporanKeuangan(c *gin.Context) {
 // KetuaKonfirmasiTransaksi menampilkan halaman konfirmasi transaksi untuk ketua
 func KetuaKonfirmasiTransaksi(c *gin.Context) {
 	// Ambil data pending dari repository
-	pendingSimpanan, errSimpanan := repository.GetPendingSimpanan()
-	pendingPinjaman, errPinjaman := repository.GetPendingPinjaman()
-	pendingAngsuran, errAngsuran := repository.GetPendingAngsuran()
+	pendingSimpanan, errSimpanan := repository.GetConfirmedSimpanan()
+	pendingPinjaman, errPinjaman := repository.GetPendingPinjaman() // pinjaman tetap status 'proses'
+	pendingAngsuran, errAngsuran := repository.GetConfirmedAngsuran()
 	pendingPengambilan, errPengambilan := repository.GetPendingPengambilanSimpanan()
 
 	if errSimpanan != nil || errPinjaman != nil || errAngsuran != nil || errPengambilan != nil {

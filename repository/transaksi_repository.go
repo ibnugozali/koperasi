@@ -9,6 +9,61 @@ import (
 	"koperasi-simpan-pinjam/models"
 )
 
+// GetConfirmedSimpanan mengambil simpanan yang sudah dikonfirmasi bendahara (status 'confirmed')
+func GetConfirmedSimpanan() ([]models.Detail, error) {
+	db := config.GetDB()
+	var details []models.Detail
+	query := `
+		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, COALESCE(d.status, '')
+		FROM detail d
+		JOIN anggota a ON d.id_anggota = a.id_anggota
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+		WHERE d.status = 'confirmed'
+		ORDER BY d.tgl_transaksi DESC
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var d models.Detail
+		if err := rows.Scan(&d.IDDetail, &d.IDAnggota, &d.NamaAnggota, &d.IDSimpanan, &d.Simpanan.JenisSimpanan, &d.IDPengelola, &d.TglTransaksi, &d.JumlahSimpanan, &d.TotalSimpanan, &d.Status); err != nil {
+			return nil, err
+		}
+		details = append(details, d)
+	}
+	return details, nil
+}
+
+// GetConfirmedAngsuran mengambil angsuran yang sudah dikonfirmasi bendahara (status 'confirmed')
+func GetConfirmedAngsuran() ([]models.Angsuran, error) {
+	db := config.GetDB()
+	var angsurans []models.Angsuran
+	query := `
+		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, a.sisa_pinjaman, 
+			   COALESCE(a.status_angsuran, ''), COALESCE(a.status, 'confirmed'), ang.nama_anggota
+		FROM angsuran a
+		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
+		JOIN anggota ang ON p.id_anggota = ang.id_anggota
+		WHERE a.status = 'confirmed'
+		ORDER BY a.tgl_bayar DESC
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a models.Angsuran
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDAnggota, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.StatusAngsuran, &a.Status, &a.NamaAnggota); err != nil {
+			return nil, err
+		}
+		angsurans = append(angsurans, a)
+	}
+	return angsurans, nil
+}
+
 // GetPinjamanAktifByAnggota mengembalikan daftar pinjaman status proses/aktif milik anggota beserta metode angsuran
 func GetPinjamanAktifByAnggota(idAnggota string) ([]models.Pinjaman, error) {
 	db := config.GetDB()

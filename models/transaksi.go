@@ -14,7 +14,7 @@ type Simpanan struct {
 // Detail mewakili detail transaksi simpanan
 type Detail struct {
 	IDDetail        int       `json:"id_detail" db:"id_detail"`
-	IDAnggota       string    `json:"id_anggota" db:"id_anggota"`
+	IDAnggota       string    `json:"id_anggota" form:"id_anggota" db:"id_anggota"`
 	NamaAnggota     string    `json:"nama_anggota" db:"nama_anggota"`
 	IDSimpanan      int       `json:"id_simpanan" db:"id_simpanan"`
 	Simpanan        Simpanan  `json:"simpanan" db:"simpanan"`

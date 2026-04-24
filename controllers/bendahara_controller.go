@@ -1370,24 +1370,25 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
 		return
 	}
+	if detail.IDAnggota == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID anggota wajib diisi"})
+		return
+	}
 
 	detail.IDPengelola = bendaharaID.(int)
 	detail.TglTransaksi = time.Now()
 	detail.Status = "" // Biarkan kosong agar default 'pending' di repository
 
-	// Tentukan id_simpanan berdasarkan jenis_simpanan
+	// Ambil id_simpanan dari tabel simpanan berdasarkan nama (jenis_simpanan)
 	jenisSimpanan := c.PostForm("jenis_simpanan")
-	switch jenisSimpanan {
-	case "wajib":
-		detail.IDSimpanan = 2
-	case "sukarela":
-		detail.IDSimpanan = 3
-	case "hari_raya":
-		detail.IDSimpanan = 4
-	default:
+	db := config.GetDB()
+	var idSimpanan int
+	err := db.QueryRow("SELECT id_simpanan FROM simpanan WHERE jenis_simpanan = $1", jenisSimpanan).Scan(&idSimpanan)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Jenis simpanan tidak valid"})
 		return
 	}
+	detail.IDSimpanan = idSimpanan
 
 	// Hitung total simpanan (kumulatif)
 	totalSimpanan, _, _, err := repository.GetSaldoAnggota(detail.IDAnggota)
@@ -1837,91 +1838,101 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 func BendaharaLihatDetailSimpanan(c *gin.Context) {
 	id := c.Param("id")
 
-	// Cek apakah ID adalah angka (id_detail) atau string ID anggota
-	// Jika angka, redirect ke view detail simpanan
+	// Cek apakah ID adalah angka dan valid sebagai ID detail
 	if idNum, err := strconv.Atoi(id); err == nil {
-		// Ini adalah ID detail, redirect ke function view
-		c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/bendahara/view-detail-simpanan/%d", idNum))
-		return
+		// Cek apakah idNum benar-benar ID detail yang ada di tabel detail
+		db := config.GetDB()
+		var exists bool
+		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM detail WHERE id_detail = $1)", idNum).Scan(&exists)
+		if err == nil && exists {
+			// Redirect ke view detail simpanan jika memang ID detail valid
+			c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/bendahara/view-detail-simpanan/%d", idNum))
+			return
+		}
+		// Jika tidak ditemukan sebagai ID detail, lanjutkan sebagai ID anggota
 	}
 
 	// Ambil data anggota
 	anggota, err := repository.GetAnggotaByID(id)
 	if err != nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan"})
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"message": "Anggota tidak ditemukan atau ID tidak valid. Silakan cek kembali tautan atau gunakan menu yang benar."})
 		return
 	}
 
-	// Ambil semua simpanan pending dari anggota ini
+	// Ambil semua simpanan anggota ini (semua status)
 	db := config.GetDB()
 	query := `
 		SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.tgl_transaksi, 
 		       d.jumlah_simpanan, d.total_simpanan, s.jenis_simpanan,
-		       COALESCE(d.status, 'pending') as status,
+		       COALESCE(d.status, 'confirmed') as status,
 		       COALESCE(d.bukti_pembayaran, '') as bukti_pembayaran
 		FROM detail d
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
-		WHERE d.id_anggota = $1 AND d.status = 'pending'
+		WHERE d.id_anggota = $1
 		ORDER BY d.tgl_transaksi DESC
 	`
 
 	rows, err := db.Query(query, id)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data simpanan"})
-		return
-	}
-	defer rows.Close()
-
 	var detailSimpanan []models.Detail
-	var totalWajib, totalSukarela, totalHariRaya, grandTotal float64
+	var totalWajib, totalSukarela, totalHariRaya, totalUmrohHaji, totalQurban, grandTotal float64
 	var buktiPembayaran string
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var d models.Detail
+			var s models.Simpanan
+			var bukti string
+			err := rows.Scan(&d.IDDetail, &d.IDAnggota, &d.IDSimpanan, &d.TglTransaksi,
+				&d.JumlahSimpanan, &d.TotalSimpanan, &s.JenisSimpanan, &d.Status, &bukti)
+			if err != nil {
+				continue
+			}
+			d.Simpanan = s
+			d.BuktiPembayaran = bukti
+			detailSimpanan = append(detailSimpanan, d)
 
-	for rows.Next() {
-		var d models.Detail
-		var s models.Simpanan
-		var bukti string
-		err := rows.Scan(&d.IDDetail, &d.IDAnggota, &d.IDSimpanan, &d.TglTransaksi,
-			&d.JumlahSimpanan, &d.TotalSimpanan, &s.JenisSimpanan, &d.Status, &bukti)
-		if err != nil {
-			continue
-		}
-		d.Simpanan = s
-		d.BuktiPembayaran = bukti // Set bukti pembayaran untuk setiap detail
-		detailSimpanan = append(detailSimpanan, d)
+			if buktiPembayaran == "" && bukti != "" {
+				buktiPembayaran = bukti
+			}
 
-		// Ambil bukti pembayaran pertama yang ada (untuk backward compatibility)
-		if buktiPembayaran == "" && bukti != "" {
-			buktiPembayaran = bukti
+			switch s.JenisSimpanan {
+			case "pokok":
+				totalWajib += d.JumlahSimpanan
+			case "wajib":
+				totalWajib += d.JumlahSimpanan
+			case "sukarela":
+				totalSukarela += d.JumlahSimpanan
+			case "hari_raya":
+				totalHariRaya += d.JumlahSimpanan
+			case "umroh_haji":
+				totalUmrohHaji += d.JumlahSimpanan
+			case "qurban":
+				totalQurban += d.JumlahSimpanan
+			}
+			grandTotal += d.JumlahSimpanan
 		}
-
-		// Hitung total per jenis
-		// Note: jenis_simpanan from database: 'pokok', 'wajib', 'sukarela', 'hari_raya'
-		switch s.JenisSimpanan {
-		case "pokok":
-			totalWajib += d.JumlahSimpanan // Simpanan pokok masuk ke kategori wajib
-		case "wajib":
-			totalWajib += d.JumlahSimpanan
-		case "sukarela":
-			totalSukarela += d.JumlahSimpanan
-		case "hari_raya":
-			totalHariRaya += d.JumlahSimpanan
-		}
-		grandTotal += d.JumlahSimpanan
 	}
 
 	// Ambil nomor rekening koperasi
 	nomorRekening, _ := repository.GetNomorRekening("simpanan")
 
+	infoMsg := ""
+	if len(detailSimpanan) == 0 {
+		infoMsg = "Tidak ada data simpanan untuk anggota ini."
+	}
 	c.HTML(http.StatusOK, "bendahara_detail_simpanan.html", gin.H{
 		"Anggota":         anggota,
 		"DetailSimpanan":  detailSimpanan,
 		"TotalWajib":      totalWajib,
 		"TotalSukarela":   totalSukarela,
 		"TotalHariRaya":   totalHariRaya,
+		"TotalUmrohHaji":  totalUmrohHaji,
+		"TotalQurban":     totalQurban,
 		"GrandTotal":      grandTotal,
 		"NomorRekening":   nomorRekening,
 		"BuktiPembayaran": buktiPembayaran,
-		"Judul":           "Detail Simpanan Pending",
+		"Judul":           "Rekapitulasi Simpanan Anggota",
+		"InfoMsg":         infoMsg,
 	})
 }
 
@@ -1965,6 +1976,12 @@ func BendaharaViewDetailSimpanan(c *gin.Context) {
 	d.BuktiPembayaran = bukti
 	a.IDAnggota = d.IDAnggota
 
+	// Ambil data anggota lengkap (alamat, unit kerja, fakultas, dsb)
+	anggotaLengkap, err := repository.GetAnggotaByID(d.IDAnggota)
+	if err == nil {
+		a = anggotaLengkap
+	}
+
 	// Ambil nomor rekening koperasi
 	nomorRekening, _ := repository.GetNomorRekening("simpanan")
 
@@ -1991,6 +2008,40 @@ func BendaharaViewDetailSimpanan(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	// Ambil semua simpanan anggota ini untuk total per jenis
+	dbAll := config.GetDB()
+	rows, err := dbAll.Query(`
+		SELECT d.jumlah_simpanan, s.jenis_simpanan
+		FROM detail d
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+		WHERE d.id_anggota = $1 AND COALESCE(d.status, 'confirmed') = 'confirmed'
+	`, d.IDAnggota)
+	var totalWajib, totalSukarela, totalHariRaya, totalUmrohHaji, totalQurban, grandTotal float64
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var jumlah float64
+			var jenis string
+			if err := rows.Scan(&jumlah, &jenis); err == nil {
+				switch jenis {
+				case "pokok":
+					totalWajib += jumlah
+				case "wajib":
+					totalWajib += jumlah
+				case "sukarela":
+					totalSukarela += jumlah
+				case "hari_raya":
+					totalHariRaya += jumlah
+				case "umroh_haji":
+					totalUmrohHaji += jumlah
+				case "qurban":
+					totalQurban += jumlah
+				}
+				grandTotal += jumlah
+			}
+		}
+	}
+
 	c.HTML(http.StatusOK, "bendahara_view_detail_simpanan.html", gin.H{
 		"Anggota":          a,
 		"Detail":           d,
@@ -2002,6 +2053,12 @@ func BendaharaViewDetailSimpanan(c *gin.Context) {
 		"NomorRekening":    nomorRekening,
 		"CurrentLogo":      latestLogo,
 		"ActivePage":       "riwayat",
+		"TotalWajib":       totalWajib,
+		"TotalSukarela":    totalSukarela,
+		"TotalHariRaya":    totalHariRaya,
+		"TotalUmrohHaji":   totalUmrohHaji,
+		"TotalQurban":      totalQurban,
+		"GrandTotal":       grandTotal,
 	})
 }
 
@@ -2090,13 +2147,26 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 
 // BendaharaKonfirmasiTransaksiPost menangani konfirmasi/reject transaksi
 func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
+	// Cek session login
+	session := sessions.Default(c)
+	user := session.Get("user_id")
+	if user == nil {
+		log.Println("[DEBUG] Session expired saat konfirmasi-transaksi")
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "Session expired, silakan login ulang"})
+		return
+	}
+
 	transactionType := c.Param("type")
 	idStr := c.Param("id")
 	action := c.PostForm("action")
+	idAnggota := c.PostForm("id_anggota")
+
+	log.Printf("[DEBUG] KonfirmasiTransaksi: type=%s, id=%s, action=%s, idAnggota=%s", transactionType, idStr, action, idAnggota)
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		log.Printf("[ERROR] ID tidak valid: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "ID tidak valid"})
 		return
 	}
 
@@ -2127,16 +2197,19 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 			err = repository.UpdatePengambilanSimpananStatus(id, "rejected")
 		}
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe transaksi tidak valid"})
+		log.Printf("[ERROR] Tipe transaksi tidak valid: %s", transactionType)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Tipe transaksi tidak valid"})
 		return
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses transaksi"})
+		log.Printf("[ERROR] Gagal update status transaksi: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal memproses transaksi"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Transaksi berhasil diproses"})
+	log.Printf("[DEBUG] Update status transaksi berhasil: type=%s, id=%d, action=%s", transactionType, id, action)
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Transaksi berhasil diproses"})
 }
 
 // GetCurrentBunga mengambil nilai bunga terkini dari database

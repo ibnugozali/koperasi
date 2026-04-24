@@ -331,14 +331,15 @@
         // Toggle status text
         const statusCheckbox = document.querySelector('input[name="StatusAktif"]');
         const statusText = document.getElementById('statusText');
-        
-        statusCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                statusText.innerHTML = '<span class="text-success">✓ Aktif</span>';
-            } else {
-                statusText.innerHTML = '<span class="text-danger">✗ Nonaktif</span>';
-            }
-        });
+        if (statusCheckbox) {
+            statusCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    statusText.innerHTML = '<span class="text-success">✓ Aktif</span>';
+                } else {
+                    statusText.innerHTML = '<span class="text-danger">✗ Nonaktif</span>';
+                }
+            });
+        }
 
         // Set border color berdasarkan status
         const schedulerCard = document.getElementById('schedulerStatusCard');
@@ -555,7 +556,6 @@
         setInterval(updateCountdown, 1000);
 
         // Monitor perubahan status checkbox
-        const statusCheckbox = document.querySelector('input[name="StatusAktif"]');
         if (statusCheckbox) {
             statusCheckbox.addEventListener('change', function() {
                 console.log(`🔄 Status berubah menjadi: ${this.checked ? 'AKTIF' : 'NONAKTIF'}`);

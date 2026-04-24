@@ -35,6 +35,7 @@
                             <table class="table table-hover table-striped table-bordered align-middle">
                                 <thead>
                                     <tr>
+                                        <th>ID Anggota</th>
                                         <th>Nama Anggota</th>
                                         <th>Jenis Simpanan</th>
                                         <th class="text-end">Jumlah</th>
@@ -45,19 +46,23 @@
                                 <tbody>
                                     {{range .PendingSimpanan}}
                                     <tr>
+                                        <td>{{.Detail.IDAnggota}}</td>
                                         <td>{{.Detail.NamaAnggota}}</td>
                                         <td>{{.Detail.Simpanan.JenisSimpanan}}</td>
                                         <td class="text-end">Rp {{printf "%.0f" .Detail.JumlahSimpanan}}</td>
                                         <td class="text-center"><span class="small text-muted">{{.Detail.TglTransaksi.Format "2006-01-02"}}</span></td>
                                         <td class="text-center">
                                             <div class="btn-group" role="group">
-                                                <a class="btn btn-outline-primary btn-sm" href="/bendahara/lihat-detail-simpanan/{{.Detail.IDAnggota}}" title="Lihat detail simpanan"><i class="fa-solid fa-eye"></i></a>
+                                                <!-- Tombol lihat rekap simpanan anggota dihapus sesuai permintaan -->
+                                                <a class="btn btn-outline-info btn-sm ms-1" href="/bendahara/view-detail-simpanan/{{.Detail.IDDetail}}" title="Lihat detail transaksi simpanan"><i class="fa-solid fa-file-invoice"></i></a>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/simpanan/{{.Detail.IDDetail}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
+                                                    <input type="hidden" name="id_anggota" value="{{.Detail.IDAnggota}}">
                                                     <button type="submit" class="btn btn-success btn-sm" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
                                                 </form>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/simpanan/{{.Detail.IDDetail}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="reject">
+                                                    <input type="hidden" name="id_anggota" value="{{.Detail.IDAnggota}}">
                                                     <button type="submit" class="btn btn-danger btn-sm" title="Tolak"><i class="fa-solid fa-times"></i></button>
                                                 </form>
                                             </div>
@@ -82,6 +87,7 @@
                                 <thead>
                                     <tr>
                                         <th style="width:5%" class="text-center">No</th>
+                                        <th>ID Anggota</th>
                                         <th>Nama Anggota</th>
                                         <th class="text-end">Jumlah Angsuran</th>
                                         <th style="width:12%" class="text-center">Tanggal Bayar</th>
@@ -92,6 +98,7 @@
                                     {{range .PendingAngsuran}}
                                     <tr>
                                         <td class="text-center">{{.No}}</td>
+                                        <td>{{.Angsuran.IDAnggota}}</td>
                                         <td>{{.Angsuran.NamaAnggota}}</td>
                                         <td class="text-end">Rp {{printf "%.0f" .Angsuran.JumlahAngsuran}}</td>
                                         <td class="text-center"><span class="small text-muted">{{.Angsuran.TglBayar.Format "2006-01-02"}}</span></td>
@@ -100,10 +107,12 @@
                                                 <a class="btn btn-outline-primary btn-sm" href="/bendahara/detail-angsuran/{{.Angsuran.IDAngsuran}}" title="Lihat detail angsuran"><i class="fa-solid fa-eye"></i></a>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/angsuran/{{.Angsuran.IDAngsuran}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
+                                                    <input type="hidden" name="id_anggota" value="{{.Angsuran.IDAnggota}}">
                                                     <button type="submit" class="btn btn-success btn-sm" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
                                                 </form>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/angsuran/{{.Angsuran.IDAngsuran}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="reject">
+                                                    <input type="hidden" name="id_anggota" value="{{.Angsuran.IDAnggota}}">
                                                     <button type="submit" class="btn btn-danger btn-sm" title="Tolak"><i class="fa-solid fa-times"></i></button>
                                                 </form>
                                             </div>
