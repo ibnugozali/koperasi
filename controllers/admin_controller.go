@@ -1732,6 +1732,39 @@ func AdminPesan(c *gin.Context) {
 	})
 }
 
+// AdminBackground menampilkan halaman edit background dashboard anggota.
+func AdminBackground(c *gin.Context) {
+	logoPath := "/static/images/placeholder.png"
+	if v, ok := c.Get("LogoPath"); ok {
+		if s, okCast := v.(string); okCast && s != "" {
+			logoPath = s
+		}
+	}
+
+	currentBackground := "/static/images/placeholder.png"
+	files, err := os.ReadDir("static/images")
+	if err == nil {
+		var latestTime int64
+		for _, file := range files {
+			name := file.Name()
+			if strings.HasPrefix(name, "background_") && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg")) {
+				info, errInfo := file.Info()
+				if errInfo == nil && info.ModTime().Unix() > latestTime {
+					latestTime = info.ModTime().Unix()
+					currentBackground = "/static/images/" + name
+				}
+			}
+		}
+	}
+
+	c.HTML(http.StatusOK, "admin_background.html", gin.H{
+		"ActivePage":        "edit_background",
+		"CurrentBackground": currentBackground,
+		"CurrentLogo":       logoPath,
+		"LogoPath":          logoPath,
+	})
+}
+
 // AdminLogo menampilkan halaman edit logo admin
 func AdminLogo(c *gin.Context) {
 	// Cari logo terbaru yang sudah diupload
@@ -1766,6 +1799,64 @@ func AdminLogo(c *gin.Context) {
 		"ActivePage":  "edit_logo",
 		"CurrentLogo": latestLogo,
 		"LogoPath":    latestLogo,
+	})
+}
+
+// UploadBackground memproses upload background dashboard anggota.
+func UploadBackground(c *gin.Context) {
+	file, err := c.FormFile("backgroundFile")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Tidak ada file yang dipilih",
+		})
+		return
+	}
+
+	allowedTypes := []string{"image/jpeg", "image/jpg", "image/png", "image/gif"}
+	fileType := file.Header.Get("Content-Type")
+	isAllowed := false
+	for _, allowedType := range allowedTypes {
+		if fileType == allowedType {
+			isAllowed = true
+			break
+		}
+	}
+	if !isAllowed {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Format file tidak didukung. Gunakan JPG, PNG, atau GIF.",
+		})
+		return
+	}
+
+	if file.Size > 5*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Ukuran file terlalu besar. Maksimal 5MB.",
+		})
+		return
+	}
+
+	extension := strings.ToLower(filepath.Ext(file.Filename))
+	if extension == ".jpeg" {
+		extension = ".jpg"
+	}
+	newFileName := "background_" + uuid.New().String() + extension
+	savePath := "static/images/" + newFileName
+
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal menyimpan file background",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":        true,
+		"message":        "Background berhasil diupload",
+		"backgroundPath": "/static/images/" + newFileName,
 	})
 }
 

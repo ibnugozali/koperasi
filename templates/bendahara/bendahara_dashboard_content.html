@@ -43,7 +43,7 @@
                 <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-success"><i class="fa-solid fa-wallet"></i></div>
-                        <div class="stat-number text-success" data-value="{{ .TotalSimpanan }}">{{ printf "%.0f" .TotalSimpanan }}</div>
+                        <div class="stat-number text-success" data-value="{{ printf "%.0f" .TotalSimpanan }}">{{ printf "%.0f" .TotalSimpanan }}</div>
                         <div class="stat-label">Total Simpanan</div>
                     </div>
                 </div>
@@ -51,7 +51,7 @@
                 <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-danger"><i class="fa-solid fa-money-bill-wave"></i></div>
-                        <div class="stat-number text-danger" data-value="{{ .TotalPinjaman }}">{{ printf "%.0f" .TotalPinjaman }}</div>
+                        <div class="stat-number text-danger" data-value="{{ printf "%.0f" .TotalPinjaman }}">{{ printf "%.0f" .TotalPinjaman }}</div>
                         <div class="stat-label">Total Pinjaman Aktif</div>
                     </div>
                 </div>
@@ -59,7 +59,7 @@
                 <div class="col-lg-2 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-info"><i class="fa-solid fa-hand-holding-dollar"></i></div>
-                        <div class="stat-number text-info" data-value="{{ .TotalAngsuran }}">{{ printf "%.0f" .TotalAngsuran }}</div>
+                        <div class="stat-number text-info" data-value="{{ printf "%.0f" .TotalAngsuran }}">{{ printf "%.0f" .TotalAngsuran }}</div>
                         <div class="stat-label">Total Angsuran Terbayar</div>
                     </div>
                 </div>
@@ -67,7 +67,7 @@
                 <div class="col-lg-2 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-secondary"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
-                        <div class="stat-number text-secondary" data-value="{{ .TotalPengambilan }}">{{ printf "%.0f" .TotalPengambilan }}</div>
+                        <div class="stat-number text-secondary" data-value="{{ printf "%.0f" .TotalPengambilan }}">{{ printf "%.0f" .TotalPengambilan }}</div>
                         <div class="stat-label">Total Penarikan Simpanan</div>
                     </div>
                 </div>
@@ -126,14 +126,23 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         const canvas = document.getElementById('activityChart');
-        const totalAnggota = parseFloat(canvas.dataset.anggota) || 0;
-        const menungguKonfirmasi = parseFloat(canvas.dataset.menunggu) || 0;
-        const totalSimpanan = parseFloat(canvas.dataset.simpanan) || 0;
-        const totalPinjaman = parseFloat(canvas.dataset.pinjaman) || 0;
-        const totalAngsuran = parseFloat(canvas.dataset.angsuran) || 0;
-        const totalPengambilan = parseFloat(canvas.dataset.pengambilan) || 0;
-        const rawValues = [totalAnggota, menungguKonfirmasi, totalSimpanan, totalPinjaman, totalAngsuran, totalPengambilan];
+        const statItems = Array.from(document.querySelectorAll('.stat-card')).map((card) => {
+            const numberEl = card.querySelector('.stat-number[data-value]');
+            const labelEl = card.querySelector('.stat-label');
+            return {
+                label: labelEl ? labelEl.textContent.trim() : '',
+                value: numberEl ? (parseFloat(numberEl.getAttribute('data-value')) || 0) : 0
+            };
+        }).filter((item) => item.label);
+        const labels = statItems.map((item) => item.label);
+        const rawValues = statItems.map((item) => item.value);
         const isAllZero = rawValues.every(v => v <= 0);
+        const positiveValues = rawValues.filter((v) => v > 0);
+        const useCompressedScale = positiveValues.length > 1 &&
+            (Math.max(...positiveValues) / Math.max(1, Math.min(...positiveValues))) > 500;
+        const chartValues = isAllZero
+            ? [1]
+            : (useCompressedScale ? rawValues.map((v) => v > 0 ? Math.log10(v + 1) : 0) : rawValues);
 
         // Update display dengan format rupiah untuk card yang menampilkan angka rupiah
         document.querySelectorAll('.stat-number[data-value]').forEach((el) => {
@@ -144,16 +153,107 @@
             }
         });
 
+        const sideColors = isAllZero
+            ? ['rgba(132, 140, 148, 0.95)']
+            : [
+                'rgba(9, 79, 183, 0.95)',
+                'rgba(212, 161, 6, 0.95)',
+                'rgba(25, 127, 50, 0.95)',
+                'rgba(181, 41, 55, 0.95)',
+                'rgba(16, 128, 144, 0.95)',
+                'rgba(80, 86, 92, 0.95)'
+            ];
+        const maxValue = Math.max(...chartValues);
+        const explodedIndex = isAllZero ? -1 : chartValues.indexOf(maxValue);
+        const sliceOffsets = isAllZero
+            ? [0]
+            : chartValues.map((_, i) => i === explodedIndex ? 24 : 6);
+        const pie3DPlugin = {
+            id: 'pie3DPlugin',
+            beforeDatasetsDraw(chart, args, pluginOptions) {
+                if (chart.config.type !== 'pie') return;
+                const { ctx, chartArea } = chart;
+                const tilt = pluginOptions.tilt || 0.72;
+                const baseY = (chartArea.top + chartArea.bottom) / 2;
+                ctx.save();
+                ctx.translate(0, baseY * (1 - tilt));
+                ctx.scale(1, tilt);
+                const meta = chart.getDatasetMeta(0);
+                if (meta && meta.data && meta.data.length > 0) {
+                    const p = meta.data[0].getProps(['x', 'y', 'outerRadius'], true);
+                    const depth = pluginOptions.depth || 28;
+                    ctx.save();
+                    ctx.filter = 'blur(10px)';
+                    ctx.globalAlpha = 0.18;
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.ellipse(p.x + 8, p.y + depth + 12, p.outerRadius * 0.95, p.outerRadius * 0.28, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            beforeDatasetDraw(chart, args, pluginOptions) {
+                if (args.meta.type !== 'pie') return;
+                const meta = args.meta;
+                const dataset = chart.data.datasets[args.index];
+                const colors = pluginOptions.colors || [];
+                const depth = pluginOptions.depth || 28;
+                const { ctx } = chart;
+                meta.data.forEach((arc, i) => {
+                    const props = arc.getProps(['x', 'y', 'startAngle', 'endAngle', 'outerRadius', 'innerRadius'], true);
+                    const fill = colors[i] || colors[0] || dataset.borderColor[i] || '#999';
+                    const step = Math.PI / 90;
+                    const visibleTopPoints = [];
+
+                    for (let angle = props.startAngle; angle <= props.endAngle + step / 2; angle += step) {
+                        const a = Math.min(angle, props.endAngle);
+                        if (Math.sin(a) > 0) {
+                            visibleTopPoints.push({
+                                x: props.x + Math.cos(a) * props.outerRadius,
+                                y: props.y + Math.sin(a) * props.outerRadius
+                            });
+                        }
+                    }
+
+                    if (visibleTopPoints.length < 2) {
+                        return;
+                    }
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(visibleTopPoints[0].x, visibleTopPoints[0].y);
+                    for (let j = 1; j < visibleTopPoints.length; j++) {
+                        ctx.lineTo(visibleTopPoints[j].x, visibleTopPoints[j].y);
+                    }
+                    for (let j = visibleTopPoints.length - 1; j >= 0; j--) {
+                        ctx.lineTo(visibleTopPoints[j].x, visibleTopPoints[j].y + depth);
+                    }
+                    ctx.closePath();
+                    const grad = ctx.createLinearGradient(props.x, props.y, props.x, props.y + depth);
+                    grad.addColorStop(0, fill);
+                    grad.addColorStop(1, 'rgba(0, 0, 0, 0.36)');
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                    ctx.restore();
+                });
+            },
+            afterDatasetsDraw(chart, args, pluginOptions) {
+                if (chart.config.type !== 'pie') return;
+                chart.ctx.restore();
+            }
+        };
+
         const ctx = canvas.getContext('2d');
         new Chart(ctx, {
             type: 'pie',
+            plugins: [pie3DPlugin],
             data: {
                 labels: isAllZero
                     ? ['Belum ada data transaksi']
-                    : ['Total Anggota', 'Menunggu Konfirmasi', 'Total Simpanan', 'Total Pinjaman Aktif', 'Total Angsuran Terbayar', 'Total Penarikan Simpanan'],
+                    : labels,
                 datasets: [{
                     label: 'Jumlah (Rp)',
-                    data: isAllZero ? [1] : rawValues,
+                    data: chartValues,
                     backgroundColor: isAllZero
                         ? ['rgba(173, 181, 189, 0.75)']
                         : [
@@ -174,16 +274,30 @@
                             'rgba(23, 162, 184, 1)',
                             'rgba(108, 117, 125, 1)'
                         ],
-                    borderWidth: 2
+                    borderWidth: 2,
+                    offset: sliceOffsets,
+                    hoverOffset: isAllZero ? 0 : 12
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                rotation: (-55 * Math.PI) / 180,
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'bottom'
+                        position: 'right',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            boxWidth: 10,
+                            padding: 16
+                        }
+                    },
+                    pie3DPlugin: {
+                        depth: 28,
+                        colors: sideColors,
+                        tilt: 0.72
                     },
                     title: {
                         display: true,
@@ -204,11 +318,11 @@
                                     return 'Belum ada data transaksi';
                                 }
                                 const label = context.label || '';
-                                const value = Number(context.raw || 0);
-                                if (label === 'Total Anggota' || label === 'Menunggu Konfirmasi') {
-                                    return `${label}: ${value}`;
+                                const rawValue = Number(rawValues[context.dataIndex] || 0);
+                                if (/anggota|menunggu/i.test(label)) {
+                                    return `${label}: ${rawValue}`;
                                 }
-                                return `${label}: ${formatRupiah(value)}`;
+                                return `${label}: ${formatRupiah(rawValue)}`;
                             }
                         }
                     }

@@ -22,13 +22,15 @@
 
     <!-- Manajemen Website -->
     <a href="#" onclick="toggleSubmenu(this, 'kontenWebsite'); return false;" class="dropdown-toggle"><i class="fa-solid fa-globe me-2"></i> Manajemen Website</a>
-    <div class="collapse {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "halaman") (eq .ActivePage "hubungi_kami") (eq .ActivePage "dashboard_content") (eq .ActivePage "edit_simpanan") (eq .ActivePage "edit_tanda_tangan") (eq .ActivePage "edit_logo") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "halaman") (eq .ActivePage "hubungi_kami") (eq .ActivePage "dashboard_content") (eq .ActivePage "edit_simpanan") (eq .ActivePage "edit_tanda_tangan") (eq .ActivePage "edit_logo") }}style="display: block;"{{ end }}>
+    <div class="collapse {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "halaman") (eq .ActivePage "hubungi_kami") (eq .ActivePage "dashboard_content") (eq .ActivePage "edit_simpanan") (eq .ActivePage "edit_tanda_tangan") (eq .ActivePage "edit_logo") (eq .ActivePage "edit_background") }}show{{ end }}" id="kontenWebsite" {{ if or (eq .ActivePage "sejarah") (eq .ActivePage "visi-misi") (eq .ActivePage "struktur") (eq .ActivePage "halaman") (eq .ActivePage "hubungi_kami") (eq .ActivePage "dashboard_content") (eq .ActivePage "edit_simpanan") (eq .ActivePage "edit_tanda_tangan") (eq .ActivePage "edit_logo") (eq .ActivePage "edit_background") }}style="display: block;"{{ end }}>
+        <a href="/admin/edit-background" class="ms-3 {{ if eq .ActivePage "edit_background" }}active{{ end }}"><i class="fa-solid fa-image me-2"></i> Background</a>
         <a href="/admin/halaman/edit/sejarah" class="ms-3 {{ if eq .ActivePage "sejarah" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Sejarah</a>
         <a href="/admin/halaman/edit/visi-misi" class="ms-3 {{ if eq .ActivePage "visi_misi" }}active{{ end }}"><i class="fa-solid fa-eye me-2"></i> Visi & Misi </a>
         <a href="/admin/halaman/edit/struktur" class="ms-3 {{ if eq .ActivePage "struktur" }}active{{ end }}"><i class="fa-solid fa-sitemap me-2"></i> Struktur Organisasi</a>
         <a href="/admin/halaman/edit/hubungi_kami" class="ms-3 {{ if eq .ActivePage "hubungi_kami" }}active{{ end }}"><i class="fa-solid fa-phone me-2"></i> Hubungi Kami</a>
         <a href="/admin/halaman/edit/simpanan" class="ms-3 {{ if eq .ActivePage "edit_simpanan" }}active{{ end }}"><i class="fa-solid fa-piggy-bank me-2"></i> Halaman Simpanan</a>
         <a href="/admin/halaman/edit/dashboard_anggota" class="ms-3 {{ if eq .ActivePage "dashboard_content" }}active{{ end }}"><i class="fa-solid fa-desktop me-2"></i> Kop Surat & Dashboard Anggota</a>
+       
         <a href="/admin/tanda-tangan" class="ms-3 {{ if eq .ActivePage "edit_tanda_tangan" }}active{{ end }}"><i class="fa-solid fa-signature me-2"></i> Tanda Tangan</a>
         <a href="/admin/edit-logo" class="ms-3 {{ if eq .ActivePage "edit_logo" }}active{{ end }}"><i class="fa-solid fa-image me-2"></i> Logo</a>
     </div>
@@ -166,7 +168,7 @@
 
     // Pastikan submenu tetap terbuka berdasarkan URL saat ini dengan animasi
     var currentURL = window.location.pathname;
-    if (currentURL.includes('/admin/halaman/') || currentURL.includes('/admin/halaman')) {
+    if (currentURL.includes('/admin/halaman/') || currentURL.includes('/admin/halaman') || currentURL.includes('/admin/edit-background')) {
         var kontenWebsite = document.getElementById('kontenWebsite');
         if (kontenWebsite && !kontenWebsite.classList.contains('show')) {
             kontenWebsite.style.display = 'block';

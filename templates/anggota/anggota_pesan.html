@@ -47,6 +47,17 @@
     </div>
 </main>
 
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1080">
+  <div id="pesanNotifToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">
+        Ada pesan baru dari bendahara.
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+
 <form id="logout-form" action="/logout" method="POST" style="display:none;"></form>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -69,6 +80,31 @@ document.addEventListener("DOMContentLoaded", function(){
     });
   });
 });
+
+let latestPesanID = {{ .LatestPesanID }};
+const toastEl = document.getElementById('pesanNotifToast');
+const notifToast = new bootstrap.Toast(toastEl, { delay: 5000 });
+
+async function checkPesanNotifikasi() {
+  try {
+    const response = await fetch('/anggota/pesan/notifikasi', { cache: 'no-store' });
+    if (!response.ok) return;
+    const data = await response.json();
+    const newLatestID = Number(data.latest_id || 0);
+    if (newLatestID > latestPesanID) {
+      notifToast.show();
+      setTimeout(function () {
+        window.location.reload();
+      }, 1200);
+    }
+
+    latestPesanID = newLatestID;
+  } catch (error) {
+    console.error('Gagal cek notifikasi pesan:', error);
+  }
+}
+
+setInterval(checkPesanNotifikasi, 5000);
 </script>
   {{ template "footer.html" . }}
 </body>

@@ -1377,7 +1377,8 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 
 	detail.IDPengelola = bendaharaID.(int)
 	detail.TglTransaksi = time.Now()
-	detail.Status = "" // Biarkan kosong agar default 'pending' di repository
+	// Entri oleh bendahara dianggap validasi tahap bendahara selesai.
+	detail.Status = "confirmed"
 
 	// Ambil id_simpanan dari tabel simpanan berdasarkan nama (jenis_simpanan)
 	jenisSimpanan := c.PostForm("jenis_simpanan")
@@ -1402,6 +1403,18 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat simpanan"})
 		return
+	}
+
+	// Notifikasi WA ke ketua agar melakukan konfirmasi tahap ketua.
+	anggota, errAnggota := repository.GetAnggotaByID(detail.IDAnggota)
+	if errAnggota == nil {
+		appBaseURL := resolveAppBaseURL(c, config.GetDB())
+		nominal := fmt.Sprintf("%.2f", detail.JumlahSimpanan)
+		if errWA := sendKetuaWhatsAppTransactionNotification("", anggota.NamaAnggota, "Simpanan", nominal, appBaseURL); errWA != nil {
+			log.Printf("[WA NOTIF KETUA] gagal kirim dari entri simpanan bendahara: %v", errWA)
+		}
+	} else {
+		log.Printf("[WA NOTIF KETUA] gagal ambil data anggota (%s) untuk entri simpanan: %v", detail.IDAnggota, errAnggota)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Simpanan berhasil dicatat"})
@@ -2206,6 +2219,19 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 		log.Printf("[ERROR] Gagal update status transaksi: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal memproses transaksi"})
 		return
+	}
+
+	// Notifikasi ke ketua hanya saat transaksi diterima bendahara.
+	if action == "confirm" {
+		anggotaNama, jenisLabel, nominal, errInfo := getKetuaTransactionNotifInfo(transactionType, id)
+		if errInfo != nil {
+			log.Printf("[WA NOTIF KETUA] gagal ambil data transaksi type=%s id=%d: %v", transactionType, id, errInfo)
+		} else {
+			appBaseURL := resolveAppBaseURL(c, config.GetDB())
+			if errWA := sendKetuaWhatsAppTransactionNotification("", anggotaNama, jenisLabel, nominal, appBaseURL); errWA != nil {
+				log.Printf("[WA NOTIF KETUA] gagal kirim notifikasi konfirmasi bendahara: %v", errWA)
+			}
+		}
 	}
 
 	log.Printf("[DEBUG] Update status transaksi berhasil: type=%s, id=%d, action=%s", transactionType, id, action)
@@ -4708,8 +4734,8 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 		sisaSetelah = 0
 	}
 	angsuran.SisaPinjaman = sisaSetelah
-	// Setelah seluruh field angsuran terisi, pastikan status kosong agar default 'pending' di repository
-	angsuran.Status = ""
+	// Entri oleh bendahara dianggap validasi tahap bendahara selesai.
+	angsuran.Status = "confirmed"
 	fmt.Printf("[DEBUG] Input Angsuran: IDPinjaman=%d, IDAnggota=%s, JumlahAngsuran=%.2f, Status=%s\n", angsuran.IDPinjaman, angsuran.IDAnggota, angsuran.JumlahAngsuran, angsuran.Status)
 	err = repository.CreateAngsuran(angsuran)
 	if err != nil {
@@ -4717,5 +4743,93 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 		return
 	}
 
+	// Notifikasi WA ke ketua agar melakukan konfirmasi tahap ketua.
+	anggota, errAnggota := repository.GetAnggotaByID(angsuran.IDAnggota)
+	if errAnggota == nil {
+		appBaseURL := resolveAppBaseURL(c, config.GetDB())
+		nominal := fmt.Sprintf("%.2f", angsuran.JumlahAngsuran)
+		if errWA := sendKetuaWhatsAppTransactionNotification("", anggota.NamaAnggota, "Angsuran", nominal, appBaseURL); errWA != nil {
+			log.Printf("[WA NOTIF KETUA] gagal kirim dari entri angsuran bendahara: %v", errWA)
+		}
+	} else {
+		log.Printf("[WA NOTIF KETUA] gagal ambil data anggota (%s) untuk entri angsuran: %v", angsuran.IDAnggota, errAnggota)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Angsuran berhasil dicatat"})
+}
+
+func getKetuaTransactionNotifInfo(transactionType string, id int) (anggotaNama, jenisLabel, nominal string, err error) {
+	db := config.GetDB()
+	switch transactionType {
+	case "simpanan":
+		jenisLabel = "Simpanan"
+		err = db.QueryRow(`
+			SELECT COALESCE(a.nama_anggota, ''), COALESCE(d.jumlah_simpanan, 0)
+			FROM detail d
+			JOIN anggota a ON a.id_anggota = d.id_anggota
+			WHERE d.id_detail = $1
+			LIMIT 1
+		`, id).Scan(&anggotaNama, &nominal)
+		if err == nil {
+			nominal = fmt.Sprintf("%.2f", mustParseFloat(nominal))
+		}
+	case "angsuran":
+		jenisLabel = "Angsuran"
+		err = db.QueryRow(`
+			SELECT COALESCE(ag.nama_anggota, ''), COALESCE(an.jumlah_angsuran, 0)
+			FROM angsuran an
+			JOIN pinjaman p ON p.id_pinjaman = an.id_pinjaman
+			JOIN anggota ag ON ag.id_anggota = p.id_anggota
+			WHERE an.id_angsuran = $1
+			LIMIT 1
+		`, id).Scan(&anggotaNama, &nominal)
+		if err == nil {
+			nominal = fmt.Sprintf("%.2f", mustParseFloat(nominal))
+		}
+	case "pinjaman":
+		jenisLabel = "Pinjaman"
+		err = db.QueryRow(`
+			SELECT COALESCE(a.nama_anggota, ''), COALESCE(p.jumlah_pinjaman, 0)
+			FROM pinjaman p
+			JOIN anggota a ON a.id_anggota = p.id_anggota
+			WHERE p.id_pinjaman = $1
+			LIMIT 1
+		`, id).Scan(&anggotaNama, &nominal)
+		if err == nil {
+			nominal = fmt.Sprintf("%.2f", mustParseFloat(nominal))
+		}
+	case "pengambilan":
+		jenisLabel = "Pengambilan Simpanan"
+		err = db.QueryRow(`
+			SELECT COALESCE(a.nama_anggota, ''), COALESCE(ps.jumlah, 0)
+			FROM pengambilan_simpanan ps
+			JOIN anggota a ON a.id_anggota = ps.id_anggota
+			WHERE ps.id_pengambilan = $1
+			LIMIT 1
+		`, id).Scan(&anggotaNama, &nominal)
+		if err == nil {
+			nominal = fmt.Sprintf("%.2f", mustParseFloat(nominal))
+		}
+	default:
+		return "", "", "", fmt.Errorf("tipe transaksi tidak didukung: %s", transactionType)
+	}
+
+	if err != nil {
+		return "", "", "", err
+	}
+	if strings.TrimSpace(anggotaNama) == "" {
+		anggotaNama = "-"
+	}
+	if strings.TrimSpace(nominal) == "" {
+		nominal = "0.00"
+	}
+	return anggotaNama, jenisLabel, nominal, nil
+}
+
+func mustParseFloat(v string) float64 {
+	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+	if err != nil {
+		return 0
+	}
+	return f
 }

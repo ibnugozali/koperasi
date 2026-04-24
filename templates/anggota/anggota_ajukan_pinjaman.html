@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function(){
                     <div class="col-md-6"><strong>Status:</strong> {{$resume.Status}}</div>
                     <div class="col-md-6"><strong>Tanggal Pinjaman:</strong> {{$resume.TglPinjaman.Format "02 Jan 2006"}}</div>
                     <div class="col-md-6"><strong>Tenor Total:</strong> {{$resume.JangkaWaktu}} bulan</div>
-                    <div class="col-md-6"><strong>Total Pinjaman (Pokok):</strong> Rp {{$resume.JumlahPinjaman | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Pokok Pinjaman:</strong> Rp {{$resume.JumlahPinjaman | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Bunga Pinjaman Total:</strong> Rp {{$resume.Bunga | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Total Pinjaman (Pokok + Bunga):</strong> Rp {{add $resume.JumlahPinjaman $resume.Bunga | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{$resume.TotalTerbayar | formatRupiah}}</div>

@@ -426,14 +426,31 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 	if totalPinjaman > 0 {
 		persentaseGabungan = (totalPinjaman - totalSisaPinjaman) / totalPinjaman * 100
 	}
-
-	// Pengamanan tambahan: Jika statusnya 'proses' tapi masuk ke logika aktif
-	// Ini sering terjadi jika status di DB berubah tapi cache/saldo belum update
-	if statusGabungan == "proses" {
-		persentaseGabungan = 0
+	totalTerbayar := totalPinjaman - totalSisaPinjaman
+	if totalTerbayar < 0 {
+		totalTerbayar = 0
+	}
+	if totalTerbayar > totalPinjaman {
+		totalTerbayar = totalPinjaman
+	}
+	sisaPokok := totalSisaPinjaman
+	if sisaPokok < 0 {
+		sisaPokok = 0
+	}
+	if sisaPokok > totalPinjaman {
+		sisaPokok = totalPinjaman
 	}
 
-	// Syarat pengajuan baru: minimal 50% sudah terbayar dan status BUKAN proses
+	// Pengamanan utama: status 'proses' harus selalu dianggap belum ada pembayaran.
+	if statusGabungan == "proses" {
+		angsuranTerbayar = 0
+		sisaAngsuran = totalJangkaWaktu
+		persentaseGabungan = 0
+		totalTerbayar = 0
+		sisaPokok = totalPinjaman
+	}
+
+	// Syarat pengajuan baru: minimal 50% sudah terbayar dan status bukan proses
 	bisaAjukanLagi := (persentaseGabungan >= 50) && (statusGabungan != "proses")
 
 	// Jika progress pelunasan 100% (lunas), tetap kembalikan resume dengan status 'lunas' dan BisaAjukanLagi: true
@@ -446,7 +463,7 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 			JangkaWaktu:        totalJangkaWaktu,
 			AngsuranTerbayar:   angsuranTerbayar,
 			SisaAngsuran:       0,
-			TotalTerbayar:      totalPinjaman,
+			TotalTerbayar:      totalTerbayar,
 			SisaPokok:          0,
 			PersentaseTerbayar: 100,
 			BisaAjukanLagi:     true,
@@ -463,8 +480,8 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 		JangkaWaktu:        totalJangkaWaktu,
 		AngsuranTerbayar:   angsuranTerbayar,
 		SisaAngsuran:       sisaAngsuran,
-		TotalTerbayar:      totalPinjaman - totalSisaPinjaman,
-		SisaPokok:          totalSisaPinjaman,
+		TotalTerbayar:      totalTerbayar,
+		SisaPokok:          sisaPokok,
 		PersentaseTerbayar: persentaseGabungan,
 		BisaAjukanLagi:     bisaAjukanLagi,
 		Bunga:              bungaNominal,
@@ -944,11 +961,30 @@ func AnggotaDashboard(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	latestBackground := "/static/images/placeholder.png"
+	var latestBackgroundTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if strings.HasPrefix(name, "background_") && (strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg")) {
+				info, errInfo := file.Info()
+				if errInfo == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestBackgroundTime {
+						latestBackgroundTime = modTime
+						latestBackground = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+
 	// Render halaman dashboard dan kirim data anggota dan konten ke sana
 	c.HTML(http.StatusOK, "anggota_dashboard.html", gin.H{
-		"Anggota":      anggota,
-		"KontenParsed": kontenParsed,
-		"CurrentLogo":  latestLogo,
+		"Anggota":           anggota,
+		"KontenParsed":      kontenParsed,
+		"CurrentLogo":       latestLogo,
+		"CurrentBackground": latestBackground,
 	})
 }
 
@@ -1057,11 +1093,19 @@ func AnggotaPesan(c *gin.Context) {
 		return
 	}
 
+	// Saat halaman pesan dibuka, anggap pesan sudah dilihat oleh anggota.
+	_ = repository.MarkAllPesanAsReadByAnggotaID(userID)
+
 	// Ambil daftar pesan untuk anggota
 	pesans, err := repository.GetPesanByAnggotaID(userID)
 	if err != nil {
 		// Jika gagal ambil pesan, tetap tampilkan halaman dengan pesan kosong
 		pesans = []models.Pesan{}
+	}
+
+	latestPesanID, _, errSummary := repository.GetPesanNotifSummaryByAnggotaID(userID)
+	if errSummary != nil {
+		latestPesanID = 0
 	}
 
 	// Cari logo terbaru di static/images
@@ -1089,10 +1133,32 @@ func AnggotaPesan(c *gin.Context) {
 
 	// Render halaman pesan dengan daftar pesan dan logo dinamis
 	c.HTML(http.StatusOK, "anggota_pesan.html", gin.H{
-		"Title":       "Pesan Saya",
-		"Anggota":     anggota,
-		"Pesans":      pesans,
-		"CurrentLogo": latestLogo,
+		"Title":         "Pesan Saya",
+		"Anggota":       anggota,
+		"Pesans":        pesans,
+		"LatestPesanID": latestPesanID,
+		"CurrentLogo":   latestLogo,
+	})
+}
+
+// AnggotaPesanNotifikasi mengembalikan status notifikasi pesan anggota (JSON).
+func AnggotaPesanNotifikasi(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	latestPesanID, unreadCount, err := repository.GetPesanNotifSummaryByAnggotaID(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal mengambil notifikasi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"latest_id":    latestPesanID,
+		"unread_count": unreadCount,
 	})
 }
 

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
+    <title>KOPMA</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+</head>
+<body>
+
+    {{template "admin_navbar.html" .}}
+
+    <div class="main-content">
+        <div class="container-fluid">
+            <br><br>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="fa-solid fa-image me-2"></i>Edit Background Dashboard Anggota</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-4">Upload background baru untuk card dashboard anggota. Format yang didukung: JPG, PNG, GIF. Ukuran maksimal: 5MB.</p>
+
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <h6>Background Saat Ini</h6>
+                                    <div class="border p-2 text-center" style="background-color: #f8f9fa;">
+                                        <img id="currentBackgroundImg" src="{{.CurrentBackground}}" alt="Background Saat Ini" class="img-fluid" style="width: 100%; max-height: 260px; object-fit: cover;">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Preview Background Baru</h6>
+                                    <div class="border p-2 text-center" style="background-color: #f8f9fa;">
+                                        <img id="previewBackgroundImg" src="/static/images/placeholder.png" alt="Preview Background" class="img-fluid" style="width: 100%; max-height: 260px; object-fit: cover;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form id="uploadBackgroundForm" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label for="backgroundFile" class="form-label">Pilih File Background</label>
+                                    <input type="file" class="form-control" id="backgroundFile" name="backgroundFile" accept="image/*" required>
+                                    <div class="form-text">Gunakan gambar horizontal agar hasil background lebih proporsional.</div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-upload me-2"></i>Upload Background
+                                </button>
+                            </form>
+
+                            <div class="progress mt-3" id="uploadBackgroundProgress" style="display: none;">
+                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{template "admin_footer"}}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/admin_background.js"></script>
+</body>
+</html>

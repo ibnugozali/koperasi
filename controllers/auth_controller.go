@@ -610,6 +610,170 @@ func sendKetuaWhatsAppNotification(rawKetuaPhone string, anggota models.Anggota,
 	return fmt.Errorf("semua percobaan kirim WA gagal")
 }
 
+func getKetuaWhatsAppPhone() string {
+	db := config.GetDB()
+
+	// 1) Prioritas dari pengaturan WA ketua di tabel pengaturan (akomodasi beberapa key lama/baru)
+	for _, key := range []string{"wa_ketua_phone", "nomor_wa_ketua", "telepon_ketua"} {
+		var configuredPhone string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = $1", key).Scan(&configuredPhone); err == nil {
+			if p := strings.TrimSpace(configuredPhone); p != "" {
+				return p
+			}
+		}
+	}
+
+	// 2) Ambil dari halaman hubungi_kami (telepon_ketua -> telepon)
+	halaman, err := repository.GetHalamanBySlug("hubungi_kami")
+	if err == nil && strings.TrimSpace(halaman.Konten) != "" {
+		var kontak map[string]interface{}
+		if json.Unmarshal([]byte(halaman.Konten), &kontak) == nil {
+			if v, ok := kontak["telepon_ketua"].(string); ok {
+				if p := strings.TrimSpace(v); p != "" {
+					return p
+				}
+			}
+			if v, ok := kontak["telepon"].(string); ok {
+				if p := strings.TrimSpace(v); p != "" {
+					return p
+				}
+			}
+		}
+	}
+
+	// 3) Fallback ke user pengelola level ketua aktif
+	var ketuaPhone string
+	if err := db.QueryRow(`
+		SELECT COALESCE(no_telepon, '')
+		FROM pengelola
+		WHERE LOWER(TRIM(level)) = 'ketua'
+		  AND LOWER(TRIM(COALESCE(status, ''))) = 'aktif'
+		ORDER BY id_pengelola ASC
+		LIMIT 1
+	`).Scan(&ketuaPhone); err == nil {
+		return strings.TrimSpace(ketuaPhone)
+	}
+
+	return ""
+}
+
+// sendKetuaWhatsAppTransactionNotification mengirim notifikasi transaksi ke WA Ketua.
+func sendKetuaWhatsAppTransactionNotification(rawKetuaPhone, namaAnggota, jenisTransaksi, nominal, appBaseURL string) error {
+	db := config.GetDB()
+	token := strings.TrimSpace(os.Getenv("WA_GATEWAY_TOKEN"))
+	if token == "" {
+		var tokenDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_token'").Scan(&tokenDB); err == nil {
+			token = strings.TrimSpace(tokenDB)
+		}
+	}
+	if token == "" {
+		return fmt.Errorf("WA_GATEWAY_TOKEN belum diset (env/db)")
+	}
+
+	ketuaPhone := strings.TrimSpace(rawKetuaPhone)
+	if ketuaPhone == "" {
+		ketuaPhone = getKetuaWhatsAppPhone()
+	}
+	if ketuaPhone == "" {
+		return fmt.Errorf("nomor ketua kosong")
+	}
+	ketuaPhone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", "+", "").Replace(ketuaPhone)
+	if strings.HasPrefix(ketuaPhone, "0") {
+		ketuaPhone = "62" + ketuaPhone[1:]
+	} else if !strings.HasPrefix(ketuaPhone, "62") {
+		ketuaPhone = "62" + ketuaPhone
+	}
+
+	waURL := strings.TrimSpace(os.Getenv("WA_GATEWAY_URL"))
+	if waURL == "" {
+		var urlDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_url'").Scan(&urlDB); err == nil {
+			waURL = strings.TrimSpace(urlDB)
+		}
+	}
+	if waURL == "" {
+		waURL = "https://api.fonnte.com/send"
+	}
+
+	if strings.TrimSpace(appBaseURL) == "" {
+		appBaseURL = "http://localhost:8081"
+	}
+
+	linkKonfirmasiKetua := strings.TrimRight(appBaseURL, "/") + "/ketua/konfirmasi-transaksi"
+	message := "Notifikasi transaksi dari bendahara:\n" +
+		"- Nama Anggota: " + namaAnggota + "\n" +
+		"- Jenis Transaksi: " + jenisTransaksi + "\n" +
+		"- Nominal: " + nominal + "\n" +
+		"Silakan cek menu konfirmasi transaksi Ketua:\n" + linkKonfirmasiKetua
+
+	form := url.Values{"target": {ketuaPhone}, "message": {message}}
+	jsonBody, _ := json.Marshal(map[string]string{
+		"target":  ketuaPhone,
+		"message": message,
+	})
+
+	type waAttempt struct {
+		name        string
+		contentType string
+		body        string
+		auth        string
+	}
+
+	attempts := []waAttempt{
+		{name: "form/raw-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: token},
+		{name: "form/bearer-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: "Bearer " + token},
+		{name: "json/raw-token", contentType: "application/json", body: string(jsonBody), auth: token},
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	var lastErr error
+
+	for _, at := range attempts {
+		req, err := http.NewRequest(http.MethodPost, waURL, strings.NewReader(at.body))
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("Content-Type", at.contentType)
+		req.Header.Set("Authorization", at.auth)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			log.Printf("[WA NOTIF KETUA] attempt=%s error=%v", at.name, err)
+			continue
+		}
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		log.Printf("[WA NOTIF KETUA] attempt=%s status=%d response=%s", at.name, resp.StatusCode, bodyStr)
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			lastErr = fmt.Errorf("gateway status %d", resp.StatusCode)
+			continue
+		}
+
+		var parsed map[string]interface{}
+		if json.Unmarshal(bodyBytes, &parsed) == nil {
+			if okVal, exists := parsed["status"]; exists {
+				if okBool, ok := okVal.(bool); ok && !okBool {
+					lastErr = fmt.Errorf("gateway reject: %s", bodyStr)
+					continue
+				}
+			}
+		}
+
+		return nil
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("semua percobaan kirim WA ke ketua gagal")
+}
+
 // Login memproses otentikasi pengguna.
 func Login(c *gin.Context) {
 	username := c.PostForm("username")
