@@ -64,6 +64,33 @@ func SetupRouter() *gin.Engine {
 			}
 			return sum
 		},
+		"div": func(a, b interface{}) float64 {
+			var fa, fb float64
+			switch v := a.(type) {
+			case int:
+				fa = float64(v)
+			case int64:
+				fa = float64(v)
+			case float64:
+				fa = v
+			case float32:
+				fa = float64(v)
+			}
+			switch v := b.(type) {
+			case int:
+				fb = float64(v)
+			case int64:
+				fb = float64(v)
+			case float64:
+				fb = v
+			case float32:
+				fb = float64(v)
+			}
+			if fb == 0 {
+				return 0
+			}
+			return fa / fb
+		},
 		"mul": func(a, b, c float64) float64 {
 			return a * b * c
 		},
@@ -117,6 +144,33 @@ func SetupRouter() *gin.Engine {
 				}
 			}
 			return sum
+		},
+		"div": func(a, b interface{}) float64 {
+			var fa, fb float64
+			switch v := a.(type) {
+			case int:
+				fa = float64(v)
+			case int64:
+				fa = float64(v)
+			case float64:
+				fa = v
+			case float32:
+				fa = float64(v)
+			}
+			switch v := b.(type) {
+			case int:
+				fb = float64(v)
+			case int64:
+				fb = float64(v)
+			case float64:
+				fb = v
+			case float32:
+				fb = float64(v)
+			}
+			if fb == 0 {
+				return 0
+			}
+			return fa / fb
 		},
 		"mul": func(a, b, c float64) float64 {
 			return a * b * c
@@ -284,6 +338,7 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.GET("/anggota-angsuran/:id", controllers.BendaharaLihatDetailAngsuran)
 		bendaharaRoutes.GET("/detail-ajukan-pengambilan/:id", controllers.BendaharaDetailAjukanPengambilan)
 		bendaharaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.BendaharaKonfirmasiTransaksiPost)
+		bendaharaRoutes.POST("/konfirmasi-transaksi/import-potong-gaji", controllers.BendaharaImportPotongGajiExcel)
 		bendaharaRoutes.GET("/halaman/edit/:slug", controllers.BendaharaShowEditHalamanForm)
 		bendaharaRoutes.POST("/halaman/update/:slug", controllers.BendaharaUpdateHalaman)
 		bendaharaRoutes.POST("/upload", controllers.BendaharaUploadFile)
@@ -363,6 +418,8 @@ func SetupRouter() *gin.Engine {
 		ketuaRoutes.GET("/detail-angsuran/:id", controllers.KetuaDetailAngsuran)
 		ketuaRoutes.GET("/detail-ajukan-pengambilan/:id", controllers.KetuaDetailAjukanPengambilan)
 		ketuaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.KetuaKonfirmasiTransaksiPost)
+		ketuaRoutes.GET("/upload-bukti-transfer-gaji", controllers.KetuaUploadBuktiTransferGaji)
+		ketuaRoutes.POST("/upload-bukti-transfer-gaji", controllers.KetuaUploadBuktiTransferGajiPost)
 		ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
 	}
 	return router

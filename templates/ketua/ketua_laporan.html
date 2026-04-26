@@ -257,6 +257,11 @@
 
                                 <div class="col-12">
                                     <h6 class="text-success mb-3"><i class="fa-solid fa-piggy-bank"></i> Rincian Simpanan</h6>
+                                    {{ if .Error }}
+                                    <div class="alert alert-danger mb-3" role="alert">
+                                        <i class="fas fa-exclamation-circle me-2"></i> {{ .Error }}
+                                    </div>
+                                    {{ end }}
                                     <div class="table-responsive">
                                         <table id="rincianSimpananTable" class="table table-striped table-hover table-sm align-middle">
                                             <thead class="table-dark">
@@ -282,42 +287,28 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {{ if .Error }}
+                                                {{ if and (not .Error) .LaporanDetail }}
+                                                {{ range $index, $detail := .LaporanDetail }}
                                                 <tr>
-                                                    <td colspan="24" class="text-center text-danger">
-                                                        <i class="fas fa-exclamation-circle"></i> {{ .Error }}
-                                                    </td>
-                                                </tr>
-                                                {{ else }}
-                                                {{ if .LaporanDetail }}
-                                                    {{ range $index, $detail := .LaporanDetail }}
-                                                    <tr>
-                                                        <td style="white-space: nowrap;">{{ add $index 1 }}</td>
-                                                        <td style="white-space: nowrap;">{{ $detail.id_anggota }}</td>
-                                                        <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
-                                                        <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_pokok }}</td>
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_wajib_bulanan }}</td>
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_wajib }}</td>
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_hariraya_bulanan }}</td>
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_hariraya }}</td>
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_sukarela_bulanan }}</td>
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_sukarela }}</td>
-                                                        {{ if $.CustomSimpananColumns }}
-                                                        {{ range $col := $.CustomSimpananColumns }}
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" (index $detail $col.BulananField) }}</td>
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" (index $detail $col.TotalField) }}</td>
-                                                        {{ end }}
-                                                        {{ end }}
-                                                        <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_pembayaran }}</td>
-                                                    </tr>
+                                                    <td style="white-space: nowrap;">{{ add $index 1 }}</td>
+                                                    <td style="white-space: nowrap;">{{ $detail.id_anggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ $detail.nama_anggota }}</td>
+                                                    <td style="white-space: nowrap;">{{ call $.GetUnitKerjaName $detail.unit_kerja }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_pokok }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_wajib_bulanan }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_wajib }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_hariraya_bulanan }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_hariraya }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.simpanan_sukarela_bulanan }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_simpanan_sukarela }}</td>
+                                                    {{ if $.CustomSimpananColumns }}
+                                                    {{ range $col := $.CustomSimpananColumns }}
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" (index $detail $col.BulananField) }}</td>
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" (index $detail $col.TotalField) }}</td>
                                                     {{ end }}
-                                                {{ else }}
-                                                    <tr>
-                                                        <td colspan="24" class="text-center text-muted">
-                                                            <i class="fas fa-info-circle"></i> Tidak ada data simpanan anggota untuk periode ini
-                                                        </td>
-                                                    </tr>
+                                                    {{ end }}
+                                                    <td style="white-space: nowrap;">Rp {{ printf "%.0f" $detail.total_pembayaran }}</td>
+                                                </tr>
                                                 {{ end }}
                                                 {{ end }}
                                             </tbody>
@@ -3541,12 +3532,6 @@ console.log('????????????????????????????????');
 
 </body>
 </html>
-
-
-
-
-
-
 
 
 

@@ -9,52 +9,203 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/bendahara_navbar.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: "Poppins", sans-serif;
+        }
+        .page-title {
+            color: #004aad;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .page-subtitle {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        .card-row {
+            margin-bottom: 2.2rem;
+            display: flex;
+            justify-content: center;
+        }
+        .content-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 2rem 2.2rem;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .content-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            color: #004aad;
+            font-weight: 600;
+            font-size: 1.15rem;
+            margin-bottom: 1.3rem;
+            margin-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            align-items: center;
+        }
+        .section-title i {
+            margin-right: 0.5rem;
+        }
+        .table th {
+            background-color: #004aad;
+            color: white;
+            font-weight: 500;
+            font-size: 0.875rem;
+            vertical-align: middle;
+        }
+        .table td {
+            vertical-align: middle;
+            font-size: 0.875rem;
+        }
+        .badge-custom {
+            font-size: 0.8rem;
+            padding: 0.4em 0.8em;
+        }
+        .btn-action-group {
+            display: inline-flex;
+            gap: 0.25rem;
+        }
+        .btn-action-group .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        .card-info {
+            border-left: 4px solid #0dcaf0;
+        }
+        .card-success {
+            border-left: 4px solid #198754;
+        }
+        .alert-custom {
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        .bukti-transfer-card {
+            border-left: 4px solid #004aad;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+        .bukti-transfer-card.locked {
+            border-left: 4px solid #dc3545;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+        }
+        .bukti-transfer-card.unlocked {
+            border-left: 4px solid #198754;
+            background: linear-gradient(135deg, #f0fff4 0%, #e0ffe5 100%);
+        }
+        /* Footer override: this page has no sidebar */
+        footer {
+            margin-left: 0 !important;
+            width: 100%;
+            background: #ffffff;
+            border-top: 1px solid #e9ecef;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
+            margin-top: auto;
+        }
+        footer p {
+            color: #6c757d;
+            font-size: 0.875rem;
+        }
+        @media (max-width: 900px) {
+            .content-card {
+                padding: 1.1rem 0.5rem;
+                max-width: 98vw;
+            }
+        }
+        @media (max-width: 768px) {
+            .content-card {
+                padding: 0.7rem 0.2rem;
+                max-width: 100vw;
+            }
+            .card-row {
+                margin-bottom: 0.7rem;
+            }
+            .table-responsive {
+                font-size: 0.8rem;
+            }
+            .btn-action-group .btn {
+                padding: 0.2rem 0.4rem;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
 </head>
-<body>
+<body style="min-height:100vh; display:flex; flex-direction:column;">
+
     {{ template "bendahara_navbar.html" . }}
-    <div class="main-content">
-        <div class="container-fluid">
-            <br><br>
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-0"><i class="fa-solid fa-check-circle me-2"></i>Konfirmasi Transaksi</h5>
-                        <div class="small text-white-50">Kelola pengajuan simpanan, pinjaman, dan angsuran yang menunggu konfirmasi</div>
-                    </div>
-                        <div class="text-end">
-                            <span class="badge bg-light text-dark ms-1">Simpanan: {{len .PendingSimpanan}}</span>
-                            <span class="badge bg-light text-dark ms-1">Angsuran: {{len .PendingAngsuran}}</span>
-                        </div>
+
+    <!-- Main Content -->
+    <div class="main-content flex-grow-1" style="margin-top: 70px;">
+        <div class="container-fluid px-1 px-md-3">
+
+            <!-- Page Header -->
+            <div class="row card-row">
+                <div class="col-12">
+                    <h4 class="page-title"><i class="fa-solid fa-check-circle me-2"></i>Konfirmasi Transaksi</h4>
+                    <p class="page-subtitle">Kelola pengajuan simpanan, pinjaman, dan cicilan yang menunggu konfirmasi</p>
                 </div>
-                <div class="card-body">
-                    <!-- Pending Simpanan -->
-                    <div class="stat-card mb-4">
-                        <h5><i class="fa-solid fa-piggy-bank me-2"></i>Simpanan Pending</h5>
+            </div>
+
+            <!-- Card 1: Pending Simpanan -->
+            <div class="row card-row">
+                <div class="col-12">
+                    <div class="content-card">
+                        <div class="section-title">
+                            <i class="fa-solid fa-piggy-bank"></i>
+                            Simpanan Pending (Transfer Bank)
+                            <span class="badge bg-info ms-2 badge-custom">{{len .PendingSimpanan}}</span>
+                        </div>
+                        
                         {{if .PendingSimpanan}}
                         <div class="table-responsive">
                             <table class="table table-hover table-striped table-bordered align-middle">
                                 <thead>
                                     <tr>
+                                        <th style="width:4%" class="text-center">No</th>
                                         <th>ID Anggota</th>
                                         <th>Nama Anggota</th>
                                         <th>Jenis Simpanan</th>
                                         <th class="text-end">Jumlah</th>
+                                        <th class="text-center">Metode</th>
                                         <th style="width:12%" class="text-center">Tanggal</th>
-                                        <th style="width:18%" class="text-center">Aksi</th>
+                                        <th style="width:16%" class="text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {{range .PendingSimpanan}}
                                     <tr>
+                                        <td class="text-center">{{.No}}</td>
                                         <td>{{.Detail.IDAnggota}}</td>
                                         <td>{{.Detail.NamaAnggota}}</td>
                                         <td>{{.Detail.Simpanan.JenisSimpanan}}</td>
                                         <td class="text-end">Rp {{printf "%.0f" .Detail.JumlahSimpanan}}</td>
+                                        <td class="text-center">
+                                            {{if eq .Detail.MetodePembayaran "transfer_bank"}}
+                                                <span class="badge bg-info badge-custom">Transfer Bank</span>
+                                            {{else if eq .Detail.MetodePembayaran "potong_gaji"}}
+                                                <span class="badge bg-warning text-dark badge-custom">Potong Gaji</span>
+                                            {{else if eq .Detail.MetodePembayaran "tunai"}}
+                                                <span class="badge bg-secondary badge-custom">Tunai</span>
+                                            {{else}}
+                                                <span class="badge bg-light text-dark badge-custom">{{.Detail.MetodePembayaran}}</span>
+                                            {{end}}
+                                        </td>
                                         <td class="text-center"><span class="small text-muted">{{.Detail.TglTransaksi.Format "2006-01-02"}}</span></td>
                                         <td class="text-center">
-                                            <div class="btn-group" role="group">
-                                                <!-- Tombol lihat rekap simpanan anggota dihapus sesuai permintaan -->
-                                                <a class="btn btn-outline-info btn-sm ms-1" href="/bendahara/view-detail-simpanan/{{.Detail.IDDetail}}" title="Lihat detail transaksi simpanan"><i class="fa-solid fa-file-invoice"></i></a>
+                                            <div class="btn-action-group" role="group">
+                                                <a class="btn btn-outline-info btn-sm" href="/bendahara/view-detail-simpanan/{{.Detail.IDDetail}}" title="Lihat detail transaksi simpanan">
+                                                    <i class="fa-solid fa-file-invoice"></i>
+                                                </a>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/simpanan/{{.Detail.IDDetail}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
                                                     <input type="hidden" name="id_anggota" value="{{.Detail.IDAnggota}}">
@@ -73,25 +224,36 @@
                             </table>
                         </div>
                         {{else}}
-                        <div class="alert alert-info">
+                        <div class="alert alert-info alert-custom">
                             <i class="fa-solid fa-info-circle me-2"></i>Tidak ada simpanan yang menunggu konfirmasi.
                         </div>
                         {{end}}
                     </div>
-                    <!-- Pending Angsuran -->
-                    <div class="stat-card mb-4">
-                        <h5><i class="fa-solid fa-coins me-2"></i>Angsuran Pending</h5>
+                </div>
+            </div>
+
+            <!-- Card 2: Pending Cicilan -->
+            <div class="row card-row">
+                <div class="col-12">
+                    <div class="content-card">
+                        <div class="section-title">
+                            <i class="fa-solid fa-coins"></i>
+                            Cicilan Pending (Transfer Bank)
+                            <span class="badge bg-info ms-2 badge-custom">{{len .PendingAngsuran}}</span>
+                        </div>
+                        
                         {{if .PendingAngsuran}}
                         <div class="table-responsive">
                             <table class="table table-hover table-striped table-bordered align-middle">
                                 <thead>
                                     <tr>
-                                        <th style="width:5%" class="text-center">No</th>
+                                        <th style="width:4%" class="text-center">No</th>
                                         <th>ID Anggota</th>
                                         <th>Nama Anggota</th>
-                                        <th class="text-end">Jumlah Angsuran</th>
+                                        <th class="text-end">Jumlah Cicilan</th>
+                                        <th class="text-center">Metode Cicilan</th>
                                         <th style="width:12%" class="text-center">Tanggal Bayar</th>
-                                        <th style="width:18%" class="text-center">Aksi</th>
+                                        <th style="width:16%" class="text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -101,10 +263,23 @@
                                         <td>{{.Angsuran.IDAnggota}}</td>
                                         <td>{{.Angsuran.NamaAnggota}}</td>
                                         <td class="text-end">Rp {{printf "%.0f" .Angsuran.JumlahAngsuran}}</td>
+                                        <td class="text-center">
+                                            {{if eq .Angsuran.MetodeAngsuran "transfer_bank"}}
+                                                <span class="badge bg-info badge-custom">Transfer Bank</span>
+                                            {{else if eq .Angsuran.MetodeAngsuran "potong_gaji"}}
+                                                <span class="badge bg-warning text-dark badge-custom">Potong Gaji</span>
+                                            {{else if eq .Angsuran.MetodeAngsuran "tunai"}}
+                                                <span class="badge bg-secondary badge-custom">Tunai</span>
+                                            {{else}}
+                                                <span class="badge bg-light text-dark badge-custom">{{.Angsuran.MetodeAngsuran}}</span>
+                                            {{end}}
+                                        </td>
                                         <td class="text-center"><span class="small text-muted">{{.Angsuran.TglBayar.Format "2006-01-02"}}</span></td>
                                         <td class="text-center">
-                                            <div class="btn-group" role="group">
-                                                <a class="btn btn-outline-primary btn-sm" href="/bendahara/detail-angsuran/{{.Angsuran.IDAngsuran}}" title="Lihat detail angsuran"><i class="fa-solid fa-eye"></i></a>
+                                            <div class="btn-action-group" role="group">
+                                                <a class="btn btn-outline-primary btn-sm" href="/bendahara/detail-angsuran/{{.Angsuran.IDAngsuran}}" title="Lihat detail cicilan">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/angsuran/{{.Angsuran.IDAngsuran}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
                                                     <input type="hidden" name="id_anggota" value="{{.Angsuran.IDAnggota}}">
@@ -123,18 +298,114 @@
                             </table>
                         </div>
                         {{else}}
-                        <div class="alert alert-info">
-                            <i class="fa-solid fa-info-circle me-2"></i>Tidak ada angsuran yang menunggu konfirmasi.
+                        <div class="alert alert-info alert-custom">
+                            <i class="fa-solid fa-info-circle me-2"></i>Tidak ada cicilan yang menunggu konfirmasi.
                         </div>
                         {{end}}
                     </div>
-                    <!-- Entri Simpanan & Angsuran Baru -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-success text-white">
-                            <i class="fa-solid fa-plus me-2"></i>Entri Simpanan & Angsuran Baru
+                </div>
+            </div>
+
+            <!-- Card 3: Import Excel Potong Gaji -->
+            <div class="row card-row">
+                <div class="col-12">
+                    <div class="content-card card-info {{if .BuktiTransferExists}}unlocked{{else}}locked{{end}}">
+                        <div class="section-title">
+                            <i class="fa-solid fa-file-excel"></i>
+                            Tambah Massal Potong Gaji via Excel
+                            {{if .BuktiTransferExists}}
+                                <span class="badge bg-success ms-2 badge-custom"><i class="fa-solid fa-unlock me-1"></i>Aktif</span>
+                            {{else}}
+                                <span class="badge bg-danger ms-2 badge-custom"><i class="fa-solid fa-lock me-1"></i>TerKunci</span>
+                            {{end}}
                         </div>
-                        <div class="card-body">
+
+                        <!-- Info Bukti Transfer Gaji -->
+                        {{if .BuktiTransferExists}}
+                        <div class="alert alert-success alert-custom mb-3">
+                            <i class="fa-solid fa-check-circle me-2"></i>
+                            <strong>Bukti transfer gaji sudah diupload.</strong>
+                            {{if .BuktiTransfer}}
+                            <br><small>File: <strong>{{.BuktiTransfer.NamaFile}}</strong> | Diupload: {{.BuktiTransfer.TglUpload.Format "2006-01-02 15:04"}} | Periode: {{.BuktiTransfer.Bulan}}/{{.BuktiTransfer.Tahun}}</small>
+                            {{if .BuktiTransfer.Catatan}}<br><small>Catatan: {{.BuktiTransfer.Catatan}}</small>{{end}}
+                            {{end}}
+                        </div>
+                        {{else}}
+                        <div class="alert alert-danger alert-custom mb-3">
+                            <i class="fa-solid fa-lock me-2"></i>
+                            <strong>Import Excel Potong Gaji terkunci.</strong>
+                            <br><small>Bukti transfer gaji untuk periode <strong>{{.CurrentBulan}}/{{.CurrentTahun}}</strong> belum diupload oleh Ketua. Silakan hubungi Ketua untuk mengupload bukti transfer gaji terlebih dahulu.</small>
+                        </div>
+                        {{end}}
+                        
+                        <div class="alert alert-info alert-custom mb-3">
+                            <i class="fa-solid fa-info-circle me-2"></i>
+                            <strong>Khusus untuk transaksi Potong Gaji.</strong> 
+                            Untuk transaksi Tunai gunakan Entri Manual di bawah. 
+                            Untuk Transfer Bank gunakan menu Konfirmasi Transaksi di atas.
+                        </div>
+                        
+                        <form id="potongGajiImportForm" enctype="multipart/form-data" {{if not .BuktiTransferExists}}style="opacity:0.6; pointer-events:none;"{{end}}>
+                            <div id="potongGajiAlert" class="mb-3"></div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">File Excel (.xlsx/.xls)</label>
+                                <input type="file" class="form-control mb-2" name="file" accept=".xlsx,.xls" required {{if not .BuktiTransferExists}}disabled{{end}}>
+                                <small class="text-muted">
+                                    Kolom yang didukung: <b>ID Anggota</b> atau <b>Nama Anggota</b>, <b>Jenis Transaksi</b> (Simpanan/Cicilan), <b>Jenis Simpanan/ID Pinjaman</b>, <b>Jumlah</b>.
+                                    Jika jenis tidak diisi, defaultnya adalah <b>Simpanan Wajib</b>.
+                                </small>
+                            </div>
+                            
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <a href="/static/downloads/template_potong_gaji.xlsx" class="btn btn-outline-info w-100" download>
+                                        <i class="fa-solid fa-file-excel me-2"></i>Download Template
+                                    </a>
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="submit" class="btn btn-info w-100" id="potongGajiImportBtn" {{if not .BuktiTransferExists}}disabled{{end}}>
+                                        <i class="fa-solid fa-upload me-2"></i>Import Potong Gaji
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Entri Manual Tunai -->
+            <div class="row card-row">
+                <div class="col-12">
+                    <div class="content-card card-success">
+                        <div class="section-title">
+                            <i class="fa-solid fa-plus"></i>
+                            Entri Manual Simpanan &amp; Cicilan Baru
+                            <span class="badge bg-warning text-dark ms-2 badge-custom">Khusus Tunai</span>
+                        </div>
+                        
+                        <div class="alert alert-warning alert-custom mb-3">
+                            <i class="fa-solid fa-hand-holding-dollar me-2"></i>
+                            <strong>Form ini hanya untuk transaksi Tunai.</strong>
+                            Untuk Potong Gaji gunakan Import Excel di atas. 
+                            Untuk Transfer Bank gunakan Konfirmasi Transaksi.
+                        </div>
+                        
+                        <!-- Tab Switcher -->
+                        <div class="d-flex gap-2 mb-4 justify-content-center flex-wrap">
+                            <button type="button" class="btn btn-outline-success active" id="btnTabSimpanan" onclick="showEntriForm('simpanan')">
+                                <i class="fa-solid fa-piggy-bank me-1"></i>Simpanan Tunai
+                            </button>
+                            <button type="button" class="btn btn-outline-success" id="btnTabCicilan" onclick="showEntriForm('cicilan')">
+                                <i class="fa-solid fa-coins me-1"></i>Cicilan Tunai
+                            </button>
+                        </div>
+
+                        <!-- Form Simpanan Tunai -->
+                        <div id="formEntriSimpanan">
+                            <h6 class="text-success mb-3"><i class="fa-solid fa-piggy-bank me-2"></i>Entri Simpanan Tunai</h6>
                             <form class="row g-3" method="POST" action="/bendahara/transaksi/simpanan">
+                                <input type="hidden" name="metode_pembayaran" value="tunai">
                                 <div class="col-md-4">
                                     <label class="form-label">ID Anggota</label>
                                     <input type="text" class="form-control" name="id_anggota" required>
@@ -150,65 +421,98 @@
                                     <input type="number" class="form-control" name="jumlah" min="1000" required>
                                 </div>
                                 <div class="col-md-2 d-flex align-items-end">
-                                    <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-plus"></i> Simpanan</button>
+                                    <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-plus"></i> Simpan</button>
                                 </div>
                             </form>
-                            <form class="row g-3 mt-2" method="POST" action="/bendahara/transaksi/angsuran">
+                        </div>
+
+                        <!-- Form Cicilan Tunai -->
+                        <div id="formEntriCicilan" style="display:none;">
+                            <h6 class="text-success mb-3"><i class="fa-solid fa-coins me-2"></i>Entri Cicilan Tunai</h6>
+                            <form class="row g-3" method="POST" action="/bendahara/transaksi/angsuran">
+                                <input type="hidden" name="metode_angsuran" value="tunai">
                                 <div class="col-md-4">
                                     <label class="form-label">ID Anggota</label>
                                     <input type="text" class="form-control" name="id_anggota" required>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">Jenis Angsuran</label>
-                                    <select class="form-select" id="jenisAngsuranSelect" name="jenis_angsuran" required>
-                                        <option value="">Pilih jenis angsuran...</option>
+                                    <label class="form-label">Jenis Cicilan</label>
+                                    <select class="form-select" id="jenisCicilanSelect" name="jenis_angsuran" required>
+                                        <option value="">Pilih jenis cicilan...</option>
                                     </select>
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label">Jumlah Angsuran</label>
+                                    <label class="form-label">Jumlah Cicilan</label>
                                     <input type="number" class="form-control" name="jumlah_angsuran" min="1000" required>
                                 </div>
                                 <div class="col-md-2 d-flex align-items-end">
-                                    <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-plus"></i> Angsuran</button>
+                                    <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-plus"></i> Simpan</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
+
+    {{ template "bendahara_footer" . }}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/bendahara_konfirmasi_transaksi.js"></script>
     <script>
-    // Otomatisasi dropdown jenis angsuran berdasarkan ID Anggota
+    // Fungsi untuk switch tab entri transaksi
+    function showEntriForm(type) {
+        var formSimpanan = document.getElementById('formEntriSimpanan');
+        var formCicilan = document.getElementById('formEntriCicilan');
+        var btnSimpanan = document.getElementById('btnTabSimpanan');
+        var btnCicilan = document.getElementById('btnTabCicilan');
+
+        if (formSimpanan) formSimpanan.style.display = 'none';
+        if (formCicilan) formCicilan.style.display = 'none';
+        if (btnSimpanan) { btnSimpanan.classList.remove('active'); }
+        if (btnCicilan) { btnCicilan.classList.remove('active'); }
+
+        if (type === 'simpanan' && formSimpanan) {
+            formSimpanan.style.display = 'block';
+            if (btnSimpanan) btnSimpanan.classList.add('active');
+        } else if (type === 'cicilan' && formCicilan) {
+            formCicilan.style.display = 'block';
+            if (btnCicilan) btnCicilan.classList.add('active');
+        }
+    }
+
+    // Otomatisasi dropdown jenis cicilan berdasarkan ID Anggota
     document.addEventListener('DOMContentLoaded', function() {
-        var idAnggotaInput = document.querySelector('form[action="/bendahara/transaksi/angsuran"] input[name="id_anggota"]');
-        var jenisAngsuranSelect = document.getElementById('jenisAngsuranSelect');
-        if (idAnggotaInput && jenisAngsuranSelect) {
+        var idAnggotaInput = document.querySelector('#formEntriCicilan form input[name="id_anggota"]');
+        var jenisCicilanSelect = document.getElementById('jenisCicilanSelect');
+        if (idAnggotaInput && jenisCicilanSelect) {
             idAnggotaInput.addEventListener('change', function() {
                 var idAnggota = idAnggotaInput.value;
-                jenisAngsuranSelect.innerHTML = '<option value="">Memuat data...</option>';
+                jenisCicilanSelect.innerHTML = '<option value="">Memuat data...</option>';
                 if (idAnggota) {
                     fetch('/api/jenis-angsuran?id_anggota=' + encodeURIComponent(idAnggota))
                         .then(res => res.json())
                         .then(data => {
-                            jenisAngsuranSelect.innerHTML = '';
+                            jenisCicilanSelect.innerHTML = '';
                             if (data && Array.isArray(data.jenis_angsuran) && data.jenis_angsuran.length > 0) {
                                 data.jenis_angsuran.forEach(function(item) {
                                     var opt = document.createElement('option');
                                     opt.value = item.key;
                                     opt.textContent = item.nama;
-                                    jenisAngsuranSelect.appendChild(opt);
+                                    jenisCicilanSelect.appendChild(opt);
                                 });
                             } else {
-                                jenisAngsuranSelect.innerHTML = '<option value="">Tidak ada angsuran tersedia</option>';
+                                jenisCicilanSelect.innerHTML = '<option value="">Tidak ada cicilan tersedia</option>';
                             }
                         })
                         .catch(() => {
-                            jenisAngsuranSelect.innerHTML = '<option value="">Gagal memuat data</option>';
+                            jenisCicilanSelect.innerHTML = '<option value="">Gagal memuat data</option>';
                         });
                 } else {
-                    jenisAngsuranSelect.innerHTML = '<option value="">Pilih jenis angsuran...</option>';
+                    jenisCicilanSelect.innerHTML = '<option value="">Pilih jenis cicilan...</option>';
                 }
             });
         }
@@ -217,3 +521,4 @@
 </body>
 </html>
 {{end}}
+

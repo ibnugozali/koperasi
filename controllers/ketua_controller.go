@@ -33,7 +33,6 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
-// KetuaKonfirmasiTransaksiPost menangani konfirmasi/reject transaksi oleh ketua
 func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 	transactionType := c.Param("type")
 	idStr := c.Param("id")
@@ -3901,4 +3900,130 @@ func KetuaDetailAjukanPengambilan(c *gin.Context) {
 		"ActivePage":        "konfirmasi-transaksi",
 		"CurrentLogo":       latestLogo,
 	})
+}
+
+// KetuaUploadBuktiTransferGaji menampilkan form upload bukti transfer gaji
+func KetuaUploadBuktiTransferGaji(c *gin.Context) {
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	// Ambil riwayat upload
+	buktiList, err := repository.GetAllBuktiTransferGaji()
+	if err != nil {
+		buktiList = []models.BuktiTransferGaji{}
+	}
+
+	// Ambil pesan dari query parameter
+	successMsg := c.Query("success")
+	errorMsg := c.Query("error")
+
+	c.HTML(http.StatusOK, "ketua_upload_bukti_transfer_gaji.html", gin.H{
+		"CurrentLogo":    latestLogo,
+		"BuktiList":      buktiList,
+		"SuccessMessage": successMsg,
+		"ErrorMessage":   errorMsg,
+	})
+}
+
+// KetuaUploadBuktiTransferGajiPost memproses upload bukti transfer gaji
+func KetuaUploadBuktiTransferGajiPost(c *gin.Context) {
+	session := sessions.Default(c)
+	userID := session.Get("user_id")
+	if userID == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	bulan, err := strconv.Atoi(c.PostForm("bulan"))
+	if err != nil || bulan < 1 || bulan > 12 {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Bulan tidak valid")
+		return
+	}
+
+	tahun, err := strconv.Atoi(c.PostForm("tahun"))
+	if err != nil || tahun < 2000 || tahun > 2100 {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Tahun tidak valid")
+		return
+	}
+
+	catatan := strings.TrimSpace(c.PostForm("catatan"))
+
+	// Handle file upload
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=File tidak ditemukan")
+		return
+	}
+
+	// Validasi ukuran file (max 5MB)
+	if file.Size > 5*1024*1024 {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Ukuran file maksimal 5MB")
+		return
+	}
+
+	// Validasi ekstensi file
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".pdf" && ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Format file tidak didukung. Gunakan PDF, JPG, JPEG, atau PNG")
+		return
+	}
+
+	// Generate nama file unik
+	timestamp := time.Now().Format("20060102_150405")
+	newFileName := fmt.Sprintf("bukti_transfer_gaji_%s_%d_%d%s", timestamp, bulan, tahun, ext)
+	uploadPath := filepath.Join("static", "uploads", newFileName)
+
+	// Simpan file
+	if err := c.SaveUploadedFile(file, uploadPath); err != nil {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Gagal menyimpan file")
+		return
+	}
+
+	// Simpan ke database
+	var userIDInt int
+	switch v := userID.(type) {
+	case int:
+		userIDInt = v
+	case string:
+		userIDInt, _ = strconv.Atoi(v)
+	}
+
+	bukti := &models.BuktiTransferGaji{
+		Bulan:        bulan,
+		Tahun:        tahun,
+		NamaFile:     file.Filename,
+		PathFile:     "/" + filepath.ToSlash(uploadPath),
+		DiuploadOleh: userIDInt,
+		Status:       "pending",
+		Catatan:      catatan,
+	}
+
+	if err := repository.SaveBuktiTransferGaji(bukti); err != nil {
+		// Hapus file jika gagal simpan ke DB
+		os.Remove(uploadPath)
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Gagal menyimpan data ke database")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?success=Bukti transfer gaji berhasil diupload")
 }

@@ -1020,8 +1020,8 @@ func AnggotaProfil(c *gin.Context) {
 		}
 	}
 
-	// Hitung Total Simpanan dari semua simpanan yang ada di anggota_profil
-	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
+	// Hitung Total Simpanan (tidak termasuk Simpanan Pokok karena dibayar saat pendaftaran)
+	totalSimpanan := simpananByJenis["wajib"] +
 		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
 		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
 
@@ -1850,6 +1850,9 @@ func AnggotaSimpanan(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	// Ambil nomor rekening koperasi dari repository
+	nomorRekening, _ := repository.GetNomorRekening("simpanan")
+
 	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
 		"Judul":                "Simpanan",
 		"Anggota":              anggota,
@@ -1857,6 +1860,7 @@ func AnggotaSimpanan(c *gin.Context) {
 		"NominalSimpananWajib": nominalSimpananWajib,
 		"ResumeGabungan":       resumeGabunganSlice,
 		"CurrentLogo":          latestLogo,
+		"NomorRekening":        nomorRekening,
 	})
 }
 
@@ -1904,6 +1908,21 @@ func AnggotaSimpananPost(c *gin.Context) {
 	if qurbanStr != "" {
 		fmt.Sscanf(qurbanStr, "%f", &qurban)
 	}
+
+	// Ambil metode pembayaran dari form
+	metodePembayaran := c.PostForm("metode_pembayaran")
+	if metodePembayaran == "" {
+		metodePembayaran = "transfer_bank"
+	}
+
+	// Validasi metode pembayaran
+	if metodePembayaran != "transfer_bank" && metodePembayaran != "potong_gaji" && metodePembayaran != "tunai" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Metode pembayaran tidak valid.",
+		})
+		return
+	}
 	var total float64
 	if totalStr != "" {
 		fmt.Sscanf(totalStr, "%f", &total)
@@ -1919,25 +1938,36 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Handle file upload
-	file, err := c.FormFile("bukti")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Bukti pembayaran wajib diupload.",
-		})
-		return
-	}
+	// Handle file upload: hanya wajib untuk Transfer Bank
+	var filename string
+	if metodePembayaran == "transfer_bank" {
+		file, err := c.FormFile("bukti")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Bukti pembayaran wajib diupload untuk metode Transfer Bank.",
+			})
+			return
+		}
 
-	// Save the uploaded file
-	filename := time.Now().Format("20060102150405") + "_" + file.Filename
-	dst := "./static/uploads/" + filename
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Gagal menyimpan file bukti pembayaran.",
-		})
-		return
+		// Save the uploaded file
+		filename = time.Now().Format("20060102150405") + "_" + file.Filename
+		dst := "./static/uploads/" + filename
+		if err := c.SaveUploadedFile(file, dst); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Gagal menyimpan file bukti pembayaran.",
+			})
+			return
+		}
+	} else {
+		// Untuk potong gaji / tunai, bukti opsional
+		file, err := c.FormFile("bukti")
+		if err == nil {
+			filename = time.Now().Format("20060102150405") + "_" + file.Filename
+			dst := "./static/uploads/" + filename
+			_ = c.SaveUploadedFile(file, dst)
+		}
 	}
 
 	// Buat entri untuk setiap jenis simpanan yang > 0
@@ -1945,13 +1975,14 @@ func AnggotaSimpananPost(c *gin.Context) {
 	var errs []error
 	if wajib > 0 {
 		d := models.Detail{
-			IDAnggota:       userID,
-			IDSimpanan:      2,
-			IDPengelola:     1,
-			TglTransaksi:    tanggalPengajuan,
-			JumlahSimpanan:  wajib,
-			TotalSimpanan:   total,
-			BuktiPembayaran: filename,
+			IDAnggota:        userID,
+			IDSimpanan:       2,
+			IDPengelola:      1,
+			TglTransaksi:     tanggalPengajuan,
+			JumlahSimpanan:   wajib,
+			TotalSimpanan:    total,
+			BuktiPembayaran:  filename,
+			MetodePembayaran: metodePembayaran,
 		}
 		if e := repository.CreateSimpanan(d); e != nil {
 			errs = append(errs, e)
@@ -1959,13 +1990,14 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 	if sukarela > 0 {
 		d := models.Detail{
-			IDAnggota:       userID,
-			IDSimpanan:      3,
-			IDPengelola:     1,
-			TglTransaksi:    tanggalPengajuan,
-			JumlahSimpanan:  sukarela,
-			TotalSimpanan:   total,
-			BuktiPembayaran: filename,
+			IDAnggota:        userID,
+			IDSimpanan:       3,
+			IDPengelola:      1,
+			TglTransaksi:     tanggalPengajuan,
+			JumlahSimpanan:   sukarela,
+			TotalSimpanan:    total,
+			BuktiPembayaran:  filename,
+			MetodePembayaran: metodePembayaran,
 		}
 		if e := repository.CreateSimpanan(d); e != nil {
 			errs = append(errs, e)
@@ -1973,13 +2005,14 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 	if hariRaya > 0 {
 		d := models.Detail{
-			IDAnggota:       userID,
-			IDSimpanan:      4,
-			IDPengelola:     1,
-			TglTransaksi:    tanggalPengajuan,
-			JumlahSimpanan:  hariRaya,
-			TotalSimpanan:   total,
-			BuktiPembayaran: filename,
+			IDAnggota:        userID,
+			IDSimpanan:       4,
+			IDPengelola:      1,
+			TglTransaksi:     tanggalPengajuan,
+			JumlahSimpanan:   hariRaya,
+			TotalSimpanan:    total,
+			BuktiPembayaran:  filename,
+			MetodePembayaran: metodePembayaran,
 		}
 		if e := repository.CreateSimpanan(d); e != nil {
 			errs = append(errs, e)
@@ -1987,13 +2020,14 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 	if umrohHaji > 0 {
 		d := models.Detail{
-			IDAnggota:       userID,
-			IDSimpanan:      5,
-			IDPengelola:     1,
-			TglTransaksi:    tanggalPengajuan,
-			JumlahSimpanan:  umrohHaji,
-			TotalSimpanan:   total,
-			BuktiPembayaran: filename,
+			IDAnggota:        userID,
+			IDSimpanan:       5,
+			IDPengelola:      1,
+			TglTransaksi:     tanggalPengajuan,
+			JumlahSimpanan:   umrohHaji,
+			TotalSimpanan:    total,
+			BuktiPembayaran:  filename,
+			MetodePembayaran: metodePembayaran,
 		}
 		if e := repository.CreateSimpanan(d); e != nil {
 			errs = append(errs, e)
@@ -2001,13 +2035,14 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 	if qurban > 0 {
 		d := models.Detail{
-			IDAnggota:       userID,
-			IDSimpanan:      6,
-			IDPengelola:     1,
-			TglTransaksi:    tanggalPengajuan,
-			JumlahSimpanan:  qurban,
-			TotalSimpanan:   total,
-			BuktiPembayaran: filename,
+			IDAnggota:        userID,
+			IDSimpanan:       6,
+			IDPengelola:      1,
+			TglTransaksi:     tanggalPengajuan,
+			JumlahSimpanan:   qurban,
+			TotalSimpanan:    total,
+			BuktiPembayaran:  filename,
+			MetodePembayaran: metodePembayaran,
 		}
 		if e := repository.CreateSimpanan(d); e != nil {
 			errs = append(errs, e)

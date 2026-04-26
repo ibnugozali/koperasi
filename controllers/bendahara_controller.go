@@ -506,34 +506,9 @@ func BendaharaUpdateRekeningRegister(c *gin.Context) {
 	switch fieldType {
 	case "rekening":
 		if nomorRekening == "" {
-			// Cari logo terbaru di static/images
-			dirFiles, errLogo := os.ReadDir("static/images")
-			var latestLogo string
-			var latestTime int64
-			if errLogo == nil {
-				for _, file := range dirFiles {
-					name := file.Name()
-					if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
-						info, err := file.Info()
-						if err == nil {
-							modTime := info.ModTime().Unix()
-							if modTime > latestTime {
-								latestTime = modTime
-								latestLogo = "/static/images/" + name
-							}
-						}
-					}
-				}
-			}
-			if latestLogo == "" {
-				latestLogo = "/static/images/placeholder.png"
-			}
-			c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
-				"Error":           "Nomor rekening harus diisi",
-				"NomorRekening":   nomorRekening,
-				"NominalSimpanan": "100000",
-				"ActivePage":      "edit-rekening-register",
-				"CurrentLogo":     latestLogo,
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Nomor rekening harus diisi",
 			})
 			return
 		}
@@ -545,44 +520,21 @@ func BendaharaUpdateRekeningRegister(c *gin.Context) {
 			DO UPDATE SET nilai = $1, updated_at = NOW()
 		`, nomorRekening)
 		if err != nil {
-			c.HTML(http.StatusInternalServerError, "bendahara_edit_rekening_register.html", gin.H{
-				"Error":           "Gagal menyimpan nomor rekening",
-				"NomorRekening":   nomorRekening,
-				"NominalSimpanan": "100000",
-				"ActivePage":      "edit-rekening-register",
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Gagal menyimpan nomor rekening",
 			})
 			return
 		}
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Nomor rekening berhasil disimpan",
+		})
 	case "simpanan":
 		if nominalSimpanan == "" {
-			// Cari logo terbaru di static/images
-			dirFiles, errLogo := os.ReadDir("static/images")
-			var latestLogo string
-			var latestTime int64
-			if errLogo == nil {
-				for _, file := range dirFiles {
-					name := file.Name()
-					if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
-						info, err := file.Info()
-						if err == nil {
-							modTime := info.ModTime().Unix()
-							if modTime > latestTime {
-								latestTime = modTime
-								latestLogo = "/static/images/" + name
-							}
-						}
-					}
-				}
-			}
-			if latestLogo == "" {
-				latestLogo = "/static/images/placeholder.png"
-			}
-			c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
-				"Error":           "Nominal simpanan harus diisi",
-				"NomorRekening":   "1234567890 (Bank ABC)",
-				"NominalSimpanan": nominalSimpanan,
-				"ActivePage":      "edit-rekening-register",
-				"CurrentLogo":     latestLogo,
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Nominal simpanan harus diisi",
 			})
 			return
 		}
@@ -594,26 +546,22 @@ func BendaharaUpdateRekeningRegister(c *gin.Context) {
 			DO UPDATE SET nilai = $1, updated_at = NOW()
 		`, nominalSimpanan)
 		if err != nil {
-			c.HTML(http.StatusInternalServerError, "bendahara_edit_rekening_register.html", gin.H{
-				"Error":           "Gagal menyimpan nominal simpanan",
-				"NomorRekening":   "1234567890 (Bank ABC)",
-				"NominalSimpanan": nominalSimpanan,
-				"ActivePage":      "edit-rekening-register",
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Gagal menyimpan nominal simpanan",
 			})
 			return
 		}
-	default:
-		c.HTML(http.StatusBadRequest, "bendahara_edit_rekening_register.html", gin.H{
-			"Error":           "Tipe field tidak valid",
-			"NomorRekening":   "1234567890 (Bank ABC)",
-			"NominalSimpanan": "100000",
-			"ActivePage":      "edit-rekening-register",
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Nominal simpanan berhasil disimpan",
 		})
-		return
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Tipe field tidak valid",
+		})
 	}
-
-	// Jika berhasil simpan, redirect ke halaman dashboard bendahara
-	c.Redirect(http.StatusFound, "/bendahara/dashboard")
 }
 
 // Mengkonfirmasi keanggotaan
@@ -1379,6 +1327,10 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 	detail.TglTransaksi = time.Now()
 	// Entri oleh bendahara dianggap validasi tahap bendahara selesai.
 	detail.Status = "confirmed"
+	// Default metode pembayaran dari form (tunai untuk entri manual)
+	if detail.MetodePembayaran == "" {
+		detail.MetodePembayaran = "tunai"
+	}
 
 	// Ambil id_simpanan dari tabel simpanan berdasarkan nama (jenis_simpanan)
 	jenisSimpanan := c.PostForm("jenis_simpanan")
@@ -1835,15 +1787,30 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 			}
 		}
 	}
+
+	// Cek apakah bukti transfer gaji sudah diupload untuk bulan & tahun ini
+	now := time.Now()
+	currentBulan := int(now.Month())
+	currentTahun := now.Year()
+	buktiTransferExists, _ := repository.CheckBuktiTransferGajiExists(currentBulan, currentTahun)
+	var buktiTransfer *models.BuktiTransferGaji
+	if buktiTransferExists {
+		buktiTransfer, _ = repository.GetBuktiTransferGajiByBulanTahun(currentBulan, currentTahun)
+	}
+
 	c.HTML(http.StatusOK, "bendahara_konfirmasi_transaksi.html", gin.H{
-		"PendingSimpanan":    numberedSimpanan,
-		"PendingPinjaman":    numberedPinjamans,
-		"PendingAngsuran":    numberedAngsurans,
-		"PendingPengambilan": numberedPengambilans,
-		"ActivePage":         "konfirmasi-transaksi",
-		"CurrentLogo":        latestLogo,
-		"Title":              "Konfirmasi Transaksi",
-		"SimpananTypes":      simpananTypes,
+		"PendingSimpanan":     numberedSimpanan,
+		"PendingPinjaman":     numberedPinjamans,
+		"PendingAngsuran":     numberedAngsurans,
+		"PendingPengambilan":  numberedPengambilans,
+		"ActivePage":          "konfirmasi-transaksi",
+		"CurrentLogo":         latestLogo,
+		"Title":               "Konfirmasi Transaksi",
+		"SimpananTypes":       simpananTypes,
+		"BuktiTransferExists": buktiTransferExists,
+		"BuktiTransfer":       buktiTransfer,
+		"CurrentBulan":        currentBulan,
+		"CurrentTahun":        currentTahun,
 	})
 }
 
@@ -2300,47 +2267,19 @@ func BendaharaEditBunga(c *gin.Context) {
 func BendaharaUpdateBunga(c *gin.Context) {
 	bungaStr := c.PostForm("bunga")
 
-	// Cari logo terbaru di static/images
-	dirFiles, errLogo := os.ReadDir("static/images")
-	var latestLogo string
-	var latestTime int64
-	if errLogo == nil {
-		for _, file := range dirFiles {
-			name := file.Name()
-			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
-				info, err := file.Info()
-
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogo = "/static/images/" + name
-					}
-				}
-			}
-		}
-	}
-	if latestLogo == "" {
-		latestLogo = "/static/images/placeholder.png"
-	}
-
 	if bungaStr == "" {
-		c.HTML(http.StatusBadRequest, "bendahara_edit_bunga.html", gin.H{
-			"Error":        "Nilai bunga harus diisi",
-			"CurrentBunga": "",
-			"ActivePage":   "edit-bunga",
-			"CurrentLogo":  latestLogo,
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Nilai bunga harus diisi",
 		})
 		return
 	}
 
 	bungaVal, err := strconv.ParseFloat(bungaStr, 64)
 	if err != nil || bungaVal < 0 {
-		c.HTML(http.StatusBadRequest, "bendahara_edit_bunga.html", gin.H{
-			"Error":        "Nilai bunga tidak valid",
-			"CurrentBunga": bungaStr,
-			"ActivePage":   "edit-bunga",
-			"CurrentLogo":  latestLogo,
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Nilai bunga tidak valid",
 		})
 		return
 	}
@@ -2355,17 +2294,17 @@ func BendaharaUpdateBunga(c *gin.Context) {
 	`, bungaStr)
 
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "bendahara_edit_bunga.html", gin.H{
-			"Error":        "Gagal menyimpan bunga ke database",
-			"CurrentBunga": bungaStr,
-			"ActivePage":   "edit-bunga",
-			"CurrentLogo":  latestLogo,
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal menyimpan bunga ke database",
 		})
 		return
 	}
 
-	// Redirect back to edit page after update
-	c.Redirect(http.StatusFound, "/bendahara/edit-bunga")
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Bunga berhasil disimpan",
+	})
 }
 
 // BendaharaLoginHistory menampilkan halaman riwayat login
@@ -4198,6 +4137,292 @@ func BendaharaProsesSimpananWajib(c *gin.Context) {
 	})
 }
 
+// BendaharaImportPotongGajiExcel memproses upload file Excel untuk tambah massal transaksi potong gaji.
+func BendaharaImportPotongGajiExcel(c *gin.Context) {
+	session := sessions.Default(c)
+	bendaharaID := session.Get("user_id")
+	if bendaharaID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Session expired, silakan login ulang"})
+		return
+	}
+
+	// Validasi: cek apakah bukti transfer gaji sudah diupload untuk bulan & tahun ini
+	now := time.Now()
+	currentBulan := int(now.Month())
+	currentTahun := now.Year()
+	buktiTransferExists, _ := repository.CheckBuktiTransferGajiExists(currentBulan, currentTahun)
+	if !buktiTransferExists {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Bukti transfer gaji belum diupload oleh Ketua untuk periode ini. Silakan hubungi Ketua untuk mengupload bukti transfer gaji terlebih dahulu.",
+		})
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak ditemukan."})
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".xlsx" && ext != ".xls" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format file harus .xlsx atau .xls"})
+		return
+	}
+	if file.Size > 10*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran file maksimal 10MB"})
+		return
+	}
+
+	tempPath := "./static/uploads/" + uuid.New().String() + ext
+	if err := c.SaveUploadedFile(file, tempPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file upload"})
+		return
+	}
+	defer os.Remove(tempPath)
+
+	f, err := excelize.OpenFile(tempPath)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak bisa dibaca"})
+		return
+	}
+	defer f.Close()
+
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak memiliki sheet"})
+		return
+	}
+
+	rows, err := f.GetRows(sheets[0])
+	if err != nil || len(rows) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data Excel kosong atau tidak valid"})
+		return
+	}
+
+	// Cari baris header secara dinamis
+	headerRowIdx := -1
+	headerMap := map[string]int{}
+	for r, row := range rows {
+		tmp := map[string]int{}
+		for i, h := range row {
+			norm := normalizeHeader(h)
+			if norm != "" {
+				tmp[norm] = i
+			}
+		}
+		idxID := findHeaderIndex(tmp, "id anggota", "idanggota", "id", "kode anggota")
+		idxNama := findHeaderIndex(tmp, "nama anggota", "nama", "namaanggota")
+		if idxID >= 0 || idxNama >= 0 {
+			headerRowIdx = r
+			headerMap = tmp
+			break
+		}
+	}
+
+	if headerRowIdx < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Header tidak ditemukan di file Excel. Pastikan ada kolom 'ID Anggota' atau 'Nama Anggota'."})
+		return
+	}
+
+	idxIDAnggota := findHeaderIndex(headerMap, "id anggota", "idanggota", "id", "kode anggota")
+	idxNama := findHeaderIndex(headerMap, "nama anggota", "nama", "namaanggota")
+	idxJenis := findHeaderIndex(headerMap, "jenis transaksi", "jenis", "jenistransaksi", "tipe")
+	idxDetail := findHeaderIndex(headerMap, "jenis simpanan", "detail", "jenissimpanan", "simpanan", "id pinjaman", "idpinjaman")
+	idxJumlah := findHeaderIndex(headerMap, "jumlah", "nominal", "amount", "total")
+
+	db := config.GetDB()
+
+	// Cache id_simpanan berdasarkan nama jenis
+	idSimpananCache := make(map[string]int)
+	rowsSimpanan, _ := db.Query("SELECT id_simpanan, LOWER(jenis_simpanan) FROM simpanan")
+	if rowsSimpanan != nil {
+		defer rowsSimpanan.Close()
+		for rowsSimpanan.Next() {
+			var id int
+			var jenis string
+			if err := rowsSimpanan.Scan(&id, &jenis); err == nil {
+				idSimpananCache[jenis] = id
+			}
+		}
+	}
+
+	successCount := 0
+	failedCount := 0
+	var parseErrors []string
+
+	for i, row := range rows[headerRowIdx+1:] {
+		rowNum := headerRowIdx + i + 2
+
+		idAnggota := getCell(row, idxIDAnggota)
+		namaAnggota := getCell(row, idxNama)
+		jenisTransaksi := strings.ToLower(getCell(row, idxJenis))
+		detail := strings.ToLower(getCell(row, idxDetail))
+		jumlahStr := getCell(row, idxJumlah)
+
+		// Skip baris kosong
+		if idAnggota == "" && namaAnggota == "" && jumlahStr == "" {
+			continue
+		}
+
+		// Cari ID anggota jika hanya nama yang diisi
+		if idAnggota == "" && namaAnggota != "" {
+			var foundID string
+			err := db.QueryRow("SELECT id_anggota FROM anggota WHERE LOWER(nama_anggota) = $1 AND status = 'aktif' LIMIT 1", strings.ToLower(namaAnggota)).Scan(&foundID)
+			if err == nil {
+				idAnggota = foundID
+			} else {
+				failedCount++
+				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: tidak dapat menemukan anggota dengan nama '%s'", rowNum, namaAnggota))
+				continue
+			}
+		}
+
+		// Validasi anggota aktif
+		var exists bool
+		err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM anggota WHERE id_anggota = $1 AND status = 'aktif')", idAnggota).Scan(&exists)
+		if err != nil || !exists {
+			failedCount++
+			parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: anggota '%s' tidak ditemukan atau tidak aktif", rowNum, idAnggota))
+			continue
+		}
+
+		// Parse jumlah
+		jumlahStr = strings.ReplaceAll(jumlahStr, ".", "")
+		jumlahStr = strings.ReplaceAll(jumlahStr, ",", "")
+		jumlah, err := strconv.ParseFloat(jumlahStr, 64)
+		if err != nil || jumlah <= 0 {
+			failedCount++
+			parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: jumlah tidak valid '%s'", rowNum, getCell(row, idxJumlah)))
+			continue
+		}
+
+		// Default jenis transaksi ke simpanan jika tidak diisi
+		if jenisTransaksi == "" {
+			jenisTransaksi = "simpanan"
+		}
+
+		switch jenisTransaksi {
+		case "simpanan":
+			// Default jenis simpanan ke wajib jika tidak diisi
+			if detail == "" {
+				detail = "wajib"
+			}
+			idSimpanan, ok := idSimpananCache[detail]
+			if !ok {
+				// Coba cari dengan mengandung substring
+				found := false
+				for k, v := range idSimpananCache {
+					if strings.Contains(k, detail) || strings.Contains(detail, k) {
+						idSimpanan = v
+						found = true
+						break
+					}
+				}
+				if !found {
+					failedCount++
+					parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: jenis simpanan '%s' tidak ditemukan", rowNum, detail))
+					continue
+				}
+			}
+
+			// Hitung total simpanan (kumulatif)
+			totalSimpanan, _, _, err := repository.GetSaldoAnggota(idAnggota)
+			if err != nil {
+				totalSimpanan = 0
+			}
+			totalSimpanan += jumlah
+
+			_, err = db.Exec(
+				`INSERT INTO detail (id_anggota, id_simpanan, id_pengelola, tgl_transaksi, jumlah_simpanan, total_simpanan, status, metode_pembayaran)
+				 VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, 'confirmed', 'potong_gaji')`,
+				idAnggota, idSimpanan, bendaharaID, jumlah, totalSimpanan,
+			)
+			if err != nil {
+				failedCount++
+				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal menyimpan simpanan (%v)", rowNum, err))
+				continue
+			}
+
+		case "angsuran":
+			// Ambil pinjaman aktif anggota
+			pinjamans, err := repository.GetPinjamanAktifByAnggotaID(idAnggota)
+			if err != nil || len(pinjamans) == 0 {
+				failedCount++
+				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: tidak ada pinjaman aktif untuk anggota '%s'", rowNum, idAnggota))
+				continue
+			}
+
+			pinjaman := pinjamans[0]
+			idPinjaman := pinjaman.IDPinjaman
+
+			// Jika detail diisi dan berupa angka, gunakan sebagai id_pinjaman
+			if detail != "" {
+				if parsedID, err := strconv.Atoi(detail); err == nil {
+					// Validasi bahwa pinjaman tersebut milik anggota ini
+					var valid bool
+					db.QueryRow("SELECT EXISTS(SELECT 1 FROM pinjaman WHERE id_pinjaman = $1 AND id_anggota = $2)", parsedID, idAnggota).Scan(&valid)
+					if valid {
+						idPinjaman = parsedID
+					}
+				}
+			}
+
+			// Hitung sisa pinjaman terakhir
+			angsurans, _ := repository.GetAngsuranByPinjamanID(idPinjaman)
+			sisaSebelum := pinjaman.JumlahPinjaman
+			if len(angsurans) > 0 {
+				for i := len(angsurans) - 1; i >= 0; i-- {
+					a := angsurans[i]
+					if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
+						sisaSebelum = a.SisaPinjaman
+						break
+					}
+				}
+			}
+			sisaSetelah := sisaSebelum - jumlah
+			if sisaSetelah < 0 {
+				sisaSetelah = 0
+			}
+
+			_, err = db.Exec(
+				`INSERT INTO angsuran (id_pinjaman, id_pengelola, tgl_bayar, jumlah_angsuran, sisa_pinjaman, status)
+				 VALUES ($1, $2, CURRENT_TIMESTAMP, $3, $4, 'confirmed')`,
+				idPinjaman, bendaharaID, jumlah, sisaSetelah,
+			)
+			if err != nil {
+				failedCount++
+				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal menyimpan angsuran (%v)", rowNum, err))
+				continue
+			}
+
+		default:
+			failedCount++
+			parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: jenis transaksi '%s' tidak valid (gunakan Simpanan/Angsuran)", rowNum, jenisTransaksi))
+			continue
+		}
+
+		successCount++
+	}
+
+	if successCount == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":       "Tidak ada transaksi yang berhasil diimport",
+			"success":     successCount,
+			"failed":      failedCount,
+			"parseErrors": parseErrors,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Import transaksi potong gaji berhasil diproses",
+		"success":     successCount,
+		"failed":      failedCount,
+		"parseErrors": parseErrors,
+	})
+}
+
 // BendaharaCekDanProsesPemotonganOtomatis endpoint untuk mengecek dan menjalankan pemotongan otomatis
 func BendaharaCekDanProsesPemotonganOtomatis(c *gin.Context) {
 	now := time.Now()
@@ -4695,6 +4920,10 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	angsuran.IDPengelola.Int64 = int64(bendaharaID.(int))
 	// Pastikan status angsuran selalu confirmed (bendahara = validasi langsung)
 	angsuran.Status = "confirmed"
+	// Default metode angsuran dari form (tunai untuk entri manual)
+	if angsuran.MetodeAngsuran == "" {
+		angsuran.MetodeAngsuran = "tunai"
+	}
 	// Ambil data pinjaman untuk mengisi IDAnggota
 	pinjaman, err = repository.GetPinjamanByID(idPinjaman)
 	if err != nil {

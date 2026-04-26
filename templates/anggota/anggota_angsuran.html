@@ -40,7 +40,7 @@
               </div>
             </div>
 
-            {{if eq .MetodeAngsuran "Transfer"}}
+            {{if or (eq .MetodeAngsuran "transfer_bank") (eq .MetodeAngsuran "Transfer")}}
               <div class="alert alert-info" role="alert">
                 <strong>Pembayaran via Transfer Bank</strong><br>
                 Silakan lakukan pembayaran angsuran melalui transfer bank dan upload bukti pembayaran pada form di bawah.
@@ -67,12 +67,12 @@
                 </div>
                 <input type="submit" name="submit" value="Kirim Angsuran" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
               </form>
-            {{else if eq .MetodeAngsuran "Potong Gaji"}}
+            {{else if or (eq .MetodeAngsuran "potong_gaji") (eq .MetodeAngsuran "Potong Gaji")}}
               <div class="alert alert-success" role="alert">
                 <strong>Pembayaran Otomatis (Potong Gaji)</strong><br>
                 Pembayaran angsuran Anda dilakukan otomatis melalui pemotongan gaji setiap periode. Anda tidak perlu melakukan pembayaran manual.
               </div>
-            {{else if or (eq .MetodeAngsuran "Tunai") (eq .MetodeAngsuran "tunai")}}
+            {{else if or (eq .MetodeAngsuran "tunai") (eq .MetodeAngsuran "Tunai")}}
               <div class="alert alert-warning" role="alert">
                 <strong>Pembayaran Tunai di Koperasi</strong><br>
                 Silakan datang langsung ke koperasi untuk melakukan pembayaran angsuran secara tunai.
@@ -80,7 +80,7 @@
             {{else}}
               <div class="alert alert-danger" role="alert">
                 <strong>Metode angsuran Anda belum ditentukan.</strong><br>
-                Silakan hubungi koperasi untuk menentukan metode angsuran Anda.
+                Nilai saat ini: <code>{{ .MetodeAngsuran }}</code>. Silakan hubungi koperasi untuk menentukan metode angsuran Anda.
               </div>
             {{end}}
           </div> {{else}}

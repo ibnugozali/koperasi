@@ -13,18 +13,19 @@ type Simpanan struct {
 
 // Detail mewakili detail transaksi simpanan
 type Detail struct {
-	IDDetail        int       `json:"id_detail" db:"id_detail"`
-	IDAnggota       string    `json:"id_anggota" form:"id_anggota" db:"id_anggota"`
-	NamaAnggota     string    `json:"nama_anggota" db:"nama_anggota"`
-	IDSimpanan      int       `json:"id_simpanan" db:"id_simpanan"`
-	Simpanan        Simpanan  `json:"simpanan" db:"simpanan"`
-	IDPengelola     int       `json:"id_pengelola" db:"id_pengelola"`
-	TglTransaksi    time.Time `json:"tgl_transaksi" db:"tgl_transaksi"`
-	JumlahSimpanan  float64   `json:"jumlah_simpanan" db:"jumlah_simpanan"`
-	TotalSimpanan   float64   `json:"total_simpanan" db:"total_simpanan"`
-	Status          string    `json:"status" db:"status"`
-	StatusAngsuran  string    `json:"status_angsuran" db:"status_angsuran"`
-	BuktiPembayaran string    `json:"bukti_pembayaran" db:"bukti_pembayaran"`
+	IDDetail         int       `json:"id_detail" db:"id_detail"`
+	IDAnggota        string    `json:"id_anggota" form:"id_anggota" db:"id_anggota"`
+	NamaAnggota      string    `json:"nama_anggota" db:"nama_anggota"`
+	IDSimpanan       int       `json:"id_simpanan" db:"id_simpanan"`
+	Simpanan         Simpanan  `json:"simpanan" db:"simpanan"`
+	IDPengelola      int       `json:"id_pengelola" db:"id_pengelola"`
+	TglTransaksi     time.Time `json:"tgl_transaksi" db:"tgl_transaksi"`
+	JumlahSimpanan   float64   `json:"jumlah_simpanan" db:"jumlah_simpanan"`
+	TotalSimpanan    float64   `json:"total_simpanan" db:"total_simpanan"`
+	Status           string    `json:"status" db:"status"`
+	StatusAngsuran   string    `json:"status_angsuran" db:"status_angsuran"`
+	BuktiPembayaran  string    `json:"bukti_pembayaran" db:"bukti_pembayaran"`
+	MetodePembayaran string    `json:"metode_pembayaran" form:"metode_pembayaran" db:"metode_pembayaran"`
 }
 
 // Pinjaman mewakili pinjaman
@@ -60,6 +61,7 @@ type Angsuran struct {
 	StatusAngsuran string        `json:"status_angsuran" db:"status_angsuran"`
 	Status         string        `json:"status" db:"status"`
 	NamaAnggota    string        `json:"nama_anggota" db:"nama_anggota"`
+	MetodeAngsuran string        `form:"metode_angsuran" json:"metode_angsuran" db:"metode_angsuran"`
 }
 
 // Riwayat mewakili riwayat transaksi gabungan
@@ -69,6 +71,7 @@ type Riwayat struct {
 	Jenis       string    `json:"jenis" db:"jenis"`
 	Jumlah      float64   `json:"jumlah" db:"jumlah"`
 	Status      string    `json:"status" db:"status"`
+	Metode      string    `json:"metode" db:"metode"`
 	NamaAnggota string    `json:"nama_anggota" db:"nama_anggota"`
 	IDAnggota   string    `json:"id_anggota" db:"id_anggota"`
 	NoTelepon   string    `json:"no_telepon" db:"no_telepon"`

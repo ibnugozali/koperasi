@@ -909,13 +909,35 @@ func UpdateAnggotaStatus(id string, status string) error {
 func GetNomorRekening(jenis string) (string, error) {
 	db := config.GetDB()
 	var nomor string
+
+	// 1. Coba ambil dari tabel nomor_rekening
 	query := "SELECT nomor FROM nomor_rekening WHERE jenis = $1 LIMIT 1"
 	err := db.QueryRow(query, jenis).Scan(&nomor)
-	if err == sql.ErrNoRows {
-		// Jika tidak ada, return string kosong dan no error
-		return "", nil
+	if err == nil && strings.TrimSpace(nomor) != "" {
+		return nomor, nil
 	}
-	return nomor, err
+
+	// 2. Fallback ke tabel pengaturan dengan nama spesifik per jenis
+	if err == sql.ErrNoRows || strings.TrimSpace(nomor) == "" {
+		err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = $1 LIMIT 1", "nomor_rekening_"+jenis).Scan(&nomor)
+		if err == nil && strings.TrimSpace(nomor) != "" {
+			return nomor, nil
+		}
+	}
+
+	// 3. Fallback ke tabel pengaturan dengan nama umum (nomor_rekening)
+	if err == sql.ErrNoRows || strings.TrimSpace(nomor) == "" {
+		err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nomor_rekening' LIMIT 1").Scan(&nomor)
+		if err == nil && strings.TrimSpace(nomor) != "" {
+			return nomor, nil
+		}
+	}
+
+	// 4. Jika semua tidak ditemukan, return default agar tidak kosong di UI
+	if strings.TrimSpace(nomor) == "" {
+		return "1234567890 (Bank ABC)", nil
+	}
+	return nomor, nil
 }
 
 // UpdateNomorRekening memperbarui atau menambahkan nomor rekening untuk jenis tertentu

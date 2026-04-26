@@ -580,3 +580,22 @@ ALTER TABLE neraca ADD CONSTRAINT fk_neraca_user FOREIGN KEY (user_id) REFERENCE
 -- Add unique constraint (akan otomatis membuat index)
 -- Only add if it doesn't already exist
 ALTER TABLE neraca DROP CONSTRAINT IF EXISTS unique_neraca_user_id CASCADE;
+
+-- =================================================================
+-- TABEL BUKTI TRANSFER GAJI (Untuk menyimpan bukti transfer gaji dari bendahara universitas)
+-- =================================================================
+CREATE TABLE IF NOT EXISTS bukti_transfer_gaji (
+    id SERIAL PRIMARY KEY,
+    bulan INT NOT NULL CHECK (bulan >= 1 AND bulan <= 12),
+    tahun INT NOT NULL,
+    nama_file VARCHAR(255) NOT NULL,
+    path_file VARCHAR(500) NOT NULL,
+    diupload_oleh INT REFERENCES pengelola(id_pengelola),
+    tgl_upload TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    catatan TEXT,
+    UNIQUE(bulan, tahun)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bukti_transfer_gaji_bulan_tahun ON bukti_transfer_gaji(bulan, tahun);
+CREATE INDEX IF NOT EXISTS idx_bukti_transfer_gaji_status ON bukti_transfer_gaji(status);

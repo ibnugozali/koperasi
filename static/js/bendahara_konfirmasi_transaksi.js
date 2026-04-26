@@ -140,3 +140,78 @@ function showSimpananNotif(type, msg) {
         if (notif) notif.remove();
     }, 3500);
 }
+
+// AJAX submit untuk form import potong gaji Excel
+document.addEventListener('DOMContentLoaded', function() {
+    var potongGajiForm = document.getElementById('potongGajiImportForm');
+    var potongGajiBtn = document.getElementById('potongGajiImportBtn');
+    var potongGajiAlert = document.getElementById('potongGajiAlert');
+
+    if (potongGajiForm) {
+        potongGajiForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (potongGajiBtn) {
+                potongGajiBtn.disabled = true;
+                potongGajiBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
+            }
+
+            var formData = new FormData(potongGajiForm);
+            fetch('/bendahara/konfirmasi-transaksi/import-potong-gaji', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (potongGajiAlert) {
+                    if (data.error) {
+                        var errorHtml = '<div class="alert alert-danger"><strong>Gagal:</strong> ' + escapeHtml(data.error) +
+                            '<br><small>Berhasil: ' + (data.success || 0) + ', Gagal: ' + (data.failed || 0) + '</small>';
+                        if (data.parseErrors && data.parseErrors.length > 0) {
+                            errorHtml += '<ul class="mb-0 mt-1">';
+                            data.parseErrors.forEach(function(err) {
+                                errorHtml += '<li><small>' + escapeHtml(err) + '</small></li>';
+                            });
+                            errorHtml += '</ul>';
+                        }
+                        errorHtml += '</div>';
+                        potongGajiAlert.innerHTML = errorHtml;
+                    } else {
+                        var successHtml = '<div class="alert alert-success"><strong>Berhasil!</strong> ' + escapeHtml(data.message) +
+                            '<br><small>Berhasil: ' + (data.success || 0) + ', Gagal: ' + (data.failed || 0) + '</small>';
+                        if (data.parseErrors && data.parseErrors.length > 0) {
+                            successHtml += '<ul class="mb-0 mt-1">';
+                            data.parseErrors.forEach(function(err) {
+                                successHtml += '<li><small>' + escapeHtml(err) + '</small></li>';
+                            });
+                            successHtml += '</ul>';
+                        }
+                        successHtml += '</div>';
+                        potongGajiAlert.innerHTML = successHtml;
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    }
+                }
+            })
+            .catch(function() {
+                if (potongGajiAlert) {
+                    potongGajiAlert.innerHTML = '<div class="alert alert-danger">Terjadi kesalahan jaringan saat upload file.</div>';
+                }
+            })
+            .finally(function() {
+                if (potongGajiBtn) {
+                    potongGajiBtn.disabled = false;
+                    potongGajiBtn.innerHTML = '<i class="fa-solid fa-upload me-1"></i>Import Potong Gaji';
+                }
+            });
+        });
+    }
+});
+
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}

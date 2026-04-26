@@ -27,24 +27,24 @@ document.addEventListener('DOMContentLoaded', function(){
 {{end}}
 
 <!-- Info Limit Pinjaman -->
-<div class="alert alert-info mb-3" role="alert">
+<div id="informasiKemampuanBayar" class="alert alert-info mb-3" role="alert" {{if .ResumeGabungan}}style="display:none;"{{end}}>
     <div class="d-flex justify-content-between align-items-start mb-2">
         <h5 class="mb-0">Informasi Kemampuan Bayar</h5>
-        <!-- <span class="fw-bold" style="font-size: 25px;">Pinjaman</span> -->
     </div>
     <p><strong>Jenis Anggota:</strong> {{ .JenisAnggota }}</p>
     <p><strong>Total Simpanan:</strong> Rp {{ if .TotalSimpanan }}{{ printf "%.0f" .TotalSimpanan }}{{ else }}0{{ end }}</p>
-    <p id="limit_info">
-        {{if eq .JenisAnggota "Mahasiswa"}}
-            <strong>Kemampuan Bayar:</strong> Rp {{ printf "%.0f" .LimitPinjaman }} (5x total simpanan)
-        {{else if eq .JenisAnggota "Dosen/Tenaga Pendidikan"}}
-            <strong>Kemampuan Bayar:</strong> Dihitung berdasarkan gaji bulanan dan tenor
-        {{else}}
-            <strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan
-        {{end}}
-    </p>
+        <p id="limit_info">
+            {{if eq .JenisAnggota "Mahasiswa"}}
+                <strong>Kemampuan Bayar:</strong> Rp {{ printf "%.0f" .LimitPinjaman }} (5x total simpanan)
+            {{else if eq .JenisAnggota "Dosen/Tenaga Pendidikan"}}
+                <strong>Kemampuan Bayar:</strong> Dihitung berdasarkan gaji bulanan dan tenor
+            {{else}}
+                <strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan
+            {{end}}
+        </p>
     <p id="bunga_info" class="mb-0"><strong>Bunga:</strong> {{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}% (flat)</p>
 </div>
+
 
 {{ if .Success }}
 <div class="alert alert-success mt-3">{{ .Success }}</div>
@@ -60,12 +60,14 @@ document.addEventListener('DOMContentLoaded', function(){
         .floating-resume-pinjaman {
             position: fixed;
             left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: 1000px;
-            z-index: 1050;
+            top: 90px;
+            transform: translateX(-50%);
+            width: 75vw;
+            max-width: 720px;
+            padding: 24px;
+            z-index: 990;
             box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.12);
-            border-radius: 20px;
+            border-radius: 16px;
             background: #fff;
             border: 1px solid #e5e5e5;
             animation: fadeInResume 0.5s;
@@ -92,12 +94,12 @@ document.addEventListener('DOMContentLoaded', function(){
 {{if .ResumeGabungan}}
     {{range $i, $resume := .ResumeGabungan}}
         <div id="resumePinjamanCardGabungan{{$i}}" class="card shadow-sm mb-4 border-0 floating-resume-pinjaman">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center" style="font-size: 30px;">
-                <strong>Resume Pinjaman Aktif #{{add $i 1}}</strong>
+                <div class="card-header bg-light d-flex justify-content-between align-items-center" style="font-size: 15px;">
+                <span>Resume Pinjaman Aktif #{{add $i 1}}</span>
                 <span class="badge text-bg-primary">Pinjaman Aktif/Proses</span>
             </div>
             <div class="card-body">
-                <div class="row g-2 mb-2" style="font-size: 24px;">
+                <div class="row g-1 mb-2" style="font-size: 15px;">
                     <div class="col-md-6"><strong>Status:</strong> {{$resume.Status}}</div>
                     <div class="col-md-6"><strong>Tanggal Pinjaman:</strong> {{$resume.TglPinjaman.Format "02 Jan 2006"}}</div>
                     <div class="col-md-6"><strong>Tenor Total:</strong> {{$resume.JangkaWaktu}} bulan</div>
@@ -107,10 +109,9 @@ document.addEventListener('DOMContentLoaded', function(){
                     <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{$resume.TotalTerbayar | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{$resume.SisaPokok | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{$resume.AngsuranTerbayar}} kali</div>
-                    <div class="col-md-6"><strong>Bunga Pinjaman Total:</strong> Rp {{$resume.Bunga | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Perkiraan Angsuran per Bulan:</strong> Rp {{div (add $resume.JumlahPinjaman $resume.Bunga) $resume.JangkaWaktu | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Metode Pencairan:</strong> {{$resume.MetodePencairan}}</div>
                     <div class="col-md-6"><strong>Metode Angsuran:</strong> {{$resume.MetodeAngsuran}}</div>
-                </div>
                 <div class="mt-3">
                     <div class="d-flex justify-content-between mb-1">
                         <small class="text-muted">Progress Pelunasan</small>
@@ -122,7 +123,6 @@ document.addEventListener('DOMContentLoaded', function(){
                         <div class="progress-bar {{if $resume.BisaAjukanLagi}}bg-success{{else}}bg-warning{{end}}"
                                  data-progress="{{printf "%.2f" $resume.PersentaseTerbayar}}">
                         </div>
-                    </div>
                 </div>
                 <div class="alert {{if $resume.BisaAjukanLagi}}alert-success{{else}}alert-warning{{end}} mt-3 mb-0">
                     {{if $resume.BisaAjukanLagi}}
@@ -139,35 +139,39 @@ document.addEventListener('DOMContentLoaded', function(){
                     {{end}}
                     <a href="/anggota/riwayat" class="btn btn-outline-secondary">Lihat Riwayat</a>
                 </div>
-            </div>
         </div>
     {{end}}
 {{end}}
 
 <form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" class="{{if .ResumeGabungan}}blurred-section{{end}}">
-    </style>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         var btnPinjamLagi = document.querySelector('.btn-success[href="#ajukanPinjamanForm"]');
-        var resumeCard = document.getElementById('resumePinjamanCardGabungan');
         var form = document.getElementById('ajukanPinjamanForm');
-        if (btnPinjamLagi && resumeCard && form) {
+        var infoKemampuanBayar = document.getElementById('informasiKemampuanBayar');
+        if (btnPinjamLagi && form) {
             btnPinjamLagi.addEventListener('click', function(e) {
                 e.preventDefault();
+                var resumeCard = btnPinjamLagi.closest('.floating-resume-pinjaman');
                 // Hilangkan blur pada form
                 form.classList.remove('blurred-section');
                 // Ubah class agar tidak floating
-                resumeCard.classList.remove('floating-resume-pinjaman');
-                resumeCard.classList.add('resume-pinjaman-static');
-                // Pindahkan Resume Pinjaman ke atas form
-                form.parentNode.insertBefore(resumeCard, form);
+                if (resumeCard) {
+                    resumeCard.classList.remove('floating-resume-pinjaman');
+                    resumeCard.classList.add('resume-pinjaman-static');
+                    // Pindahkan Resume Pinjaman ke atas form
+                    form.parentNode.insertBefore(resumeCard, form);
+                }
+                // Tampilkan Informasi Kemampuan Bayar
+                if (infoKemampuanBayar) {
+                    infoKemampuanBayar.style.display = 'block';
+                }
                 // Scroll ke form
                 form.scrollIntoView({behavior: 'smooth'});
             });
         }
     });
     </script>
-    </style>
     <style>
     .blurred-section {
         filter: blur(4px);
@@ -190,7 +194,6 @@ document.addEventListener('DOMContentLoaded', function(){
                         Gaji bulanan otomatis diambil dari data yang terdaftar
                     </small>
                 </div>
-            </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="jangka_waktu" class="form-label">Jangka Waktu Pinjaman (Tenor, bulan)</label>
@@ -201,9 +204,7 @@ document.addEventListener('DOMContentLoaded', function(){
                         <option value="30">30 bulan</option>
                     </select>
                     <div id="tenor_info" class="form-text mt-2 text-muted">Pilih tenor pinjaman.</div>
-                </div>
             </div>
-        </div>
 
         <div class="row">
             <div class="col-md-6">
@@ -220,14 +221,12 @@ document.addEventListener('DOMContentLoaded', function(){
                         <strong>Total Pinjaman (Pokok + Bunga):</strong>
                         <span id="total_pinjaman_rp" class="text-primary">Rp 0</span>
                     </div>
-                </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="jumlah_pinjaman_terbilang" class="form-label">Jumlah Pinjaman Terbilang</label>
                     <input type="text" class="form-control" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" required>
                 </div>
-            </div>
         </div>
 
         <div class="mb-3">
@@ -250,7 +249,6 @@ document.addEventListener('DOMContentLoaded', function(){
                         Pilih cara Anda ingin menerima dana pinjaman
                     </small>
                 </div>
-            </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label class="form-label">Metode Angsuran <span class="text-danger">*</span></label>
@@ -265,7 +263,6 @@ document.addEventListener('DOMContentLoaded', function(){
                         Pilih cara pembayaran angsuran setiap bulan
                     </small>
                 </div>
-            </div>
         </div>
 
         <!-- Detail Rekening (muncul jika Metode Pencairan = Transfer Bank) -->
@@ -326,7 +323,6 @@ document.addEventListener('DOMContentLoaded', function(){
                 <label for="tujuan_lain" class="form-label">Lain-lain</label>
                 <input type="text" class="form-control" id="tujuan_lain" name="tujuan_lain">
             </div>
-        </div>
     </fieldset>
 
     <!-- Bagian 2: Pernyataan dan Kuasa -->

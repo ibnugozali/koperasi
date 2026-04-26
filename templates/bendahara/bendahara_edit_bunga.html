@@ -35,7 +35,7 @@
                         {{ .Error }}
                     </div>
                     {{ end }}
-                    <form method="POST" action="/bendahara/edit-bunga">
+            <form id="formBunga" method="POST" action="/bendahara/edit-bunga">
                         <div class="mb-3">
                             <label for="bunga" class="form-label">Nilai Bunga (%)</label>
                             <input type="number" step="0.01" min="0" max="100" id="bunga" name="bunga" class="form-control"
@@ -49,7 +49,80 @@
             </div>
         </div>
     </div>
+ {{ template "bendahara_footer" . }}
+ 
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
 
     <script src="/static/js/bendahara_navbar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // Toast notification helper
+    function showToast(message, isSuccess) {
+        const container = document.getElementById('toastContainer');
+        const toastId = 'toast-' + Date.now();
+        const bgClass = isSuccess ? 'bg-success' : 'bg-danger';
+        const icon = isSuccess ? '<i class="fa-solid fa-check-circle me-2"></i>' : '<i class="fa-solid fa-exclamation-circle me-2"></i>';
+
+        const toastHTML = `
+            <div id="${toastId}" class="toast align-items-center ${bgClass} text-white border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${icon}${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', toastHTML);
+
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+        toast.show();
+
+        toastElement.addEventListener('hidden.bs.toast', function () {
+            toastElement.remove();
+        });
+    }
+
+    // Handle form submission via AJAX
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('formBunga');
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...';
+
+            fetch('/bendahara/edit-bunga', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, true);
+                } else {
+                    showToast(data.message || 'Terjadi kesalahan', false);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Terjadi kesalahan saat menyimpan data', false);
+            })
+            .finally(() => {
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            });
+        });
+    });
+    </script>
 </body>
 </html>

@@ -261,12 +261,25 @@
                 </div>
               </div>
               <div class="row mb-3 align-items-center">
+                <label for="metode_pembayaran" class="col-sm-4 col-form-label">Metode Pembayaran <span class="text-danger">*</span></label>
+                <div class="col-sm-8">
+                  <select class="form-select" id="metode_pembayaran" name="metode_pembayaran" required>
+                    <option value="transfer_bank" selected>Transfer Bank</option>
+                    <option value="potong_gaji">Potong Gaji</option>
+                    <option value="tunai">Tunai</option>
+                  </select>
+                  <div class="form-text">
+                    <i class="bi bi-info-circle me-1"></i>Pilih metode pembayaran yang akan digunakan.
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-3 align-items-center" id="rekeningInfo">
                 <label for="bukti" class="col-sm-4 col-form-label">Bukti Pembayaran</label>
                 <div class="col-sm-8">
-                  <input type="file" class="form-control" id="bukti" name="bukti" accept="image/*" required>
+                  <input type="file" class="form-control" id="bukti" name="bukti" accept="image/*">
                   <div class="form-text">
                     Upload bukti transfer/pembayaran (format gambar) | 
-                    <strong>Nomor rekening koperasi: {{ .NomorRekening }}</strong>
+                    <strong id="rekeningText">Nomor rekening koperasi: {{ if .NomorRekening }}{{ .NomorRekening }}{{ else }}Belum dikonfigurasi{{ end }}</strong>
                   </div>
                 </div>
               </div>
@@ -347,6 +360,28 @@ document.addEventListener('DOMContentLoaded', function() {
         wajibInput.style.backgroundColor = '#e9ecef';
         wajibInput.style.cursor = 'not-allowed';
     }
+
+    // Toggle tampilan rekening & required bukti berdasarkan metode pembayaran
+    const metodeSelect = document.getElementById('metode_pembayaran');
+    const rekeningInfo = document.getElementById('rekeningInfo');
+    const buktiInput = document.getElementById('bukti');
+    const rekeningText = document.getElementById('rekeningText');
+
+    function updateMetodePembayaran() {
+        const metode = metodeSelect.value;
+        if (metode === 'transfer_bank') {
+            rekeningInfo.style.display = '';
+            buktiInput.setAttribute('required', 'required');
+            if (rekeningText) rekeningText.style.display = '';
+        } else {
+            rekeningInfo.style.display = 'none';
+            buktiInput.removeAttribute('required');
+            buktiInput.value = '';
+        }
+    }
+
+    metodeSelect.addEventListener('change', updateMetodePembayaran);
+    updateMetodePembayaran(); // inisialisasi awal
 
     // Handle form submission dengan AJAX
     form.addEventListener('submit', function(e) {

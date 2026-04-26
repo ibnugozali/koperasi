@@ -25,6 +25,9 @@
             <br><br>
             <h2 class="mb-4">Edit Rekening & Simpanan</h2>
 
+            <!-- Toast Notification Container -->
+            <div id="toastContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+
             <!-- Card: Nomor Rekening Koperasi -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-primary text-white">
@@ -36,7 +39,7 @@
                         {{ .ErrorRekening }}
                     </div>
                     {{ end }}
-                    <form method="POST" action="/bendahara/edit-rekening-register">
+                    <form id="formRekening" method="POST" action="/bendahara/edit-rekening-register">
                         <div class="mb-3">
                             <label for="nomorRekening" class="form-label">Nomor Rekening Koperasi</label>
                             <input type="text" class="form-control" id="nomorRekening" name="nomor_rekening" placeholder="Contoh: 1234567890 (Bank ABC)" value="{{ .NomorRekening }}" required>
@@ -46,7 +49,6 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="fa-solid fa-save"></i> Simpan Nomor Rekening
                         </button>
-                        <a href="/bendahara/dashboard" class="btn btn-secondary ms-2">Batal</a>
                     </form>
                 </div>
             </div>
@@ -62,7 +64,7 @@
                         {{ .ErrorSimpanan }}
                     </div>
                     {{ end }}
-                    <form method="POST" action="/bendahara/edit-rekening-register">
+                    <form id="formSimpanan" method="POST" action="/bendahara/edit-rekening-register">
                         <div class="mb-3">
                             <label for="nominalSimpanan" class="form-label">Nominal Simpanan Pokok Wajib</label>
                             <div class="input-group">
@@ -75,13 +77,88 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="fa-solid fa-save"></i> Simpan Nominal Simpanan
                         </button>
-                        <a href="/bendahara/dashboard" class="btn btn-secondary ms-2">Batal</a>
                     </form>
                 </div>
             </div>
         </div>
     </div>
-
+ {{ template "bendahara_footer" . }}
+ 
     <script src="/static/js/bendahara_navbar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // Toast notification helper
+    function showToast(message, isSuccess) {
+        const container = document.getElementById('toastContainer');
+        const toastId = 'toast-' + Date.now();
+        const bgClass = isSuccess ? 'bg-success' : 'bg-danger';
+        const icon = isSuccess ? '<i class="fa-solid fa-check-circle me-2"></i>' : '<i class="fa-solid fa-exclamation-circle me-2"></i>';
+
+        const toastHTML = `
+            <div id="${toastId}" class="toast align-items-center ${bgClass} text-white border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${icon}${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', toastHTML);
+
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+        toast.show();
+
+        toastElement.addEventListener('hidden.bs.toast', function () {
+            toastElement.remove();
+        });
+    }
+
+    // Handle form submission via AJAX
+    function handleFormSubmit(formId) {
+        const form = document.getElementById(formId);
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...';
+
+            fetch('/bendahara/edit-rekening-register', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, true);
+                } else {
+                    showToast(data.message || 'Terjadi kesalahan', false);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Terjadi kesalahan saat menyimpan data', false);
+            })
+            .finally(() => {
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            });
+        });
+    }
+
+    // Attach handlers to both forms
+    document.addEventListener('DOMContentLoaded', function() {
+        handleFormSubmit('formRekening');
+        handleFormSubmit('formSimpanan');
+    });
+    </script>
 </body>
 
