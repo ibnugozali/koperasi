@@ -1711,20 +1711,20 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 
 	// Tambahkan nomor urut (No) mulai dari 1 untuk setiap daftar
 	type numberedDetail struct {
-		No int
-		models.Detail
+		No     int
+		Detail models.Detail
 	}
 	type numberedPinjaman struct {
-		No int
-		models.Pinjaman
+		No       int
+		Pinjaman models.Pinjaman
 	}
 	type numberedAngsuran struct {
-		No int
-		models.Angsuran
+		No       int
+		Angsuran models.Angsuran
 	}
 	type numberedPengambilan struct {
-		No int
-		models.PengambilanSimpanan
+		No                  int
+		PengambilanSimpanan models.PengambilanSimpanan
 	}
 
 	var numberedSimpanan []numberedDetail

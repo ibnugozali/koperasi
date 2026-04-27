@@ -162,7 +162,7 @@
                     <div class="content-card">
                         <div class="section-title">
                             <i class="fa-solid fa-piggy-bank"></i>
-                            Simpanan Pending (Transfer Bank)
+                            Simpanan Pending
                             <span class="badge bg-info ms-2 badge-custom">{{len .PendingSimpanan}}</span>
                         </div>
                         
@@ -197,7 +197,7 @@
                                             {{else if eq .Detail.MetodePembayaran "tunai"}}
                                                 <span class="badge bg-secondary badge-custom">Tunai</span>
                                             {{else}}
-                                                <span class="badge bg-light text-dark badge-custom">{{.Detail.MetodePembayaran}}</span>
+                                                <span class="badge bg-light text-dark badge-custom">Lainnya</span>
                                             {{end}}
                                         </td>
                                         <td class="text-center"><span class="small text-muted">{{.Detail.TglTransaksi.Format "2006-01-02"}}</span></td>
@@ -206,6 +206,7 @@
                                                 <a class="btn btn-outline-info btn-sm" href="/bendahara/view-detail-simpanan/{{.Detail.IDDetail}}" title="Lihat detail transaksi simpanan">
                                                     <i class="fa-solid fa-file-invoice"></i>
                                                 </a>
+                                                {{if eq .Detail.MetodePembayaran "transfer_bank"}}
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/simpanan/{{.Detail.IDDetail}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
                                                     <input type="hidden" name="id_anggota" value="{{.Detail.IDAnggota}}">
@@ -216,6 +217,7 @@
                                                     <input type="hidden" name="id_anggota" value="{{.Detail.IDAnggota}}">
                                                     <button type="submit" class="btn btn-danger btn-sm" title="Tolak"><i class="fa-solid fa-times"></i></button>
                                                 </form>
+                                                {{end}}
                                             </div>
                                         </td>
                                     </tr>
@@ -238,7 +240,7 @@
                     <div class="content-card">
                         <div class="section-title">
                             <i class="fa-solid fa-coins"></i>
-                            Cicilan Pending (Transfer Bank)
+                            Cicilan Pending
                             <span class="badge bg-info ms-2 badge-custom">{{len .PendingAngsuran}}</span>
                         </div>
                         
@@ -271,7 +273,7 @@
                                             {{else if eq .Angsuran.MetodeAngsuran "tunai"}}
                                                 <span class="badge bg-secondary badge-custom">Tunai</span>
                                             {{else}}
-                                                <span class="badge bg-light text-dark badge-custom">{{.Angsuran.MetodeAngsuran}}</span>
+                                                <span class="badge bg-light text-dark badge-custom">Lainnya</span>
                                             {{end}}
                                         </td>
                                         <td class="text-center"><span class="small text-muted">{{.Angsuran.TglBayar.Format "2006-01-02"}}</span></td>
@@ -280,6 +282,7 @@
                                                 <a class="btn btn-outline-primary btn-sm" href="/bendahara/detail-angsuran/{{.Angsuran.IDAngsuran}}" title="Lihat detail cicilan">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
+                                                {{if eq .Angsuran.MetodeAngsuran "transfer_bank"}}
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/angsuran/{{.Angsuran.IDAngsuran}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
                                                     <input type="hidden" name="id_anggota" value="{{.Angsuran.IDAnggota}}">
@@ -290,6 +293,7 @@
                                                     <input type="hidden" name="id_anggota" value="{{.Angsuran.IDAnggota}}">
                                                     <button type="submit" class="btn btn-danger btn-sm" title="Tolak"><i class="fa-solid fa-times"></i></button>
                                                 </form>
+                                                {{end}}
                                             </div>
                                         </td>
                                     </tr>

@@ -2439,6 +2439,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		BuktiAngsuran:  filename,       // Simpan nama file sebagai string
 		Status:         "",             // Status akan diset ke pending oleh repository
 		NamaAnggota:    anggota.NamaAnggota,
+		MetodeAngsuran: metodePembayaran, // Pastikan metode angsuran terisi
 	}
 
 	// Simpan ke database
