@@ -674,7 +674,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Angsuran
 	queryAngsuran := `
-		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, a.jumlah_angsuran, a.status, COALESCE(a.metode_angsuran, '-') as metode, ang.nama_anggota, ang.id_anggota, ang.no_telepon, ang.unit_kerja, ang.gaji_bulanan
+		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, a.jumlah_angsuran, a.status, COALESCE(p.metode_angsuran, '-') as metode, ang.nama_anggota, ang.id_anggota, ang.no_telepon, ang.unit_kerja, ang.gaji_bulanan
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota

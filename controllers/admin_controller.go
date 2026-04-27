@@ -1501,8 +1501,10 @@ func AdminPengaturan(c *gin.Context) {
 		"LogoPath":    logoPath,
 		"WAToken":     getSetting("wa_gateway_token"),
 		"WAURL":       getSetting("wa_gateway_url"),
+		"WAURLKetua":  getSetting("wa_url_ketua"),
 		"AppBaseURL":  getSetting("app_base_url"),
 		"WABendahara": getSetting("wa_bendahara_phone"),
+		"WAKetua":     getSetting("wa_ketua_phone"),
 		"WASuccess":   c.Query("wa_success"),
 		"WAError":     c.Query("wa_error"),
 		"CurrentLogo": logoPath,
@@ -1513,8 +1515,10 @@ func AdminPengaturan(c *gin.Context) {
 func AdminSaveWAGatewayConfig(c *gin.Context) {
 	token := strings.TrimSpace(c.PostForm("wa_gateway_token"))
 	url := strings.TrimSpace(c.PostForm("wa_gateway_url"))
+	urlKetua := strings.TrimSpace(c.PostForm("wa_url_ketua"))
 	appBaseURL := strings.TrimSpace(c.PostForm("app_base_url"))
 	bendaharaPhone := strings.TrimSpace(c.PostForm("wa_bendahara_phone"))
+	ketuaPhone := strings.TrimSpace(c.PostForm("wa_ketua_phone"))
 
 	if token == "" {
 		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Token WA wajib diisi")
@@ -1543,6 +1547,12 @@ func AdminSaveWAGatewayConfig(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan URL gateway WA")
 		return
 	}
+	if urlKetua != "" {
+		if err := upsert("wa_url_ketua", urlKetua); err != nil {
+			c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan URL gateway WA Ketua")
+			return
+		}
+	}
 	if appBaseURL != "" {
 		if err := upsert("app_base_url", appBaseURL); err != nil {
 			c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan App Base URL")
@@ -1552,6 +1562,12 @@ func AdminSaveWAGatewayConfig(c *gin.Context) {
 	if bendaharaPhone != "" {
 		if err := upsert("wa_bendahara_phone", bendaharaPhone); err != nil {
 			c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan nomor WA Bendahara")
+			return
+		}
+	}
+	if ketuaPhone != "" {
+		if err := upsert("wa_ketua_phone", ketuaPhone); err != nil {
+			c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan nomor WA Ketua")
 			return
 		}
 	}

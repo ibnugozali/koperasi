@@ -55,6 +55,14 @@ func SaveBuktiTransferGaji(bukti *models.BuktiTransferGaji) error {
 		bukti.DiuploadOleh, bukti.Status, bukti.Catatan).Scan(&bukti.ID, &bukti.TglUpload)
 }
 
+// UpdateBuktiTransferGajiStatus memperbarui status bukti transfer gaji berdasarkan ID
+func UpdateBuktiTransferGajiStatus(id int, status string) error {
+	db := config.GetDB()
+	query := `UPDATE bukti_transfer_gaji SET status = $1 WHERE id = $2`
+	_, err := db.Exec(query, status, id)
+	return err
+}
+
 // GetAllBuktiTransferGaji mengambil semua bukti transfer gaji
 func GetAllBuktiTransferGaji() ([]models.BuktiTransferGaji, error) {
 	db := config.GetDB()

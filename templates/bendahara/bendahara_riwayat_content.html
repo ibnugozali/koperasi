@@ -58,64 +58,75 @@
                     {{ else if .Riwayats }}
                     {{ range .Riwayats }}
                     <tr>
-                        <td>{{ if .Tanggal }}{{ .Tanggal.Format "2006-01-02 15:04" }}{{ else }}-{{ end }}</td>
-                        <td>{{ if .IDAnggota }}{{ .IDAnggota }}{{ else }}-{{ end }}</td>
-                        <td>{{ if .NamaAnggota }}{{ .NamaAnggota }}{{ else }}-{{ end }}</td>
-                        <td>{{ if .NoTelepon }}{{ .NoTelepon }}{{ else }}-{{ end }}</td>
-                        <td>{{ if .Jenis }}{{ .Jenis }}{{ else }}-{{ end }}</td>
-                        <td class="{{ if eq .Jenis "Pendaftaran" }}text-secondary{{ else if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}text-success{{ else }}text-danger{{ end }}">
-                            {{ if eq .Jenis "Pendaftaran" }}
-                                {{ if gt .Jumlah 0.0 }}Rp {{ printf "%.0f" .Jumlah }}{{ else }}-{{ end }}
-                            {{ else }}
-                                {{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}+{{ else }}-{{ end }}Rp {{ if .Jumlah }}{{ printf "%.0f" .Jumlah }}{{ else }}0{{ end }}
-                            {{ end }}
-                        </td>
-                        <td>
-                            <span class="badge bg-success">Selesai</span>
-                        </td>
-                        <td>
-                            {{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") (eq .Jenis "umroh_haji") (eq .Jenis "qurban") }}
-                                {{ if .ID }}
-                                <a href="/bendahara/view-detail-simpanan/{{ .ID }}" class="btn btn-sm btn-info" title="Lihat Detail Simpanan">
-                                    <i class="fas fa-eye"></i> Lihat
-                                </a>
-                                {{ else }}
-                                <span class="text-muted">-</span>
+                            <td>{{ if .Tanggal }}{{ .Tanggal.Format "2006-01-02 15:04" }}{{ else }}-{{ end }}</td>
+                            <td>{{ if .IDAnggota }}{{ .IDAnggota }}{{ else }}-{{ end }}</td>
+                            <td>{{ if .NamaAnggota }}{{ .NamaAnggota }}{{ else }}-{{ end }}</td>
+                            <td>{{ if .NoTelepon }}{{ .NoTelepon }}{{ else }}-{{ end }}</td>
+                            <td>{{ if .Jenis }}{{ .Jenis }}{{ else }}-{{ end }}</td>
+                            <td class="{{ if .Jenis }}{{ if eq .Jenis "Pendaftaran" }}text-secondary{{ else if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}text-success{{ else }}text-danger{{ end }}{{ else }}text-danger{{ end }}">
+                                {{ if .Jenis }}
+                                    {{ if eq .Jenis "Pendaftaran" }}
+                                        {{ if gt .Jumlah 0.0 }}Rp {{ printf "%.0f" .Jumlah }}{{ else }}-{{ end }}
+                                    {{ else }}
+                                        {{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") }}+{{ else }}-{{ end }}Rp {{ if .Jumlah }}{{ printf "%.0f" .Jumlah }}{{ else }}0{{ end }}
+                                    {{ end }}
+                                {{ else }}-
                                 {{ end }}
-                            {{ else if eq .Jenis "Pinjaman" }}
-                                {{ if .ID }}
-                                <a href="/bendahara/lihat-persyaratan-pinjaman/{{ .ID }}" class="btn btn-sm btn-info" title="Lihat Detail Pinjaman">
-                                    <i class="fas fa-eye"></i> Lihat
-                                </a>
+                            </td>
+                            <td>
+                                {{ if .Status }}
+                                    <span class="badge bg-success">{{ .Status }}</span>
                                 {{ else }}
-                                <span class="text-muted">-</span>
+                                    <span class="badge bg-success">Selesai</span>
                                 {{ end }}
-                            {{ else if eq .Jenis "Angsuran" }}
-                                {{ if .ID }}
-                                <a href="/bendahara/detail-angsuran/{{ .ID }}" class="btn btn-sm btn-info" title="Lihat Detail Angsuran">
-                                    <i class="fas fa-eye"></i> Lihat
-                                </a>
+                            </td>
+                            <td>
+                                {{ if .Jenis }}
+                                    {{ if or (eq .Jenis "pokok") (eq .Jenis "wajib") (eq .Jenis "sukarela") (eq .Jenis "hari_raya") (eq .Jenis "umroh_haji") (eq .Jenis "qurban") }}
+                                        {{ if .ID }}
+                                        <a href="/bendahara/view-detail-simpanan/{{ .ID }}" class="btn btn-sm btn-info" title="Lihat Detail Simpanan">
+                                            <i class="fas fa-eye"></i> Lihat
+                                        </a>
+                                        {{ else }}
+                                        <span class="text-muted">-</span>
+                                        {{ end }}
+                                    {{ else if eq .Jenis "Pinjaman" }}
+                                        {{ if .ID }}
+                                        <a href="/bendahara/lihat-persyaratan-pinjaman/{{ .ID }}" class="btn btn-sm btn-info" title="Lihat Detail Pinjaman">
+                                            <i class="fas fa-eye"></i> Lihat
+                                        </a>
+                                        {{ else }}
+                                        <span class="text-muted">-</span>
+                                        {{ end }}
+                                    {{ else if eq .Jenis "Angsuran" }}
+                                        {{ if .ID }}
+                                        <a href="/bendahara/detail-angsuran/{{ .ID }}" class="btn btn-sm btn-info" title="Lihat Detail Angsuran">
+                                            <i class="fas fa-eye"></i> Lihat
+                                        </a>
+                                        {{ else }}
+                                        <span class="text-muted">-</span>
+                                        {{ end }}
+                                    {{ else if eq .Jenis "Pengambilan" }}
+                                        {{ if .ID }}
+                                        <a href="/bendahara/detail-ajukan-pengambilan/{{ .ID }}" class="btn btn-sm btn-info" title="Lihat Detail Penarikan">
+                                            <i class="fas fa-eye"></i> Lihat
+                                        </a>
+                                        {{ else }}
+                                        <span class="text-muted">-</span>
+                                        {{ end }}
+                                    {{ else }}
+                                        {{ if .IDAnggota }}
+                                        <a href="/bendahara/anggota/{{ .IDAnggota }}" class="btn btn-sm btn-info" title="Lihat Detail Anggota">
+                                            <i class="fas fa-eye"></i> Lihat
+                                        </a>
+                                        {{ else }}
+                                        <span class="text-muted">-</span>
+                                        {{ end }}
+                                    {{ end }}
                                 {{ else }}
-                                <span class="text-muted">-</span>
+                                    <span class="text-muted">-</span>
                                 {{ end }}
-                            {{ else if eq .Jenis "Pengambilan" }}
-                                {{ if .ID }}
-                                <a href="/bendahara/detail-ajukan-pengambilan/{{ .ID }}" class="btn btn-sm btn-info" title="Lihat Detail Penarikan">
-                                    <i class="fas fa-eye"></i> Lihat
-                                </a>
-                                {{ else }}
-                                <span class="text-muted">-</span>
-                                {{ end }}
-                            {{ else }}
-                                {{ if .IDAnggota }}
-                                <a href="/bendahara/anggota/{{ .IDAnggota }}" class="btn btn-sm btn-info" title="Lihat Detail Anggota">
-                                    <i class="fas fa-eye"></i> Lihat
-                                </a>
-                                {{ else }}
-                                <span class="text-muted">-</span>
-                                {{ end }}
-                            {{ end }}
-                        </td>
+                            </td>
                     </tr>
                     {{ end }}
                     {{ else }}

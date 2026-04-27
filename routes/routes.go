@@ -420,6 +420,8 @@ func SetupRouter() *gin.Engine {
 		ketuaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.KetuaKonfirmasiTransaksiPost)
 		ketuaRoutes.GET("/upload-bukti-transfer-gaji", controllers.KetuaUploadBuktiTransferGaji)
 		ketuaRoutes.POST("/upload-bukti-transfer-gaji", controllers.KetuaUploadBuktiTransferGajiPost)
+		ketuaRoutes.POST("/upload-bukti-transfer-gaji/approve/:id", controllers.KetuaApproveBuktiTransferGaji)
+		ketuaRoutes.POST("/upload-bukti-transfer-gaji/reject/:id", controllers.KetuaRejectBuktiTransferGaji)
 		ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
 	}
 	return router

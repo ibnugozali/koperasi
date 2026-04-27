@@ -31,23 +31,39 @@
                                 <div class="alert alert-danger">{{.WAError}}</div>
                             {{end}}
                             <form method="POST" action="/admin/pengaturan/wa-notif">
-                                <div class="mb-3">
-                                    <label class="form-label">Token Gateway WhatsApp</label>
-                                    <input type="text" class="form-control" name="wa_gateway_token" value="{{.WAToken}}" placeholder="Masukkan token gateway WA" required>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Token Gateway WhatsApp</label>
+                                        <input type="text" class="form-control" name="wa_gateway_token" value="{{.WAToken}}" placeholder="Masukkan token gateway WA" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">URL Gateway WhatsApp</label>
+                                        <input type="text" class="form-control" name="wa_gateway_url" value="{{if .WAURL}}{{.WAURL}}{{else}}https://api.fonnte.com/send{{end}}" required>
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">URL Gateway WhatsApp</label>
-                                    <input type="text" class="form-control" name="wa_gateway_url" value="{{if .WAURL}}{{.WAURL}}{{else}}https://api.fonnte.com/send{{end}}" required>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">URL Gateway WA Ketua (Opsional)</label>
+                                        <input type="text" class="form-control" name="wa_url_ketua" value="{{.WAURLKetua}}" placeholder="Contoh: https://api.fonnte.com/send">
+                                        <small class="text-muted">Kosongkan jika sama dengan URL gateway utama.</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">App Base URL (untuk link klik di WhatsApp)</label>
+                                        <input type="text" class="form-control" name="app_base_url" value="{{.AppBaseURL}}" placeholder="Contoh: https://koperasi-kampus.com">
+                                        <small class="text-muted">Isi domain publik aplikasi. Jika kosong, sistem pakai host request saat ini.</small>
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">App Base URL (untuk link klik di WhatsApp)</label>
-                                    <input type="text" class="form-control" name="app_base_url" value="{{.AppBaseURL}}" placeholder="Contoh: https://koperasi-kampus.com">
-                                    <small class="text-muted">Isi domain publik aplikasi. Jika kosong, sistem pakai host request saat ini.</small>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Nomor WA Bendahara (untuk notifikasi simpanan/angsuran)</label>
-                                    <input type="text" class="form-control" name="wa_bendahara_phone" value="{{.WABendahara}}" placeholder="Contoh: 081234567890 atau 6281234567890">
-                                    <small class="text-muted">Jika diisi, nomor ini diprioritaskan untuk menerima notifikasi transaksi anggota.</small>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Nomor WA Bendahara (untuk notifikasi simpanan/angsuran)</label>
+                                        <input type="text" class="form-control" name="wa_bendahara_phone" value="{{.WABendahara}}" placeholder="Contoh: 081234567890 atau 6281234567890">
+                                        <small class="text-muted">Jika diisi, nomor ini diprioritaskan untuk menerima notifikasi transaksi anggota.</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Nomor WA Ketua (untuk notifikasi ke ketua)</label>
+                                        <input type="text" class="form-control" name="wa_ketua_phone" value="{{.WAKetua}}" placeholder="Contoh: 081234567890 atau 6281234567890">
+                                        <small class="text-muted">Nomor WA Ketua untuk menerima notifikasi penting.</small>
+                                    </div>
                                 </div>
                                 <button type="submit" class="btn btn-primary">Simpan Konfigurasi WA</button>
                             </form>

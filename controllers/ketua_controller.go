@@ -4014,7 +4014,7 @@ func KetuaUploadBuktiTransferGajiPost(c *gin.Context) {
 		NamaFile:     file.Filename,
 		PathFile:     "/" + filepath.ToSlash(uploadPath),
 		DiuploadOleh: userIDInt,
-		Status:       "pending",
+		Status:       "approved",
 		Catatan:      catatan,
 	}
 
@@ -4026,4 +4026,38 @@ func KetuaUploadBuktiTransferGajiPost(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?success=Bukti transfer gaji berhasil diupload")
+}
+
+// KetuaApproveBuktiTransferGaji menyetujui bukti transfer gaji
+func KetuaApproveBuktiTransferGaji(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=ID tidak valid")
+		return
+	}
+
+	if err := repository.UpdateBuktiTransferGajiStatus(id, "approved"); err != nil {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Gagal menyetujui bukti transfer gaji")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?success=Bukti transfer gaji disetujui")
+}
+
+// KetuaRejectBuktiTransferGaji menolak bukti transfer gaji
+func KetuaRejectBuktiTransferGaji(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=ID tidak valid")
+		return
+	}
+
+	if err := repository.UpdateBuktiTransferGajiStatus(id, "rejected"); err != nil {
+		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Gagal menolak bukti transfer gaji")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?success=Bukti transfer gaji ditolak")
 }

@@ -121,7 +121,7 @@ func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 		WHERE p.id_anggota = $1
 		UNION ALL
 		SELECT ag.id_angsuran AS id, ag.tgl_bayar AS tanggal, 'Angsuran' AS jenis, ag.jumlah_angsuran AS jumlah, ag.status AS status,
-		       COALESCE(ag.metode_angsuran, '-') AS metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
+		       COALESCE(p.metode_angsuran, '-') AS metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
 		FROM angsuran ag
 		JOIN pinjaman p ON ag.id_pinjaman = p.id_pinjaman
 		JOIN anggota a ON p.id_anggota = a.id_anggota

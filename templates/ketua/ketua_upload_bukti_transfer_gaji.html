@@ -164,6 +164,7 @@
                                         <th>Tanggal Upload</th>
                                         <th>Status</th>
                                         <th>Catatan</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -187,6 +188,22 @@
                                             {{end}}
                                         </td>
                                         <td>{{.Catatan}}</td>
+                                        <td class="text-center" style="white-space:nowrap;">
+                                            {{if eq .Status "pending"}}
+                                            <form method="POST" action="/ketua/upload-bukti-transfer-gaji/approve/{{.ID}}" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-success me-1" title="Approve">
+                                                    <i class="fa-solid fa-check"></i>
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="/ketua/upload-bukti-transfer-gaji/reject/{{.ID}}" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-danger" title="Reject">
+                                                    <i class="fa-solid fa-times"></i>
+                                                </button>
+                                            </form>
+                                            {{else}}
+                                                <span class="text-muted">-</span>
+                                            {{end}}
+                                        </td>
                                     </tr>
                                     {{end}}
                                 </tbody>
