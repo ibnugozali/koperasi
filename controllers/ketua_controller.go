@@ -33,6 +33,12 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
+type buktiTransferGajiView struct {
+	models.BuktiTransferGaji
+	CountdownText string
+	IsExpired     bool
+}
+
 func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 	transactionType := c.Param("type")
 	idStr := c.Param("id")
@@ -577,7 +583,8 @@ func KetuaDetailAngsuran(c *gin.Context) {
 		&angsuran.StatusAngsuran, &angsuran.Status, &angsuran.NamaAnggota,
 	)
 	if err != nil {
-		c.HTML(http.StatusOK, "error.html", gin.H{"message": "Data angsuran tidak ditemukan: " + err.Error()})
+		log.Printf("[ERROR] KetuaDetailAngsuran data tidak ditemukan (id=%d): %v", id, err)
+		c.HTML(http.StatusOK, "error.html", gin.H{"message": "Data angsuran tidak ditemukan"})
 		return
 	}
 	if tglBayar.Valid {
@@ -595,27 +602,35 @@ func KetuaDetailAngsuran(c *gin.Context) {
 		metodePencairan = "tunai"
 	}
 	// Hitung angsuran ke-berapa (berdasarkan urutan tgl_bayar)
-	rows, _ := db.Query(`SELECT id_angsuran FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
-	defer rows.Close()
-	idx := 1
-	for rows.Next() {
-		var tmpID int
-		rows.Scan(&tmpID)
-		if tmpID == angsuran.IDAngsuran {
-			angsuranKe = idx
-			break
+	rows, err := db.Query(`SELECT id_angsuran FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	if err == nil {
+		defer rows.Close()
+		idx := 1
+		for rows.Next() {
+			var tmpID int
+			if scanErr := rows.Scan(&tmpID); scanErr != nil {
+				continue
+			}
+			if tmpID == angsuran.IDAngsuran {
+				angsuranKe = idx
+				break
+			}
+			idx++
 		}
-		idx++
 	}
 
 	// Ambil semua angsuran untuk riwayat
 	angsurans := []models.Angsuran{}
-	rows2, _ := db.Query(`SELECT id_angsuran, tgl_bayar, jumlah_angsuran, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
-	defer rows2.Close()
-	for rows2.Next() {
-		var a models.Angsuran
-		rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran)
-		angsurans = append(angsurans, a)
+	rows2, err := db.Query(`SELECT id_angsuran, tgl_bayar, jumlah_angsuran, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	if err == nil {
+		defer rows2.Close()
+		for rows2.Next() {
+			var a models.Angsuran
+			if scanErr := rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran); scanErr != nil {
+				continue
+			}
+			angsurans = append(angsurans, a)
+		}
 	}
 
 	// Cari logo terbaru di static/images
@@ -801,7 +816,6 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		bulanInt, _ = strconv.Atoi(bulan)
 	}
 
-	log.Printf("DEBUG: bulanInt=%d, format=%s", bulanInt, format)
 
 	// Untuk laporan tahunan, prioritaskan angka dari data Neraca yang disimpan user.
 	type summaryRow struct {
@@ -1006,7 +1020,6 @@ func KetuaDownloadLaporan(c *gin.Context) {
 
 	switch format {
 	case "excel":
-		log.Printf("DEBUG: Memulai generate Excel...")
 		// Ambil data laporan keuangan
 		tahunInt, _ := strconv.Atoi(tahun)
 		report, err := repository.GetLaporanKeuangan(bulanInt, tahunInt)
@@ -1549,7 +1562,6 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		if !(tipeLaporan == "tahunan" && useNeracaSummary) {
 			// Ambil data anggota aktif dan potongan/sisa gajian bulan ini untuk semua anggota, agar bisa buat tabel rincian per anggota di bagian bawah.
 			anggotas, err := repository.GetAllAnggota()
-			log.Printf("DEBUG Excel: GetAllAnggota err=%v, len(anggotas)=%d", err, len(anggotas))
 
 			potonganBulanIni := make(map[string]float64)
 			if err == nil {
@@ -1564,12 +1576,9 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			// Selalu buat tabel rincian meskipun tidak ada data
 			startRow := rowOffset + 5 + len(dataRows) + 2
 
-			log.Printf("DEBUG Excel: tipeLaporan=%s, startRow=%d", tipeLaporan, startRow)
-			log.Printf("DEBUG Excel: tipeLaporan=%s, startRow=%d", tipeLaporan, startRow)
 
 			// Jika ada error atau tidak ada anggota, tetap buat struktur tabel
 			if err != nil || len(anggotas) == 0 {
-				log.Printf("DEBUG Excel: Membuat tabel dengan pesan 'Tidak ada data' (err=%v, len=%d)", err, len(anggotas))
 				// Buat tabel kosong dengan header saja
 				if tipeLaporan == "tahunan" {
 					// Untuk tahunan, buat 5 tabel dengan pesan "Tidak ada data"
@@ -1655,7 +1664,6 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				}
 			} else {
 				// Ada data anggota, buat tabel dengan data
-				log.Printf("DEBUG Excel: Membuat tabel dengan data anggota (len=%d)", len(anggotas))
 				// Hapus deklarasi ulang startRow yang tidak perlu
 				// startRow sudah didefinisikan di atas
 
@@ -1806,7 +1814,6 @@ func KetuaDownloadLaporan(c *gin.Context) {
 					f.SetCellStyle(sheet, fmt.Sprintf("A%d", startRow5), fmt.Sprintf("E%d", startRow5), rincianHeaderStyle5)
 				} else {
 					// Laporan bulanan - pecah jadi 2 tabel (Pinjaman + Simpanan) agar sama dengan PDF
-					log.Printf("DEBUG Excel: Membuat tabel bulanan terpisah (Pinjaman + Simpanan) dengan data %d anggota di startRow=%d", len(anggotas), startRow)
 
 					tableHeaderStyle := func(color string) int {
 						styleID, _ := f.NewStyle(&excelize.Style{
@@ -3156,7 +3163,7 @@ func KetuaRiwayat(c *gin.Context) {
 	riwayats, err := repository.GetAllRiwayat()
 	if err != nil {
 		// Log error detail ke console agar mudah debug
-		fmt.Printf("[ERROR] Gagal mengambil data riwayat: %v\n", err)
+		log.Printf("[ERROR] KetuaRiwayat ambil data riwayat gagal: %v", err)
 		c.HTML(http.StatusInternalServerError, "ketua_riwayat_transaksi.html", gin.H{
 			"ActivePage": "riwayat",
 			"Error":      "Gagal mengambil data riwayat. Silakan hubungi admin.",
@@ -3382,9 +3389,10 @@ func KetuaPengaturan(c *gin.Context) {
 	// Ambil data bendahara
 	bendahara, err := repository.GetPengelolaByID(bendaharaID.(int))
 	if err != nil {
+		log.Printf("[ERROR] KetuaPengaturan ambil data bendahara gagal (id=%v): %v", bendaharaID, err)
 		c.HTML(http.StatusInternalServerError, "ketua_layout.html", gin.H{
 			"ActivePage": "pengaturan",
-			"Error":      "Gagal mengambil data bendahara: " + err.Error(),
+			"Error":      "Gagal mengambil data bendahara",
 			"LogoPath":   latestLogo,
 		})
 		return
@@ -3416,8 +3424,8 @@ func UpdateKetuaProfile(c *gin.Context) {
 	}
 
 	if err := c.ShouldBind(&request); err != nil {
-		fmt.Println("[UpdateKetuaProfile] Bind error:", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid", "detail": err.Error()})
+		log.Printf("[ERROR] UpdateKetuaProfile bind request gagal: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
 		return
 	}
 
@@ -3534,7 +3542,7 @@ func KetuaConfirmMembership(c *gin.Context) {
 	anggota, err := repository.GetAnggotaByID(tempID)
 	if err != nil {
 		// Log error detail ke terminal/server log
-		fmt.Printf("[ERROR] Gagal mengambil data anggota dengan id %s: %v\n", tempID, err)
+		log.Printf("[ERROR] KetuaKonfirmasiAnggota ambil anggota gagal (id=%s): %v", tempID, err)
 		// Redirect ke halaman konfirmasi dengan pesan error
 		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal mengambil data anggota")
 		return
@@ -3649,7 +3657,8 @@ func KetuaSaveNeraca(c *gin.Context) {
 
 	var req models.NeracaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		log.Printf("[ERROR] KetuaSaveNeraca bind json gagal: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
@@ -3661,7 +3670,7 @@ func KetuaSaveNeraca(c *gin.Context) {
 	err := neracaRepo.SaveNeraca(&req, userIDInt)
 	if err != nil {
 		log.Printf("Error saving neraca: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save neraca: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save neraca"})
 		return
 	}
 
@@ -3688,7 +3697,7 @@ func KetuaGetNeraca(c *gin.Context) {
 	neraca, err := neracaRepo.GetNeraca(userIDInt)
 	if err != nil {
 		log.Printf("Error getting neraca: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get neraca: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get neraca"})
 		return
 	}
 
@@ -3932,6 +3941,45 @@ func KetuaUploadBuktiTransferGaji(c *gin.Context) {
 	if err != nil {
 		buktiList = []models.BuktiTransferGaji{}
 	}
+	now := time.Now()
+	currentMonth := int(now.Month())
+	currentYear := now.Year()
+	buktiListView := make([]buktiTransferGajiView, 0, len(buktiList))
+	for i := range buktiList {
+		buktiList[i].Status = strings.ToLower(strings.TrimSpace(buktiList[i].Status))
+
+		view := buktiTransferGajiView{
+			BuktiTransferGaji: buktiList[i],
+			CountdownText:     "-",
+			IsExpired:         false,
+		}
+
+		// Countdown mengikuti periode BULAN BERJALAN secara otomatis.
+		if buktiList[i].Bulan == currentMonth && buktiList[i].Tahun == currentYear {
+			location := now.Location()
+			deadline := time.Date(currentYear, time.Month(currentMonth)+1, 1, 0, 0, 0, 0, location)
+			remaining := deadline.Sub(now)
+			if remaining <= 0 {
+				view.IsExpired = true
+				view.CountdownText = "Waktu habis"
+			} else {
+				totalHours := int(remaining.Hours())
+				days := totalHours / 24
+				hours := totalHours % 24
+				view.CountdownText = fmt.Sprintf("%d hari %d jam", days, hours)
+			}
+		} else if buktiList[i].Tahun < currentYear || (buktiList[i].Tahun == currentYear && buktiList[i].Bulan < currentMonth) {
+			view.IsExpired = true
+			view.CountdownText = "Periode selesai"
+		} else {
+			view.CountdownText = "Belum periode berjalan"
+		}
+		buktiListView = append(buktiListView, view)
+	}
+
+	// Kirim notifikasi WA pengingat jika bukti transfer bulan berjalan belum Approved (maksimal 1x per hari).
+	sendCurrentMonthBuktiTransferReminderIfNeeded(c, buktiListView, currentMonth, currentYear)
+
 
 	// Ambil pesan dari query parameter
 	successMsg := c.Query("success")
@@ -3939,10 +3987,55 @@ func KetuaUploadBuktiTransferGaji(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "ketua_upload_bukti_transfer_gaji.html", gin.H{
 		"CurrentLogo":    latestLogo,
-		"BuktiList":      buktiList,
+		"BuktiList":      buktiListView,
+		"CurrentYear":    now.Year(),
 		"SuccessMessage": successMsg,
 		"ErrorMessage":   errorMsg,
 	})
+}
+
+func sendCurrentMonthBuktiTransferReminderIfNeeded(c *gin.Context, buktiList []buktiTransferGajiView, currentMonth, currentYear int) {
+	hasCurrentMonthApproved := false
+	for i := range buktiList {
+		item := buktiList[i]
+		if item.Bulan == currentMonth && item.Tahun == currentYear && item.Status == "approved" {
+			hasCurrentMonthApproved = true
+			break
+		}
+	}
+	if hasCurrentMonthApproved {
+		return
+	}
+
+	db := config.GetDB()
+	today := time.Now().Format("2006-01-02")
+	key := "wa_notif_bukti_transfer_current_month_last_sent"
+
+	var lastSent string
+	_ = db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = $1", key).Scan(&lastSent)
+	expectedMarker := fmt.Sprintf("%s|%02d|%d", today, currentMonth, currentYear)
+	if strings.TrimSpace(lastSent) == expectedMarker {
+		return
+	}
+
+	appBaseURL := resolveAppBaseURL(c, db)
+	if err := sendKetuaWhatsAppTransactionNotification(
+		"",
+		"Dokumen Bukti Transfer Gaji",
+		"Pengingat Upload/Approval Bulan Berjalan",
+		fmt.Sprintf("Periode %02d/%d belum Approved", currentMonth, currentYear),
+		appBaseURL,
+	); err != nil {
+		log.Printf("[WA REMINDER BUKTI TRANSFER] gagal kirim notifikasi: %v", err)
+		return
+	}
+
+	_, _ = db.Exec(`
+		INSERT INTO pengaturan (nama_pengaturan, nilai, updated_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (nama_pengaturan)
+		DO UPDATE SET nilai = EXCLUDED.nilai, updated_at = NOW()
+	`, key, expectedMarker)
 }
 
 // KetuaUploadBuktiTransferGajiPost memproses upload bukti transfer gaji
@@ -3963,6 +4056,11 @@ func KetuaUploadBuktiTransferGajiPost(c *gin.Context) {
 	tahun, err := strconv.Atoi(c.PostForm("tahun"))
 	if err != nil || tahun < 2000 || tahun > 2100 {
 		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Tahun tidak valid")
+		return
+	}
+	currentYear := time.Now().Year()
+	if tahun != currentYear {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/ketua/upload-bukti-transfer-gaji?error=Tahun upload harus tahun berjalan (%d), tidak boleh tahun sebelumnya atau tahun mendatang", currentYear))
 		return
 	}
 
@@ -4014,7 +4112,7 @@ func KetuaUploadBuktiTransferGajiPost(c *gin.Context) {
 		NamaFile:     file.Filename,
 		PathFile:     "/" + filepath.ToSlash(uploadPath),
 		DiuploadOleh: userIDInt,
-		Status:       "approved",
+		Status:       "pending",
 		Catatan:      catatan,
 	}
 
@@ -4026,38 +4124,4 @@ func KetuaUploadBuktiTransferGajiPost(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?success=Bukti transfer gaji berhasil diupload")
-}
-
-// KetuaApproveBuktiTransferGaji menyetujui bukti transfer gaji
-func KetuaApproveBuktiTransferGaji(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=ID tidak valid")
-		return
-	}
-
-	if err := repository.UpdateBuktiTransferGajiStatus(id, "approved"); err != nil {
-		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Gagal menyetujui bukti transfer gaji")
-		return
-	}
-
-	c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?success=Bukti transfer gaji disetujui")
-}
-
-// KetuaRejectBuktiTransferGaji menolak bukti transfer gaji
-func KetuaRejectBuktiTransferGaji(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=ID tidak valid")
-		return
-	}
-
-	if err := repository.UpdateBuktiTransferGajiStatus(id, "rejected"); err != nil {
-		c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?error=Gagal menolak bukti transfer gaji")
-		return
-	}
-
-	c.Redirect(http.StatusFound, "/ketua/upload-bukti-transfer-gaji?success=Bukti transfer gaji ditolak")
 }

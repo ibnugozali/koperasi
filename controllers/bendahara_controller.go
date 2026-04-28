@@ -224,38 +224,9 @@ func BendaharaListAnggotaKeluar(c *gin.Context) {
 
 // Menampilkan dashboard bendahara dengan data statistik
 func BendaharaLihatDetailAngsuran(c *gin.Context) {
-	// Cari logo terbaru di static/images
-	dirFiles, errLogo := os.ReadDir("./static/images")
-	var latestLogo string
-	var latestTime int64
-	if errLogo == nil {
-		for _, file := range dirFiles {
-			name := file.Name()
-			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
-				info, err := file.Info()
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogo = "/static/images/" + name
-					}
-				}
-			}
-		}
-	}
-	if latestLogo == "" {
-		latestLogo = "/static/images/placeholder.png"
-	}
 	id := c.Param("id")
-	// TODO: Ambil data angsuran dari repository sesuai id
-	// Contoh: angsuran, err := repository.GetAngsuranByID(id)
-	// Untuk sekarang, tampilkan halaman detail angsuran sederhana
-	c.HTML(http.StatusOK, "bendahara_lihat_detail_angsuran.html", gin.H{
-		"AngsuranID":  id,
-		"ActivePage":  "lihat-detail-angsuran",
-		"CurrentLogo": latestLogo,
-		// Tambahkan data lain sesuai kebutuhan
-	})
+	// Gunakan handler detail angsuran utama agar data konsisten dan tidak lagi tampil placeholder.
+	c.Redirect(http.StatusMovedPermanently, "/bendahara/detail-angsuran/"+id)
 }
 
 // Handler untuk detail ajukan pengambilan simpanan
@@ -573,7 +544,7 @@ func BendaharaConfirmMembership(c *gin.Context) {
 	anggota, err := repository.GetAnggotaByID(tempID)
 	if err != nil {
 		// Log error detail ke terminal/server log
-		fmt.Printf("[ERROR] Gagal mengambil data anggota dengan id %s: %v\n", tempID, err)
+		log.Printf("[ERROR] BendaharaKonfirmasiAnggota ambil anggota gagal (id=%s): %v", tempID, err)
 		// Redirect ke halaman konfirmasi dengan pesan error
 		c.Redirect(http.StatusFound, "/bendahara/konfirmasi?error=Gagal mengambil data anggota")
 		return
@@ -625,8 +596,8 @@ func BendaharaConfirmMembership(c *gin.Context) {
 	_, err = db.Exec(updateQuery, newIDAnggota, "aktif", tahunKonfirmasi, nomorUrut, tempID)
 	if err != nil {
 		// Log error detail ke terminal/server log
-		fmt.Printf("[CONFIRM ANGGOTA ERROR] update anggota: %v\n", err)
-		c.Redirect(http.StatusFound, "/bendahara/konfirmasi?error="+url.QueryEscape("Gagal mengkonfirmasi anggota: "+err.Error()))
+		log.Printf("[ERROR] BendaharaKonfirmasiAnggota update anggota gagal (id=%s): %v", tempID, err)
+		c.Redirect(http.StatusFound, "/bendahara/konfirmasi?error="+url.QueryEscape("Gagal mengkonfirmasi anggota"))
 		return
 	}
 
@@ -763,16 +734,23 @@ func BendaharaPesan(c *gin.Context) {
 	}
 
 	// Ambil daftar anggota untuk dropdown
-	anggotaRows, _ := db.Query("SELECT id_anggota, nama_anggota FROM anggota WHERE status = 'aktif'")
+	anggotaRows, err := db.Query("SELECT id_anggota, nama_anggota FROM anggota WHERE status = 'aktif'")
 	var anggotaList []struct{ ID, Nama string }
-	for anggotaRows.Next() {
-		var id, nama string
-		anggotaRows.Scan(&id, &nama)
-		anggotaList = append(anggotaList, struct{ ID, Nama string }{id, nama})
+	if err == nil {
+		defer anggotaRows.Close()
+		for anggotaRows.Next() {
+			var id, nama string
+			if scanErr := anggotaRows.Scan(&id, &nama); scanErr != nil {
+				continue
+			}
+			anggotaList = append(anggotaList, struct{ ID, Nama string }{id, nama})
+		}
+	} else {
+		log.Printf("[WARN] gagal memuat daftar anggota aktif: %v", err)
 	}
 
 	// Ambil daftar pesan terkirim (join nama anggota)
-	pesanRows, _ := db.Query(`
+	pesanRows, err := db.Query(`
 		SELECT p.judul, p.isi, p.tgl_kirim, a.nama_anggota
 		FROM pesan p
 		JOIN anggota a ON p.id_anggota = a.id_anggota
@@ -781,12 +759,19 @@ func BendaharaPesan(c *gin.Context) {
 	var pesanList []struct {
 		Judul, Isi, NamaAnggota, Tanggal string
 	}
-	for pesanRows.Next() {
-		var judul, isi, tanggal, nama string
-		pesanRows.Scan(&judul, &isi, &tanggal, &nama)
-		pesanList = append(pesanList, struct {
-			Judul, Isi, NamaAnggota, Tanggal string
-		}{judul, isi, nama, tanggal})
+	if err == nil {
+		defer pesanRows.Close()
+		for pesanRows.Next() {
+			var judul, isi, tanggal, nama string
+			if scanErr := pesanRows.Scan(&judul, &isi, &tanggal, &nama); scanErr != nil {
+				continue
+			}
+			pesanList = append(pesanList, struct {
+				Judul, Isi, NamaAnggota, Tanggal string
+			}{judul, isi, nama, tanggal})
+		}
+	} else {
+		log.Printf("[WARN] gagal memuat daftar pesan bendahara: %v", err)
 	}
 
 	c.HTML(http.StatusOK, "bendahara_pesan.html", gin.H{
@@ -936,7 +921,8 @@ func BendaharaUpdateHalaman(c *gin.Context) {
 
 		err = repository.UpdateHalaman(halaman)
 		if err != nil {
-			c.String(http.StatusInternalServerError, "Gagal memperbarui halaman: "+err.Error())
+			log.Printf("[ERROR] BendaharaDashboard update halaman gagal (slug=%s): %v", slug, err)
+			c.String(http.StatusInternalServerError, "Gagal memperbarui halaman")
 			return
 		}
 		c.Redirect(http.StatusFound, "/bendahara/dashboard")
@@ -1318,6 +1304,22 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
 		return
 	}
+	// Fallback: jika ShouldBind gagal parse jumlah_simpanan, coba manual
+	if detail.JumlahSimpanan == 0 {
+		if jumlahStr := c.PostForm("jumlah_simpanan"); jumlahStr != "" {
+			if jumlahParsed, err := strconv.ParseFloat(jumlahStr, 64); err == nil {
+				detail.JumlahSimpanan = jumlahParsed
+			}
+		}
+	}
+	// Fallback tambahan: coba field lama "jumlah" jika "jumlah_simpanan" tidak ada
+	if detail.JumlahSimpanan == 0 {
+		if jumlahStr := c.PostForm("jumlah"); jumlahStr != "" {
+			if jumlahParsed, err := strconv.ParseFloat(jumlahStr, 64); err == nil {
+				detail.JumlahSimpanan = jumlahParsed
+			}
+		}
+	}
 	if detail.IDAnggota == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ID anggota wajib diisi"})
 		return
@@ -1350,6 +1352,13 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 		return
 	}
 	detail.TotalSimpanan = totalSimpanan + detail.JumlahSimpanan
+
+	// VALIDASI: Entri manual tunai hanya boleh jika ada data pending yang cocok
+	pendingList, err := repository.GetPendingSimpananByCriteria(detail.IDAnggota, detail.IDSimpanan, detail.JumlahSimpanan)
+	if err != nil || len(pendingList) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak sesuai dengan simpanan pending. Entri manual tunai hanya diperbolehkan untuk data yang sudah ada di daftar simpanan pending."})
+		return
+	}
 
 	err = repository.CreateSimpanan(detail)
 	if err != nil {
@@ -1406,7 +1415,7 @@ func BendaharaRiwayat(c *gin.Context) {
 	riwayats, err := repository.GetAllRiwayat()
 	if err != nil {
 		// Log error detail ke console agar mudah debug
-		fmt.Printf("[ERROR] Gagal mengambil data riwayat: %v\n", err)
+		log.Printf("[ERROR] BendaharaRiwayat ambil data riwayat gagal: %v", err)
 		c.HTML(http.StatusInternalServerError, "bendahara_riwayat_content.html", gin.H{
 			"ActivePage": "riwayat",
 			"Error":      "Gagal mengambil data riwayat. Silakan hubungi admin.",
@@ -1596,9 +1605,10 @@ func BendaharaPengaturan(c *gin.Context) {
 	// Ambil data bendahara
 	bendahara, err := repository.GetPengelolaByID(bendaharaID.(int))
 	if err != nil {
+		log.Printf("[ERROR] BendaharaPengaturan ambil data bendahara gagal (id=%v): %v", bendaharaID, err)
 		c.HTML(http.StatusInternalServerError, "bendahara_pengaturan.html", gin.H{
 			"ActivePage": "pengaturan",
-			"Error":      "Gagal mengambil data bendahara: " + err.Error(),
+			"Error":      "Gagal mengambil data bendahara",
 			"LogoPath":   latestLogo,
 		})
 		return
@@ -1798,19 +1808,33 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 		buktiTransfer, _ = repository.GetBuktiTransferGajiByBulanTahun(currentBulan, currentTahun)
 	}
 
+	// Cek apakah bukti transfer gaji sudah di-approve untuk bulan & tahun ini
+	buktiTransferApproved, _ := repository.CheckBuktiTransferGajiApproved(currentBulan, currentTahun)
+
+	// Ambil semua riwayat bukti transfer gaji untuk ditampilkan
+	buktiList, _ := repository.GetAllBuktiTransferGaji()
+
+	// Cek query parameter success/error untuk notifikasi
+	successMsg := c.Query("success")
+	errorMsg := c.Query("error")
+
 	c.HTML(http.StatusOK, "bendahara_konfirmasi_transaksi.html", gin.H{
-		"PendingSimpanan":     numberedSimpanan,
-		"PendingPinjaman":     numberedPinjamans,
-		"PendingAngsuran":     numberedAngsurans,
-		"PendingPengambilan":  numberedPengambilans,
-		"ActivePage":          "konfirmasi-transaksi",
-		"CurrentLogo":         latestLogo,
-		"Title":               "Konfirmasi Transaksi",
-		"SimpananTypes":       simpananTypes,
-		"BuktiTransferExists": buktiTransferExists,
-		"BuktiTransfer":       buktiTransfer,
-		"CurrentBulan":        currentBulan,
-		"CurrentTahun":        currentTahun,
+		"PendingSimpanan":       numberedSimpanan,
+		"PendingPinjaman":       numberedPinjamans,
+		"PendingAngsuran":       numberedAngsurans,
+		"PendingPengambilan":    numberedPengambilans,
+		"ActivePage":            "konfirmasi-transaksi",
+		"CurrentLogo":           latestLogo,
+		"Title":                 "Konfirmasi Transaksi",
+		"SimpananTypes":         simpananTypes,
+		"BuktiTransferExists":   buktiTransferExists,
+		"BuktiTransfer":         buktiTransfer,
+		"BuktiTransferApproved": buktiTransferApproved,
+		"CurrentBulan":          currentBulan,
+		"CurrentTahun":          currentTahun,
+		"BuktiList":             buktiList,
+		"SuccessMessage":        successMsg,
+		"ErrorMessage":          errorMsg,
 	})
 }
 
@@ -2131,7 +2155,6 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get("user_id")
 	if user == nil {
-		log.Println("[DEBUG] Session expired saat konfirmasi-transaksi")
 		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "Session expired, silakan login ulang"})
 		return
 	}
@@ -2139,9 +2162,7 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 	transactionType := c.Param("type")
 	idStr := c.Param("id")
 	action := c.PostForm("action")
-	idAnggota := c.PostForm("id_anggota")
 
-	log.Printf("[DEBUG] KonfirmasiTransaksi: type=%s, id=%s, action=%s, idAnggota=%s", transactionType, idStr, action, idAnggota)
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -2201,7 +2222,6 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 		}
 	}
 
-	log.Printf("[DEBUG] Update status transaksi berhasil: type=%s, id=%d, action=%s", transactionType, id, action)
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Transaksi berhasil diproses"})
 }
 
@@ -2827,9 +2847,9 @@ func BendaharaImportAnggota(c *gin.Context) {
 	// Simpan file sementara
 	tempPath := "./static/uploads/" + uuid.New().String() + ext
 	if err := c.SaveUploadedFile(file, tempPath); err != nil {
-		fmt.Println("Error saving file:", err)
+		log.Printf("[ERROR] BendaharaImportDataAnggota simpan file gagal: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal menyimpan file: " + err.Error(),
+			"error": "Gagal menyimpan file",
 		})
 		return
 	}
@@ -2845,7 +2865,8 @@ func BendaharaImportAnggota(c *gin.Context) {
 	// Buka file Excel
 	f, err := excelize.OpenFile(tempPath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuka file Excel: " + err.Error()})
+		log.Printf("[ERROR] BendaharaImportDataAnggota buka file excel gagal: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuka file Excel"})
 		return
 	}
 	defer f.Close()
@@ -3269,8 +3290,9 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 	// Buka file Excel
 	f, err := excelize.OpenFile(tempPath)
 	if err != nil {
+		log.Printf("[ERROR] BendaharaImportSimpananWajibExcel buka file excel gagal: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal membuka file Excel: " + err.Error(),
+			"error": "Gagal membuka file Excel",
 		})
 		return
 	}
@@ -4029,7 +4051,7 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 			"CurrentLogo": latestLogo,
 			"Title":       "Setting Simpanan Wajib",
 			"Config":      config,
-			"error":       "Gagal menyimpan konfigurasi: " + err.Error(),
+			"error":       "Gagal menyimpan konfigurasi",
 		})
 		return
 	}
@@ -4137,6 +4159,40 @@ func BendaharaProsesSimpananWajib(c *gin.Context) {
 	})
 }
 
+// BendaharaApproveBuktiTransferGaji menyetujui bukti transfer gaji
+func BendaharaApproveBuktiTransferGaji(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi?error=ID tidak valid")
+		return
+	}
+
+	if err := repository.UpdateBuktiTransferGajiStatus(id, "approved"); err != nil {
+		c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi?error=Gagal menyetujui bukti transfer gaji")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi?success=Bukti transfer gaji disetujui")
+}
+
+// BendaharaRejectBuktiTransferGaji menolak bukti transfer gaji
+func BendaharaRejectBuktiTransferGaji(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi?error=ID tidak valid")
+		return
+	}
+
+	if err := repository.UpdateBuktiTransferGajiStatus(id, "rejected"); err != nil {
+		c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi?error=Gagal menolak bukti transfer gaji")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi?success=Bukti transfer gaji ditolak")
+}
+
 // BendaharaImportPotongGajiExcel memproses upload file Excel untuk tambah massal transaksi potong gaji.
 func BendaharaImportPotongGajiExcel(c *gin.Context) {
 	session := sessions.Default(c)
@@ -4146,14 +4202,14 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 		return
 	}
 
-	// Validasi: cek apakah bukti transfer gaji sudah diupload untuk bulan & tahun ini
+	// Validasi: cek apakah bukti transfer gaji sudah di-approve untuk bulan & tahun ini
 	now := time.Now()
 	currentBulan := int(now.Month())
 	currentTahun := now.Year()
-	buktiTransferExists, _ := repository.CheckBuktiTransferGajiExists(currentBulan, currentTahun)
-	if !buktiTransferExists {
+	buktiTransferApproved, _ := repository.CheckBuktiTransferGajiApproved(currentBulan, currentTahun)
+	if !buktiTransferApproved {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Bukti transfer gaji belum diupload oleh Ketua untuk periode ini. Silakan hubungi Ketua untuk mengupload bukti transfer gaji terlebih dahulu.",
+			"error": "Bukti transfer gaji belum disetujui untuk periode ini. Silakan minta Ketua untuk mengupload bukti transfer gaji, lalu approve melalui menu Konfirmasi Transaksi.",
 		})
 		return
 	}
@@ -4235,8 +4291,8 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 
 	// Cache id_simpanan berdasarkan nama jenis
 	idSimpananCache := make(map[string]int)
-	rowsSimpanan, _ := db.Query("SELECT id_simpanan, LOWER(jenis_simpanan) FROM simpanan")
-	if rowsSimpanan != nil {
+	rowsSimpanan, err := db.Query("SELECT id_simpanan, LOWER(jenis_simpanan) FROM simpanan")
+	if err == nil && rowsSimpanan != nil {
 		defer rowsSimpanan.Close()
 		for rowsSimpanan.Next() {
 			var id int
@@ -4245,6 +4301,8 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 				idSimpananCache[jenis] = id
 			}
 		}
+	} else if err != nil {
+		log.Printf("[WARN] gagal memuat master jenis simpanan: %v", err)
 	}
 
 	successCount := 0
@@ -4798,27 +4856,35 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 
 	// Hitung angsuran ke berapa
 	var angsuranKe int
-	rows, _ := db.Query(`SELECT id_angsuran FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
-	defer rows.Close()
-	idx := 1
-	for rows.Next() {
-		var tmpID int
-		rows.Scan(&tmpID)
-		if tmpID == angsuran.IDAngsuran {
-			angsuranKe = idx
-			break
+	rows, err := db.Query(`SELECT id_angsuran FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	if err == nil {
+		defer rows.Close()
+		idx := 1
+		for rows.Next() {
+			var tmpID int
+			if scanErr := rows.Scan(&tmpID); scanErr != nil {
+				continue
+			}
+			if tmpID == angsuran.IDAngsuran {
+				angsuranKe = idx
+				break
+			}
+			idx++
 		}
-		idx++
 	}
 
 	// Ambil semua angsuran untuk riwayat
 	angsurans := []models.Angsuran{}
-	rows2, _ := db.Query(`SELECT id_angsuran, tgl_bayar, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
-	defer rows2.Close()
-	for rows2.Next() {
-		var a models.Angsuran
-		rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran)
-		angsurans = append(angsurans, a)
+	rows2, err := db.Query(`SELECT id_angsuran, tgl_bayar, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	if err == nil {
+		defer rows2.Close()
+		for rows2.Next() {
+			var a models.Angsuran
+			if scanErr := rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran); scanErr != nil {
+				continue
+			}
+			angsurans = append(angsurans, a)
+		}
 	}
 
 	// Cari logo terbaru
@@ -4901,8 +4967,6 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 		return
 	}
 
-	// Debug print setelah angsuran diinisialisasi
-	fmt.Printf("[DEBUG] SisaPinjaman sebelum simpan: %.2f\n", angsuran.SisaPinjaman)
 
 	if err = c.ShouldBind(&angsuran); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
@@ -4965,12 +5029,32 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	angsuran.SisaPinjaman = sisaSetelah
 	// Entri oleh bendahara dianggap validasi tahap bendahara selesai.
 	angsuran.Status = "confirmed"
-	fmt.Printf("[DEBUG] Input Angsuran: IDPinjaman=%d, IDAnggota=%s, JumlahAngsuran=%.2f, Status=%s\n", angsuran.IDPinjaman, angsuran.IDAnggota, angsuran.JumlahAngsuran, angsuran.Status)
+
+	// VALIDASI: Entri manual tunai hanya boleh jika ada data angsuran pending yang cocok
+	pendingList, err := repository.GetPendingAngsuranByCriteria(angsuran.IDAnggota, angsuran.IDPinjaman, angsuran.JumlahAngsuran)
+	if err != nil || len(pendingList) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak sesuai dengan cicilan pending. Entri manual tunai hanya diperbolehkan untuk data yang sudah ada di daftar cicilan pending."})
+		return
+	}
+
 	err = repository.CreateAngsuran(angsuran)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat angsuran"})
 		return
 	}
+
+	// Auto-confirm hanya 1 angsuran pending yang cocok (pinjaman, anggota, nominal sama)
+	// Jika ada beberapa yang sama, ambil yang tanggalnya paling terdahulu
+	db := config.GetDB()
+	_, _ = db.Exec(`
+		UPDATE angsuran SET status = 'confirmed'
+		WHERE id_angsuran = (
+			SELECT id_angsuran FROM angsuran
+			WHERE id_pinjaman = $1 AND id_anggota = $2 AND jumlah_angsuran = $3 AND status = 'pending'
+			ORDER BY tgl_bayar ASC, id_angsuran ASC
+			LIMIT 1
+		)
+	`, angsuran.IDPinjaman, angsuran.IDAnggota, angsuran.JumlahAngsuran)
 
 	// Notifikasi WA ke ketua agar melakukan konfirmasi tahap ketua.
 	anggota, errAnggota := repository.GetAnggotaByID(angsuran.IDAnggota)
@@ -4989,6 +5073,7 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 
 func getKetuaTransactionNotifInfo(transactionType string, id int) (anggotaNama, jenisLabel, nominal string, err error) {
 	db := config.GetDB()
+	var nominalFloat float64
 	switch transactionType {
 	case "simpanan":
 		jenisLabel = "Simpanan"
@@ -4998,9 +5083,9 @@ func getKetuaTransactionNotifInfo(transactionType string, id int) (anggotaNama, 
 			JOIN anggota a ON a.id_anggota = d.id_anggota
 			WHERE d.id_detail = $1
 			LIMIT 1
-		`, id).Scan(&anggotaNama, &nominal)
+		`, id).Scan(&anggotaNama, &nominalFloat)
 		if err == nil {
-			nominal = fmt.Sprintf("%.2f", mustParseFloat(nominal))
+			nominal = fmt.Sprintf("%.2f", nominalFloat)
 		}
 	case "angsuran":
 		jenisLabel = "Angsuran"
@@ -5011,9 +5096,9 @@ func getKetuaTransactionNotifInfo(transactionType string, id int) (anggotaNama, 
 			JOIN anggota ag ON ag.id_anggota = p.id_anggota
 			WHERE an.id_angsuran = $1
 			LIMIT 1
-		`, id).Scan(&anggotaNama, &nominal)
+		`, id).Scan(&anggotaNama, &nominalFloat)
 		if err == nil {
-			nominal = fmt.Sprintf("%.2f", mustParseFloat(nominal))
+			nominal = fmt.Sprintf("%.2f", nominalFloat)
 		}
 	case "pinjaman":
 		jenisLabel = "Pinjaman"
@@ -5023,9 +5108,9 @@ func getKetuaTransactionNotifInfo(transactionType string, id int) (anggotaNama, 
 			JOIN anggota a ON a.id_anggota = p.id_anggota
 			WHERE p.id_pinjaman = $1
 			LIMIT 1
-		`, id).Scan(&anggotaNama, &nominal)
+		`, id).Scan(&anggotaNama, &nominalFloat)
 		if err == nil {
-			nominal = fmt.Sprintf("%.2f", mustParseFloat(nominal))
+			nominal = fmt.Sprintf("%.2f", nominalFloat)
 		}
 	case "pengambilan":
 		jenisLabel = "Pengambilan Simpanan"
@@ -5035,9 +5120,9 @@ func getKetuaTransactionNotifInfo(transactionType string, id int) (anggotaNama, 
 			JOIN anggota a ON a.id_anggota = ps.id_anggota
 			WHERE ps.id_pengambilan = $1
 			LIMIT 1
-		`, id).Scan(&anggotaNama, &nominal)
+		`, id).Scan(&anggotaNama, &nominalFloat)
 		if err == nil {
-			nominal = fmt.Sprintf("%.2f", mustParseFloat(nominal))
+			nominal = fmt.Sprintf("%.2f", nominalFloat)
 		}
 	default:
 		return "", "", "", fmt.Errorf("tipe transaksi tidak didukung: %s", transactionType)

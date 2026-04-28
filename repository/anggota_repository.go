@@ -97,15 +97,8 @@ func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 			return nil, err
 		}
 
-		log.Printf(
-			"[DEBUG] DATA MASUK ➜ ID=%s | Nama=%s | Status=%s | StatusAnggota=%s",
-			a.IDAnggota, a.NamaAnggota, a.Status, a.StatusAnggota,
-		)
-
 		anggotas = append(anggotas, a)
 	}
-
-	log.Printf("[DEBUG] TOTAL anggota keluar ditemukan: %d", len(anggotas))
 	return anggotas, nil
 }
 
@@ -289,11 +282,11 @@ func DeleteAnggota(id string) error {
 	db := config.GetDB()
 	res, err := db.Exec("DELETE FROM anggota WHERE id_anggota = $1", id)
 	if err != nil {
-		log.Printf("[DEBUG] Gagal hard delete anggota: %v", err)
+		log.Printf("Gagal hard delete anggota: %v", err)
 		return err
 	}
 	rows, _ := res.RowsAffected()
-	log.Printf("[DEBUG] Hard delete anggota: id=%s, rowsAffected=%d", id, rows)
+	log.Printf("Hard delete anggota: id=%s, rowsAffected=%d", id, rows)
 	return nil
 }
 
@@ -371,8 +364,6 @@ func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float
 		}
 		totalSisaPinjaman += sisaPinjaman
 	}
-	fmt.Printf("[DEBUG] GetSaldoAnggota: id=%s, totalSisaPinjaman=%.2f\n", id, totalSisaPinjaman)
-
 	saldoBersih = totalSimpanan - totalSisaPinjaman
 
 	return totalSimpanan, totalSisaPinjaman, saldoBersih, nil

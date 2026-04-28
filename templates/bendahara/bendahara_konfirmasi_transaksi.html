@@ -103,6 +103,31 @@
             border-left: 4px solid #198754;
             background: linear-gradient(135deg, #f0fff4 0%, #e0ffe5 100%);
         }
+        .bukti-transfer-card.approved {
+            border-left: 4px solid #198754;
+            background: linear-gradient(135deg, #f0fff4 0%, #e0ffe5 100%);
+        }
+        .bukti-transfer-card.pending {
+            border-left: 4px solid #ffc107;
+            background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+        }
+        .bukti-transfer-card.rejected {
+            border-left: 4px solid #dc3545;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+        }
+        /* Badge status untuk bukti transfer */
+        .badge-status-pending {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .badge-status-approved {
+            background-color: #198754;
+            color: #fff;
+        }
+        .badge-status-rejected {
+            background-color: #dc3545;
+            color: #fff;
+        }
         /* Footer override: this page has no sidebar */
         footer {
             margin-left: 0 !important;
@@ -155,6 +180,26 @@
                     <p class="page-subtitle">Kelola pengajuan simpanan, pinjaman, dan cicilan yang menunggu konfirmasi</p>
                 </div>
             </div>
+
+            <!-- Flash Messages -->
+            {{if .SuccessMessage}}
+            <div class="row card-row">
+                <div class="col-12">
+                    <div class="alert alert-success alert-custom">
+                        <i class="fa-solid fa-check-circle me-2"></i>{{.SuccessMessage}}
+                    </div>
+                </div>
+            </div>
+            {{end}}
+            {{if .ErrorMessage}}
+            <div class="row card-row">
+                <div class="col-12">
+                    <div class="alert alert-danger alert-custom">
+                        <i class="fa-solid fa-exclamation-circle me-2"></i>{{.ErrorMessage}}
+                    </div>
+                </div>
+            </div>
+            {{end}}
 
             <!-- Card 1: Pending Simpanan -->
             <div class="row card-row">
@@ -310,14 +355,93 @@
                 </div>
             </div>
 
-            <!-- Card 3: Import Excel Potong Gaji -->
+            <!-- Card 3: Riwayat Upload Bukti Transfer Gaji (dengan Approve/Reject) -->
             <div class="row card-row">
                 <div class="col-12">
-                    <div class="content-card card-info {{if .BuktiTransferExists}}unlocked{{else}}locked{{end}}">
+                    <div class="content-card bukti-transfer-card {{if .BuktiTransferApproved}}approved{{else if .BuktiTransferExists}}pending{{end}}">
+                        <div class="section-title">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                            Riwayat Upload Bukti Transfer Gaji
+                            <span class="badge bg-info ms-2 badge-custom">{{len .BuktiList}}</span>
+                        </div>
+
+                        {{if .BuktiList}}
+                        <div class="alert alert-info alert-custom mb-3">
+                            <i class="fa-solid fa-circle-info me-2"></i>
+                            <strong>Klik tombol Approve untuk mengaktifkan fitur Import Excel Potong Gaji periode yang bersangkutan.</strong>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped table-bordered align-middle">
+                                <thead>
+                                    <tr>
+                                        <th style="width:4%" class="text-center">No</th>
+                                        <th>Periode</th>
+                                        <th>Nama File</th>
+                                        <th>Tanggal Upload</th>
+                                        <th>Status</th>
+                                        <th>Catatan</th>
+                                        <th style="width:12%" class="text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{range $i, $b := .BuktiList}}
+                                    <tr>
+                                        <td class="text-center">{{printf "%.0f" (add $i 1)}}</td>
+                                        <td>{{$b.Bulan}}/{{$b.Tahun}}</td>
+                                        <td>
+                                            <a href="{{$b.PathFile}}" target="_blank" class="text-decoration-none">
+                                                <i class="fa-solid fa-file me-1"></i>{{$b.NamaFile}}
+                                            </a>
+                                        </td>
+                                        <td>{{$b.TglUpload.Format "2006-01-02 15:04"}}</td>
+                                        <td class="text-center">
+                                            {{if eq $b.Status "approved"}}
+                                                <span class="badge badge-status-approved badge-custom"><i class="fa-solid fa-check me-1"></i>Approved</span>
+                                            {{else if eq $b.Status "rejected"}}
+                                                <span class="badge badge-status-rejected badge-custom"><i class="fa-solid fa-times me-1"></i>Rejected</span>
+                                            {{else}}
+                                                <span class="badge badge-status-pending badge-custom"><i class="fa-solid fa-clock me-1"></i>Pending</span>
+                                            {{end}}
+                                        </td>
+                                        <td>{{$b.Catatan}}</td>
+                                        <td class="text-center" style="white-space:nowrap;">
+                                            {{if eq $b.Status "pending"}}
+                                            <form method="POST" action="/bendahara/konfirmasi-transaksi/bukti-transfer/approve/{{$b.ID}}" style="display:inline;" data-no-ajax="true">
+                                                <button type="submit" class="btn btn-sm btn-success me-1" title="Approve">
+                                                    <i class="fa-solid fa-check"></i>
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="/bendahara/konfirmasi-transaksi/bukti-transfer/reject/{{$b.ID}}" style="display:inline;" data-no-ajax="true">
+                                                <button type="submit" class="btn btn-sm btn-danger" title="Reject">
+                                                    <i class="fa-solid fa-times"></i>
+                                                </button>
+                                            </form>
+                                            {{else}}
+                                                <span class="text-muted"><i class="fa-solid fa-ban me-1"></i>Sudah diproses</span>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                        {{else}}
+                        <div class="alert alert-info alert-custom">
+                            <i class="fa-solid fa-info-circle me-2"></i>Belum ada riwayat upload bukti transfer gaji.
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Import Excel Potong Gaji -->
+            <div class="row card-row">
+                <div class="col-12">
+                    <div class="content-card card-info {{if .BuktiTransferApproved}}unlocked{{else}}locked{{end}}">
                         <div class="section-title">
                             <i class="fa-solid fa-file-excel"></i>
                             Tambah Massal Potong Gaji via Excel
-                            {{if .BuktiTransferExists}}
+                            {{if .BuktiTransferApproved}}
                                 <span class="badge bg-success ms-2 badge-custom"><i class="fa-solid fa-unlock me-1"></i>Aktif</span>
                             {{else}}
                                 <span class="badge bg-danger ms-2 badge-custom"><i class="fa-solid fa-lock me-1"></i>TerKunci</span>
@@ -325,14 +449,20 @@
                         </div>
 
                         <!-- Info Bukti Transfer Gaji -->
-                        {{if .BuktiTransferExists}}
+                        {{if .BuktiTransferApproved}}
                         <div class="alert alert-success alert-custom mb-3">
                             <i class="fa-solid fa-check-circle me-2"></i>
-                            <strong>Bukti transfer gaji sudah diupload.</strong>
+                            <strong>Bukti transfer gaji sudah di-approve oleh Bendahara.</strong>
                             {{if .BuktiTransfer}}
                             <br><small>File: <strong>{{.BuktiTransfer.NamaFile}}</strong> | Diupload: {{.BuktiTransfer.TglUpload.Format "2006-01-02 15:04"}} | Periode: {{.BuktiTransfer.Bulan}}/{{.BuktiTransfer.Tahun}}</small>
                             {{if .BuktiTransfer.Catatan}}<br><small>Catatan: {{.BuktiTransfer.Catatan}}</small>{{end}}
                             {{end}}
+                        </div>
+                        {{else if .BuktiTransferExists}}
+                        <div class="alert alert-warning alert-custom mb-3">
+                            <i class="fa-solid fa-clock me-2"></i>
+                            <strong>Bukti transfer gaji menunggu persetujuan Anda.</strong>
+                            <br><small>Silakan approve bukti transfer gaji di Riwayat Upload di atas untuk mengaktifkan fitur ini.</small>
                         </div>
                         {{else}}
                         <div class="alert alert-danger alert-custom mb-3">
@@ -349,12 +479,12 @@
                             Untuk Transfer Bank gunakan menu Konfirmasi Transaksi di atas.
                         </div>
                         
-                        <form id="potongGajiImportForm" enctype="multipart/form-data" {{if not .BuktiTransferExists}}style="opacity:0.6; pointer-events:none;"{{end}}>
+                        <form id="potongGajiImportForm" enctype="multipart/form-data" {{if not .BuktiTransferApproved}}style="opacity:0.6; pointer-events:none;"{{end}}>
                             <div id="potongGajiAlert" class="mb-3"></div>
                             
                             <div class="mb-3">
                                 <label class="form-label fw-bold">File Excel (.xlsx/.xls)</label>
-                                <input type="file" class="form-control mb-2" name="file" accept=".xlsx,.xls" required {{if not .BuktiTransferExists}}disabled{{end}}>
+                                <input type="file" class="form-control mb-2" name="file" accept=".xlsx,.xls" required {{if not .BuktiTransferApproved}}disabled{{end}}>
                                 <small class="text-muted">
                                     Kolom yang didukung: <b>ID Anggota</b> atau <b>Nama Anggota</b>, <b>Jenis Transaksi</b> (Simpanan/Cicilan), <b>Jenis Simpanan/ID Pinjaman</b>, <b>Jumlah</b>.
                                     Jika jenis tidak diisi, defaultnya adalah <b>Simpanan Wajib</b>.
@@ -368,7 +498,7 @@
                                     </a>
                                 </div>
                                 <div class="col-md-6">
-                                    <button type="submit" class="btn btn-info w-100" id="potongGajiImportBtn" {{if not .BuktiTransferExists}}disabled{{end}}>
+                                    <button type="submit" class="btn btn-info w-100" id="potongGajiImportBtn" {{if not .BuktiTransferApproved}}disabled{{end}}>
                                         <i class="fa-solid fa-upload me-2"></i>Import Potong Gaji
                                     </button>
                                 </div>
@@ -393,6 +523,11 @@
                             <strong>Form ini hanya untuk transaksi Tunai.</strong>
                             Untuk Potong Gaji gunakan Import Excel di atas. 
                             Untuk Transfer Bank gunakan Konfirmasi Transaksi.
+                        </div>
+                        
+                        <div class="alert alert-info alert-custom mb-3">
+                            <i class="fa-solid fa-circle-info me-2"></i>
+                            <strong>Ketentuan Entri Manual Tunai:</strong> Data yang dimasukkan (ID Anggota, Jenis Simpanan/Cicilan, dan Jumlah) <strong>harus sama persis</strong> dengan data yang ada di daftar <em>Simpanan Pending</em> atau <em>Cicilan Pending</em> di atas. Jika data tidak cocok, transaksi tidak dapat disimpan.
                         </div>
                         
                         <!-- Tab Switcher -->

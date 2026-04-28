@@ -1349,34 +1349,32 @@ func KeluarKoperasi(c *gin.Context) {
 	biayaAdminStr := c.PostForm("biaya_admin")
 	alasanKeluar := c.PostForm("alasan_keluar")
 
-	fmt.Printf("[DEBUG] Form data: simpanan_wajib=%s, simpanan_lainnya=%s, biaya_admin=%s, alasan=%s\n",
-		simpananWajibStr, simpananLainnyaStr, biayaAdminStr, alasanKeluar)
 
 	// Convert string to float64
 	simpananWajib, err := strconv.ParseFloat(simpananWajibStr, 64)
 	if err != nil {
-		fmt.Printf("[ERROR] Parse simpanan_wajib: %v\n", err)
+		log.Printf("[ERROR] AnggotaAjukanKeluarKoperasi parse simpanan_wajib gagal: %v", err)
 		c.Redirect(http.StatusFound, "/anggota/profil?error=Format simpanan wajib tidak valid")
 		return
 	}
 
 	simpananLainnya, err := strconv.ParseFloat(simpananLainnyaStr, 64)
 	if err != nil {
-		fmt.Printf("[ERROR] Parse simpanan_lainnya: %v\n", err)
+		log.Printf("[ERROR] AnggotaAjukanKeluarKoperasi parse simpanan_lainnya gagal: %v", err)
 		c.Redirect(http.StatusFound, "/anggota/profil?error=Format simpanan lainnya tidak valid")
 		return
 	}
 
 	biayaAdmin, err := strconv.ParseFloat(biayaAdminStr, 64)
 	if err != nil {
-		fmt.Printf("[ERROR] Parse biaya_admin: %v\n", err)
+		log.Printf("[ERROR] AnggotaAjukanKeluarKoperasi parse biaya_admin gagal: %v", err)
 		c.Redirect(http.StatusFound, "/anggota/profil?error=Format biaya admin tidak valid")
 		return
 	}
 
 	// Validasi alasan keluar tidak kosong
 	if strings.TrimSpace(alasanKeluar) == "" {
-		fmt.Printf("[ERROR] Alasan keluar kosong\n")
+		log.Printf("[ERROR] AnggotaAjukanKeluarKoperasi alasan_keluar kosong")
 		c.Redirect(http.StatusFound, "/anggota/profil?error=Alasan keluar harus diisi")
 		return
 	}
@@ -1384,7 +1382,6 @@ func KeluarKoperasi(c *gin.Context) {
 	// Update status anggota menjadi 'pending_keluar' dan simpan data pengajuan
 	db := config.GetDB()
 
-	fmt.Printf("[DEBUG] Executing update query for user %s\n", userID)
 
 	// Buat JSON string untuk data_keluar
 	dataKeluarJSON := fmt.Sprintf(`{
@@ -1407,8 +1404,8 @@ func KeluarKoperasi(c *gin.Context) {
 
 	result, err := db.Exec(updateQuery, dataKeluarJSON, userID)
 	if err != nil {
-		fmt.Printf("[ERROR] Gagal update status keluar: %v\n", err)
-		c.Redirect(http.StatusFound, "/anggota/profil?error=Gagal mengajukan keluar dari koperasi: "+err.Error())
+		log.Printf("[ERROR] AnggotaAjukanKeluarKoperasi update status keluar gagal: %v", err)
+		c.Redirect(http.StatusFound, "/anggota/profil?error=Gagal mengajukan keluar dari koperasi")
 		return
 	}
 
@@ -1506,7 +1503,6 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 	} else {
 		resumeGabunganSlice = []resumePinjamanInfo{}
 	}
-	fmt.Printf("[DEBUG] ResumeGabungan: %+v\n", resumeGabunganSlice)
 	return gin.H{
 		"Judul":          "Ajukan Pinjaman",
 		"Anggota":        anggota,
@@ -1539,25 +1535,13 @@ func AjukanPinjamanPost(c *gin.Context) {
 	bindErr := c.ShouldBind(&pinjaman)
 
 	// Debug print form values and error
+	// Ambil field penting dari form
+	metodePencairanStr := c.PostForm("metode_pencairan")
+	metodeAngsuranStr := c.PostForm("metode_angsuran")
 	formDebug := make(map[string][]string)
 	for k, v := range c.Request.Form {
 		formDebug[k] = v
 	}
-
-	// Log pinjaman struct after binding
-	fmt.Printf("DEBUG: Pinjaman struct after binding: %+v\n", pinjaman)
-
-	// Log important form fields
-	jumlahPinjamanStr := c.PostForm("jumlah_pinjaman")
-	jangkaWaktuStr := c.PostForm("jangka_waktu")
-	bungaStr := c.PostForm("bunga")
-	gajiBulananStr := c.PostForm("gaji_bulanan")
-	metodePencairanStr := c.PostForm("metode_pencairan")
-	metodeAngsuranStr := c.PostForm("metode_angsuran")
-
-	fmt.Printf("DEBUG: Form Inputs - jumlah_pinjaman: %s, jangka_waktu: %s, bunga: %s, gaji_bulanan: %s, metode_pencairan: %s, metode_angsuran: %s\n",
-		jumlahPinjamanStr, jangkaWaktuStr, bungaStr, gajiBulananStr, metodePencairanStr, metodeAngsuranStr)
-
 	// Validasi wajib pilih metode pencairan dan angsuran
 	if metodePencairanStr == "" {
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
@@ -1779,17 +1763,25 @@ func AjukanPinjamanPost(c *gin.Context) {
 	pinjaman.TglPinjaman = time.Now() // Set tanggal pengajuan otomatis
 	pinjaman.Status = "proses"        // Status proses untuk konfirmasi bendahara
 
-	// Log the final pinjaman struct before creating to help debugging
-	fmt.Printf("DEBUG: Pinjaman ready to create: %+v\n", pinjaman)
-
 	err = repository.CreatePinjaman(pinjaman)
 	if err != nil {
-		// Log CreatePinjaman error
-		fmt.Printf("DEBUG: CreatePinjaman error: %s\n", err.Error())
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
 		templateData["Error"] = "Gagal mengajukan pinjaman. Silakan coba lagi."
 		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
 		return
+	}
+
+	// Kirim notifikasi WA ke bendahara jika ada pengajuan pinjaman baru
+	bendahara, err := repository.GetBendahara()
+	if err == nil {
+		anggota, _ := repository.GetAnggotaByID(userID)
+		appBaseURL := resolveAppBaseURL(c, config.GetDB())
+		nominal := fmt.Sprintf("%.2f", pinjaman.JumlahPinjaman)
+		if errWA := sendBendaharaWhatsAppNotification(bendahara.NoTelepon, anggota.NamaAnggota, "Pinjaman", nominal, appBaseURL); errWA != nil {
+			log.Printf("[WA NOTIF] gagal kirim notifikasi bendahara (pinjaman): %v", errWA)
+		}
+	} else {
+		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi pinjaman: %v", err)
 	}
 
 	// Berhasil, redirect ke halaman pengajuan pinjaman agar Resume Pinjaman update otomatis
@@ -2059,17 +2051,15 @@ func AnggotaSimpananPost(c *gin.Context) {
 
 	// Kirim notifikasi WA ke bendahara
 	bendahara, err := repository.GetBendahara()
-	if err == nil && bendahara.NoTelepon != "" {
+	if err == nil {
 		anggota, _ := repository.GetAnggotaByID(userID)
 		appBaseURL := resolveAppBaseURL(c, config.GetDB())
 		totalStr := fmt.Sprintf("%.2f", total)
 		if errWA := sendBendaharaWhatsAppNotification(bendahara.NoTelepon, anggota.NamaAnggota, "Simpanan", totalStr, appBaseURL); errWA != nil {
 			log.Printf("[WA NOTIF] gagal kirim notifikasi bendahara (simpanan): %v", errWA)
 		}
-	} else if err != nil {
-		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi simpanan: %v", err)
 	} else {
-		log.Printf("[WA NOTIF] nomor bendahara kosong, notifikasi simpanan tidak dikirim")
+		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi simpanan: %v", err)
 	}
 	// Berhasil, return JSON
 	c.JSON(http.StatusOK, gin.H{
@@ -2081,7 +2071,6 @@ func AnggotaSimpananPost(c *gin.Context) {
 
 // AnggotaAngsuran menampilkan halaman angsuran untuk anggota.
 func AnggotaAngsuran(c *gin.Context) {
-	fmt.Println("[DEBUG] Handler AnggotaAngsuran dieksekusi")
 	session := sessions.Default(c)
 	userID, ok := session.Get("user_id").(string)
 	if !ok {
@@ -2168,7 +2157,6 @@ func AnggotaAngsuran(c *gin.Context) {
 	if resumeGabungan != nil {
 		metodeAngsuranDebug = resumeGabungan.MetodeAngsuran
 	}
-	fmt.Printf("[DEBUG] MetodeAngsuran yang dikirim ke template: '%s'\n", metodeAngsuranDebug)
 	c.HTML(http.StatusOK, "anggota_angsuran.html", gin.H{
 		"Judul":                  "Angsuran",
 		"Anggota":                anggota,
@@ -2475,17 +2463,15 @@ func AnggotaAngsuranPost(c *gin.Context) {
 
 	// Kirim notifikasi WA ke bendahara
 	bendahara, err := repository.GetBendahara()
-	if err == nil && bendahara.NoTelepon != "" {
+	if err == nil {
 		anggota, _ := repository.GetAnggotaByID(userID)
 		appBaseURL := resolveAppBaseURL(c, config.GetDB())
 		jumlahStr := fmt.Sprintf("%.2f", jumlahAngsuran)
 		if errWA := sendBendaharaWhatsAppNotification(bendahara.NoTelepon, anggota.NamaAnggota, "Angsuran", jumlahStr, appBaseURL); errWA != nil {
 			log.Printf("[WA NOTIF] gagal kirim notifikasi bendahara (angsuran): %v", errWA)
 		}
-	} else if err != nil {
-		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi angsuran: %v", err)
 	} else {
-		log.Printf("[WA NOTIF] nomor bendahara kosong, notifikasi angsuran tidak dikirim")
+		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi angsuran: %v", err)
 	}
 	// Berhasil, redirect ke halaman riwayat sehingga angsuran baru muncul di sana
 	c.Redirect(http.StatusFound, "/anggota/riwayat")
@@ -2808,8 +2794,22 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 
 	_, err = db.Exec(query, userID, idSimpanan, jumlah, alasan, metodePengambilan, noRekening, namaBank, namaPemilik)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pengajuan: " + err.Error()})
+		log.Printf("[ERROR] AnggotaPengambilanSimpananAjax simpan pengajuan gagal: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pengajuan"})
 		return
+	}
+
+	// Kirim notifikasi WA ke bendahara jika ada pengajuan penarikan simpanan baru
+	bendahara, err := repository.GetBendahara()
+	if err == nil {
+		anggota, _ := repository.GetAnggotaByID(userID)
+		appBaseURL := resolveAppBaseURL(c, config.GetDB())
+		nominal := fmt.Sprintf("%.2f", jumlah)
+		if errWA := sendBendaharaWhatsAppNotification(bendahara.NoTelepon, anggota.NamaAnggota, "Penarikan Simpanan", nominal, appBaseURL); errWA != nil {
+			log.Printf("[WA NOTIF] gagal kirim notifikasi bendahara (penarikan): %v", errWA)
+		}
+	} else {
+		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi penarikan: %v", err)
 	}
 
 	// Berhasil, kirim response sukses (frontend akan redirect ke riwayat)

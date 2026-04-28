@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"fmt"
-
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 )
@@ -138,8 +136,6 @@ func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 		if err := rows.Scan(&r.ID, &r.Tanggal, &r.Jenis, &r.Jumlah, &r.Status, &r.Metode, &r.NamaAnggota, &r.IDAnggota, &r.NoTelepon, &r.GajiBulanan); err != nil {
 			return nil, err
 		}
-		// DEBUG: Print nilai jumlah untuk setiap riwayat
-		fmt.Printf("DEBUG RIWAYAT: ID=%v, Jenis=%v, Jumlah=%v, Metode=%v\n", r.ID, r.Jenis, r.Jumlah, r.Metode)
 		riwayats = append(riwayats, r)
 	}
 	return riwayats, nil

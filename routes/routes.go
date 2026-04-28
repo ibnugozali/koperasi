@@ -383,6 +383,10 @@ func SetupRouter() *gin.Engine {
 		bendaharaRoutes.POST("/proses-simpanan-wajib", controllers.BendaharaProsesSimpananWajib)
 		bendaharaRoutes.GET("/cek-pemotongan-otomatis", controllers.BendaharaCekDanProsesPemotonganOtomatis)
 
+		// Routes for approving/rejecting bukti transfer gaji (moved from ketua to bendahara)
+		bendaharaRoutes.POST("/konfirmasi-transaksi/bukti-transfer/approve/:id", controllers.BendaharaApproveBuktiTransferGaji)
+		bendaharaRoutes.POST("/konfirmasi-transaksi/bukti-transfer/reject/:id", controllers.BendaharaRejectBuktiTransferGaji)
+
 		// Route for pesan
 		bendaharaRoutes.GET("/pesan", controllers.BendaharaPesan)
 		bendaharaRoutes.POST("/pesan", controllers.BendaharaPesan)
@@ -420,8 +424,6 @@ func SetupRouter() *gin.Engine {
 		ketuaRoutes.POST("/konfirmasi-transaksi/:type/:id", controllers.KetuaKonfirmasiTransaksiPost)
 		ketuaRoutes.GET("/upload-bukti-transfer-gaji", controllers.KetuaUploadBuktiTransferGaji)
 		ketuaRoutes.POST("/upload-bukti-transfer-gaji", controllers.KetuaUploadBuktiTransferGajiPost)
-		ketuaRoutes.POST("/upload-bukti-transfer-gaji/approve/:id", controllers.KetuaApproveBuktiTransferGaji)
-		ketuaRoutes.POST("/upload-bukti-transfer-gaji/reject/:id", controllers.KetuaRejectBuktiTransferGaji)
 		ketuaRoutes.POST("/update-profile", controllers.UpdateKetuaProfile)
 	}
 	return router

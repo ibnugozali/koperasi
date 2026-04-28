@@ -1,9 +1,13 @@
-# TODO - Fix 404 Upload Bukti Transfer Gaji
+# TODO FIX
 
-## Steps
-- [x] 1. Analyze the issue (404 on `/ketua/upload-bukti-transfer-gaji`)
-- [x] 2. Read relevant files (routes, controllers, models, repository, templates)
-- [x] 3. Create fix plan and get user approval
-- [x] 4. Add routes in `routes/routes.go`
-- [x] 5. Add controller handlers in `controllers/ketua_controller.go`
-- [x] 6. Build/test the application
+## Langkah 1: Tambah endpoint backend untuk cek data pending cocok
+- [ ] Controller `BendaharaCatatSimpanan`: sebelum insert, panggil `repository.GetPendingSimpananByCriteria` dan pastikan hasil > 0. Jika 0, return error.
+- [ ] Controller `BendaharaCatatAngsuran`: sebelum insert, panggil `repository.GetPendingAngsuranByCriteria` dan pastikan hasil > 0. Jika 0, return error.
+
+## Langkah 2: Update frontend JS untuk validasi sebelum submit
+- [ ] `static/js/bendahara_konfirmasi_transaksi.js`: validasi form simpanan tunai → fetch/cek data pending cocok via AJAX ke endpoint baru, jika tidak cocok tampilkan error.
+- [ ] Validasi form angsuran tunai → fetch/cek data pending cocok via AJAX, jika tidak cocok tampilkan error.
+
+## Langkah 3: Update template HTML untuk pesan informasi
+- [ ] `templates/bendahara/bendahara_konfirmasi_transaksi.html`: tambah alert informasi bahwa entri manual tunai hanya untuk data yang sudah ada di Pending.
+

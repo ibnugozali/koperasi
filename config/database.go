@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/lib/pq" // Driver PostgreSQL
 )
@@ -13,7 +14,12 @@ var db *sql.DB
 // InitDB menginisialisasi koneksi ke database PostgreSQL
 func InitDB() {
 	var err error
-	connStr := "postgres://postgres:SuTa@localhost:5432/koperasi?sslmode=disable"
+	connStr := os.Getenv("DATABASE_URL")
+	if connStr == "" {
+		// Fallback lokal agar backward-compatible di environment dev lama.
+		connStr = "postgres://postgres:SuTa@localhost:5432/koperasi?sslmode=disable"
+		log.Println("⚠️ DATABASE_URL tidak diset, menggunakan fallback koneksi lokal")
+	}
 
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {

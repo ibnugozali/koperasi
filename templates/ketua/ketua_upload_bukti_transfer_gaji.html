@@ -121,7 +121,8 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Tahun <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" name="tahun" value="2025" min="2000" max="2100" required>
+                                <input type="number" class="form-control" name="tahun" value="{{.CurrentYear}}" min="{{.CurrentYear}}" max="{{.CurrentYear}}" required>
+                                <small class="text-muted">Hanya boleh tahun berjalan: {{.CurrentYear}}</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">File Bukti Transfer <span class="text-danger">*</span></label>
@@ -163,45 +164,46 @@
                                         <th>Nama File</th>
                                         <th>Tanggal Upload</th>
                                         <th>Status</th>
+                                        <th>Hitung Mundur</th>
                                         <th>Catatan</th>
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {{range .BuktiList}}
+                                    {{range $i, $b := .BuktiList}}
                                     <tr>
-                                        <td class="text-center">{{.ID}}</td>
-                                        <td>{{.Bulan}}/{{.Tahun}}</td>
+                                        <td class="text-center">{{printf "%.0f" (add $i 1)}}</td>
+                                        <td>{{$b.Bulan}}/{{$b.Tahun}}</td>
                                         <td>
-                                            <a href="{{.PathFile}}" target="_blank" class="text-decoration-none">
-                                                <i class="fa-solid fa-file me-1"></i>{{.NamaFile}}
+                                            <a href="{{$b.PathFile}}" target="_blank" class="text-decoration-none">
+                                                <i class="fa-solid fa-file me-1"></i>{{$b.NamaFile}}
                                             </a>
                                         </td>
-                                        <td>{{.TglUpload.Format "2006-01-02 15:04"}}</td>
+                                        <td>{{$b.TglUpload.Format "2006-01-02 15:04"}}</td>
                                         <td class="text-center">
-                                            {{if eq .Status "approved"}}
+                                            {{if eq $b.Status "approved"}}
                                                 <span class="badge bg-success">Approved</span>
-                                            {{else if eq .Status "rejected"}}
+                                            {{else if eq $b.Status "rejected"}}
                                                 <span class="badge bg-danger">Rejected</span>
                                             {{else}}
                                                 <span class="badge bg-warning text-dark">Pending</span>
                                             {{end}}
                                         </td>
-                                        <td>{{.Catatan}}</td>
-                                        <td class="text-center" style="white-space:nowrap;">
-                                            {{if eq .Status "pending"}}
-                                            <form method="POST" action="/ketua/upload-bukti-transfer-gaji/approve/{{.ID}}" style="display:inline;">
-                                                <button type="submit" class="btn btn-sm btn-success me-1" title="Approve">
-                                                    <i class="fa-solid fa-check"></i>
-                                                </button>
-                                            </form>
-                                            <form method="POST" action="/ketua/upload-bukti-transfer-gaji/reject/{{.ID}}" style="display:inline;">
-                                                <button type="submit" class="btn btn-sm btn-danger" title="Reject">
-                                                    <i class="fa-solid fa-times"></i>
-                                                </button>
-                                            </form>
+                                        <td class="text-center">
+                                            {{if $b.IsExpired}}
+                                                <span class="badge bg-danger">{{$b.CountdownText}}</span>
                                             {{else}}
-                                                <span class="text-muted">-</span>
+                                                <span class="badge bg-info text-dark">{{$b.CountdownText}}</span>
+                                            {{end}}
+                                        </td>
+                                        <td>{{$b.Catatan}}</td>
+                                        <td class="text-center" style="white-space:nowrap;">
+                                            {{if eq $b.Status "approved"}}
+                                                <span class="text-success"><i class="fa-solid fa-check-circle me-1"></i>Sudah disetujui Bendahara</span>
+                                            {{else if eq $b.Status "rejected"}}
+                                                <span class="text-danger"><i class="fa-solid fa-circle-xmark me-1"></i>Ditolak Bendahara</span>
+                                            {{else}}
+                                                <span class="text-muted"><i class="fa-solid fa-user-check me-1"></i>Menunggu persetujuan Bendahara</span>
                                             {{end}}
                                         </td>
                                     </tr>

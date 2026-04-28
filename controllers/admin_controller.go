@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -354,7 +355,8 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		gajiBulanan, tahun, nomorUrut,
 	)
 	if err != nil {
-		formData["Error"] = "Gagal menyimpan anggota baru: " + err.Error()
+		log.Printf("[ERROR] AdminTambahAnggota simpan anggota baru gagal: %v", err)
+		formData["Error"] = "Gagal menyimpan anggota baru"
 		renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
 		return
 	}
@@ -1727,9 +1729,10 @@ func AdminPesan(c *gin.Context) {
 	// Ambil data admin
 	admin, err := repository.GetPengelolaByID(adminID.(int))
 	if err != nil {
+		log.Printf("[ERROR] AdminPesan ambil data admin gagal (id=%v): %v", adminID, err)
 		c.HTML(http.StatusInternalServerError, "admin_pesan.html", gin.H{
 			"ActivePage": "pesan",
-			"Error":      "Gagal mengambil data admin: " + err.Error(),
+			"Error":      "Gagal mengambil data admin",
 		})
 		return
 	}

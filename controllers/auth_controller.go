@@ -22,6 +22,36 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
+// getBendaharaWhatsAppPhone mengambil nomor WhatsApp bendahara dari pengaturan/profil aktif
+func getBendaharaWhatsAppPhone() string {
+	db := config.GetDB()
+
+	// 1) Prioritas dari pengaturan WA bendahara di tabel pengaturan
+	for _, key := range []string{"wa_bendahara_phone", "nomor_wa_bendahara", "telepon_bendahara"} {
+		var configuredPhone string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = $1", key).Scan(&configuredPhone); err == nil {
+			if p := strings.TrimSpace(configuredPhone); p != "" {
+				return p
+			}
+		}
+	}
+
+	// 2) Fallback ke user pengelola level bendahara aktif
+	var bendaharaPhone string
+	if err := db.QueryRow(`
+		SELECT COALESCE(no_telepon, '')
+		FROM pengelola
+		WHERE LOWER(TRIM(level)) = 'bendahara'
+		  AND LOWER(TRIM(COALESCE(status, ''))) = 'aktif'
+		ORDER BY id_pengelola ASC
+		LIMIT 1
+	`).Scan(&bendaharaPhone); err == nil {
+		return strings.TrimSpace(bendaharaPhone)
+	}
+
+	return ""
+}
+
 // sendBendaharaWhatsAppNotification mengirim notifikasi ke WA Bendahara (mirip ketua)
 func sendBendaharaWhatsAppNotification(rawBendaharaPhone, namaAnggota, jenisTransaksi, nominal, appBaseURL string) error {
 	db := config.GetDB()
@@ -35,14 +65,10 @@ func sendBendaharaWhatsAppNotification(rawBendaharaPhone, namaAnggota, jenisTran
 	if token == "" {
 		return fmt.Errorf("WA_GATEWAY_TOKEN belum diset (env/db)")
 	}
-	configuredPhone := ""
-	if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_bendahara_phone'").Scan(&configuredPhone); err != nil && err != sql.ErrNoRows {
-		log.Printf("[WA NOTIF] gagal baca wa_bendahara_phone: %v", err)
-	}
 
-	bendaharaPhone := strings.TrimSpace(configuredPhone)
+	bendaharaPhone := strings.TrimSpace(rawBendaharaPhone)
 	if bendaharaPhone == "" {
-		bendaharaPhone = strings.TrimSpace(rawBendaharaPhone)
+		bendaharaPhone = getBendaharaWhatsAppPhone()
 	}
 	if bendaharaPhone == "" {
 		return fmt.Errorf("nomor bendahara kosong")
@@ -449,8 +475,8 @@ func Register(c *gin.Context) {
 	err = repository.CreateAnggota(newAnggota)
 	if err != nil {
 		// Tambahkan log error ke console/server log
-		println("[REGISTER ERROR]", err.Error())
-		renderRegisterError(http.StatusInternalServerError, "Gagal menyimpan data: "+err.Error())
+		log.Printf("[ERROR] RegisterAnggota simpan data gagal: %v", err)
+		renderRegisterError(http.StatusInternalServerError, "Gagal menyimpan data")
 		return
 	}
 
@@ -502,6 +528,9 @@ func sendKetuaWhatsAppNotification(rawKetuaPhone string, anggota models.Anggota,
 	}
 
 	ketuaPhone := strings.TrimSpace(rawKetuaPhone)
+	if ketuaPhone == "" {
+		ketuaPhone = getKetuaWhatsAppPhone()
+	}
 	if ketuaPhone == "" {
 		return fmt.Errorf("nomor ketua kosong")
 	}

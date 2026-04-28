@@ -2,7 +2,7 @@ package repository
 
 import (
 	"database/sql"
-	"fmt"
+	"log"
 	"time"
 
 	"koperasi-simpan-pinjam/config"
@@ -184,7 +184,6 @@ func CreateSimpanan(detail models.Detail) error {
 // BARU
 func CreatePinjaman(pinjaman models.Pinjaman) error {
 	db := config.GetDB()
-	fmt.Printf("DEBUG: Akan insert pinjaman: %+v\n", pinjaman)
 	pinjaman.TglPinjaman = time.Now()
 	query := `
 		INSERT INTO pinjaman (id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, metode_pencairan, metode_angsuran, nomor_rekening, nama_bank, nama_pemilik_rekening, gaji_bulanan, tujuan_pinjaman)
@@ -206,7 +205,6 @@ func CreatePinjaman(pinjaman models.Pinjaman) error {
 		pinjaman.GajiBulanan,
 		pinjaman.TujuanPinjaman,
 	)
-	fmt.Printf("DEBUG: Insert pinjaman selesai, err: %v\n", err)
 	return err
 }
 
@@ -284,11 +282,10 @@ func UpdateSimpananStatus(id int, status string) error {
 // UpdateAngsuranStatus memperbarui status angsuran
 func UpdateAngsuranStatus(id int, status string) error {
 	db := config.GetDB()
-	fmt.Printf("[DEBUG] UpdateAngsuranStatus: id=%d, status=%s\n", id, status)
 	query := "UPDATE angsuran SET status = $1 WHERE id_angsuran = $2"
 	_, err := db.Exec(query, status, id)
 	if err != nil {
-		fmt.Printf("[ERROR] UpdateAngsuranStatus gagal: %v\n", err)
+		log.Printf("[ERROR] UpdateAngsuranStatus gagal (id_angsuran=%d status=%s): %v", id, status, err)
 	}
 	return err
 }
@@ -337,15 +334,6 @@ func GetPendingPinjaman() ([]models.Pinjaman, error) {
 		// Override bunga dengan nilai terkini dari pengaturan
 		p.Bunga = currentBunga
 		pinjamans = append(pinjamans, p)
-	}
-	// DEBUG LOG
-	if len(pinjamans) == 0 {
-		fmt.Println("DEBUG: Tidak ada pinjaman status 'proses' ditemukan di database!")
-	} else {
-		fmt.Printf("DEBUG: Jumlah pinjaman status 'proses': %d\n", len(pinjamans))
-		for _, p := range pinjamans {
-			fmt.Printf("DEBUG: Pinjaman: %+v\n", p)
-		}
 	}
 	return pinjamans, nil
 }
@@ -983,6 +971,61 @@ func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
 	for rows.Next() {
 		var a models.Angsuran
 		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.BuktiAngsuran, &a.Status); err != nil {
+			return nil, err
+		}
+		angsurans = append(angsurans, a)
+	}
+	return angsurans, nil
+}
+
+// GetPendingSimpananByCriteria mengambil simpanan pending yang cocok dengan id_anggota, id_simpanan, dan jumlah
+func GetPendingSimpananByCriteria(idAnggota string, idSimpanan int, jumlah float64) ([]models.Detail, error) {
+	db := config.GetDB()
+	var details []models.Detail
+	query := `
+		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, COALESCE(d.status, ''), COALESCE(d.metode_pembayaran, '')
+		FROM detail d
+		JOIN anggota a ON d.id_anggota = a.id_anggota
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+		WHERE d.status = 'pending' AND d.id_anggota = $1 AND d.id_simpanan = $2 AND d.jumlah_simpanan = $3
+		ORDER BY d.tgl_transaksi ASC
+	`
+	rows, err := db.Query(query, idAnggota, idSimpanan, jumlah)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var d models.Detail
+		if err := rows.Scan(&d.IDDetail, &d.IDAnggota, &d.NamaAnggota, &d.IDSimpanan, &d.Simpanan.JenisSimpanan, &d.IDPengelola, &d.TglTransaksi, &d.JumlahSimpanan, &d.TotalSimpanan, &d.Status, &d.MetodePembayaran); err != nil {
+			return nil, err
+		}
+		details = append(details, d)
+	}
+	return details, nil
+}
+
+// GetPendingAngsuranByCriteria mengambil angsuran pending yang cocok dengan id_anggota (via pinjaman), id_pinjaman, dan jumlah
+func GetPendingAngsuranByCriteria(idAnggota string, idPinjaman int, jumlah float64) ([]models.Angsuran, error) {
+	db := config.GetDB()
+	var angsurans []models.Angsuran
+	query := `
+		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, a.sisa_pinjaman,
+		       COALESCE(a.status_angsuran, ''), COALESCE(a.status, 'pending'), ang.nama_anggota, COALESCE(a.metode_angsuran, '')
+		FROM angsuran a
+		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
+		JOIN anggota ang ON p.id_anggota = ang.id_anggota
+		WHERE a.status = 'pending' AND p.id_anggota = $1 AND a.id_pinjaman = $2 AND a.jumlah_angsuran = $3
+		ORDER BY a.tgl_bayar ASC
+	`
+	rows, err := db.Query(query, idAnggota, idPinjaman, jumlah)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a models.Angsuran
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDAnggota, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.StatusAngsuran, &a.Status, &a.NamaAnggota, &a.MetodeAngsuran); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)

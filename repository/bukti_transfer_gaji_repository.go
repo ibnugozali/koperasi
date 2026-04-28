@@ -63,7 +63,17 @@ func UpdateBuktiTransferGajiStatus(id int, status string) error {
 	return err
 }
 
-// GetAllBuktiTransferGaji mengambil semua bukti transfer gaji
+// CheckBuktiTransferGajiApproved memeriksa apakah bukti transfer gaji sudah di-approve untuk bulan dan tahun tertentu
+func CheckBuktiTransferGajiApproved(bulan, tahun int) (bool, error) {
+	db := config.GetDB()
+	var count int
+	query := `SELECT COUNT(*) FROM bukti_transfer_gaji WHERE bulan = $1 AND tahun = $2 AND status = 'approved'`
+	err := db.QueryRow(query, bulan, tahun).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
 func GetAllBuktiTransferGaji() ([]models.BuktiTransferGaji, error) {
 	db := config.GetDB()
 	var buktiList []models.BuktiTransferGaji

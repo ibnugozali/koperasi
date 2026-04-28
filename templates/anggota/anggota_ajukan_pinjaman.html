@@ -441,6 +441,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Hapus opsi Potong Gaji dari Metode Angsuran jika mahasiswa (tidak punya gaji)
+    const metodeAngsuranSelect = document.getElementById('metodeAngsuran');
+    if (metodeAngsuranSelect && unitKerjaValue === '03') {
+        const potongGajiOption = metodeAngsuranSelect.querySelector('option[value="potong_gaji"]');
+        if (potongGajiOption) {
+            potongGajiOption.remove();
+        }
+    }
+
     // Hitung perkiraan angsuran saat input berubah
     calculateAngsuran();
 });

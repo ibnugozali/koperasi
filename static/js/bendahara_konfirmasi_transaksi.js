@@ -1,6 +1,7 @@
 // JS untuk konfirmasi transaksi bendahara (AJAX, feedback, dsb)
+// Single DOMContentLoaded untuk menghindari duplikat event listener
 document.addEventListener('DOMContentLoaded', function() {
-    // Dropdown Jenis Simpanan dinamis
+    // --- Dropdown Jenis Simpanan dinamis ---
     const select = document.getElementById('jenisSimpananSelect');
     if (select) {
         fetch('/api/jenis-simpanan')
@@ -24,14 +25,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 select.innerHTML = '<option value="pokok">Pokok</option><option value="wajib">Wajib</option><option value="sukarela">Sukarela</option><option value="hari_raya">Hari Raya</option>';
             });
     }
-    // Konfirmasi/tolak transaksi tanpa reload (optional improvement)
-    document.querySelectorAll('form[action*="/bendahara/konfirmasi-transaksi/"]').forEach(function(form) {
+
+    // --- Konfirmasi/tolak transaksi via AJAX ---
+    document.querySelectorAll('form[action*="/bendahara/konfirmasi-transaksi/"]:not([data-no-ajax="true"])').forEach(function(form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             let url = form.getAttribute('action');
-            // Debug log
-            console.log('Submit konfirmasi-transaksi:', form, url);
-            // Validasi URL
             if (!url || url.indexOf('/bendahara/konfirmasi-transaksi/') === -1) {
                 alert('Form action tidak valid: ' + url);
                 return;
@@ -45,7 +44,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(res => res.json())
             .then(data => {
                 if (data.success || data.status === 'ok') {
-                    // Berhasil, reload atau update baris
                     location.reload();
                 } else {
                     alert(data.error || 'Gagal memproses transaksi');
@@ -54,38 +52,21 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(() => alert('Terjadi kesalahan jaringan'));
         });
     });
-});
-// AJAX submit untuk form angsuran (tanpa reload)
-document.addEventListener('DOMContentLoaded', function() {
-    var formAngsuran = document.querySelector('form[action="/bendahara/transaksi/angsuran"]');
-    if (formAngsuran) {
-        formAngsuran.addEventListener('submit', function(e) {
-            e.preventDefault();
-            var formData = new FormData(formAngsuran);
-            fetch('/bendahara/transaksi/angsuran', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.message) {
-                    showAngsuranNotif('success', data.message);
-                    formAngsuran.reset();
-                } else {
-                    showAngsuranNotif('danger', data.error || 'Gagal mencatat angsuran');
-                }
-            })
-            .catch(() => showAngsuranNotif('danger', 'Terjadi kesalahan jaringan'));
-        });
-    }
-});
 
-// AJAX submit untuk form simpanan (tanpa reload)
-document.addEventListener('DOMContentLoaded', function() {
+    // --- AJAX submit untuk form simpanan (dengan proteksi double-submit) ---
+    var isSubmittingSimpanan = false;
     var formSimpanan = document.querySelector('form[action="/bendahara/transaksi/simpanan"]');
     if (formSimpanan) {
+        var btnSimpanan = formSimpanan.querySelector('button[type="submit"]');
         formSimpanan.addEventListener('submit', function(e) {
             e.preventDefault();
+            if (isSubmittingSimpanan) return; // Cegah klik ganda
+            isSubmittingSimpanan = true;
+            if (btnSimpanan) {
+                btnSimpanan.disabled = true;
+                btnSimpanan.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
+            }
+
             var formData = new FormData(formSimpanan);
             fetch('/bendahara/transaksi/simpanan', {
                 method: 'POST',
@@ -93,14 +74,72 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(res => res.json())
             .then(data => {
+                isSubmittingSimpanan = false;
+                if (btnSimpanan) {
+                    btnSimpanan.disabled = false;
+                    btnSimpanan.innerHTML = '<i class="fa-solid fa-plus"></i> Simpan';
+                }
                 if (data.message) {
                     showSimpananNotif('success', data.message);
                     formSimpanan.reset();
+                    location.reload(); // Agar Simpanan Pending / Cicilan Pending ter-update otomatis
                 } else {
                     showSimpananNotif('danger', data.error || 'Gagal mencatat simpanan');
                 }
             })
-            .catch(() => showSimpananNotif('danger', 'Terjadi kesalahan jaringan'));
+            .catch(function() {
+                isSubmittingSimpanan = false;
+                if (btnSimpanan) {
+                    btnSimpanan.disabled = false;
+                    btnSimpanan.innerHTML = '<i class="fa-solid fa-plus"></i> Simpan';
+                }
+                showSimpananNotif('danger', 'Terjadi kesalahan jaringan');
+            });
+        });
+    }
+
+    // --- AJAX submit untuk form angsuran (dengan proteksi double-submit) ---
+    var isSubmittingAngsuran = false;
+    var formAngsuran = document.querySelector('form[action="/bendahara/transaksi/angsuran"]');
+    if (formAngsuran) {
+        var btnAngsuran = formAngsuran.querySelector('button[type="submit"]');
+        formAngsuran.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (isSubmittingAngsuran) return; // Cegah klik ganda
+            isSubmittingAngsuran = true;
+            if (btnAngsuran) {
+                btnAngsuran.disabled = true;
+                btnAngsuran.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
+            }
+
+            var formData = new FormData(formAngsuran);
+            fetch('/bendahara/transaksi/angsuran', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                isSubmittingAngsuran = false;
+                if (btnAngsuran) {
+                    btnAngsuran.disabled = false;
+                    btnAngsuran.innerHTML = '<i class="fa-solid fa-plus"></i> Simpan';
+                }
+                if (data.message) {
+                    showAngsuranNotif('success', data.message);
+                    formAngsuran.reset();
+                    location.reload(); // Agar Simpanan Pending / Cicilan Pending ter-update otomatis
+                } else {
+                    showAngsuranNotif('danger', data.error || 'Gagal mencatat angsuran');
+                }
+            })
+            .catch(function() {
+                isSubmittingAngsuran = false;
+                if (btnAngsuran) {
+                    btnAngsuran.disabled = false;
+                    btnAngsuran.innerHTML = '<i class="fa-solid fa-plus"></i> Simpan';
+                }
+                showAngsuranNotif('danger', 'Terjadi kesalahan jaringan');
+            });
         });
     }
 });
@@ -142,6 +181,13 @@ function showSimpananNotif(type, msg) {
 }
 
 // AJAX submit untuk form import potong gaji Excel
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     var potongGajiForm = document.getElementById('potongGajiImportForm');
     var potongGajiBtn = document.getElementById('potongGajiImportBtn');
@@ -209,9 +255,3 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function escapeHtml(text) {
-    if (!text) return '';
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(text));
-    return div.innerHTML;
-}
