@@ -1349,7 +1349,6 @@ func KeluarKoperasi(c *gin.Context) {
 	biayaAdminStr := c.PostForm("biaya_admin")
 	alasanKeluar := c.PostForm("alasan_keluar")
 
-
 	// Convert string to float64
 	simpananWajib, err := strconv.ParseFloat(simpananWajibStr, 64)
 	if err != nil {
@@ -1381,7 +1380,6 @@ func KeluarKoperasi(c *gin.Context) {
 
 	// Update status anggota menjadi 'pending_keluar' dan simpan data pengajuan
 	db := config.GetDB()
-
 
 	// Buat JSON string untuk data_keluar
 	dataKeluarJSON := fmt.Sprintf(`{
@@ -1466,11 +1464,21 @@ func AjukanPinjaman(c *gin.Context) {
 
 // getAjukanPinjamanTemplateData adalah helper function untuk mendapatkan data template yang konsisten
 func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H {
-	// Hitung total simpanan
-	totalSimpanan, _, _, err := repository.GetSaldoAnggota(userID)
+	// Hitung total simpanan (excluding pokok, same as Profil)
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
 	if err != nil {
-		totalSimpanan = 0
+		simpananByJenis = map[string]float64{
+			"pokok":      0,
+			"wajib":      0,
+			"sukarela":   0,
+			"hari_raya":  0,
+			"umroh_haji": 0,
+			"qurban":     0,
+		}
 	}
+	totalSimpanan := simpananByJenis["wajib"] +
+		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
+		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
 
 	// Hitung limit pinjaman berdasarkan jenis anggota
 	var limitPinjaman float64
@@ -2650,17 +2658,16 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 		return
 	}
 
-	// Hitung total saldo simpanan anggota
-	totalSimpanan, _, _, err := repository.GetSaldoAnggota(userID)
-	if err != nil {
-		totalSimpanan = 0
-	}
-
-	// Ambil detail simpanan per jenis
+	// Hitung Total Simpanan (excluding pokok, SAME as Profil)
 	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
 	if err != nil {
 		simpananByJenis = make(map[string]float64)
 	}
+	totalSimpanan := simpananByJenis["wajib"] +
+		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
+		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+
+	// Ambil detail simpanan per jenis (already loaded above)
 
 	// Ambil daftar jenis simpanan
 	db := config.GetDB()
