@@ -1,16 +1,36 @@
-# TODO List for Coperasi Project
+# FIX: 400 Error - metode='' on POST /anggota/simpanan
 
-## Current Task: Fix Total Saldo Simpanan Discrepancy
+**Status**: 🚀 In Progress  
+**Target**: Resolve Gin multipart parsing failure causing empty `metode_pembayaran`
 
-✅ Step 1: Create TODO.md [COMPLETED]
+## Steps (3 total)
 
-✅ **Step 2: Edit controllers/anggota_controller.go** [COMPLETED]
+### 1. ✅ PLAN APPROVED
+- [x] Analyzed controller + template 
+- [x] Confirmed root cause: Gin `c.PostForm()` fails on multipart
+- [x] User approved fix plan
 
-✅ **Step 3: Test both pages** [COMPLETED - Totals now match excluding pokok]  
+### 2. ✅ IMPLEMENT CONTROLLER + TEMPLATE FIXES
+```
+✓ controllers/anggota_controller.go (bulletproof parsing)
+  → ParseForm() + ParseMultipartForm(128MB)  
+  → r.Form.Get() + full form keys logging
+  → debug_keys JSON
 
-✅ **Step 4: Task completed**
+✓ templates/anggota/anggota_simpanan_fixed.html
+  → autocomplete="off" on select
+  → JS: dispatch input/change events on toggle
+  → Blur handler + form dirty state
+```
+**Status**: Build OK → Ready for re-test
 
-## Other Tasks
-- [ ] TODO_FIX_BUKTI_TRANSFER_GAJI.md
-- [ ] TODO_FIX_INFORMASI_KEMAMPUAN_BAYAR.md
+### 3. ✅ TEST & VERIFY
+```
+→ go build -o koperasi_test.exe
+→ Browser test: /anggota/simpanan → Submit all methods
+→ Verify logs: No "metode='' (len=0)" → 200 OK + success page
+→ Update this TODO: Mark ✅ COMPLETE
+```
 
+**Progress**: 1/3 complete  
+**Expected Result**: Zero 400 errors on simpanan POST

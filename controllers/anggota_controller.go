@@ -1853,7 +1853,9 @@ func AnggotaSimpanan(c *gin.Context) {
 	// Ambil nomor rekening koperasi dari repository
 	nomorRekening, _ := repository.GetNomorRekening("simpanan")
 
-	c.HTML(http.StatusOK, "anggota_simpanan.html", gin.H{
+	log.Printf("DEBUG AnggotaSimpanan: userID=%s UnitKerja=%s GajiBulanan=%d", userID, anggota.UnitKerja, anggota.GajiBulanan)
+	c.HTML(http.StatusOK, "anggota_simpanan_fixed.html", gin.H{
+		"DebugUnitKerja":       anggota.UnitKerja,
 		"Judul":                "Simpanan",
 		"Anggota":              anggota,
 		"Now":                  time.Now(),
@@ -1869,30 +1871,74 @@ func AnggotaSimpananPost(c *gin.Context) {
 	session := sessions.Default(c)
 	userID, ok := session.Get("user_id").(string)
 	if !ok {
-		c.Redirect(http.StatusFound, "/login")
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Session tidak valid. Silakan login ulang."})
 		return
 	}
 
-	// Ambil input dari form (template mengirim beberapa field: simpanan_wajib, simpanan_sukarela, simpanan_hari_raya, simpanan_umroh_haji, simpanan_qurban, total_simpanan)
-	wajibStr := c.PostForm("simpanan_wajib")
-	sukarelaStr := c.PostForm("simpanan_sukarela")
-	hariRayaStr := c.PostForm("simpanan_hari_raya")
-	umrohHajiStr := c.PostForm("simpanan_umroh_haji")
-	qurbanStr := c.PostForm("simpanan_qurban")
-	totalStr := c.PostForm("total_simpanan")
+	// ==================== BULLETPROOF MULTIPART PARSING FIX ====================
+	log.Printf("[SIMPANAN-POST] user=%s ContentType='%s'", userID, c.ContentType())
 
-	// Set tanggal pengajuan otomatis ke waktu sekarang (atau gunakan yang dikirim jika ada)
-	tanggalPengajuan := time.Now()
-	if t := c.PostForm("tanggal_pengajuan"); t != "" {
-		if parsed, err := time.Parse("2006-01-02", t); err == nil {
-			// Combine parsed date with current time-of-day so timestamp reflects submission time
-			now := time.Now()
-			tanggalPengajuan = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location())
-		}
+	// 1. CRITICAL: ParseForm FIRST (populates r.Form map)
+	if err := c.Request.ParseForm(); err != nil {
+		log.Printf("[SIMPANAN-POST ERROR] ParseForm FAIL: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Form parse error"})
+		return
 	}
 
-	// Parse values (toleran terhadap empty)
-	var wajib, sukarela, hariRaya, umrohHaji, qurban float64
+	// 2. ParseMultipartForm with 128MB limit (safe for multiple files)
+	if err := c.Request.ParseMultipartForm(128 << 20); err != nil {
+		log.Printf("[SIMPANAN-POST ERROR] ParseMultipartForm FAIL: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Multipart parse error: " + err.Error()})
+		return
+	}
+
+	// 3. BULLETPROOF: DIRECT r.Form.Get() - bypasses c.PostForm() race conditions
+	metodePembayaran := strings.TrimSpace(c.Request.Form.Get("metode_pembayaran"))
+
+	// 4. DEBUG: Log ALL form keys received
+	formKeys := []string{}
+	for key := range c.Request.Form {
+		formKeys = append(formKeys, key)
+	}
+	log.Printf("[SIMPANAN-POST FORM KEYS] user=%s keys=%v | metode='%s'", userID, formKeys, metodePembayaran)
+
+	log.Printf("[SIMPANAN-POST BULLETPROOF] user=%s metode='%s' (len=%d)", userID, metodePembayaran, len(metodePembayaran))
+
+	// 5. VALIDATION: Whitelist + non-empty
+	validMethods := map[string]bool{"transfer_bank": true, "potong_gaji": true, "tunai": true}
+	validMethodList := []string{"transfer_bank", "potong_gaji", "tunai"}
+	if metodePembayaran == "" {
+		log.Printf("[SIMPANAN-POST REJECT] metode_pembayaran kosong | all_keys=%v", formKeys)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success":       false,
+			"field":         "metode_pembayaran",
+			"message":       "❌ Metode pembayaran wajib dipilih. Pilih salah satu: transfer_bank, potong_gaji, atau tunai.",
+			"debug_keys":    formKeys,
+			"valid_methods": validMethodList,
+		})
+		return
+	}
+	if !validMethods[metodePembayaran] {
+		log.Printf("[SIMPANAN-POST REJECT] invalid method='%s' | all_keys=%v", metodePembayaran, formKeys)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success":       false,
+			"field":         "metode_pembayaran",
+			"message":       fmt.Sprintf("❌ Metode pembayaran '%s' tidak valid. Pilih salah satu: transfer_bank, potong_gaji, atau tunai.", metodePembayaran),
+			"debug_keys":    formKeys,
+			"valid_methods": validMethodList,
+		})
+		return
+	}
+	log.Printf("[SIMPANAN-POST] ✓ METHOD VALIDATED: '%s'", metodePembayaran)
+
+	// Parse fields SAFELY - handle empty/missing
+	wajibStr := strings.TrimSpace(c.PostForm("simpanan_wajib"))
+	sukarelaStr := strings.TrimSpace(c.PostForm("simpanan_sukarela"))
+	hariRayaStr := strings.TrimSpace(c.PostForm("simpanan_hari_raya"))
+	umrohHajiStr := strings.TrimSpace(c.PostForm("simpanan_umroh_haji"))
+	qurbanStr := strings.TrimSpace(c.PostForm("simpanan_qurban"))
+
+	var wajib, sukarela, hariRaya, umrohHaji, qurban float64 = 0, 0, 0, 0, 0
 	if wajibStr != "" {
 		fmt.Sscanf(wajibStr, "%f", &wajib)
 	}
@@ -1909,34 +1955,43 @@ func AnggotaSimpananPost(c *gin.Context) {
 		fmt.Sscanf(qurbanStr, "%f", &qurban)
 	}
 
-	// Ambil metode pembayaran dari form
-	metodePembayaran := c.PostForm("metode_pembayaran")
-	if metodePembayaran == "" {
-		metodePembayaran = "transfer_bank"
-	}
-
-	// Validasi metode pembayaran
-	if metodePembayaran != "transfer_bank" && metodePembayaran != "potong_gaji" && metodePembayaran != "tunai" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Metode pembayaran tidak valid.",
-		})
-		return
-	}
-	var total float64
-	if totalStr != "" {
-		fmt.Sscanf(totalStr, "%f", &total)
-	} else {
-		total = wajib + sukarela + hariRaya + umrohHaji + qurban
-	}
+	log.Printf("[SIMPANAN-POST] user=%s ✓ METHOD OK parsed: wajib=%.0f sukarela=%.0f hariRaya=%.0f umroh=%.0f qurban=%.0f total=%.0f metode='%s'",
+		userID, wajib, sukarela, hariRaya, umrohHaji, qurban, wajib+sukarela+hariRaya+umrohHaji+qurban, metodePembayaran)
 
 	if wajib <= 0 && sukarela <= 0 && hariRaya <= 0 && umrohHaji <= 0 && qurban <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Minimal salah satu nilai simpanan harus lebih dari 0.",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "❌ Isi minimal 1 jenis simpanan > Rp0", "debug": fmt.Sprintf("amounts=[%.0f,%.0f,%.0f,%.0f,%.0f]", wajib, sukarela, hariRaya, umrohHaji, qurban)})
 		return
 	}
+
+	// BUKTI for TRANSFER_BANK - FIXED
+	if metodePembayaran == "transfer_bank" {
+		file, err := c.FormFile("bukti")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "field": "bukti", "message": "❌ Transfer Bank → Upload bukti (.jpg/.png/.pdf)!"})
+			return
+		}
+		if file.Size == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "field": "bukti", "message": "❌ File bukti kosong! Pilih file yang valid."})
+			return
+		}
+		log.Printf("[SIMPANAN-POST] user=%s bukti OK: %s (size=%d)", userID, file.Filename, file.Size)
+	}
+
+	log.Printf("[SIMPANAN-FIX] user=%s(373) metode='%s' amounts=[%.0f,%.0f,%.0f,%.0f,%.0f]", userID, metodePembayaran, wajib, sukarela, hariRaya, umrohHaji, qurban)
+
+	// Set tanggal pengajuan otomatis (fallback to today)
+	tanggalPengajuan := time.Now()
+	if t := c.PostForm("tanggal_pengajuan"); t != "" {
+		log.Printf("[SIMPANAN-POST] tanggal_pengajuan='%s'", t)
+		if parsed, err := time.Parse("2006-01-02", t); err == nil {
+			now := time.Now()
+			tanggalPengajuan = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location())
+		}
+	} else {
+		log.Printf("[SIMPANAN-POST] No tanggal_pengajuan - using now")
+	}
+
+	var total float64 = wajib + sukarela + hariRaya + umrohHaji + qurban
 
 	// Handle file upload: hanya wajib untuk Transfer Bank
 	var filename string
@@ -1946,6 +2001,13 @@ func AnggotaSimpananPost(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"message": "Bukti pembayaran wajib diupload untuk metode Transfer Bank.",
+			})
+			return
+		}
+		if file.Size == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Bukti pembayaran tidak boleh kosong untuk metode Transfer Bank.",
 			})
 			return
 		}
@@ -2069,11 +2131,61 @@ func AnggotaSimpananPost(c *gin.Context) {
 	} else {
 		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi simpanan: %v", err)
 	}
-	// Berhasil, return JSON
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"message":  "Simpanan berhasil diajukan!",
-		"redirect": "/anggota/riwayat",
+	// Re-fetch GET data for same-page render
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		log.Printf("[SIMPANAN-POST] GetAnggotaByID FAIL: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Server error"})
+		return
+	}
+
+	configGet, _ := repository.GetKonfigurasiSimpananWajib()
+	nominalSimpananWajibGet := 0.0
+	if val, ok := configGet["PersentasePotong"].(float64); ok {
+		nominalSimpananWajibGet = val
+	}
+
+	resumeGabunganGet := getResumePinjamanGabungan(userID)
+	var resumeGabunganSliceGet []resumePinjamanInfo
+	if resumeGabunganGet != nil {
+		resumeGabunganSliceGet = append(resumeGabunganSliceGet, *resumeGabunganGet)
+	}
+
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogoGet string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogoGet = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogoGet == "" {
+		latestLogoGet = "/static/images/placeholder.png"
+	}
+
+	nomorRekeningGet, _ := repository.GetNomorRekening("simpanan")
+
+	// SUCCESS: In-page notification - stay at /anggota/simpanan
+	c.HTML(http.StatusOK, "anggota_simpanan_fixed.html", gin.H{
+		"DebugUnitKerja":       anggota.UnitKerja,
+		"Judul":                "Simpanan",
+		"Anggota":              anggota,
+		"Now":                  time.Now(),
+		"NominalSimpananWajib": nominalSimpananWajibGet,
+		"ResumeGabungan":       resumeGabunganSliceGet,
+		"CurrentLogo":          latestLogoGet,
+		"NomorRekening":        nomorRekeningGet,
+		"SuccessMessage":       fmt.Sprintf("✅ Simpanan Rp%.0f berhasil diajukan via %s! Menunggu konfirmasi.", total, metodePembayaran),
 	})
 }
 

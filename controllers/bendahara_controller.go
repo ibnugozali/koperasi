@@ -688,26 +688,52 @@ func BendaharaConfirmMembership(c *gin.Context) {
 func BendaharaPesan(c *gin.Context) {
 	db := config.GetDB()
 
-	// Handle POST (kirim pesan)
+	// Handle POST (kirim pesan) - AJAX JSON response
 	if c.Request.Method == http.MethodPost {
 		anggotaID := c.PostForm("anggota_id")
 		judul := c.PostForm("judul")
 		isi := c.PostForm("isi")
-		if anggotaID != "" && judul != "" && isi != "" {
-			pesan := models.Pesan{
-				IDAnggota: anggotaID,
-				Judul:     judul,
-				Isi:       isi,
-				Status:    "unread",
-			}
-			err := repository.CreatePesan(pesan)
-			if err != nil {
-				c.String(http.StatusInternalServerError, "Gagal mengirim pesan")
-				return
-			}
-			c.Redirect(http.StatusFound, "/bendahara/pesan")
+
+		if anggotaID == "" || judul == "" || isi == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Semua field harus diisi: Pilih Anggota, Judul, dan Isi Pesan",
+			})
 			return
 		}
+
+		// Get anggota name for success message
+		var anggotaNama string
+		err := db.QueryRow("SELECT nama_anggota FROM anggota WHERE id_anggota = $1 AND status = 'aktif'", anggotaID).Scan(&anggotaNama)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Anggota tidak ditemukan atau tidak aktif",
+			})
+			return
+		}
+
+		pesan := models.Pesan{
+			IDAnggota: anggotaID,
+			Judul:     judul,
+			Isi:       isi,
+			Status:    "unread",
+		}
+
+		if err := repository.CreatePesan(pesan); err != nil {
+			log.Printf("Gagal create pesan: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Gagal mengirim pesan. Silakan coba lagi.",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": fmt.Sprintf("✅ Pesan berhasil dikirim ke <strong>%s</strong>", anggotaNama),
+		})
+		return
 	}
 
 	// Cari logo terbaru di static/images
@@ -1358,6 +1384,14 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 	if err != nil || len(pendingList) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak sesuai dengan simpanan pending. Entri manual tunai hanya diperbolehkan untuk data yang sudah ada di daftar simpanan pending."})
 		return
+	}
+
+	// Update status data pending menjadi confirmed
+	for _, pending := range pendingList {
+		err := repository.UpdateSimpananStatus(pending.IDDetail, "confirmed")
+		if err != nil {
+			log.Printf("[ERROR] Gagal update status simpanan pending (id_detail=%d): %v", pending.IDDetail, err)
+		}
 	}
 
 	err = repository.CreateSimpanan(detail)
@@ -2162,7 +2196,6 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 	transactionType := c.Param("type")
 	idStr := c.Param("id")
 	action := c.PostForm("action")
-
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -4966,7 +4999,6 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/login")
 		return
 	}
-
 
 	if err = c.ShouldBind(&angsuran); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})

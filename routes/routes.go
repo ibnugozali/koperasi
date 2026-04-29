@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -125,6 +126,7 @@ func SetupRouter() *gin.Engine {
 			}
 			return items
 		},
+		"title": func(s string) string { return strings.Title(s) },
 	})
 
 	// Load templates from subdirectories and root templates folder
