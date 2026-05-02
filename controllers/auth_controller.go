@@ -359,7 +359,10 @@ func Register(c *gin.Context) {
 	newAnggota.Fakultas = c.PostForm("Fakultas")
 	metodePembayaran := c.PostForm("MetodePembayaran")
 	if metodePembayaran == "" {
-		metodePembayaran = "transfer"
+		metodePembayaran = "transfer_bank"
+	}
+	if metodePembayaran == "transfer" {
+		metodePembayaran = "transfer_bank"
 	}
 
 	// Validasi: Username dan No. Telepon tidak boleh sama
@@ -389,9 +392,9 @@ func Register(c *gin.Context) {
 		}
 	}
 
-	// Metode pembayaran simpanan pokok: transfer atau potong gaji
+	// Metode pembayaran simpanan pokok: transfer bank, potong gaji, atau tunai
 	switch metodePembayaran {
-	case "transfer":
+	case "transfer_bank":
 		file, err := c.FormFile("BuktiTransfer")
 		if err != nil {
 			renderRegisterError(http.StatusBadRequest, "Bukti transfer wajib diupload jika memilih metode transfer.")
@@ -411,6 +414,8 @@ func Register(c *gin.Context) {
 			return
 		}
 		newAnggota.BuktiTransfer = "POTONG_GAJI"
+	case "tunai":
+		newAnggota.BuktiTransfer = "TUNAI"
 	default:
 		renderRegisterError(http.StatusBadRequest, "Metode pembayaran tidak valid.")
 		return
@@ -552,9 +557,11 @@ func sendKetuaWhatsAppNotification(rawKetuaPhone string, anggota models.Anggota,
 		waURL = "https://api.fonnte.com/send"
 	}
 
-	metode := "Transfer"
+	metode := "Transfer Bank"
 	if metodePembayaran == "potong_gaji" {
 		metode = "Potong Gaji"
+	} else if metodePembayaran == "tunai" {
+		metode = "Tunai"
 	}
 
 	message := "Notifikasi pendaftaran calon anggota baru:\n" +

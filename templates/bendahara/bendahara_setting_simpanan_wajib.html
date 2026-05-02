@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-        <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
+    <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
     <title>KOPMA</title>
     
     <!-- Bootstrap CSS -->
@@ -35,15 +35,6 @@
                 padding: 15px;
             }
         }
-/* 
-        .page-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-        } */
 
         .card {
             border: none;
@@ -87,51 +78,6 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #667eea;
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
     </style>
 </head>
 <body>
@@ -141,23 +87,26 @@
     <div class="main-content">
         <div class="container-fluid">
             <br><br><br>
-<!--             
-            <div class="page-header">
-    <h1><i class="fas fa-cog me-3"></i>Setting Pemotongan Simpanan Wajib</h1>
-    <p>Atur tanggal dan metode pemotongan otomatis simpanan wajib dari gaji bulanan</p>
-</div> -->
+            
             <div class="row">
-    <div class="col-lg-8 mx-auto">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-cog me-3"></i>Setting Pemotongan Simpanan Wajib</h5>
+                <div class="col-lg-8 mx-auto">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-cog me-3"></i>Konfigurasi Simpanan Wajib</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>Atur parameter nominal dan jadwal referensi pemotongan simpanan wajib anggota.</p>
+                            <div class="mt-3">
+                                {{if .Config.StatusAktif}}
+                                <span class="badge bg-success fs-6"><i class="fas fa-circle-check me-2"></i>Status Aktif</span>
+                                {{else}}
+                                <span class="badge bg-secondary fs-6"><i class="fas fa-circle-pause me-2"></i>Status Nonaktif</span>
+                                {{end}}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <p>Atur tanggal dan metode pemotongan otomatis simpanan wajib dari gaji bulanan</p>
-            </div>
-        </div>
-    </div>
-</div>
 
             {{ if .success }}
             <div class="row justify-content-center">
@@ -183,91 +132,27 @@
 
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <!-- Status Scheduler Card -->
-                    <div class="card mb-4" id="schedulerStatusCard" data-status="{{ if .Config.StatusAktif }}aktif{{ else }}nonaktif{{ end }}">
-                        <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <h5 class="mb-2">
-                                        <i class="fas fa-robot me-2 {{ if .Config.StatusAktif }}text-success{{ else }}text-danger{{ end }}" id="statusIcon"></i>
-                                        Status Scheduler Otomatis
-                                    </h5>
-                                    <p class="mb-0" id="statusMessage">
-                                        {{ if .Config.StatusAktif }}
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check-circle me-1"></i>AKTIF
-                                            </span>
-                                            <span class="text-muted ms-2">
-                                                Pemotongan akan dijalankan otomatis setiap <strong>tanggal {{ .Config.TanggalPotong }}</strong> setiap bulan
-                                            </span>
-                                        {{ else }}
-                                            <span class="badge bg-danger">
-                                                <i class="fas fa-times-circle me-1"></i>NONAKTIF
-                                            </span>
-                                            <span class="text-muted ms-2">
-                                                Pemotongan otomatis tidak berjalan. Aktifkan untuk menggunakan fitur ini.
-                                            </span>
-                                        {{ end }}
-                                    </p>
-                                </div>
-                                <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                                    <div class="text-muted small" id="checkInfo">
-                                        <i class="fas fa-clock me-1"></i><span id="lastCheckTime">Dicek setiap jam</span>
-                                    </div>
-                                    {{ if .Config.StatusAktif }}
-                                        <div class="mt-2" id="readyIndicator">
-                                            <i class="fas fa-calendar-check text-success me-1"></i>
-                                            <small>Siap memproses</small>
-                                        </div>
-                                    {{ end }}
-                                    <div class="mt-2">
-                                        <small class="text-muted" id="nextCheckCountdown"></small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="card">
                         <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Konfigurasi Pemotongan</h5>
+                            <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Pengaturan Parameter</h5>
                         </div>
                         <div class="card-body">
                             <form action="/bendahara/setting-simpanan-wajib" method="POST">
                                 
                                 <div class="info-box">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Informasi Pemotongan Otomatis:</strong>
+                                    <strong>Informasi:</strong>
                                     <ul class="mb-0 mt-2">
-                                        <li>Sistem akan <strong>otomatis memotong gaji bulanan anggota</strong> pada tanggal yang ditentukan setiap bulannya untuk simpanan wajib.</li>
-                                        <li>Status harus <strong>Aktif</strong> agar pemotongan otomatis berjalan.</li>
-                                        <li>Sistem akan memeriksa setiap hari, dan jika <strong>tanggal sekarang sama dengan tanggal pemotongan</strong> yang dikonfigurasi, pemotongan akan dijalankan secara otomatis.</li>
-                                        <li>Setiap anggota <strong>hanya akan dipotong sekali per bulan</strong>, sistem akan mencegah pemotongan ganda.</li>
-                                        <li>Pemotongan otomatis hanya berlaku untuk anggota dengan <strong>gaji bulanan > 0</strong>.</li>
+                                        <li>Tentukan tanggal acuan pemotongan untuk laporan sistem.</li>
+                                        <li>Tentukan nominal tetap simpanan wajib bulanan.</li>
+                                        <li>Pemotongan dilakukan berdasarkan daftar gaji anggota yang aktif.</li>
+                                        <li>Saat Anda klik <strong>Simpan Perubahan</strong>, status simpanan wajib akan langsung diaktifkan otomatis.</li>
                                     </ul>
-                                </div>
-
-                                <div class="mb-4">
-                                    <label class="form-label">
-                                        <i class="fas fa-toggle-on me-2"></i>Status Pemotongan Otomatis
-                                    </label>
-                                    <div>
-                                        <label class="switch">
-                                            <input type="checkbox" name="StatusAktif" {{ if .Config.StatusAktif }}checked{{ end }}>
-                                            <span class="slider"></span>
-                                        </label>
-                                        <span class="ms-3 fw-bold" id="statusText" style="font-size: 1.1em;">{{ if .Config.StatusAktif }}<span class="text-success">✓ Aktif</span>{{ else }}<span class="text-danger">✗ Nonaktif</span>{{ end }}</span>
-                                    </div>
-                                    <small class="form-text text-muted">
-                                        <i class="fas fa-exclamation-triangle me-1 text-warning"></i>
-                                        <strong>Penting:</strong> Saat diaktifkan, sistem akan otomatis memotong gaji setiap anggota pada <strong>tanggal yang ditentukan setiap bulan</strong>. 
-                                        Pastikan tanggal pemotongan sudah sesuai sebelum mengaktifkan.
-                                    </small>
                                 </div>
 
                                 <div class="mb-3">
                                     <label for="TanggalPotong" class="form-label">
-                                        <i class="fas fa-calendar-day me-2"></i>Tanggal Pemotongan Setiap Bulan
+                                        <i class="fas fa-calendar-day me-2"></i>Tanggal Pemotongan Acuan
                                     </label>
                                     <select class="form-select" id="TanggalPotong" name="TanggalPotong" required>
                                         <option value="">Pilih Tanggal</option>
@@ -278,25 +163,21 @@
                                             </option>
                                         {{ end }}
                                     </select>
-                                    <small class="form-text text-muted">
-                                        <i class="fas fa-robot me-1 text-primary"></i>
-                                        Sistem akan <strong>otomatis memotong gaji</strong> pada tanggal ini setiap bulan jika status <strong>Aktif</strong>. 
-                                        Contoh: Jika memilih tanggal 5, maka setiap tanggal 5 setiap bulan sistem akan memotong gaji anggota secara otomatis.
-                                    </small>
+                                    <small class="form-text text-muted">Tanggal ini digunakan sebagai identitas periode pemotongan setiap bulannya.</small>
                                 </div>
 
-                                <div class="mb-3">
+                                <div class="mb-4">
                                     <label for="PersentasePotong" class="form-label">
                                         <i class="fas fa-money-bill-wave me-2"></i>Nominal Simpanan Wajib (Rp)
                                     </label>
                                     <input type="number" class="form-control" id="PersentasePotong" name="PersentasePotong" 
                                            value="{{ .Config.PersentasePotong }}" min="0" step="1000" required>
-                                    <small class="form-text text-muted">Jumlah nominal simpanan wajib yang akan dipotong setiap bulan (contoh: 50000 untuk Rp 50.000)</small>
+                                    <small class="form-text text-muted">Jumlah nominal (contoh: 50000 untuk Rp 50.000)</small>
                                 </div>
 
                                 <div class="text-center mt-4 pt-3 border-top">
                                     <button type="submit" class="btn btn-submit">
-                                        <i class="fas fa-save me-2"></i>Simpan Konfigurasi
+                                        <i class="fas fa-save me-2"></i>Simpan Perubahan
                                     </button>
                                 </div>
                             </form>
@@ -305,18 +186,16 @@
 
                     <div class="card">
                         <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-play-circle me-2"></i>Proses Manual</h5>
+                            <h5 class="mb-0"><i class="fas fa-play-circle me-2"></i>Eksekusi Pemotongan</h5>
                         </div>
                         <div class="card-body">
-                            <div class="alert alert-info mb-3">
-                                <i class="fas fa-info-circle me-2"></i>
-                                <strong>Catatan:</strong> Tombol ini untuk menjalankan pemotongan secara <strong>manual</strong> tanpa menunggu tanggal pemotongan otomatis. 
-                                Berguna jika Anda ingin melakukan pemotongan di luar jadwal atau jika pemotongan otomatis gagal.
+                            <div class="alert alert-warning mb-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Perhatian:</strong> Klik tombol di bawah untuk memproses pemotongan gaji anggota untuk bulan berjalan secara manual.
                             </div>
-                            <p class="mb-3">Jalankan proses pemotongan simpanan wajib secara manual untuk bulan ini:</p>
-                            <form action="/bendahara/proses-simpanan-wajib" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menjalankan proses pemotongan simpanan wajib untuk semua anggota?\n\nProses ini akan memotong gaji bulanan anggota sesuai konfigurasi.');">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-bolt me-2"></i>Jalankan Proses Pemotongan Manual
+                            <form action="/bendahara/proses-simpanan-wajib" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menjalankan proses pemotongan simpanan wajib sekarang?');">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-bolt me-2"></i>Jalankan Proses Pemotongan Sekarang
                                 </button>
                             </form>
                         </div>
@@ -328,253 +207,5 @@
     {{ template "bendahara_footer" . }}
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Toggle status text
-        const statusCheckbox = document.querySelector('input[name="StatusAktif"]');
-        const statusText = document.getElementById('statusText');
-        if (statusCheckbox) {
-            statusCheckbox.addEventListener('change', function() {
-                if (this.checked) {
-                    statusText.innerHTML = '<span class="text-success">✓ Aktif</span>';
-                } else {
-                    statusText.innerHTML = '<span class="text-danger">✗ Nonaktif</span>';
-                }
-            });
-        }
-
-        // Set border color berdasarkan status
-        const schedulerCard = document.getElementById('schedulerStatusCard');
-        const statusData = schedulerCard.getAttribute('data-status');
-        if (statusData === 'aktif') {
-            schedulerCard.style.borderLeft = '4px solid #28a745';
-        } else {
-            schedulerCard.style.borderLeft = '4px solid #dc3545';
-        }
-
-        // Auto-check untuk pemotongan otomatis
-        let lastCheckDate = null;
-        let isProcessing = false;
-        let checkCount = 0;
-        let nextCheckTime = null;
-        let autoCheckInterval = null; // Untuk menyimpan interval ID
-
-        // Cek status aktif dari checkbox
-        function isStatusAktif() {
-            const checkbox = document.querySelector('input[name="StatusAktif"]');
-            return checkbox ? checkbox.checked : false;
-        }
-
-        function updateCountdown() {
-            if (!nextCheckTime) return;
-            
-            const now = new Date();
-            const diff = nextCheckTime - now;
-            
-            if (diff <= 0) {
-                document.getElementById('nextCheckCountdown').textContent = 'Mengecek sekarang...';
-                return;
-            }
-            
-            const minutes = Math.floor(diff / 60000);
-            const seconds = Math.floor((diff % 60000) / 1000);
-            
-            if (minutes > 0) {
-                document.getElementById('nextCheckCountdown').textContent = `Cek berikutnya dalam ${minutes}m ${seconds}s`;
-            } else {
-                document.getElementById('nextCheckCountdown').textContent = `Cek berikutnya dalam ${seconds}s`;
-            }
-        }
-
-        async function cekPemotonganOtomatis() {
-            // STOP pengecekan jika status nonaktif
-            if (!isStatusAktif()) {
-                console.log('⏸️ Auto-check dihentikan: Status Pemotongan Otomatis NONAKTIF');
-                document.getElementById('nextCheckCountdown').textContent = 'Auto-check dinonaktifkan';
-                
-                // Update status card
-                const statusCard = document.getElementById('schedulerStatusCard');
-                const statusIcon = document.getElementById('statusIcon');
-                statusCard.style.borderLeft = '4px solid #dc3545';
-                statusIcon.className = 'fas fa-robot me-2 text-danger';
-                
-                const readyIndicator = document.getElementById('readyIndicator');
-                if (readyIndicator) {
-                    readyIndicator.innerHTML = `
-                        <i class="fas fa-times-circle text-danger me-1"></i>
-                        <small>Status nonaktif - Auto-check dihentikan</small>
-                    `;
-                }
-                return; // Stop eksekusi
-            }
-
-            if (isProcessing) {
-                console.log('⏳ Masih memproses pemotongan sebelumnya...');
-                return;
-            }
-
-            checkCount++;
-            const checkTime = new Date();
-            document.getElementById('lastCheckTime').textContent = 'Terakhir dicek: ' + checkTime.toLocaleTimeString('id-ID');
-            console.log(`🔄 Auto-check #${checkCount} - ${checkTime.toLocaleTimeString('id-ID')}`);
-
-            try {
-                const response = await fetch('/bendahara/cek-pemotongan-otomatis');
-                const result = await response.json();
-                
-                const today = new Date().toDateString();
-                
-                console.log(`🔍 Hasil check #${checkCount}:`, result);
-
-                // Update status message
-                const statusCard = document.getElementById('schedulerStatusCard');
-                const statusIcon = document.getElementById('statusIcon');
-                const statusMessage = document.getElementById('statusMessage');
-
-                // Jika pemotongan berhasil dijalankan
-                if (result.processed || (result.shouldRun && result.successCount !== undefined)) {
-                    console.log('✅ Pemotongan berhasil! Berhasil:', result.successCount, 'Gagal:', result.failedCount);
-                    lastCheckDate = today;
-                    
-                    // Trigger update untuk tab lain via localStorage
-                    localStorage.setItem('pemotonganUpdated', 'true');
-                    localStorage.setItem('justProcessedPemotongan', 'true');
-                    
-                    // Update UI
-                    statusCard.style.borderLeft = '4px solid #28a745';
-                    statusIcon.className = 'fas fa-robot me-2 text-success';
-                    
-                    // Update status message
-                    if (statusMessage) {
-                        statusMessage.innerHTML = `
-                            <div class="alert alert-success mb-0">
-                                <i class="fas fa-check-circle me-2"></i>
-                                <strong>Pemotongan Berhasil Dijalankan!</strong><br>
-                                <small>Berhasil: ${result.successCount}, Gagal: ${result.failedCount}</small>
-                            </div>
-                        `;
-                    }
-                    
-                    // Update ready indicator
-                    const readyIndicator = document.getElementById('readyIndicator');
-                    if (readyIndicator) {
-                        readyIndicator.innerHTML = `
-                            <i class="fas fa-check-double text-success me-1"></i>
-                            <small>Pemotongan berhasil (${result.successCount} transaksi)</small>
-                        `;
-                    }
-                    
-                    // Tampilkan notifikasi toast
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-                    alertDiv.style.zIndex = '9999';
-                    alertDiv.style.minWidth = '400px';
-                    alertDiv.innerHTML = `
-                        <i class="fas fa-check-circle me-2"></i>
-                        <strong>Pemotongan Otomatis Berhasil!</strong><br>
-                        <small>${result.message}</small>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    `;
-                    document.body.appendChild(alertDiv);
-                    
-                    // Auto close notifikasi setelah 5 detik
-                    setTimeout(() => {
-                        alertDiv.remove();
-                    }, 5000);
-                } else if (result.alreadyProcessed) {
-                    console.log('✓ Pemotongan sudah diproses bulan ini:', result.processedCount, 'transaksi');
-                    lastCheckDate = today;
-                    
-                    // Update info
-                    const readyIndicator = document.getElementById('readyIndicator');
-                    if (readyIndicator) {
-                        readyIndicator.innerHTML = `
-                            <i class="fas fa-check-double text-info me-1"></i>
-                            <small>Sudah diproses (${result.processedCount} transaksi)</small>
-                        `;
-                    }
-                } else if (!result.statusAktif) {
-                    console.log('ℹ️ Status pemotongan otomatis tidak aktif');
-                    statusCard.style.borderLeft = '4px solid #dc3545';
-                    statusIcon.className = 'fas fa-robot me-2 text-danger';
-                } else if (result.tanggal !== result.tanggalPotong) {
-                    console.log(`ℹ️ Belum waktunya pemotongan. Sekarang: tanggal ${result.tanggal}, Pemotongan: tanggal ${result.tanggalPotong}`);
-                    
-                    // Update info
-                    const readyIndicator = document.getElementById('readyIndicator');
-                    if (readyIndicator) {
-                        readyIndicator.innerHTML = `
-                            <i class="fas fa-calendar text-warning me-1"></i>
-                            <small>Menunggu tanggal ${result.tanggalPotong} (Sekarang: tanggal ${result.tanggal})</small>
-                        `;
-                    }
-                } else {
-                    console.log(`✓ Siap memproses di tanggal ${result.tanggalPotong} (Sekarang: tanggal ${result.tanggal})`);
-                    
-                    // Update info
-                    const readyIndicator = document.getElementById('readyIndicator');
-                    if (readyIndicator) {
-                        readyIndicator.innerHTML = `
-                            <i class="fas fa-calendar-check text-success me-1"></i>
-                            <small>Siap memproses (Tanggal ${result.tanggalPotong})</small>
-                        `;
-                    }
-                }
-                
-                // Set next check time (5 detik dari sekarang untuk testing)
-                nextCheckTime = new Date(checkTime.getTime() + 5000);
-                
-            } catch (error) {
-                console.error('❌ Error saat cek pemotongan otomatis:', error);
-                document.getElementById('lastCheckTime').textContent = 'Error saat mengecek';
-            }
-        }
-
-        // Fungsi untuk start/stop auto-check berdasarkan status
-        function toggleAutoCheck() {
-            if (autoCheckInterval) {
-                clearInterval(autoCheckInterval);
-                autoCheckInterval = null;
-                console.log('🛑 Auto-check interval dihentikan');
-            }
-
-            if (isStatusAktif()) {
-                // Start auto-check
-                autoCheckInterval = setInterval(cekPemotonganOtomatis, 5000);
-                console.log('✅ Auto-check interval dimulai (5 detik)');
-                
-                // Langsung cek pertama kali
-                cekPemotonganOtomatis();
-            } else {
-                console.log('⏸️ Auto-check tidak dimulai: Status NONAKTIF');
-                document.getElementById('nextCheckCountdown').textContent = 'Auto-check dinonaktifkan';
-            }
-        }
-
-        // Jalankan toggle saat halaman dimuat
-        toggleAutoCheck();
-
-        // Update countdown setiap detik
-        setInterval(updateCountdown, 1000);
-
-        // Monitor perubahan status checkbox
-        if (statusCheckbox) {
-            statusCheckbox.addEventListener('change', function() {
-                console.log(`🔄 Status berubah menjadi: ${this.checked ? 'AKTIF' : 'NONAKTIF'}`);
-                toggleAutoCheck(); // Start/stop auto-check
-            });
-        }
-
-        // Juga cek setiap kali user kembali ke tab/window ini
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) {
-                const today = new Date().toDateString();
-                // Hanya cek jika belum di-cek hari ini
-                if (lastCheckDate !== today) {
-                    console.log('👀 User kembali ke halaman, cek pemotongan...');
-                    cekPemotonganOtomatis();
-                }
-            }
-        });
-    </script>
 </body>
 </html>

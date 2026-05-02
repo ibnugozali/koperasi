@@ -58,6 +58,11 @@ func InitDB() {
 	if err := ensureDetailMetodePembayaranColumn(); err != nil {
 		log.Printf("Peringatan: gagal memastikan kolom metode_pembayaran: %v", err)
 	}
+
+	// Bedakan status verifikasi bendahara dengan keputusan final ketua.
+	if err := updateTransactionStatusConstraints(); err != nil {
+		log.Printf("Peringatan: gagal memperbarui constraint status transaksi: %v", err)
+	}
 }
 
 // ensureAngsuranTable membuat tabel angsuran jika belum ada.
@@ -250,6 +255,22 @@ func ensureDetailMetodePembayaranColumn() error {
 	}
 	log.Println("✓ Kolom metode_pembayaran siap digunakan")
 	return nil
+}
+
+// updateTransactionStatusConstraints memastikan transaksi bisa memakai status final `diterima`.
+func updateTransactionStatusConstraints() error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+	alterSQL := `
+	ALTER TABLE detail DROP CONSTRAINT IF EXISTS detail_status_check;
+	ALTER TABLE detail ADD CONSTRAINT detail_status_check CHECK (status IN ('pending', 'confirmed', 'diterima', 'rejected'));
+
+	ALTER TABLE angsuran DROP CONSTRAINT IF EXISTS angsuran_status_check;
+	ALTER TABLE angsuran ADD CONSTRAINT angsuran_status_check CHECK (status IN ('pending', 'confirmed', 'diterima', 'rejected'));
+	`
+	_, err := db.Exec(alterSQL)
+	return err
 }
 
 // GetDB mengembalikan instance koneksi database yang sudah ada

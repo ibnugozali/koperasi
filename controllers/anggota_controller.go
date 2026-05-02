@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1875,6 +1876,12 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
+	anggota, err := repository.GetAnggotaByID(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Data anggota tidak ditemukan."})
+		return
+	}
+
 	// ==================== BULLETPROOF MULTIPART PARSING FIX ====================
 	log.Printf("[SIMPANAN-POST] user=%s ContentType='%s'", userID, c.ContentType())
 
@@ -1930,6 +1937,15 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 	log.Printf("[SIMPANAN-POST] ✓ METHOD VALIDATED: '%s'", metodePembayaran)
+
+	if metodePembayaran == "potong_gaji" && anggota.GajiBulanan <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"field":   "metode_pembayaran",
+			"message": "âŒ Metode potong gaji tidak dapat dipakai karena data gaji Anda belum ada atau bernilai 0.",
+		})
+		return
+	}
 
 	// Parse fields SAFELY - handle empty/missing
 	wajibStr := strings.TrimSpace(c.PostForm("simpanan_wajib"))
@@ -2141,62 +2157,12 @@ func AnggotaSimpananPost(c *gin.Context) {
 	} else {
 		log.Printf("[WA NOTIF] bendahara tidak ditemukan untuk notifikasi simpanan: %v", err)
 	}
-	// Re-fetch GET data for same-page render
-	anggota, err := repository.GetAnggotaByID(userID)
-	if err != nil {
-		log.Printf("[SIMPANAN-POST] GetAnggotaByID FAIL: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Server error"})
-		return
+	session.Set("flash_success", fmt.Sprintf("Simpanan Rp%.0f berhasil diajukan via %s dan sudah masuk ke riwayat.", total, metodePembayaran))
+	if err := session.Save(); err != nil {
+		log.Printf("[SIMPANAN-POST] gagal menyimpan flash session: %v", err)
 	}
 
-	configGet, _ := repository.GetKonfigurasiSimpananWajib()
-	nominalSimpananWajibGet := 0.0
-	if val, ok := configGet["PersentasePotong"].(float64); ok {
-		nominalSimpananWajibGet = val
-	}
-
-	resumeGabunganGet := getResumePinjamanGabungan(userID)
-	var resumeGabunganSliceGet []resumePinjamanInfo
-	if resumeGabunganGet != nil {
-		resumeGabunganSliceGet = append(resumeGabunganSliceGet, *resumeGabunganGet)
-	}
-
-	dirFiles, errLogo := os.ReadDir("static/images")
-	var latestLogoGet string
-	var latestTime int64
-	if errLogo == nil {
-		for _, file := range dirFiles {
-			name := file.Name()
-			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
-				info, err := file.Info()
-				if err == nil {
-					modTime := info.ModTime().Unix()
-					if modTime > latestTime {
-						latestTime = modTime
-						latestLogoGet = "/static/images/" + name
-					}
-				}
-			}
-		}
-	}
-	if latestLogoGet == "" {
-		latestLogoGet = "/static/images/placeholder.png"
-	}
-
-	nomorRekeningGet, _ := repository.GetNomorRekening("simpanan")
-
-	// SUCCESS: In-page notification - stay at /anggota/simpanan
-	c.HTML(http.StatusOK, "anggota_simpanan_fixed.html", gin.H{
-		"DebugUnitKerja":       anggota.UnitKerja,
-		"Judul":                "Simpanan",
-		"Anggota":              anggota,
-		"Now":                  time.Now(),
-		"NominalSimpananWajib": nominalSimpananWajibGet,
-		"ResumeGabungan":       resumeGabunganSliceGet,
-		"CurrentLogo":          latestLogoGet,
-		"NomorRekening":        nomorRekeningGet,
-		"SuccessMessage":       fmt.Sprintf("✅ Simpanan Rp%.0f berhasil diajukan via %s! Menunggu konfirmasi.", total, metodePembayaran),
-	})
+	c.Redirect(http.StatusFound, "/anggota/riwayat")
 }
 
 // AnggotaAngsuran menampilkan halaman angsuran untuk anggota.
@@ -2960,12 +2926,6 @@ func AnggotaRiwayatPage(c *gin.Context) {
 		return
 	}
 
-	// Ambil riwayat transaksi anggota
-	riwayat, err := repository.GetRiwayatTransaksiByAnggotaID(userID)
-	if err != nil {
-		riwayat = []models.Riwayat{}
-	}
-
 	// Bentuk slice UnifiedTransaction agar cocok dengan template
 	type UnifiedTransaction struct {
 		ID          int
@@ -2978,45 +2938,155 @@ func AnggotaRiwayatPage(c *gin.Context) {
 	}
 
 	var allTransactions []UnifiedTransaction
-	for _, r := range riwayat {
-		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", r.Jumlah)), " ", "")
-		timeStr := r.Tanggal.Format("15:04:05")
+
+	riwayatSimpanan, err := repository.GetRiwayatSimpananByAnggotaID(userID, "")
+	if err != nil {
+		log.Printf("[WARN] gagal mengambil riwayat simpanan anggota %s: %v", userID, err)
+		riwayatSimpanan = []models.Detail{}
+	}
+
+	riwayatPinjaman, err := repository.GetRiwayatPinjamanByAnggotaID(userID, "")
+	if err != nil {
+		log.Printf("[WARN] gagal mengambil riwayat pinjaman anggota %s: %v", userID, err)
+		riwayatPinjaman = []models.Pinjaman{}
+	}
+
+	riwayatAngsuran, err := repository.GetRiwayatAngsuranByAnggotaID(userID, "")
+	if err != nil {
+		log.Printf("[WARN] gagal mengambil riwayat angsuran anggota %s: %v", userID, err)
+		riwayatAngsuran = []models.Angsuran{}
+	}
+
+	riwayatPengambilan, err := repository.GetRiwayatPengambilanSimpananByAnggotaID(userID, "")
+	if err != nil {
+		log.Printf("[WARN] gagal mengambil riwayat pengambilan simpanan anggota %s: %v", userID, err)
+		riwayatPengambilan = []models.PengambilanSimpanan{}
+	}
+
+	for _, s := range riwayatSimpanan {
+		jenis := "Simpanan"
+		if strings.TrimSpace(s.Simpanan.JenisSimpanan) != "" {
+			jenis = "Simpanan " + s.Simpanan.JenisSimpanan
+		}
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", s.JumlahSimpanan)), " ", "")
+		timeStr := s.TglTransaksi.Format("15:04:05")
 		if timeStr == "00:00:00" {
 			timeStr = "-"
 		}
-		status := r.Status
-		// Mapping status ke label yang lebih informatif untuk anggota
-		// Flow final:
-		// - pending/confirmed = masih tahap proses (belum ACC ketua)
-		// - diterima/lunas = sudah disetujui selesai
-		switch status {
+		status := "Dalam Proses"
+		switch s.Status {
 		case "pending", "confirmed":
-			// Bendahara hanya melakukan pengecekan.
-			// Konfirmasi final tetap oleh ketua di /ketua/konfirmasi-transaksi.
 			status = "Proses (Menunggu ACC Ketua)"
 		case "diterima":
 			status = "Diterima"
-		case "aktif":
-			status = "Aktif"
-		case "proses":
-			status = "Dalam Proses"
-		case "rejected", "gagal":
+		case "rejected":
 			status = "Ditolak"
 		case "lunas":
 			status = "Lunas"
-		default:
-			status = "Dalam Proses"
 		}
 		allTransactions = append(allTransactions, UnifiedTransaction{
-			ID:          r.ID,
-			Date:        r.Tanggal,
+			ID:          s.IDDetail,
+			Date:        s.TglTransaksi,
 			Time:        timeStr,
-			Type:        r.Jenis,
-			Description: r.Jenis,
+			Type:        jenis,
+			Description: jenis,
 			Amount:      amount,
 			Status:      status,
 		})
 	}
+
+	for _, p := range riwayatPinjaman {
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", p.JumlahPinjaman)), " ", "")
+		timeStr := p.TglPinjaman.Format("15:04:05")
+		if timeStr == "00:00:00" {
+			timeStr = "-"
+		}
+		status := "Dalam Proses"
+		switch p.Status {
+		case "aktif":
+			status = "Aktif"
+		case "diterima":
+			status = "Diterima"
+		case "gagal", "rejected":
+			status = "Ditolak"
+		case "lunas":
+			status = "Lunas"
+		}
+		allTransactions = append(allTransactions, UnifiedTransaction{
+			ID:          p.IDPinjaman,
+			Date:        p.TglPinjaman,
+			Time:        timeStr,
+			Type:        "Pinjaman",
+			Description: "Pinjaman",
+			Amount:      amount,
+			Status:      status,
+		})
+	}
+
+	for _, a := range riwayatAngsuran {
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", a.JumlahAngsuran)), " ", "")
+		timeStr := a.TglBayar.Format("15:04:05")
+		if timeStr == "00:00:00" {
+			timeStr = "-"
+		}
+		status := "Dalam Proses"
+		switch a.Status {
+		case "pending", "confirmed":
+			status = "Proses (Menunggu ACC Ketua)"
+		case "diterima", "valid":
+			status = "Diterima"
+		case "rejected", "invalid":
+			status = "Ditolak"
+		case "lunas":
+			status = "Lunas"
+		}
+		allTransactions = append(allTransactions, UnifiedTransaction{
+			ID:          a.IDAngsuran,
+			Date:        a.TglBayar,
+			Time:        timeStr,
+			Type:        "Angsuran",
+			Description: "Angsuran",
+			Amount:      amount,
+			Status:      status,
+		})
+	}
+
+	for _, ps := range riwayatPengambilan {
+		jenis := "Penarikan Simpanan"
+		if strings.TrimSpace(ps.JenisSimpanan) != "" {
+			jenis = "Penarikan " + ps.JenisSimpanan
+		}
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", ps.Jumlah)), " ", "")
+		timeStr := ps.TglPengajuan.Format("15:04:05")
+		if timeStr == "00:00:00" {
+			timeStr = "-"
+		}
+		status := "Dalam Proses"
+		switch ps.Status {
+		case "approved":
+			status = "Diterima"
+		case "rejected":
+			status = "Ditolak"
+		}
+		allTransactions = append(allTransactions, UnifiedTransaction{
+			ID:          ps.IDPengambilan,
+			Date:        ps.TglPengajuan,
+			Time:        timeStr,
+			Type:        jenis,
+			Description: jenis,
+			Amount:      amount,
+			Status:      status,
+		})
+	}
+
+	sort.Slice(allTransactions, func(i, j int) bool {
+		ti := allTransactions[i].Date.UnixNano()
+		tj := allTransactions[j].Date.UnixNano()
+		if ti == tj {
+			return allTransactions[i].ID > allTransactions[j].ID
+		}
+		return ti > tj
+	})
 
 	// Cari logo terbaru di static/images
 	dirFiles, errLogo := os.ReadDir("static/images")
@@ -3041,11 +3111,21 @@ func AnggotaRiwayatPage(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	flashSuccess := ""
+	if flashVal := session.Get("flash_success"); flashVal != nil {
+		if msg, ok := flashVal.(string); ok {
+			flashSuccess = msg
+		}
+		session.Delete("flash_success")
+		_ = session.Save()
+	}
+
 	c.HTML(http.StatusOK, "anggota_riwayat.html", gin.H{
-		"Judul":       "Riwayat Transaksi",
-		"Anggota":     anggota,
-		"Riwayat":     allTransactions,
-		"CurrentLogo": latestLogo,
+		"Judul":         "Riwayat Transaksi",
+		"Anggota":       anggota,
+		"Riwayat":       allTransactions,
+		"CurrentLogo":   latestLogo,
+		"flash_success": flashSuccess,
 	})
 }
 

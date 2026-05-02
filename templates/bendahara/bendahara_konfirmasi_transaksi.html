@@ -486,14 +486,14 @@
                                 <label class="form-label fw-bold">File Excel (.xlsx/.xls)</label>
                                 <input type="file" class="form-control mb-2" name="file" accept=".xlsx,.xls" required {{if not .BuktiTransferApproved}}disabled{{end}}>
                                 <small class="text-muted">
-                                    Kolom yang didukung: <b>ID Anggota</b> atau <b>Nama Anggota</b>, <b>Jenis Transaksi</b> (Simpanan/Cicilan), <b>Jenis Simpanan/ID Pinjaman</b>, <b>Jumlah</b>.
-                                    Jika jenis tidak diisi, defaultnya adalah <b>Simpanan Wajib</b>.
+                                    Gunakan file hasil <b>Download Template</b> terbaru dari halaman ini.
+                                    Template sekarang menyertakan <b>ID Pending</b> agar import potong gaji bisa langsung mengonfirmasi data pending yang tepat.
                                 </small>
                             </div>
                             
                             <div class="row g-2">
                                 <div class="col-md-6">
-                                    <a href="/static/downloads/template_potong_gaji.xlsx" class="btn btn-outline-info w-100" download>
+                                    <a href="/bendahara/konfirmasi-transaksi/download-template-potong-gaji" class="btn btn-outline-info w-100">
                                         <i class="fa-solid fa-file-excel me-2"></i>Download Template
                                     </a>
                                 </div>

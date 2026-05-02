@@ -106,8 +106,7 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 }
 
 // GetRiwayatTransaksiByAnggotaID mengambil riwayat transaksi gabungan (simpanan & pinjaman) untuk anggota tertentu
-// FIX: Include both 'pending' (being processed) and 'confirmed/diterima/lunas' (completed) for simpanan
-// Users should see their simpanan in history even while waiting for bendahara confirmation
+// Users should see simpanan history in every stage, including rejected entries.
 func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 	db := config.GetDB()
 	var riwayats []models.Riwayat
@@ -116,7 +115,7 @@ func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 		       COALESCE(d.metode_pembayaran, '-') AS metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
-		WHERE d.id_anggota = $1 AND COALESCE(d.status, 'pending') IN ('pending', 'confirmed', 'diterima', 'lunas')
+		WHERE d.id_anggota = $1 AND COALESCE(d.status, 'pending') IN ('pending', 'confirmed', 'diterima', 'lunas', 'rejected')
 		UNION ALL
 		SELECT p.id_pinjaman AS id, p.tgl_pinjaman AS tanggal, 'Pinjaman' AS jenis, p.jumlah_pinjaman AS jumlah, p.status AS status,
 		       COALESCE(p.metode_pencairan, '-') AS metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan

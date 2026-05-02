@@ -91,10 +91,11 @@
                             <div class="mb-3">
                                 <label for="register_metode_pembayaran" class="form-label">Metode Pembayaran Simpanan Pokok</label>
                                 <select class="form-select" id="register_metode_pembayaran" name="MetodePembayaran" required>
-                                    <option value="transfer" selected>Transfer</option>
+                                    <option value="transfer_bank" selected>Transfer Bank</option>
                                     <option value="potong_gaji">Potong Gaji</option>
+                                    <option value="tunai">Tunai</option>
                                 </select>
-                                <small class="form-text text-muted">Pilih transfer atau potong gaji sesuai kebutuhan.</small>
+                                <small class="form-text text-muted">Pilih transfer bank, potong gaji, atau tunai sesuai kebutuhan.</small>
                             </div>
                             <div class="mb-3" id="transfer_fields_wrapper">
                                 <label for="register_bukti_transfer" class="form-label">Bukti Transfer Simpanan Pokok Wajib Rp. {{ .NominalSimpanan }},-</label>
@@ -106,7 +107,7 @@
                             </div>
                             <div class="mb-3 d-none" id="potong_gaji_info">
                                 <div class="alert alert-info mb-0">
-                                    Simpanan pokok akan diproses melalui potong gaji, jadi upload bukti transfer tidak diperlukan.
+                                    Simpanan pokok akan diproses tanpa upload bukti transfer untuk metode potong gaji atau tunai.
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -178,7 +179,7 @@
                         alert('Silakan pilih unit kerja terlebih dahulu');
                         return false;
                     }
-                    if (metodePembayaranSelect.value === 'transfer' && !buktiTransferInput.value) {
+                    if (metodePembayaranSelect.value === 'transfer_bank' && !buktiTransferInput.value) {
                         e.preventDefault();
                         alert('Silakan upload bukti transfer karena metode pembayaran yang dipilih adalah transfer.');
                         return false;
@@ -282,11 +283,11 @@
                     const isMahasiswa = statusAnggotaSelect.value === 'mahasiswa';
 
                     if (isMahasiswa && metode === 'potong_gaji') {
-                        metodePembayaranSelect.value = 'transfer';
+                        metodePembayaranSelect.value = 'transfer_bank';
                     }
 
                     const metodeAktif = metodePembayaranSelect.value;
-                    if (metodeAktif === 'potong_gaji') {
+                    if (metodeAktif === 'potong_gaji' || metodeAktif === 'tunai') {
                         transferFieldsWrapper.classList.add('d-none');
                         buktiTransferInput.required = false;
                         buktiTransferInput.value = '';

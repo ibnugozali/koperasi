@@ -51,10 +51,8 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 
 	switch transactionType {
 	case "simpanan":
-		// detail.status hanya mengizinkan: pending, confirmed, rejected
-		// jadi final terima oleh ketua tetap gunakan "confirmed"
 		if action == "confirm" {
-			err = repository.UpdateSimpananStatus(id, "confirmed")
+			err = repository.UpdateSimpananStatus(id, "diterima")
 		} else {
 			err = repository.UpdateSimpananStatus(id, "rejected")
 		}
@@ -65,10 +63,8 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 			err = repository.UpdatePinjamanStatus(id, "gagal")
 		}
 	case "angsuran":
-		// angsuran.status hanya mengizinkan: pending, confirmed, rejected
-		// jadi final terima oleh ketua tetap gunakan "confirmed"
 		if action == "confirm" {
-			err = repository.UpdateAngsuranStatus(id, "confirmed")
+			err = repository.UpdateAngsuranStatus(id, "diterima")
 		} else {
 			err = repository.UpdateAngsuranStatus(id, "rejected")
 		}
@@ -3595,6 +3591,40 @@ func KetuaConfirmMembership(c *gin.Context) {
 	}
 
 	fmt.Printf("✓ Anggota dengan ID %s berhasil dikonfirmasi dan aktif\n", newIDAnggota)
+
+	if strings.EqualFold(strings.TrimSpace(anggota.BuktiTransfer), "POTONG_GAJI") {
+		var nominalSimpananPokok float64
+		err = db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok)
+		if err != nil {
+			nominalSimpananPokok = 100000
+		}
+
+		var sudahAda bool
+		err = db.QueryRow(`
+			SELECT EXISTS(
+				SELECT 1
+				FROM detail
+				WHERE id_anggota = $1 AND id_simpanan = 1 AND COALESCE(status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
+			)
+		`, newIDAnggota).Scan(&sudahAda)
+		if err != nil {
+			log.Printf("[WARN] gagal cek simpanan pokok potong gaji untuk anggota %s: %v", newIDAnggota, err)
+		}
+
+		if !sudahAda {
+			_, err = db.Exec(`
+				INSERT INTO detail (
+					id_anggota, id_simpanan, id_pengelola, tgl_transaksi,
+					jumlah_simpanan, total_simpanan, status, bukti_pembayaran, metode_pembayaran
+				) VALUES ($1, 1, NULL, CURRENT_TIMESTAMP, $2, $2, 'confirmed', 'POTONG_GAJI', 'potong_gaji')
+			`, newIDAnggota, nominalSimpananPokok)
+			if err != nil {
+				log.Printf("[ERROR] gagal mencatat simpanan pokok potong gaji untuk anggota %s: %v", newIDAnggota, err)
+				c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Anggota aktif, tetapi gagal mencatat simpanan pokok potong gaji")
+				return
+			}
+		}
+	}
 
 	c.Redirect(http.StatusFound, "/ketua/konfirmasi?success=Anggota berhasil dikonfirmasi")
 }

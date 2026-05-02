@@ -91,12 +91,38 @@
         <div class="row mb-3 align-items-start">
           <label for="metode_pembayaran" class="col-sm-4 col-form-label fw-bold pt-0">Metode Pembayaran <span class="text-danger">*</span></label>
           <div class="col-sm-8">
+  <div class="d-flex gap-2 align-items-start flex-wrap">
+    <select class="form-select flex-grow-1" id="metode_pembayaran" name="metode_pembayaran" required autocomplete="off" style="min-width: 200px;">
+      <option value="">❌ Pilih Metode</option>
+      <option value="transfer_bank">💳 Transfer Bank (Upload Bukti)</option>
+      <option value="tunai">💰 Tunai</option>
+      {{if and (or (eq .Anggota.UnitKerja "01") (eq .Anggota.UnitKerja "02")) (gt .Anggota.GajiBulanan 0) }}
+      <option value="potong_gaji">💼 Potong Gaji (Auto)</option>
+      {{end}}
+    </select>
+    <input type="hidden" name="metode_pembayaran_confirm" id="metode_confirm" value="">
+    <div class="invalid-feedback d-block">Metode pembayaran wajib dipilih!</div>
+  </div>
+
+  <!-- BAGIAN UPDATE: Informasi Sisa Gaji -->
+          <div id="info_sisa_gaji" class="form-text mt-2 fw-bold" style="display: none;">
+            <span class="text-muted">| Gaji: Rp{{printf "%d" .Anggota.GajiBulanan}}</span>
+             <span class="ms-2 text-primary">Sisa Gaji: <span id="label_sisa_gaji">Rp0</span></span>
+           </div>
+  {{if le .Anggota.GajiBulanan 0}}
+  <div class="form-text text-danger">
+    <i class="bi bi-exclamation-triangle me-1"></i>Metode potong gaji tidak tersedia karena data gaji Anda belum ada atau bernilai 0.
+  </div>
+  {{end}}
+      </div>
+        </div>
+          <!-- <div class="col-sm-8">
             <div class="d-flex gap-2 align-items-start flex-wrap">
 <select class="form-select flex-grow-1" id="metode_pembayaran" name="metode_pembayaran" required autocomplete="off" style="min-width: 200px;">
                 <option value="">❌ Pilih Metode</option>
                 <option value="transfer_bank">💳 Transfer Bank (Upload Bukti)</option>
                 <option value="tunai">💰 Tunai</option>
-                {{if or (eq .Anggota.UnitKerja "01") (eq .Anggota.UnitKerja "02") }}
+                {{if and (or (eq .Anggota.UnitKerja "01") (eq .Anggota.UnitKerja "02")) (gt .Anggota.GajiBulanan 0) }}
                 <option value="potong_gaji">💼 Potong Gaji (Auto)</option>
                 {{end}}
               </select>
@@ -107,7 +133,12 @@
             <div class="form-text mb-2">
               | Gaji Rp{{printf "%d" .Anggota.GajiBulanan}}, Potong Gaji otomatis.
             </div>
-          </div>
+            {{if le .Anggota.GajiBulanan 0}}
+            <div class="form-text text-danger">
+              <i class="bi bi-exclamation-triangle me-1"></i>Metode potong gaji tidak tersedia karena data gaji Anda belum ada atau bernilai 0.
+            </div>
+            {{end}}
+          </div> -->
         </div>
 
         <!-- BUKTI TRANSFER - DEDICATED ROW LIKE METODE -->
@@ -203,155 +234,189 @@
 <!-- ENHANCED JS - FIXED VERSION -->
 <script>
 (function() {
-  'use strict';
-  console.log('=== SIMPANAN FORM LOADED - FIXED ===');
-  
-  // === TOTAL CALCULATOR === 
-  function calculateTotal() {
-    const inputs = document.querySelectorAll('.simpanan-input');
-    let total = 0;
-    inputs.forEach(input => {
-      if (!input.disabled && !input.readOnly && input.value) {
-        total += parseFloat(input.value) || 0;
-      }
-    });
-    const totalEl = document.getElementById('total_simpanan');
-    if (totalEl) totalEl.value = total;
-  }
+    'use strict';
 
-  // === METODE TOGGLE - SIMPLIFIED === 
-  function updateMetodeDisplay() {
-    const metodeSelect = document.getElementById('metode_pembayaran');
-    const buktiRow = document.getElementById('buktiTransferRow');
-    const buktiInput = document.getElementById('bukti');
-    
-    if (!metodeSelect || !buktiRow || !buktiInput) return;
-    
-    const isTransfer = metodeSelect.value === 'transfer_bank';
-    
-    buktiRow.style.display = isTransfer ? 'flex' : 'none';
-    
-    if (!isTransfer) buktiInput.value = '';
-    buktiInput.required = isTransfer;
-  }
+    // 1. Ambil data Gaji dari Go Template
+    const GAJI_USER = {{.Anggota.GajiBulanan}} || 0;
 
-  // === INIT === 
-  function init() {
-    // Input listeners
-    document.querySelectorAll('.simpanan-input').forEach(input => {
-      if (input.disabled || input.readOnly) return;
-      ['focus', 'blur', 'input'].forEach(evt => {
-        input.addEventListener(evt, () => {
-          if (evt === 'focus' && input.value === '0') input.value = '';
-          if (evt === 'blur' && !input.value) input.value = '0';
-          if (evt === 'input') calculateTotal();
+    // === FUNGSI UTAMA: KALKULASI TOTAL & VALIDASI SISA GAJI === 
+    function calculateTotal() {
+        const inputs = document.querySelectorAll('.simpanan-input');
+        let total = 0;
+        
+        // Hitung total dari semua input yang tidak disabled
+        inputs.forEach(input => {
+            if (!input.disabled && !input.readOnly && input.value) {
+                total += parseFloat(input.value) || 0;
+            }
         });
-      });
-    });
-    
-    // Style locked
-    const wajib = document.getElementById('simpanan_wajib');
-    if (wajib?.disabled) {
-      wajib.style.backgroundColor = '#e9ecef';
-      wajib.style.cursor = 'not-allowed';
-    }
-    
-    // Metode listener
-    const metodeSelect = document.getElementById('metode_pembayaran');
-    const submitBtn = document.getElementById('submitBtn');
-    if (metodeSelect && submitBtn) {
-      const toggleSubmit = () => {
-        const isValid = !!metodeSelect.value;
-        document.getElementById('metode_confirm').value = metodeSelect.value;
-        submitBtn.disabled = !isValid;
-        submitBtn.innerHTML = isValid 
-          ? '<i class="bi bi-send-check me-2"></i><strong>Kirim (' + (metodeSelect.value || '??') + ')</strong>'
-          : '<i class="bi bi-x-circle me-2 text-danger"></i><strong>Pilih Metode!</strong>';
-      };
-      metodeSelect.addEventListener('change', () => {
-        updateMetodeDisplay();
-        toggleSubmit();
-      });
-      metodeSelect.addEventListener('blur', toggleSubmit);
-      toggleSubmit(); // Initial state
-    }
-    // Tambahan: pastikan submitBtn disabled jika metode kosong saat halaman reload
-    if (submitBtn && metodeSelect && !metodeSelect.value) {
-      submitBtn.disabled = true;
-    }
-    
-    calculateTotal();
-  }
 
-// === FORM SUBMIT - STRICT VALIDATION ===
-  const simpananForm = document.getElementById('simpananForm');
-  if (simpananForm) simpananForm.addEventListener('submit', e => {
-    // 1. TOTAL > 0
-    const amounts = document.querySelectorAll('.simpanan-input');
-    let totalClient = 0;
-    amounts.forEach(input => {
-      const val = parseFloat(input.value) || 0;
-      if (val > 0) totalClient += val;
-    });
-    if (totalClient <= 0) {
-      e.preventDefault();
-      alert('❌ Isi minimal 1 simpanan > Rp0!');
-      return;
-    }
-    // 2. METODE REQUIRED (validasi ekstra)
-    const metodeSelect = document.getElementById('metode_pembayaran');
-    if (!metodeSelect.value) {
-      e.preventDefault();
-      alert('❌ Pilih metode pembayaran!');
-      metodeSelect.focus();
-      return;
+        // Update field total simpanan
+        const totalEl = document.getElementById('total_simpanan');
+        if (totalEl) totalEl.value = total;
+
+        // Ambil elemen UI untuk sisa gaji dan tombol submit
+        const metodeSelect = document.getElementById('metode_pembayaran');
+        const infoSisa = document.getElementById('info_sisa_gaji');
+        const labelSisa = document.getElementById('label_sisa_gaji');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Logika pengecekan sisa gaji
+        if (metodeSelect && metodeSelect.value === 'potong_gaji') {
+            const sisa = GAJI_USER - total;
+            if (infoSisa) infoSisa.style.display = 'block';
+            
+            if (labelSisa) {
+                labelSisa.innerText = "Rp " + sisa.toLocaleString('id-ID');
+                
+                if (sisa < 0) {
+                    // JIKA MELEBIHI GAJI
+                    labelSisa.className = 'text-danger fw-bold';
+                    labelSisa.innerHTML = "Rp " + sisa.toLocaleString('id-ID') + 
+                        " <br><span class='badge bg-danger mt-1'>⚠️ Nominal melebihi gaji! Pilih metode Tunai/Transfer atau kurangi nominal.</span>";
+                    
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<i class="bi bi-exclamation-octagon me-2"></i><strong>Gaji Tidak Cukup!</strong>';
+                    }
+                } else {
+                    // JIKA SALDO CUKUP
+                    labelSisa.className = 'text-primary fw-bold';
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        // Trigger kembali update label tombol
+                        updateSubmitButtonLabel();
+                    }
+                }
+            }
+        } else {
+            // Sembunyikan info sisa gaji jika metode bukan potong_gaji
+            if (infoSisa) infoSisa.style.display = 'none';
+            if (submitBtn && metodeSelect.value !== "") {
+                submitBtn.disabled = false;
+                updateSubmitButtonLabel();
+            }
+        }
     }
 
-    // 3. BUKTI TRANSFER
-    const buktiInput = document.getElementById('bukti');
-    if (metodeSelect.value === 'transfer_bank' && (!buktiInput.files || buktiInput.files.length === 0)) {
-      e.preventDefault();
-      alert('❌ Transfer Bank → Upload bukti (.jpg/.png/.pdf)!');
-      buktiInput.focus();
-      return;
+    // === FUNGSI PEMBANTU: UPDATE LABEL TOMBOL SUBMIT ===
+    function updateSubmitButtonLabel() {
+        const metodeSelect = document.getElementById('metode_pembayaran');
+        const submitBtn = document.getElementById('submitBtn');
+        if (!metodeSelect || !submitBtn) return;
+
+        const val = metodeSelect.value;
+        if (val) {
+            submitBtn.innerHTML = '<i class="bi bi-send-check me-2"></i><strong>Kirim (' + val.replace('_', ' ') + ')</strong>';
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-x-circle me-2 text-danger"></i><strong>Pilih Metode!</strong>';
+        }
     }
 
-    // DEBUG FormData
-    const formDataDebug = {};
-    for (let [key, value] of new FormData(simpananForm)) {
-      formDataDebug[key] = value;
+    // === FUNGSI TAMPILAN BUKTI TRANSFER === 
+    function updateMetodeDisplay() {
+        const metodeSelect = document.getElementById('metode_pembayaran');
+        const buktiRow = document.getElementById('buktiTransferRow');
+        const buktiInput = document.getElementById('bukti');
+        
+        if (!metodeSelect || !buktiRow || !buktiInput) return;
+        
+        const isTransfer = metodeSelect.value === 'transfer_bank';
+        buktiRow.style.display = isTransfer ? 'flex' : 'none';
+        
+        if (!isTransfer) buktiInput.value = '';
+        buktiInput.required = isTransfer;
     }
-    console.table(formDataDebug);
-    console.log('=== FORM DEBUG ===');
-    console.log('metode_pembayaran:', document.getElementById('metode_pembayaran')?.value);
-    console.log('total_simpanan:', document.getElementById('total_simpanan')?.value);
 
-    // Native submit
-    const btn = e.target.querySelector('button[type="submit"]');
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...';
-    
-    console.log('[SIMPANAN] Native form submit');
-  });
+    // === INISIALISASI EVENT LISTENERS === 
+    function init() {
+        const metodeSelect = document.getElementById('metode_pembayaran');
+        const wajibInput = document.getElementById('simpanan_wajib');
 
-  // === LOAD === 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+        // Listeners untuk semua input nominal simpanan
+        document.querySelectorAll('.simpanan-input').forEach(input => {
+            if (input.disabled || input.readOnly) return;
+            ['focus', 'blur', 'input'].forEach(evt => {
+                input.addEventListener(evt, () => {
+                    if (evt === 'focus' && input.value === '0') input.value = '';
+                    if (evt === 'blur' && !input.value) input.value = '0';
+                    if (evt === 'input') calculateTotal();
+                });
+            });
+        });
 
-  // === CSS === 
-  const style = document.createElement('style');
-  style.textContent = `
-    #rekeningInfo { transition: all 0.3s ease; opacity: 0; }
-    #rekeningInfo.transfer-active { opacity: 1 !important; }
-    #rekeningInfo:not(.transfer-active) { display: none !important; }
-  `;
-  document.head.appendChild(style);
+        // Styling input yang dikunci
+        if (wajibInput && wajibInput.disabled) {
+            wajibInput.style.backgroundColor = '#e9ecef';
+            wajibInput.style.cursor = 'not-allowed';
+        }
+
+        // Listeners untuk dropdown metode
+        if (metodeSelect) {
+            metodeSelect.addEventListener('change', () => {
+                updateMetodeDisplay();
+                updateSubmitButtonLabel();
+                calculateTotal();
+            });
+        }
+
+        // Jalankan kalkulasi awal saat halaman dimuat
+        calculateTotal();
+    }
+
+    // === VALIDASI FORM SAAT SUBMIT (KEAMANAN LAPIS AKHIR) ===
+    const simpananForm = document.getElementById('simpananForm');
+    if (simpananForm) {
+        simpananForm.addEventListener('submit', function(e) {
+            const totalVal = parseFloat(document.getElementById('total_simpanan')?.value) || 0;
+            const metodeSelect = document.getElementById('metode_pembayaran');
+
+            // 1. Cek jika nominal melebihi gaji pada potong gaji
+            if (metodeSelect.value === 'potong_gaji' && totalVal > GAJI_USER) {
+                e.preventDefault();
+                alert('❌ Gagal: Total simpanan melebihi sisa gaji Anda.\nSilakan pilih metode Tunai atau Transfer Bank.');
+                return;
+            }
+
+            // 2. Cek jika total 0
+            if (totalVal <= 0) {
+                e.preventDefault();
+                alert('❌ Isi minimal satu jenis simpanan!');
+                return;
+            }
+
+            // 3. Efek Loading pada tombol
+            const btn = document.getElementById('submitBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...';
+            }
+        });
+    }
+
+    // Jalankan Init
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    // Tambahan CSS dinamis untuk mempercantik info
+    const style = document.createElement('style');
+    style.textContent = `
+        #info_sisa_gaji { 
+            border-left: 4px solid #0d6efd; 
+            padding: 10px; 
+            background-color: #f8f9fa; 
+            border-radius: 4px;
+        }
+        .text-danger { color: #dc3545 !important; }
+        .text-primary { color: #0d6efd !important; }
+    `;
+    document.head.appendChild(style);
+
 })();
 </script>
-
 </body>
 </html>

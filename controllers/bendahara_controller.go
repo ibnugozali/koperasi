@@ -4058,7 +4058,7 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 	persentasePotong, _ := strconv.ParseFloat(c.PostForm("PersentasePotong"), 64)
 	nominalTetap := 0.0            // Set ke 0 karena tidak digunakan lagi
 	tipePemotongan := "persentase" // Set default karena field dihapus dari form
-	statusAktif := c.PostForm("StatusAktif") == "on"
+	statusAktif := true
 
 	// Log data yang akan disimpan
 	log.Printf("💾 Menyimpan konfigurasi simpanan wajib:")
@@ -4116,8 +4116,8 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 	// Log data yang berhasil disimpan
 	log.Printf("📋 Data yang akan ditampilkan: TanggalPotong=%v, Status=%v", config["TanggalPotong"], config["StatusAktif"])
 
-	var successMsg string
-	if statusAktif {
+	successMsg := fmt.Sprintf("Konfigurasi berhasil disimpan. Simpanan wajib otomatis aktif setiap tanggal %d.", tanggalPotong)
+	if false {
 		successMsg = fmt.Sprintf("✓ Konfigurasi berhasil disimpan! Pemotongan otomatis AKTIF setiap tanggal %d", tanggalPotong)
 	} else {
 		successMsg = "✓ Konfigurasi berhasil disimpan! Pemotongan otomatis NONAKTIF"
@@ -4320,6 +4320,7 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 	idxIDAnggota := findHeaderIndex(headerMap, "id anggota", "idanggota", "id", "kode anggota")
 	idxNama := findHeaderIndex(headerMap, "nama anggota", "nama", "namaanggota")
 	idxJenis := findHeaderIndex(headerMap, "jenis transaksi", "jenis", "jenistransaksi", "tipe")
+	idxPendingID := findHeaderIndex(headerMap, "id pending", "idpending", "id referensi", "idreferensi", "id transaksi pending", "idtransaksipending")
 	idxDetail := findHeaderIndex(headerMap, "jenis simpanan", "detail", "jenissimpanan", "simpanan", "id pinjaman", "idpinjaman")
 	idxJumlah := findHeaderIndex(headerMap, "jumlah", "nominal", "amount", "total")
 
@@ -4345,12 +4346,23 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 	failedCount := 0
 	var parseErrors []string
 
+	normalizeMetodePotongGaji := func(value string) string {
+		value = strings.TrimSpace(strings.ToLower(value))
+		value = strings.ReplaceAll(value, " ", "_")
+		return value
+	}
+	isPotongGajiEligible := func(value string) bool {
+		normalized := normalizeMetodePotongGaji(value)
+		return normalized == "potong_gaji" || normalized == ""
+	}
+
 	for i, row := range rows[headerRowIdx+1:] {
 		rowNum := headerRowIdx + i + 2
 
 		idAnggota := getCell(row, idxIDAnggota)
 		namaAnggota := getCell(row, idxNama)
 		jenisTransaksi := strings.ToLower(getCell(row, idxJenis))
+		pendingIDStr := getCell(row, idxPendingID)
 		detail := strings.ToLower(getCell(row, idxDetail))
 		jumlahStr := getCell(row, idxJumlah)
 
@@ -4395,9 +4407,45 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 		if jenisTransaksi == "" {
 			jenisTransaksi = "simpanan"
 		}
+		if jenisTransaksi == "cicilan" {
+			jenisTransaksi = "angsuran"
+		}
 
 		switch jenisTransaksi {
 		case "simpanan":
+			if pendingIDStr != "" {
+				pendingID, convErr := strconv.Atoi(pendingIDStr)
+				if convErr != nil {
+					failedCount++
+					parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: ID Pending simpanan tidak valid '%s'", rowNum, pendingIDStr))
+					continue
+				}
+
+				var pending models.Detail
+				err := db.QueryRow(`
+					SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.jumlah_simpanan, COALESCE(d.metode_pembayaran, '')
+					FROM detail d
+					WHERE d.id_detail = $1 AND d.status = 'pending'
+				`, pendingID).Scan(&pending.IDDetail, &pending.IDAnggota, &pending.IDSimpanan, &pending.JumlahSimpanan, &pending.MetodePembayaran)
+				if err != nil {
+					failedCount++
+					parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: data simpanan pending dengan ID %d tidak ditemukan", rowNum, pendingID))
+					continue
+				}
+				if !isPotongGajiEligible(pending.MetodePembayaran) {
+					failedCount++
+					parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: simpanan pending ID %d bukan metode potong gaji", rowNum, pendingID))
+					continue
+				}
+				if err := repository.UpdateSimpananStatus(pendingID, "confirmed"); err != nil {
+					failedCount++
+					parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal mengonfirmasi simpanan pending ID %d", rowNum, pendingID))
+					continue
+				}
+				successCount++
+				continue
+			}
+
 			// Default jenis simpanan ke wajib jika tidak diisi
 			if detail == "" {
 				detail = "wajib"
@@ -4420,25 +4468,70 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 				}
 			}
 
-			// Hitung total simpanan (kumulatif)
-			totalSimpanan, _, _, err := repository.GetSaldoAnggota(idAnggota)
-			if err != nil {
-				totalSimpanan = 0
-			}
-			totalSimpanan += jumlah
-
-			_, err = db.Exec(
-				`INSERT INTO detail (id_anggota, id_simpanan, id_pengelola, tgl_transaksi, jumlah_simpanan, total_simpanan, status, metode_pembayaran)
-				 VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, 'confirmed', 'potong_gaji')`,
-				idAnggota, idSimpanan, bendaharaID, jumlah, totalSimpanan,
-			)
+			pendingList, err := repository.GetPendingSimpananByCriteria(idAnggota, idSimpanan, jumlah)
 			if err != nil {
 				failedCount++
-				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal menyimpan simpanan (%v)", rowNum, err))
+				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal mengambil simpanan pending (%v)", rowNum, err))
+				continue
+			}
+
+			confirmedCount := 0
+			for _, pending := range pendingList {
+				if !isPotongGajiEligible(pending.MetodePembayaran) {
+					continue
+				}
+				if err := repository.UpdateSimpananStatus(pending.IDDetail, "confirmed"); err != nil {
+					log.Printf("[ERROR] Gagal update status simpanan pending via import potong gaji (id_detail=%d): %v", pending.IDDetail, err)
+					continue
+				}
+				confirmedCount++
+			}
+
+			if confirmedCount == 0 {
+				failedCount++
+				var metodeList []string
+				for _, pending := range pendingList {
+					metodeList = append(metodeList, pending.MetodePembayaran)
+				}
+				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: tidak ada simpanan pending metode potong gaji yang cocok (metode ditemukan: %s)", rowNum, strings.Join(metodeList, ", ")))
 				continue
 			}
 
 		case "angsuran":
+			if pendingIDStr != "" {
+				pendingID, convErr := strconv.Atoi(pendingIDStr)
+				if convErr != nil {
+					failedCount++
+					parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: ID Pending cicilan tidak valid '%s'", rowNum, pendingIDStr))
+					continue
+				}
+
+				var pending models.Angsuran
+				err := db.QueryRow(`
+					SELECT a.id_angsuran, p.id_anggota, a.id_pinjaman, a.jumlah_angsuran, COALESCE(p.metode_angsuran, '')
+					FROM angsuran a
+					JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
+					WHERE a.id_angsuran = $1 AND a.status = 'pending'
+				`, pendingID).Scan(&pending.IDAngsuran, &pending.IDAnggota, &pending.IDPinjaman, &pending.JumlahAngsuran, &pending.MetodeAngsuran)
+				if err != nil {
+					failedCount++
+					parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: data cicilan pending dengan ID %d tidak ditemukan", rowNum, pendingID))
+					continue
+				}
+				if !isPotongGajiEligible(pending.MetodeAngsuran) {
+					failedCount++
+					parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: cicilan pending ID %d bukan metode potong gaji", rowNum, pendingID))
+					continue
+				}
+				if err := repository.UpdateAngsuranStatus(pendingID, "confirmed"); err != nil {
+					failedCount++
+					parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal mengonfirmasi cicilan pending ID %d", rowNum, pendingID))
+					continue
+				}
+				successCount++
+				continue
+			}
+
 			// Ambil pinjaman aktif anggota
 			pinjamans, err := repository.GetPinjamanAktifByAnggotaID(idAnggota)
 			if err != nil || len(pinjamans) == 0 {
@@ -4462,37 +4555,38 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 				}
 			}
 
-			// Hitung sisa pinjaman terakhir
-			angsurans, _ := repository.GetAngsuranByPinjamanID(idPinjaman)
-			sisaSebelum := pinjaman.JumlahPinjaman
-			if len(angsurans) > 0 {
-				for i := len(angsurans) - 1; i >= 0; i-- {
-					a := angsurans[i]
-					if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
-						sisaSebelum = a.SisaPinjaman
-						break
-					}
-				}
-			}
-			sisaSetelah := sisaSebelum - jumlah
-			if sisaSetelah < 0 {
-				sisaSetelah = 0
-			}
-
-			_, err = db.Exec(
-				`INSERT INTO angsuran (id_pinjaman, id_pengelola, tgl_bayar, jumlah_angsuran, sisa_pinjaman, status)
-				 VALUES ($1, $2, CURRENT_TIMESTAMP, $3, $4, 'confirmed')`,
-				idPinjaman, bendaharaID, jumlah, sisaSetelah,
-			)
+			pendingAngsuranList, err := repository.GetPendingAngsuranByCriteria(idAnggota, idPinjaman, jumlah)
 			if err != nil {
 				failedCount++
-				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal menyimpan angsuran (%v)", rowNum, err))
+				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: gagal mengambil cicilan pending (%v)", rowNum, err))
+				continue
+			}
+
+			confirmedCount := 0
+			for _, pending := range pendingAngsuranList {
+				if !isPotongGajiEligible(pending.MetodeAngsuran) {
+					continue
+				}
+				if err := repository.UpdateAngsuranStatus(pending.IDAngsuran, "confirmed"); err != nil {
+					log.Printf("[ERROR] Gagal update status angsuran pending via import potong gaji (id_angsuran=%d): %v", pending.IDAngsuran, err)
+					continue
+				}
+				confirmedCount++
+			}
+
+			if confirmedCount == 0 {
+				failedCount++
+				var metodeList []string
+				for _, pending := range pendingAngsuranList {
+					metodeList = append(metodeList, pending.MetodeAngsuran)
+				}
+				parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: tidak ada cicilan pending metode potong gaji yang cocok (metode ditemukan: %s)", rowNum, strings.Join(metodeList, ", ")))
 				continue
 			}
 
 		default:
 			failedCount++
-			parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: jenis transaksi '%s' tidak valid (gunakan Simpanan/Angsuran)", rowNum, jenisTransaksi))
+			parseErrors = append(parseErrors, fmt.Sprintf("Baris %d: jenis transaksi '%s' tidak valid (gunakan Simpanan/Angsuran/Cicilan)", rowNum, jenisTransaksi))
 			continue
 		}
 
@@ -4515,6 +4609,146 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 		"failed":      failedCount,
 		"parseErrors": parseErrors,
 	})
+}
+
+// BendaharaDownloadTemplatePotongGajiExcel membuat template Excel dinamis dari simpanan
+// pending dan cicilan pending yang menggunakan metode potong gaji.
+func BendaharaDownloadTemplatePotongGajiExcel(c *gin.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[ERROR] panic saat generate template potong gaji: %v", r)
+			c.String(http.StatusInternalServerError, "Gagal membuat template potong gaji")
+		}
+	}()
+
+	normalizeMetodePotongGaji := func(value string) string {
+		value = strings.TrimSpace(strings.ToLower(value))
+		value = strings.ReplaceAll(value, " ", "_")
+		return value
+	}
+	isPotongGajiEligible := func(value string) bool {
+		normalized := normalizeMetodePotongGaji(value)
+		return normalized == "potong_gaji" || normalized == ""
+	}
+
+	pendingSimpanan, err := repository.GetPendingSimpanan()
+	if err != nil {
+		log.Printf("[ERROR] download template potong gaji: gagal ambil simpanan pending: %v", err)
+		c.String(http.StatusInternalServerError, "Gagal mengambil data simpanan pending")
+		return
+	}
+
+	pendingAngsuran, err := repository.GetPendingAngsuran()
+	if err != nil {
+		log.Printf("[ERROR] download template potong gaji: gagal ambil cicilan pending: %v", err)
+		c.String(http.StatusInternalServerError, "Gagal mengambil data cicilan pending")
+		return
+	}
+
+	f := excelize.NewFile()
+	const sheetName = "Template Potong Gaji"
+	defaultSheet := f.GetSheetName(0)
+	if defaultSheet != sheetName {
+		f.SetSheetName(defaultSheet, sheetName)
+	}
+
+	headers := []string{
+		"ID Anggota",
+		"Nama Anggota",
+		"Jenis Transaksi",
+		"ID Pending",
+		"Detail",
+		"Jumlah",
+		"Metode",
+	}
+
+	for i, header := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		if err := f.SetCellValue(sheetName, cell, header); err != nil {
+			log.Printf("[ERROR] download template potong gaji: gagal set header %q di %s: %v", header, cell, err)
+			c.String(http.StatusInternalServerError, "Gagal menyusun header template")
+			return
+		}
+	}
+
+	headerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#0D6EFD"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+	if err := f.SetCellStyle(sheetName, "A1", "G1", headerStyle); err != nil {
+		log.Printf("[WARN] download template potong gaji: gagal set style header: %v", err)
+		c.String(http.StatusInternalServerError, "Gagal memformat header template")
+		return
+	}
+
+	currencyStyle, _ := f.NewStyle(&excelize.Style{
+		NumFmt: 4,
+	})
+
+	rowIdx := 2
+	for _, item := range pendingSimpanan {
+		if !isPotongGajiEligible(item.MetodePembayaran) {
+			continue
+		}
+
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("A%d", rowIdx), item.IDAnggota); err != nil {
+			log.Printf("[ERROR] download template potong gaji: gagal set simpanan row %d: %v", rowIdx, err)
+			c.String(http.StatusInternalServerError, "Gagal mengisi data template")
+			return
+		}
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("B%d", rowIdx), item.NamaAnggota)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("C%d", rowIdx), "simpanan")
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("D%d", rowIdx), item.IDDetail)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("E%d", rowIdx), item.Simpanan.JenisSimpanan)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("F%d", rowIdx), item.JumlahSimpanan)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("G%d", rowIdx), "potong gaji")
+		_ = f.SetCellStyle(sheetName, fmt.Sprintf("F%d", rowIdx), fmt.Sprintf("F%d", rowIdx), currencyStyle)
+		rowIdx++
+	}
+
+	for _, item := range pendingAngsuran {
+		if !isPotongGajiEligible(item.MetodeAngsuran) {
+			continue
+		}
+
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("A%d", rowIdx), item.IDAnggota); err != nil {
+			log.Printf("[ERROR] download template potong gaji: gagal set angsuran row %d: %v", rowIdx, err)
+			c.String(http.StatusInternalServerError, "Gagal mengisi data template")
+			return
+		}
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("B%d", rowIdx), item.NamaAnggota)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("C%d", rowIdx), "angsuran")
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("D%d", rowIdx), item.IDAngsuran)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("E%d", rowIdx), item.IDPinjaman)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("F%d", rowIdx), item.JumlahAngsuran)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("G%d", rowIdx), "potong gaji")
+		_ = f.SetCellStyle(sheetName, fmt.Sprintf("F%d", rowIdx), fmt.Sprintf("F%d", rowIdx), currencyStyle)
+		rowIdx++
+	}
+
+	if rowIdx == 2 {
+		_ = f.SetCellValue(sheetName, "A2", "Tidak ada data pending dengan metode potong gaji")
+	}
+
+	_ = f.SetColWidth(sheetName, "A", "A", 18)
+	_ = f.SetColWidth(sheetName, "B", "B", 28)
+	_ = f.SetColWidth(sheetName, "C", "C", 18)
+	_ = f.SetColWidth(sheetName, "D", "D", 24)
+	_ = f.SetColWidth(sheetName, "E", "E", 24)
+	_ = f.SetColWidth(sheetName, "F", "F", 16)
+	_ = f.SetColWidth(sheetName, "G", "G", 16)
+
+	filename := fmt.Sprintf("template_potong_gaji_%s.xlsx", time.Now().Format("20060102_150405"))
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		log.Printf("[ERROR] download template potong gaji: gagal write workbook ke buffer: %v", err)
+		c.String(http.StatusInternalServerError, "Gagal menghasilkan file template")
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 }
 
 // BendaharaCekDanProsesPemotonganOtomatis endpoint untuk mengecek dan menjalankan pemotongan otomatis
