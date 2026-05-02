@@ -270,7 +270,7 @@ func SetupRouter() *gin.Engine {
 		anggotaRoutes.GET("/sejarah", controllers.AnggotaSejarah)
 		anggotaRoutes.GET("/visi-misi", controllers.AnggotaVisiMisi)
 		anggotaRoutes.GET("/struktur", controllers.AnggotaStruktur)
-		anggotaRoutes.GET("/riwayat", controllers.ShowRiwayatPage)
+		anggotaRoutes.GET("/riwayat", controllers.AnggotaRiwayatPage)
 	}
 
 	// --- Rute Admin (Dilindungi Middleware) ---

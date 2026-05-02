@@ -8,12 +8,16 @@ import (
 func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, error) {
 	db := config.GetDB()
 	var details []models.Detail
+	// FIX: Include ALL simpanan records regardless of status (pending, confirmed, NULL, rejected, etc.)
+	// Users should see their simpanan in riwayat even while waiting for bendahara confirmation
 	query := `
         SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, COALESCE(d.total_simpanan, 0),
-               s.jenis_simpanan, COALESCE(d.status, 'confirmed') as status
+               s.jenis_simpanan, COALESCE(d.status, 'pending') as status
         FROM detail d
         JOIN simpanan s ON d.id_simpanan = s.id_simpanan
         WHERE d.id_anggota = $1
+        -- Explicitly include all status values: pending, confirmed, NULL, rejected, etc.
+        AND (d.status IS NULL OR d.status IN ('pending', 'confirmed', 'diterima', 'lunas', 'rejected'))
     `
 	args := []interface{}{id}
 	if search != "" {
@@ -102,6 +106,8 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 }
 
 // GetRiwayatTransaksiByAnggotaID mengambil riwayat transaksi gabungan (simpanan & pinjaman) untuk anggota tertentu
+// FIX: Include both 'pending' (being processed) and 'confirmed/diterima/lunas' (completed) for simpanan
+// Users should see their simpanan in history even while waiting for bendahara confirmation
 func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 	db := config.GetDB()
 	var riwayats []models.Riwayat
@@ -110,7 +116,7 @@ func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 		       COALESCE(d.metode_pembayaran, '-') AS metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
-		WHERE d.id_anggota = $1
+		WHERE d.id_anggota = $1 AND COALESCE(d.status, 'pending') IN ('pending', 'confirmed', 'diterima', 'lunas')
 		UNION ALL
 		SELECT p.id_pinjaman AS id, p.tgl_pinjaman AS tanggal, 'Pinjaman' AS jenis, p.jumlah_pinjaman AS jumlah, p.status AS status,
 		       COALESCE(p.metode_pencairan, '-') AS metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.gaji_bulanan
@@ -139,4 +145,24 @@ func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 		riwayats = append(riwayats, r)
 	}
 	return riwayats, nil
+}
+
+// Wrapper kompatibilitas untuk nama lama yang typo.
+func GetRiwayatSimpananByAggotaID(id string, search string) ([]models.Detail, error) {
+	return GetRiwayatSimpananByAnggotaID(id, search)
+}
+
+// Wrapper kompatibilitas untuk nama lama yang typo.
+func GetRiwayatPinjamanByAggotaID(id string, search string) ([]models.Pinjaman, error) {
+	return GetRiwayatPinjamanByAnggotaID(id, search)
+}
+
+// Wrapper kompatibilitas untuk nama lama yang typo.
+func GetRiwayatAngsuranByAggotaID(id string, search string) ([]models.Angsuran, error) {
+	return GetRiwayatAngsuranByAnggotaID(id, search)
+}
+
+// Wrapper kompatibilitas untuk nama lama yang typo.
+func GetRiwayatTransaksiByAggotaID(id string) ([]models.Riwayat, error) {
+	return GetRiwayatTransaksiByAnggotaID(id)
 }

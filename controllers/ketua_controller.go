@@ -51,6 +51,8 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 
 	switch transactionType {
 	case "simpanan":
+		// detail.status hanya mengizinkan: pending, confirmed, rejected
+		// jadi final terima oleh ketua tetap gunakan "confirmed"
 		if action == "confirm" {
 			err = repository.UpdateSimpananStatus(id, "confirmed")
 		} else {
@@ -63,6 +65,8 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 			err = repository.UpdatePinjamanStatus(id, "gagal")
 		}
 	case "angsuran":
+		// angsuran.status hanya mengizinkan: pending, confirmed, rejected
+		// jadi final terima oleh ketua tetap gunakan "confirmed"
 		if action == "confirm" {
 			err = repository.UpdateAngsuranStatus(id, "confirmed")
 		} else {
@@ -815,7 +819,6 @@ func KetuaDownloadLaporan(c *gin.Context) {
 	if tipeLaporan == "bulanan" {
 		bulanInt, _ = strconv.Atoi(bulan)
 	}
-
 
 	// Untuk laporan tahunan, prioritaskan angka dari data Neraca yang disimpan user.
 	type summaryRow struct {
@@ -1575,7 +1578,6 @@ func KetuaDownloadLaporan(c *gin.Context) {
 
 			// Selalu buat tabel rincian meskipun tidak ada data
 			startRow := rowOffset + 5 + len(dataRows) + 2
-
 
 			// Jika ada error atau tidak ada anggota, tetap buat struktur tabel
 			if err != nil || len(anggotas) == 0 {
@@ -3979,7 +3981,6 @@ func KetuaUploadBuktiTransferGaji(c *gin.Context) {
 
 	// Kirim notifikasi WA pengingat jika bukti transfer bulan berjalan belum Approved (maksimal 1x per hari).
 	sendCurrentMonthBuktiTransferReminderIfNeeded(c, buktiListView, currentMonth, currentYear)
-
 
 	// Ambil pesan dari query parameter
 	successMsg := c.Query("success")

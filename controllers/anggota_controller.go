@@ -2035,6 +2035,11 @@ func AnggotaSimpananPost(c *gin.Context) {
 	// Buat entri untuk setiap jenis simpanan yang > 0
 	// IDSimpanan mapping: pokok(1), wajib(2), sukarela(3), hari_raya(4), umroh_haji(5), qurban(6)
 	var errs []error
+
+	// DEBUG: Log sebelum create simpanan
+	log.Printf("[SIMPANAN-CREATE] user=%s memulai penyimpanan simpanan | wajib=%.0f sukarela=%.0f hariRaya=%.0f umroh=%.0f qurban=%.0f metode=%s",
+		userID, wajib, sukarela, hariRaya, umrohHaji, qurban, metodePembayaran)
+
 	if wajib > 0 {
 		d := models.Detail{
 			IDAnggota:        userID,
@@ -2046,8 +2051,13 @@ func AnggotaSimpananPost(c *gin.Context) {
 			BuktiPembayaran:  filename,
 			MetodePembayaran: metodePembayaran,
 		}
+		log.Printf("[SIMPANAN-CREATE] inserting simpanan wajib: id_anggota=%s id_simpanan=2 jumlah=%.0f status=%s",
+			d.IDAnggota, d.JumlahSimpanan, d.Status)
 		if e := repository.CreateSimpanan(d); e != nil {
+			log.Printf("[SIMPANAN-CREATE] ERROR wajib: %v", e)
 			errs = append(errs, e)
+		} else {
+			log.Printf("[SIMPANAN-CREATE] SUCCESS wajib disimpan untuk %s", userID)
 		}
 	}
 	if sukarela > 0 {
@@ -2956,6 +2966,58 @@ func AnggotaRiwayatPage(c *gin.Context) {
 		riwayat = []models.Riwayat{}
 	}
 
+	// Bentuk slice UnifiedTransaction agar cocok dengan template
+	type UnifiedTransaction struct {
+		ID          int
+		Date        time.Time
+		Time        string
+		Type        string
+		Description string
+		Amount      string
+		Status      string
+	}
+
+	var allTransactions []UnifiedTransaction
+	for _, r := range riwayat {
+		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", r.Jumlah)), " ", "")
+		timeStr := r.Tanggal.Format("15:04:05")
+		if timeStr == "00:00:00" {
+			timeStr = "-"
+		}
+		status := r.Status
+		// Mapping status ke label yang lebih informatif untuk anggota
+		// Flow final:
+		// - pending/confirmed = masih tahap proses (belum ACC ketua)
+		// - diterima/lunas = sudah disetujui selesai
+		switch status {
+		case "pending", "confirmed":
+			// Bendahara hanya melakukan pengecekan.
+			// Konfirmasi final tetap oleh ketua di /ketua/konfirmasi-transaksi.
+			status = "Proses (Menunggu ACC Ketua)"
+		case "diterima":
+			status = "Diterima"
+		case "aktif":
+			status = "Aktif"
+		case "proses":
+			status = "Dalam Proses"
+		case "rejected", "gagal":
+			status = "Ditolak"
+		case "lunas":
+			status = "Lunas"
+		default:
+			status = "Dalam Proses"
+		}
+		allTransactions = append(allTransactions, UnifiedTransaction{
+			ID:          r.ID,
+			Date:        r.Tanggal,
+			Time:        timeStr,
+			Type:        r.Jenis,
+			Description: r.Jenis,
+			Amount:      amount,
+			Status:      status,
+		})
+	}
+
 	// Cari logo terbaru di static/images
 	dirFiles, errLogo := os.ReadDir("static/images")
 	var latestLogo string
@@ -2982,7 +3044,7 @@ func AnggotaRiwayatPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "anggota_riwayat.html", gin.H{
 		"Judul":       "Riwayat Transaksi",
 		"Anggota":     anggota,
-		"Riwayat":     riwayat,
+		"Riwayat":     allTransactions,
 		"CurrentLogo": latestLogo,
 	})
 }

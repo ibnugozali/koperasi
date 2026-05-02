@@ -279,6 +279,14 @@ func UpdateSimpananStatus(id int, status string) error {
 	return err
 }
 
+// HapusSimpananPending menghapus data simpanan pending berdasarkan ID detail
+func HapusSimpananPending(idDetail int) error {
+	db := config.GetDB()
+	query := "DELETE FROM detail WHERE id_detail = $1 AND status = 'pending'"
+	_, err := db.Exec(query, idDetail)
+	return err
+}
+
 // UpdateAngsuranStatus memperbarui status angsuran
 func UpdateAngsuranStatus(id int, status string) error {
 	db := config.GetDB()
@@ -612,7 +620,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Simpanan
 	querySimpanan := `
-		SELECT d.id_detail, d.tgl_transaksi, s.jenis_simpanan as jenis, d.jumlah_simpanan, 'Selesai' as status, COALESCE(d.metode_pembayaran, '-') as metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
+		SELECT d.id_detail, d.tgl_transaksi, s.jenis_simpanan as jenis, COALESCE(d.jumlah_simpanan, 0) as jumlah, COALESCE(d.status, 'pending') as status, COALESCE(d.metode_pembayaran, '-') as metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
@@ -638,7 +646,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Pinjaman
 	queryPinjaman := `
-		SELECT p.id_pinjaman, p.tgl_pinjaman, 'Pinjaman' as jenis, p.jumlah_pinjaman, p.status, COALESCE(p.metode_pencairan, '-') as metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
+		SELECT p.id_pinjaman, p.tgl_pinjaman, 'Pinjaman' as jenis, COALESCE(p.jumlah_pinjaman, 0) as jumlah, COALESCE(p.status, 'proses') as status, COALESCE(p.metode_pencairan, '-') as metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
 		FROM pinjaman p
 		JOIN anggota a ON p.id_anggota = a.id_anggota
 	`
@@ -663,7 +671,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Angsuran
 	queryAngsuran := `
-		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, a.jumlah_angsuran, a.status, COALESCE(p.metode_angsuran, '-') as metode, ang.nama_anggota, ang.id_anggota, ang.no_telepon, ang.unit_kerja, ang.gaji_bulanan
+		SELECT a.id_angsuran, a.tgl_bayar, 'Angsuran' as jenis, COALESCE(a.jumlah_angsuran, 0) as jumlah, COALESCE(a.status, 'pending') as status, COALESCE(p.metode_angsuran, '-') as metode, ang.nama_anggota, ang.id_anggota, ang.no_telepon, ang.unit_kerja, ang.gaji_bulanan
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
@@ -687,7 +695,7 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 	// Pengambilan Simpanan
 	queryPengambilan := `
-		SELECT ps.id_pengambilan, ps.tgl_pengajuan, 'Pengambilan' as jenis, ps.jumlah, ps.status, COALESCE(ps.metode_pengambilan, '-') as metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
+		SELECT ps.id_pengambilan, ps.tgl_pengajuan, 'Pengambilan' as jenis, COALESCE(ps.jumlah, 0) as jumlah, COALESCE(ps.status, 'pending') as status, COALESCE(ps.metode_pengambilan, '-') as metode, a.nama_anggota, a.id_anggota, a.no_telepon, a.unit_kerja, a.gaji_bulanan
 		FROM pengambilan_simpanan ps
 		JOIN anggota a ON ps.id_anggota = a.id_anggota
 	`

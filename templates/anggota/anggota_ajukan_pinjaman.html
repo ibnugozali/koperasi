@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function(){
                     <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{$resume.TotalTerbayar | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{$resume.SisaPokok | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{$resume.AngsuranTerbayar}} kali</div>
-                    <div class="col-md-6"><strong>Perkiraan Angsuran per Bulan:</strong> Rp {{div (add $resume.JumlahPinjaman $resume.Bunga) $resume.JangkaWaktu | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Perkiraan Angsuran per Bulan:</strong> Rp {{add $resume.JumlahPinjaman $resume.Bunga | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Metode Pencairan:</strong> {{$resume.MetodePencairan}}</div>
                     <div class="col-md-6"><strong>Metode Angsuran:</strong> {{$resume.MetodeAngsuran}}</div>
                 </div>

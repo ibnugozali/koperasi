@@ -1353,8 +1353,8 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 
 	detail.IDPengelola = bendaharaID.(int)
 	detail.TglTransaksi = time.Now()
-	// Entri oleh bendahara dianggap validasi tahap bendahara selesai.
-	detail.Status = "confirmed"
+	// Entri oleh bendahara disimpan sebagai pending, menunggu konfirmasi dari ketua.
+	detail.Status = "pending"
 	// Default metode pembayaran dari form (tunai untuk entri manual)
 	if detail.MetodePembayaran == "" {
 		detail.MetodePembayaran = "tunai"
@@ -1386,17 +1386,20 @@ func BendaharaCatatSimpanan(c *gin.Context) {
 		return
 	}
 
-	// Update status data pending menjadi confirmed
+	// Update seluruh data pending yang cocok menjadi confirmed.
+	// Tidak membuat record baru agar data bendahara -> ketua konsisten dan tidak duplikat.
+	confirmedCount := 0
 	for _, pending := range pendingList {
 		err := repository.UpdateSimpananStatus(pending.IDDetail, "confirmed")
 		if err != nil {
 			log.Printf("[ERROR] Gagal update status simpanan pending (id_detail=%d): %v", pending.IDDetail, err)
+			continue
 		}
+		confirmedCount++
 	}
 
-	err = repository.CreateSimpanan(detail)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat simpanan"})
+	if confirmedCount == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengonfirmasi data simpanan pending"})
 		return
 	}
 
@@ -5061,32 +5064,27 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	angsuran.SisaPinjaman = sisaSetelah
 	// Entri oleh bendahara dianggap validasi tahap bendahara selesai.
 	angsuran.Status = "confirmed"
-
-	// VALIDASI: Entri manual tunai hanya boleh jika ada data angsuran pending yang cocok
-	pendingList, err := repository.GetPendingAngsuranByCriteria(angsuran.IDAnggota, angsuran.IDPinjaman, angsuran.JumlahAngsuran)
-	if err != nil || len(pendingList) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak sesuai dengan cicilan pending. Entri manual tunai hanya diperbolehkan untuk data yang sudah ada di daftar cicilan pending."})
+	// Entri manual Tunai langsung confirmed (tidak perlu konfirmasi lagi)
+	// Cari pending angsuran yang cocok, lalu konfirmasi tanpa membuat record baru
+	pendingAngsuranList, err := repository.GetPendingAngsuranByCriteria(angsuran.IDAnggota, angsuran.IDPinjaman, angsuran.JumlahAngsuran)
+	if err != nil || len(pendingAngsuranList) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak sesuai dengan angsuran pending. Entri manual tunai hanya diperbolehkan untuk data yang sudah ada di daftar angsuran pending."})
 		return
 	}
 
-	err = repository.CreateAngsuran(angsuran)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat angsuran"})
-		return
+	confirmedAngsuranCount := 0
+	for _, pending := range pendingAngsuranList {
+		if err := repository.UpdateAngsuranStatus(pending.IDAngsuran, "confirmed"); err != nil {
+			log.Printf("[ERROR] Gagal update status angsuran pending (id_angsuran=%d): %v", pending.IDAngsuran, err)
+			continue
+		}
+		confirmedAngsuranCount++
 	}
 
-	// Auto-confirm hanya 1 angsuran pending yang cocok (pinjaman, anggota, nominal sama)
-	// Jika ada beberapa yang sama, ambil yang tanggalnya paling terdahulu
-	db := config.GetDB()
-	_, _ = db.Exec(`
-		UPDATE angsuran SET status = 'confirmed'
-		WHERE id_angsuran = (
-			SELECT id_angsuran FROM angsuran
-			WHERE id_pinjaman = $1 AND id_anggota = $2 AND jumlah_angsuran = $3 AND status = 'pending'
-			ORDER BY tgl_bayar ASC, id_angsuran ASC
-			LIMIT 1
-		)
-	`, angsuran.IDPinjaman, angsuran.IDAnggota, angsuran.JumlahAngsuran)
+	if confirmedAngsuranCount == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengonfirmasi data angsuran pending"})
+		return
+	}
 
 	// Notifikasi WA ke ketua agar melakukan konfirmasi tahap ketua.
 	anggota, errAnggota := repository.GetAnggotaByID(angsuran.IDAnggota)
