@@ -309,7 +309,12 @@
                                         <td class="text-center">{{.No}}</td>
                                         <td>{{.Angsuran.IDAnggota}}</td>
                                         <td>{{.Angsuran.NamaAnggota}}</td>
-                                        <td class="text-end">Rp {{printf "%.0f" .Angsuran.JumlahAngsuran}}</td>
+                                        <td class="text-end">
+                                            <div>Rp {{printf "%.0f" .Angsuran.JumlahAngsuran}}</div>
+                                            {{if gt .AngsuranKe 0}}
+                                            <div><span class="badge bg-light text-dark border">Cicilan ke-{{.AngsuranKe}}</span></div>
+                                            {{end}}
+                                        </td>
                                         <td class="text-center">
                                             {{if eq .Angsuran.MetodeAngsuran "transfer_bank"}}
                                                 <span class="badge bg-info badge-custom">Transfer Bank</span>
@@ -321,7 +326,11 @@
                                                 <span class="badge bg-light text-dark badge-custom">Lainnya</span>
                                             {{end}}
                                         </td>
-                                        <td class="text-center"><span class="small text-muted">{{.Angsuran.TglBayar.Format "2006-01-02"}}</span></td>
+                                        <td class="text-center">
+                                            <div><span class="small text-muted">{{.Angsuran.TglBayar.Format "2006-01-02"}}</span></div>
+                                            <div><span class="badge bg-light text-dark border">{{.PeriodeLabel}}</span></div>
+                                            <div class="mt-1"><span class="badge {{.StatusWaktuBG}}">{{.StatusWaktu}}</span></div>
+                                        </td>
                                         <td class="text-center">
                                             <div class="btn-action-group" role="group">
                                                 <a class="btn btn-outline-primary btn-sm" href="/bendahara/detail-angsuran/{{.Angsuran.IDAngsuran}}" title="Lihat detail cicilan">
@@ -574,10 +583,14 @@
                                     <label class="form-label">ID Anggota</label>
                                     <input type="text" class="form-control" name="id_anggota" required>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-2">
                                     <label class="form-label">Jenis Cicilan</label>
+                                    <input type="text" class="form-control" value="Tunai" readonly>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Pinjaman Aktif</label>
                                     <select class="form-select" id="jenisCicilanSelect" name="jenis_angsuran" required>
-                                        <option value="">Pilih jenis cicilan...</option>
+                                        <option value="">Pilih pinjaman aktif...</option>
                                     </select>
                                 </div>
                                 <div class="col-md-2">
@@ -651,7 +664,7 @@
                             jenisCicilanSelect.innerHTML = '<option value="">Gagal memuat data</option>';
                         });
                 } else {
-                    jenisCicilanSelect.innerHTML = '<option value="">Pilih jenis cicilan...</option>';
+                    jenisCicilanSelect.innerHTML = '<option value="">Pilih pinjaman aktif...</option>';
                 }
             });
         }

@@ -96,7 +96,7 @@
       <option value="">❌ Pilih Metode</option>
       <option value="transfer_bank">💳 Transfer Bank (Upload Bukti)</option>
       <option value="tunai">💰 Tunai</option>
-      {{if and (or (eq .Anggota.UnitKerja "01") (eq .Anggota.UnitKerja "02")) (gt .Anggota.GajiBulanan 0) }}
+      {{if and (or (eq .Anggota.UnitKerja "01") (eq .Anggota.UnitKerja "02")) (gt .SisaGajiPotong 0.0) }}
       <option value="potong_gaji">💼 Potong Gaji (Auto)</option>
       {{end}}
     </select>
@@ -106,12 +106,11 @@
 
   <!-- BAGIAN UPDATE: Informasi Sisa Gaji -->
           <div id="info_sisa_gaji" class="form-text mt-2 fw-bold" style="display: none;">
-            <span class="text-muted">| Gaji: Rp{{printf "%d" .Anggota.GajiBulanan}}</span>
-             <span class="ms-2 text-primary">Sisa Gaji: <span id="label_sisa_gaji">Rp0</span></span>
-           </div>
-  {{if le .Anggota.GajiBulanan 0}}
+            <span class="text-primary">Sisa Gaji: <span id="label_sisa_gaji">Rp0</span></span>
+          </div>
+  {{if le .SisaGajiPotong 0.0}}
   <div class="form-text text-danger">
-    <i class="bi bi-exclamation-triangle me-1"></i>Metode potong gaji tidak tersedia karena data gaji Anda belum ada atau bernilai 0.
+    <i class="bi bi-exclamation-triangle me-1"></i>Metode potong gaji tidak tersedia karena sisa gaji Anda bernilai 0 atau tidak tersedia.
   </div>
   {{end}}
       </div>
@@ -167,9 +166,11 @@
                   <div class="col-sm-8">
                     <div class="input-group">
                       <span class="input-group-text">Rp</span>
-                      <input type="number" step="1000" min="0" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}" {{ if $.IsLocked }}readonly disabled{{ end }}>
+                      <input type="number" step="1000" min="0" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}" data-target="{{ printf "%.0f" $.NominalSimpananWajib }}" {{ if $.IsLocked }}readonly disabled{{ end }}>
                     </div>
                     {{ if $.IsLocked }}<div class="form-text text-muted"><i class="bi bi-lock"></i> Dikunci - sudah sesuai target</div>{{ end }}
+                    {{ if gt $.NominalSimpananWajib 0.0 }}<div class="form-text"><i class="bi bi-info-circle"></i> Target: Rp{{ printf "%.0f" $.NominalSimpananWajib }}</div>{{ end }}
+                    <div class="form-text text-danger d-none" id="simpananWajibFeedback">Nominal Simpanan Wajib harus sama dengan target atau kelipatannya.</div>
                   </div>
                 </div>
               {{ else }}
@@ -189,9 +190,10 @@
             <div class="row mb-3 align-items-center">
               <label class="col-sm-4 col-form-label">Simpanan Wajib</label>
               <div class="col-sm-8">
-                <div class="input-group"><span class="input-group-text">Rp</span><input type="number" step="1000" min="0" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" value="0" placeholder="0" {{ if .IsLocked }}readonly disabled{{ end }}></div>
+                <div class="input-group"><span class="input-group-text">Rp</span><input type="number" step="1000" min="0" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" value="0" placeholder="0" data-target="{{ printf "%.0f" .NominalSimpananWajib }}" {{ if .IsLocked }}readonly disabled{{ end }}></div>
                 {{ if .IsLocked }}<div class="form-text text-muted"><i class="bi bi-lock"></i> Dikunci</div>{{ end }}
                 {{ if gt .NominalSimpananWajib 0.0 }}<div class="form-text"><i class="bi bi-info-circle"></i> Target: Rp{{ printf "%.0f" .NominalSimpananWajib }}</div>{{ end }}
+                <div class="form-text text-danger d-none" id="simpananWajibFeedback">Nominal Simpanan Wajib harus sama dengan target atau kelipatannya.</div>
               </div>
             </div>
             <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Sukarela</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="number" step="1000" min="0" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" value="0" placeholder="0"></div></div></div>
@@ -237,7 +239,13 @@
     'use strict';
 
     // 1. Ambil data Gaji dari Go Template
-    const GAJI_USER = {{.Anggota.GajiBulanan}} || 0;
+    const GAJI_USER = {{ printf "%.0f" .SisaGajiPotong }} || 0;
+    const TARGET_SIMPANAN_WAJIB = {{ printf "%.0f" .NominalSimpananWajib }} || 0;
+
+    function isValidSimpananWajibNominal(value) {
+        if (TARGET_SIMPANAN_WAJIB <= 0 || value === 0) return true;
+        return value >= TARGET_SIMPANAN_WAJIB && value % TARGET_SIMPANAN_WAJIB === 0;
+    }
 
     // === FUNGSI UTAMA: KALKULASI TOTAL & VALIDASI SISA GAJI === 
     function calculateTotal() {
@@ -260,6 +268,28 @@
         const infoSisa = document.getElementById('info_sisa_gaji');
         const labelSisa = document.getElementById('label_sisa_gaji');
         const submitBtn = document.getElementById('submitBtn');
+        const wajibInput = document.getElementById('simpanan_wajib');
+        const wajibFeedback = document.getElementById('simpananWajibFeedback');
+        let wajibNominalValid = true;
+
+        if (wajibInput && !wajibInput.disabled && !wajibInput.readOnly && TARGET_SIMPANAN_WAJIB > 0) {
+            const wajibVal = parseFloat(wajibInput.value) || 0;
+            wajibNominalValid = isValidSimpananWajibNominal(wajibVal);
+            wajibInput.classList.toggle('is-invalid', !wajibNominalValid);
+            if (wajibFeedback) {
+                wajibFeedback.classList.toggle('d-none', wajibNominalValid);
+                wajibFeedback.textContent = 'Nominal Simpanan Wajib harus Rp' + TARGET_SIMPANAN_WAJIB.toLocaleString('id-ID') + ' atau kelipatannya, misalnya Rp' + (TARGET_SIMPANAN_WAJIB * 2).toLocaleString('id-ID') + '.';
+            }
+        }
+
+        if (!wajibNominalValid) {
+            if (infoSisa) infoSisa.style.display = 'none';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="bi bi-exclamation-octagon me-2"></i><strong>Simpanan Wajib Harus Sesuai Kelipatan Target!</strong>';
+            }
+            return;
+        }
 
         // Logika pengecekan sisa gaji
         if (metodeSelect && metodeSelect.value === 'potong_gaji') {
@@ -269,15 +299,15 @@
             if (labelSisa) {
                 labelSisa.innerText = "Rp " + sisa.toLocaleString('id-ID');
                 
-                if (sisa < 0) {
-                    // JIKA MELEBIHI GAJI
+                if (sisa <= 0) {
+                    // JIKA MENGHABISKAN ATAU MELEBIHI SISA GAJI
                     labelSisa.className = 'text-danger fw-bold';
                     labelSisa.innerHTML = "Rp " + sisa.toLocaleString('id-ID') + 
                         " <br><span class='badge bg-danger mt-1'>⚠️ Nominal melebihi gaji! Pilih metode Tunai/Transfer atau kurangi nominal.</span>";
                     
                     if (submitBtn) {
                         submitBtn.disabled = true;
-                        submitBtn.innerHTML = '<i class="bi bi-exclamation-octagon me-2"></i><strong>Gaji Tidak Cukup!</strong>';
+                        submitBtn.innerHTML = '<i class="bi bi-exclamation-octagon me-2"></i><strong>Potong Gaji Tidak Bisa Dipakai!</strong>';
                     }
                 } else {
                     // JIKA SALDO CUKUP
@@ -372,10 +402,20 @@
             const totalVal = parseFloat(document.getElementById('total_simpanan')?.value) || 0;
             const metodeSelect = document.getElementById('metode_pembayaran');
 
-            // 1. Cek jika nominal melebihi gaji pada potong gaji
-            if (metodeSelect.value === 'potong_gaji' && totalVal > GAJI_USER) {
+            // 1. Cek jika nominal menghabiskan/melebihi sisa gaji pada potong gaji
+            if (metodeSelect.value === 'potong_gaji' && totalVal >= GAJI_USER) {
                 e.preventDefault();
                 alert('❌ Gagal: Total simpanan melebihi sisa gaji Anda.\nSilakan pilih metode Tunai atau Transfer Bank.');
+                return;
+            }
+
+            const wajibInput = document.getElementById('simpanan_wajib');
+            const wajibVal = parseFloat(wajibInput?.value) || 0;
+            if (TARGET_SIMPANAN_WAJIB > 0 && wajibVal > 0 && !isValidSimpananWajibNominal(wajibVal)) {
+                e.preventDefault();
+                alert('❌ Gagal: Nominal Simpanan Wajib harus Rp' + TARGET_SIMPANAN_WAJIB.toLocaleString('id-ID') + ' atau kelipatannya, misalnya Rp' + (TARGET_SIMPANAN_WAJIB * 2).toLocaleString('id-ID') + '.');
+                return;
+                alert('❌ Gagal: Nominal Simpanan Wajib harus sama dengan target: Rp' + TARGET_SIMPANAN_WAJIB.toLocaleString('id-ID') + '.');
                 return;
             }
 

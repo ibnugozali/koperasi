@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"sort"
@@ -162,11 +163,19 @@ type resumePinjamanInfo struct {
 	SisaAngsuran       int
 	TotalTerbayar      float64
 	SisaPokok          float64
+	AngsuranPerBulan   float64
 	PersentaseTerbayar float64
 	BisaAjukanLagi     bool
 	MetodePencairan    string
 	MetodeAngsuran     string
 	Bunga              float64
+}
+
+func hitungAngsuranPerBulan(jumlahPinjaman, bungaNominal float64, jangkaWaktu int) float64 {
+	if jangkaWaktu <= 0 {
+		return 0
+	}
+	return (jumlahPinjaman + bungaNominal) / float64(jangkaWaktu)
 }
 
 type laporanSimpananColumn struct {
@@ -375,6 +384,7 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 			bungaVal = 4
 		}
 		bungaNominal := totalPinjaman * bungaVal / 100
+		totalKewajiban := totalPinjaman + bungaNominal
 
 		// Reset semua nilai perhitungan ke 0 karena masih proses
 		return &resumePinjamanInfo{
@@ -386,7 +396,8 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 			AngsuranTerbayar:   0,
 			SisaAngsuran:       totalJangkaWaktu,
 			TotalTerbayar:      0,
-			SisaPokok:          totalPinjaman,
+			SisaPokok:          totalKewajiban,
+			AngsuranPerBulan:   hitungAngsuranPerBulan(totalPinjaman, bungaNominal, totalJangkaWaktu),
 			PersentaseTerbayar: 0,
 			BisaAjukanLagi:     false, // Jangan izinkan ajukan lagi jika masih ada proses
 			Bunga:              bungaNominal,
@@ -396,9 +407,6 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 	}
 
 	// --- KONDISI 2: JIKA ADA PINJAMAN AKTIF ---
-	// Ambil sisa pinjaman terbaru dari GetSaldoAnggota
-	_, totalSisaPinjaman, _, _ := repository.GetSaldoAnggota(userID)
-
 	p := pinjamans[0]
 	statusGabungan := p.Status
 	tglPinjamanGabungan := p.TglPinjaman
@@ -407,13 +415,17 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 	totalPinjaman := p.JumlahPinjaman
 	totalJangkaWaktu := p.JangkaWaktu
 	bungaNominal := p.JumlahPinjaman * p.Bunga / 100
+	totalKewajiban := totalPinjaman + bungaNominal
+	angsuranPerBulan := hitungAngsuranPerBulan(totalPinjaman, bungaNominal, totalJangkaWaktu)
 
 	// Hitung angsuran terbayar
 	angsurans, _ := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
 	angsuranTerbayar := 0
+	totalAngsuranTerbayar := 0.0
 	for _, a := range angsurans {
 		if isAngsuranTerbayar(a.Status) {
 			angsuranTerbayar++
+			totalAngsuranTerbayar += a.JumlahAngsuran
 		}
 	}
 
@@ -422,24 +434,24 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 		sisaAngsuran = 0
 	}
 
-	// Kalkulasi persentase berdasarkan sisa pokok
+	// Kalkulasi progress berdasarkan total kewajiban pinjaman (pokok + bunga)
 	persentaseGabungan := 0.0
-	if totalPinjaman > 0 {
-		persentaseGabungan = (totalPinjaman - totalSisaPinjaman) / totalPinjaman * 100
+	if totalKewajiban > 0 {
+		persentaseGabungan = totalAngsuranTerbayar / totalKewajiban * 100
 	}
-	totalTerbayar := totalPinjaman - totalSisaPinjaman
+	totalTerbayar := totalAngsuranTerbayar
 	if totalTerbayar < 0 {
 		totalTerbayar = 0
 	}
-	if totalTerbayar > totalPinjaman {
-		totalTerbayar = totalPinjaman
+	if totalTerbayar > totalKewajiban {
+		totalTerbayar = totalKewajiban
 	}
-	sisaPokok := totalSisaPinjaman
+	sisaPokok := totalKewajiban - totalTerbayar
 	if sisaPokok < 0 {
 		sisaPokok = 0
 	}
-	if sisaPokok > totalPinjaman {
-		sisaPokok = totalPinjaman
+	if sisaPokok > totalKewajiban {
+		sisaPokok = totalKewajiban
 	}
 
 	// Pengamanan utama: status 'proses' harus selalu dianggap belum ada pembayaran.
@@ -448,7 +460,7 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 		sisaAngsuran = totalJangkaWaktu
 		persentaseGabungan = 0
 		totalTerbayar = 0
-		sisaPokok = totalPinjaman
+		sisaPokok = totalKewajiban
 	}
 
 	// Syarat pengajuan baru: minimal 50% sudah terbayar dan status bukan proses
@@ -466,6 +478,7 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 			SisaAngsuran:       0,
 			TotalTerbayar:      totalTerbayar,
 			SisaPokok:          0,
+			AngsuranPerBulan:   angsuranPerBulan,
 			PersentaseTerbayar: 100,
 			BisaAjukanLagi:     true,
 			Bunga:              bungaNominal,
@@ -483,6 +496,7 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 		SisaAngsuran:       sisaAngsuran,
 		TotalTerbayar:      totalTerbayar,
 		SisaPokok:          sisaPokok,
+		AngsuranPerBulan:   angsuranPerBulan,
 		PersentaseTerbayar: persentaseGabungan,
 		BisaAjukanLagi:     bisaAjukanLagi,
 		Bunga:              bungaNominal,
@@ -1772,12 +1786,21 @@ func AjukanPinjamanPost(c *gin.Context) {
 	pinjaman.TglPinjaman = time.Now() // Set tanggal pengajuan otomatis
 	pinjaman.Status = "proses"        // Status proses untuk konfirmasi bendahara
 
-	err = repository.CreatePinjaman(pinjaman)
+	idPinjamanBaru, err := repository.CreatePinjamanReturningID(pinjaman)
 	if err != nil {
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
 		templateData["Error"] = "Gagal mengajukan pinjaman. Silakan coba lagi."
 		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
 		return
+	}
+
+	if strings.TrimSpace(strings.ToLower(strings.ReplaceAll(pinjaman.MetodeAngsuran, " ", "_"))) == "potong_gaji" {
+		if err := createPendingAngsuranPotongGajiAwal(idPinjamanBaru); err != nil {
+			templateData := getAjukanPinjamanTemplateData(userID, anggota)
+			templateData["Error"] = "Pinjaman tersimpan, tetapi gagal membuat cicilan pending otomatis."
+			c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
+			return
+		}
 	}
 
 	// Kirim notifikasi WA ke bendahara jika ada pengajuan pinjaman baru
@@ -1818,6 +1841,8 @@ func AnggotaSimpanan(c *gin.Context) {
 	if val, ok := config["PersentasePotong"].(float64); ok {
 		nominalSimpananWajib = val
 	}
+	potonganBulanIni, _ := repository.GetPotonganBulanIniAllAnggota()
+	sisaGajiPotong := float64(anggota.GajiBulanan) - potonganBulanIni[userID]
 
 	// Ambil data resume gabungan (bungkus ke slice jika tidak nil)
 	resumeGabungan := getResumePinjamanGabungan(userID)
@@ -1861,6 +1886,7 @@ func AnggotaSimpanan(c *gin.Context) {
 		"Anggota":              anggota,
 		"Now":                  time.Now(),
 		"NominalSimpananWajib": nominalSimpananWajib,
+		"SisaGajiPotong":       sisaGajiPotong,
 		"ResumeGabungan":       resumeGabunganSlice,
 		"CurrentLogo":          latestLogo,
 		"NomorRekening":        nomorRekening,
@@ -1881,6 +1907,14 @@ func AnggotaSimpananPost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Data anggota tidak ditemukan."})
 		return
 	}
+
+	configSimpananWajib, _ := repository.GetKonfigurasiSimpananWajib()
+	nominalSimpananWajib := 0.0
+	if val, ok := configSimpananWajib["PersentasePotong"].(float64); ok {
+		nominalSimpananWajib = val
+	}
+	potonganBulanIni, _ := repository.GetPotonganBulanIniAllAnggota()
+	sisaGajiPotong := float64(anggota.GajiBulanan) - potonganBulanIni[userID]
 
 	// ==================== BULLETPROOF MULTIPART PARSING FIX ====================
 	log.Printf("[SIMPANAN-POST] user=%s ContentType='%s'", userID, c.ContentType())
@@ -1938,7 +1972,7 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 	log.Printf("[SIMPANAN-POST] ✓ METHOD VALIDATED: '%s'", metodePembayaran)
 
-	if metodePembayaran == "potong_gaji" && anggota.GajiBulanan <= 0 {
+	if metodePembayaran == "potong_gaji" && sisaGajiPotong <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"field":   "metode_pembayaran",
@@ -1979,6 +2013,15 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
+	if nominalSimpananWajib > 0 && wajib > 0 && (wajib < nominalSimpananWajib || math.Mod(wajib, nominalSimpananWajib) != 0) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"field":   "simpanan_wajib",
+			"message": fmt.Sprintf("Nominal Simpanan Wajib harus Rp%.0f atau kelipatannya, misalnya Rp%.0f.", nominalSimpananWajib, nominalSimpananWajib*2),
+		})
+		return
+	}
+
 	// BUKTI for TRANSFER_BANK - FIXED
 	if metodePembayaran == "transfer_bank" {
 		file, err := c.FormFile("bukti")
@@ -2008,6 +2051,15 @@ func AnggotaSimpananPost(c *gin.Context) {
 	}
 
 	var total float64 = wajib + sukarela + hariRaya + umrohHaji + qurban
+
+	if metodePembayaran == "potong_gaji" && total >= sisaGajiPotong {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"field":   "metode_pembayaran",
+			"message": "Metode potong gaji tidak dapat dipakai jika total simpanan menghabiskan sisa gaji Anda. Kurangi nominal atau pilih metode lain.",
+		})
+		return
+	}
 
 	// Handle file upload: hanya wajib untuk Transfer Bank
 	var filename string

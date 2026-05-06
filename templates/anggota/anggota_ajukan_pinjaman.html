@@ -12,7 +12,9 @@
 <body>
 {{ template "navbar.html" . }}
 <div style="padding: 20px;">
+{{if not .ResumeGabungan}}
 <h1>{{ .Judul }}</h1>
+{{end}}
 
 {{if .ReadOnly}}
 <div class="alert alert-secondary">Mode tampilan: hanya melihat persyaratan pengajuan pinjaman. Form dinonaktifkan.</div>
@@ -56,46 +58,56 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <!-- Resume Pinjaman Floating Card -->
 <style>
-    @media (min-width: 992px) {
-        .floating-resume-pinjaman {
-            position: fixed;
-            left: 50%;
-            top: 90px;
-            transform: translateX(-50%);
-            width: 75vw;
-            max-width: 720px;
-            padding: 24px;
-            z-index: 990;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.12);
-            border-radius: 16px;
-            background: #fff;
-            border: 1px solid #e5e5e5;
-            animation: fadeInResume 0.5s;
+    .resume-pinjaman-wrapper {
+        max-width: 920px;
+        margin: 24px auto;
+    }
+
+    .floating-resume-pinjaman,
+    .resume-pinjaman-static {
+        width: 100%;
+        border-radius: 16px;
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        animation: fadeInResume 0.35s ease;
+    }
+
+    .resume-pinjaman-static {
+        margin-top: 16px;
+        margin-bottom: 24px;
+    }
+
+    .resume-pinjaman-header-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    @keyframes fadeInResume {
+        from {
+            opacity: 0;
+            transform: translateY(16px);
         }
-        .resume-pinjaman-static {
-            position: static !important;
-            transform: none !important;
-            margin-left: 0;
-            margin-top: 16px;
-            margin-bottom: 24px;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-            padding: 20px 28px 24px 28px;
-            border: 1px solid #e5e5e5;
+        to {
+            opacity: 1;
+            transform: translateY(0);
         }
-        @keyframes fadeInResume {
-            from { opacity: 0; transform: translateY(40px); }
-            to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 576px) {
+        .resume-pinjaman-wrapper {
+            margin: 16px auto;
         }
     }
 </style>
 
 {{if .ResumeGabungan}}
+<div class="resume-pinjaman-wrapper">
     {{range $i, $resume := .ResumeGabungan}}
-        <div id="resumePinjamanCardGabungan{{$i}}" class="card shadow-sm mb-4 border-0 floating-resume-pinjaman">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center" style="font-size: 15px;">
-                <span>Resume Pinjaman Aktif #{{add $i 1}}</span>
+        <div id="resumePinjamanCardGabungan{{$i}}" class="card mb-4 border-0 floating-resume-pinjaman">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center gap-3 flex-wrap" style="font-size: 15px;">
+                <span class="resume-pinjaman-header-title">Resume Pinjaman Aktif #{{add $i 1}}</span>
                 <span class="badge text-bg-primary">Pinjaman Aktif/Proses</span>
             </div>
             <div class="card-body">
@@ -109,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function(){
                     <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{$resume.TotalTerbayar | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{$resume.SisaPokok | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{$resume.AngsuranTerbayar}} kali</div>
-                    <div class="col-md-6"><strong>Perkiraan Angsuran per Bulan:</strong> Rp {{add $resume.JumlahPinjaman $resume.Bunga | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Perkiraan Angsuran per Bulan:</strong> Rp {{$resume.AngsuranPerBulan | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Metode Pencairan:</strong> {{$resume.MetodePencairan}}</div>
                     <div class="col-md-6"><strong>Metode Angsuran:</strong> {{$resume.MetodeAngsuran}}</div>
                 </div>
@@ -124,6 +136,7 @@ document.addEventListener('DOMContentLoaded', function(){
                         <div class="progress-bar {{if $resume.BisaAjukanLagi}}bg-success{{else}}bg-warning{{end}}"
                                  data-progress="{{printf "%.2f" $resume.PersentaseTerbayar}}">
                         </div>
+                    </div>
                 </div>
                 <div class="alert {{if $resume.BisaAjukanLagi}}alert-success{{else}}alert-warning{{end}} mt-3 mb-0">
                     {{if $resume.BisaAjukanLagi}}
@@ -142,11 +155,11 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
             </div>
         </div>
-        </div>
     {{end}}
+</div>
 {{end}}
 
-<form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" class="{{if .ResumeGabungan}}blurred-section{{end}}">
+<form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" class="{{if .ResumeGabungan}}d-none{{end}}">
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         var btnPinjamLagi = document.querySelector('.btn-success[href="#ajukanPinjamanForm"]');
@@ -156,8 +169,8 @@ document.addEventListener('DOMContentLoaded', function(){
             btnPinjamLagi.addEventListener('click', function(e) {
                 e.preventDefault();
                 var resumeCard = btnPinjamLagi.closest('.floating-resume-pinjaman');
-                // Hilangkan blur pada form
-                form.classList.remove('blurred-section');
+                // Tampilkan form pengajuan jika user sudah boleh pinjam lagi
+                form.classList.remove('d-none');
                 // Ubah class agar tidak floating
                 if (resumeCard) {
                     resumeCard.classList.remove('floating-resume-pinjaman');
@@ -175,14 +188,6 @@ document.addEventListener('DOMContentLoaded', function(){
         }
     });
     </script>
-    <style>
-    .blurred-section {
-        filter: blur(4px);
-        pointer-events: none;
-        opacity: 0.5;
-        transition: filter 0.3s, opacity 0.3s;
-    }
-    </style>
     <!-- Bagian 1: Rincian Permohonan Pinjaman -->
     <fieldset class="border p-3 mb-4">
         <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
@@ -378,10 +383,12 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
     </fieldset>
 
+    {{if not .ResumeGabungan}}
     <button type="submit" class="btn btn-primary"
         {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} disabled {{end}}>
         Ajukan Pinjaman
     </button>
+    {{end}}
 </form>
 </div>
 

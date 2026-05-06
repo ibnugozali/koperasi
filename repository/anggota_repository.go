@@ -539,6 +539,7 @@ func GetSimpananWajibAllAnggota() (map[string]float64, error) {
 func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 	db := config.GetDB()
 	potonganBulanIni := make(map[string]float64)
+	simpananWajib := make(map[string]float64)
 
 	// Ambil konfigurasi simpanan wajib
 	config, err := GetKonfigurasiSimpananWajib()
@@ -546,10 +547,15 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 		return potonganBulanIni, nil // Return map kosong jika error
 	}
 
+	if data, err := GetSimpananWajibAllAnggota(); err == nil {
+		simpananWajib = data
+	}
+
 	// Get current month and year
 	now := time.Now()
 	bulan := int(now.Month())
 	tahun := now.Year()
+	tanggalSekarang := now.Day()
 
 	// Ambil data dari log pemotongan bulan ini (jika sudah diproses sebelumnya)
 	// PENTING: Data yang sudah diproses tetap ditampilkan meskipun status dinonaktifkan
@@ -576,11 +582,18 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 		return potonganBulanIni, nil
 	}
 
-	// Jika belum ada log pemotongan, tampilkan estimasi potongan berdasarkan konfigurasi dan gaji bulanan
-	// Ini berguna untuk preview sebelum pemotongan dieksekusi
 	nominalSimpananWajib, ok := config["PersentasePotong"].(float64)
 	if !ok {
 		nominalSimpananWajib = 0
+	}
+	tanggalPotong, ok := config["TanggalPotong"].(int)
+	if !ok || tanggalPotong <= 0 {
+		tanggalPotong = 1
+	}
+
+	// Sebelum tanggal pemotongan, belum ada potongan bulan ini yang perlu dipreview.
+	if tanggalSekarang < tanggalPotong {
+		return potonganBulanIni, nil
 	}
 
 	// Query anggota aktif dengan gaji bulanan
@@ -598,10 +611,15 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 			continue
 		}
 
-		// Gunakan nominal simpanan wajib dari konfigurasi sebagai estimasi potongan
-		// Jika nominal 0, bisa juga hitung dari persentase gaji (tergantung tipe_pemotongan)
+		// Samakan dengan halaman bendahara:
+		// estimasi potongan bulan ini mengikuti kekurangan menuju target simpanan wajib.
 		if nominalSimpananWajib > 0 {
-			potonganBulanIni[idAnggota] = nominalSimpananWajib
+			kekurangan := nominalSimpananWajib - simpananWajib[idAnggota]
+			if kekurangan > 0 {
+				potonganBulanIni[idAnggota] = kekurangan
+			} else {
+				potonganBulanIni[idAnggota] = 0
+			}
 		}
 	}
 

@@ -208,11 +208,50 @@ func CreatePinjaman(pinjaman models.Pinjaman) error {
 	return err
 }
 
+func CreatePinjamanReturningID(pinjaman models.Pinjaman) (int, error) {
+	db := config.GetDB()
+	pinjaman.TglPinjaman = time.Now()
+	query := `
+		INSERT INTO pinjaman (
+			id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status,
+			metode_pencairan, metode_angsuran, nomor_rekening, nama_bank, nama_pemilik_rekening,
+			gaji_bulanan, tujuan_pinjaman
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		RETURNING id_pinjaman
+	`
+
+	var idPinjaman int
+	err := db.QueryRow(query,
+		pinjaman.IDAnggota,
+		pinjaman.IDPengelola,
+		pinjaman.TglPinjaman,
+		pinjaman.JumlahPinjaman,
+		pinjaman.JangkaWaktu,
+		pinjaman.Bunga,
+		pinjaman.Status,
+		pinjaman.MetodePencairan,
+		pinjaman.MetodeAngsuran,
+		pinjaman.NomorRekening,
+		pinjaman.NamaBank,
+		pinjaman.NamaPemilikRekening,
+		pinjaman.GajiBulanan,
+		pinjaman.TujuanPinjaman,
+	).Scan(&idPinjaman)
+	if err != nil {
+		return 0, err
+	}
+
+	return idPinjaman, nil
+}
+
 // CreateAngsuran mencatat pembayaran angsuran
 func CreateAngsuran(angsuran models.Angsuran) error {
 	db := config.GetDB()
-	// Set waktu bayar ke saat ini (server-side)
-	angsuran.TglBayar = time.Now()
+	// Gunakan waktu saat ini jika caller tidak memberi tanggal.
+	if angsuran.TglBayar.IsZero() {
+		angsuran.TglBayar = time.Now()
+	}
 	// Set status default ke 'pending' untuk menunggu konfirmasi bendahara
 	if angsuran.Status == "" {
 		angsuran.Status = "pending"
