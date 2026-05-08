@@ -1042,12 +1042,10 @@ func AnggotaProfil(c *gin.Context) {
 
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
-	// Ambil resume pinjaman gabungan untuk dapatkan pokok + bunga
-	resume := getResumePinjamanGabungan(userID)
-	var totalPinjaman float64
-	if resume != nil {
-		totalPinjaman = resume.JumlahPinjaman + resume.Bunga
-	} else {
+	// Total Pinjaman (Pokok) di profil hanya menghitung pinjaman yang sudah aktif.
+	// Pengajuan yang masih status "proses" belum boleh muncul di ringkasan ini.
+	totalPinjaman, _, err := getRingkasanPinjamanAktifByAnggotaID(userID)
+	if err != nil {
 		totalPinjaman = 0
 	}
 

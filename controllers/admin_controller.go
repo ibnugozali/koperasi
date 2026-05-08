@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -158,9 +159,23 @@ func AdminDashboard(c *gin.Context) {
 		"TotalPinjaman":      totalPinjaman,
 		"AktivitasData":      aktivitasData,
 		"LogoPath":           c.MustGet("LogoPath"),
+		"CurrentLogo":        c.MustGet("LogoPath"),
+		"ActivePage":         "dashboard",
+		"Success":            c.Query("success"),
+		"Error":              c.Query("error"),
 	}
 
 	c.HTML(http.StatusOK, "admin_dashboard.html", data)
+}
+
+func AdminImportReferensiPage(c *gin.Context) {
+	c.HTML(http.StatusOK, "admin_import_referensi.html", gin.H{
+		"LogoPath":    c.MustGet("LogoPath"),
+		"CurrentLogo": c.MustGet("LogoPath"),
+		"ActivePage":  "import_referensi",
+		"Success":     c.Query("success"),
+		"Error":       c.Query("error"),
+	})
 }
 
 func AdminDataAnggota(c *gin.Context) {
@@ -652,6 +667,187 @@ func AdminImportAnggotaExcel(c *gin.Context) {
 		"failed":      failedCount,
 		"parseErrors": parseErrors,
 	})
+}
+
+// AdminImportReferensiPendaftaran mengimpor data master referensi untuk validasi register.
+func AdminImportReferensiPendaftaran(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=File referensi tidak ditemukan")
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".xlsx" && ext != ".xls" {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Format file harus .xlsx atau .xls")
+		return
+	}
+
+	tempPath := "./static/uploads/" + uuid.New().String() + ext
+	if err := c.SaveUploadedFile(file, tempPath); err != nil {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Gagal menyimpan file upload")
+		return
+	}
+	defer os.Remove(tempPath)
+
+	f, err := excelize.OpenFile(tempPath)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=File Excel tidak bisa dibaca")
+		return
+	}
+	defer f.Close()
+
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=File Excel tidak memiliki sheet")
+		return
+	}
+
+	rows, err := f.GetRows(sheets[0])
+	if err != nil || len(rows) < 2 {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Data referensi kosong atau tidak valid")
+		return
+	}
+
+	db := config.GetDB()
+
+	headerRowIdx := -1
+	headerMap := map[string]int{}
+	for r, row := range rows {
+		tmp := map[string]int{}
+		for i, header := range row {
+			norm := normalizeHeader(header)
+			if norm != "" {
+				tmp[norm] = i
+			}
+		}
+
+		idxNamaTmp := findHeaderIndex(tmp, "nama lengkap", "nama anggota", "nama")
+		idxIdentitasTmp := findHeaderIndex(tmp, "identitas", "nomer identitas", "nomor identitas", "nik ktp", "nik", "nik_ktp")
+		if idxNamaTmp >= 0 && idxIdentitasTmp >= 0 {
+			headerRowIdx = r
+			headerMap = tmp
+			break
+		}
+	}
+
+	if headerRowIdx < 0 {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Baris header template tidak ditemukan. Pastikan file memiliki kolom Nama Lengkap dan Identitas/Nomer Identitas.")
+		return
+	}
+
+	idxNama := findHeaderIndex(headerMap, "nama lengkap", "nama anggota", "nama")
+	idxIdentitas := findHeaderIndex(headerMap, "identitas", "nomer identitas", "nomor identitas", "nik ktp", "nik", "nik_ktp")
+	idxTelepon := findHeaderIndex(headerMap, "no telepon", "telepon", "no hp", "no hp aktif")
+	idxTglLahir := findHeaderIndex(headerMap, "tanggal lahir", "tgl lahir", "tgllahir")
+	idxJenisKelamin := findHeaderIndex(headerMap, "jenis kelamin", "jeniskelamin")
+	idxStatusAnggota := findHeaderIndex(headerMap, "status anggota", "jabatan", "kategori anggota")
+	idxFakultas := findHeaderIndex(headerMap, "fakultas", "unit kerja", "unit")
+	idxAlamat := findHeaderIndex(headerMap, "alamat")
+	idxGaji := findHeaderIndex(headerMap, "gajih bersih", "gaji bersih", "gaji bulanan", "gaji", "gajibulanan")
+	idxStatusKeanggotaan := findHeaderIndex(headerMap, "status keanggotaan", "status data", "keanggotaan")
+
+	if idxNama < 0 {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Kolom Nama Lengkap wajib ada di file referensi")
+		return
+	}
+
+	if idxIdentitas < 0 {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Kolom Identitas wajib ada di file referensi")
+		return
+	}
+
+	successCount := 0
+	failedCount := 0
+
+	for i, row := range rows[headerRowIdx+1:] {
+		rowNum := headerRowIdx + i + 2
+		nama := getCell(row, idxNama)
+		identitas := getCell(row, idxIdentitas)
+		telepon := getCell(row, idxTelepon)
+
+		if nama == "" {
+			failedCount++
+			log.Printf("[IMPORT-REFERENSI] baris %d dilewati: nama kosong", rowNum)
+			continue
+		}
+		if identitas == "" {
+			failedCount++
+			log.Printf("[IMPORT-REFERENSI] baris %d dilewati: identitas kosong", rowNum)
+			continue
+		}
+
+		statusKeanggotaan := strings.ToLower(strings.TrimSpace(getCell(row, idxStatusKeanggotaan)))
+		switch statusKeanggotaan {
+		case "anggota", "member", "sudah_anggota", "sudah anggota":
+			statusKeanggotaan = "anggota"
+		case "belum_anggota", "belum anggota", "non_anggota", "non anggota", "":
+			statusKeanggotaan = "belum_anggota"
+		default:
+			statusKeanggotaan = "belum_anggota"
+		}
+
+		// Jika file template baru tidak menyertakan status keanggotaan, infer dari anggota yang sudah ada.
+		if idxStatusKeanggotaan < 0 {
+			var anggotaCount int
+			checkErr := db.QueryRow(`
+				SELECT COUNT(*)
+				FROM anggota
+				WHERE COALESCE(nik_ktp, '') = $1
+				   OR COALESCE(username, '') = $1
+				   OR COALESCE(no_telepon, '') = $1
+			`, identitas).Scan(&anggotaCount)
+			if checkErr == nil && anggotaCount > 0 {
+				statusKeanggotaan = "anggota"
+			} else {
+				statusKeanggotaan = "belum_anggota"
+			}
+		}
+
+		gajiBulanan := 0
+		gajiStr := getCell(row, idxGaji)
+		if gajiStr != "" {
+			gajiStr = strings.ReplaceAll(gajiStr, ".", "")
+			gajiStr = strings.ReplaceAll(gajiStr, ",", "")
+			if parsedGaji, parseErr := strconv.Atoi(gajiStr); parseErr == nil && parsedGaji >= 0 {
+				gajiBulanan = parsedGaji
+			}
+		}
+
+		item := models.ReferensiPendaftaran{
+			NamaLengkap:       nama,
+			NIKKTP:            identitas,
+			NoTelepon:         telepon,
+			TglLahir:          getCell(row, idxTglLahir),
+			JenisKelamin:      getCell(row, idxJenisKelamin),
+			StatusAnggota:     strings.ToLower(strings.TrimSpace(getCell(row, idxStatusAnggota))),
+			Fakultas:          getCell(row, idxFakultas),
+			Alamat:            getCell(row, idxAlamat),
+			GajiBulanan:       gajiBulanan,
+			StatusKeanggotaan: statusKeanggotaan,
+			SumberFile:        file.Filename,
+		}
+
+		if item.StatusAnggota == "tenaga pendidikan" {
+			item.StatusAnggota = "karyawan"
+		}
+
+		if err := repository.UpsertReferensiPendaftaran(item); err != nil {
+			failedCount++
+			log.Printf("[IMPORT-REFERENSI] baris %d gagal disimpan: %v", rowNum, err)
+			continue
+		}
+
+		successCount++
+	}
+
+	if successCount == 0 {
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Tidak ada data referensi yang berhasil diimport")
+		return
+	}
+
+	msg := fmt.Sprintf("Import referensi pendaftaran berhasil: %d data masuk, %d data gagal", successCount, failedCount)
+	c.Redirect(http.StatusFound, "/admin/import-referensi?success="+url.QueryEscape(msg))
 }
 
 func AdminViewAnggota(c *gin.Context) {

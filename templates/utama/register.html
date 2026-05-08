@@ -14,108 +14,131 @@
                 <div class="card shadow-sm">
                     <div class="card-body p-5">
                         <h3 class="card-title text-center mb-4">Formulir Pendaftaran Anggota</h3>
+                        
                         {{ if .error }}
                             <div class="alert alert-danger">{{ .error }}</div>
                         {{ end }}
-                        <form action="/register" method="POST" enctype="multipart/form-data">
-                            <div class="mb-3">
-                                <label for="register_nama_anggota" class="form-label">Nama Lengkap</label>
-                                <input type="text" class="form-control" id="register_nama_anggota" name="NamaAnggota" required>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="register_username" class="form-label">Nama Pengguna</label>
-                                    <input type="text" class="form-control" id="register_username" name="Username" autocomplete="username" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="register_password" class="form-label">Kata Sandi</label>
-                                    <input type="password" class="form-control" id="register_password" name="Password" autocomplete="new-password" required>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="register_no_telepon" class="form-label">No. Telepon</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">+62</span>
-                                    <input type="text" class="form-control" id="register_no_telepon" name="NoTelepon" required pattern="[1-9][0-9]{8,12}" maxlength="13" inputmode="numeric" title="Nomor telepon Indonesia, 9-13 digit, tidak boleh diawali 0" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^0+/, '').slice(0, 13)">
-                                </div>
-                                <small class="form-text text-muted">Masukkan nomor tanpa 0 di depan, contoh: 81234567890</small>
-                            </div>
-                             <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="register_tgl_lahir" class="form-label">Tanggal Lahir</label>
-                                    <input type="date" class="form-control" id="register_tgl_lahir" name="TglLahir" required>
-                                    <small class="form-text text-muted">Minimal usia 18 tahun</small>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="register_jenis_kelamin" class="form-label">Jenis Kelamin</label>
-                                    <select class="form-select" id="register_jenis_kelamin" name="JenisKelamin">
-                                        <option value="Laki-laki">Laki-laki</option>
-                                        <option value="Perempuan">Perempuan</option>
-                                    </select>
-                                </div>
-                            </div>
 
-                           <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="register_status_anggota" class="form-label">Jabatan</label>
-                                    <select class="form-select" id="register_status_anggota" name="StatusAnggota" required>
-                                        <option value="">Pilih Status</option>
+                        <form action="/register" method="POST" enctype="multipart/form-data">
+                            
+                            <!-- BAGIS UTAMA: Pilih Status Terlebih Dahulu -->
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="register_status_anggota" class="form-label fw-bold">Status Calon Anggota</label>
+                                    <select class="form-select form-select-lg border-primary" id="register_status_anggota" name="StatusAnggota" required>
+                                        <option value="">-- Pilih Status Calon Anggota --</option>
                                         <option value="dosen">Dosen</option>
                                         <option value="karyawan">Tenaga Pendidikan</option>
                                         <option value="mahasiswa">Mahasiswa</option>
                                     </select>
+                                    <small class="text-muted">Silakan pilih status untuk menampilkan formulir lengkap.</small>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="register_fakultas" class="form-label">Unit Kerja</label>
-                                    <select class="form-select" id="register_fakultas" required>
-                                        <option value="">Pilih Unit Kerja</option>
-                                        <option value="Fakultas Agama Islam (FAI)">Fakultas Agama Islam (FAI)</option>
-                                        <option value="Fakultas Ekonomi (FE)">Fakultas Ekonomi (FE)</option>
-                                        <option value="Fakultas Hukum (FH)">Fakultas Hukum (FH)</option>
-                                        <option value="Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)">Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)</option>
-                                        <option value="Fakultas Keguruan dan Ilmu Pendidikan (FKIP)">Fakultas Keguruan dan Ilmu Pendidikan (FKIP)</option>
-                                        <option value="Fakultas Kesehatan Masyarakat (FKM)">Fakultas Kesehatan Masyarakat (FKM)</option>
-                                        <option value="Fakultas Pertanian (FAPERTA)">Fakultas Pertanian (FAPERTA)</option>
-                                        <option value="Fakultas Teknik (FT)">Fakultas Teknik (FT)</option>
-                                        <option value="Paskasarjana">Paskasarjana</option>
-                                        <option value="Rektorat / Yayasan" id="option_rektorat">Rektoriat</option>
+                            </div>
+
+                            <!-- KONTAINER FORM -->
+                            <div id="form_fields_container" class="d-none">
+                                <hr class="my-4">
+
+                                <!-- BARIS 1: Kolom Dinamis (NIDN/NIK) -->
+                                <div class="row">
+                                    <div class="col-md-12 mb-3 d-none" id="wrapper_identitas_pegawai">
+                                        <label for="register_identitas_pegawai" class="form-label" id="label_identitas_pegawai">Nomor Induk</label>
+                                        <input type="text" class="form-control" id="register_identitas_pegawai" name="NoIdentitasPegawai" placeholder="Masukkan nomor induk">
+                                    </div>
+                                </div>
+
+                                <!-- BARIS 2: Nama & Unit Kerja -->
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="register_nama_anggota" class="form-label">Nama Lengkap</label>
+                                        <input type="text" class="form-control" id="register_nama_anggota" name="NamaAnggota" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="register_fakultas" class="form-label">Unit Kerja</label>
+                                        <select class="form-select" id="register_fakultas" required>
+                                            <option value="">Pilih Unit Kerja</option>
+                                            <option value="Fakultas Agama Islam (FAI)">Fakultas Agama Islam (FAI)</option>
+                                            <option value="Fakultas Ekonomi (FE)">Fakultas Ekonomi (FE)</option>
+                                            <option value="Fakultas Hukum (FH)">Fakultas Hukum (FH)</option>
+                                            <option value="Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)">Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)</option>
+                                            <option value="Fakultas Keguruan dan Ilmu Pendidikan (FKIP)">Fakultas Keguruan dan Ilmu Pendidikan (FKIP)</option>
+                                            <option value="Fakultas Kesehatan Masyarakat (FKM)">Fakultas Kesehatan Masyarakat (FKM)</option>
+                                            <option value="Fakultas Pertanian (FAPERTA)">Fakultas Pertanian (FAPERTA)</option>
+                                            <option value="Fakultas Teknik (FT)">Fakultas Teknik (FT)</option>
+                                            <option value="Paskasarjana">Paskasarjana</option>
+                                            <option value="Rektorat / Yayasan" id="option_rektorat">Rektoriat</option>
+                                        </select>
+                                        <input type="hidden" id="register_fakultas_hidden" name="Fakultas">
+                                    </div>
+                                </div>
+
+                                <!-- BARIS 3: Username & Password -->
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="register_username" class="form-label">Nama Pengguna</label>
+                                        <input type="text" class="form-control" id="register_username" name="Username" autocomplete="username" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="register_password" class="form-label">Kata Sandi</label>
+                                        <input type="password" class="form-control" id="register_password" name="Password" autocomplete="new-password" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="register_no_telepon" class="form-label">No. Telepon</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">+62</span>
+                                        <input type="text" class="form-control" id="register_no_telepon" name="NoTelepon" required pattern="[1-9][0-9]{8,12}" maxlength="13" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^0+/, '').slice(0, 13)">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="register_tgl_lahir" class="form-label">Tanggal Lahir</label>
+                                        <input type="date" class="form-control" id="register_tgl_lahir" name="TglLahir" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="register_jenis_kelamin" class="form-label">Jenis Kelamin</label>
+                                        <select class="form-select" id="register_jenis_kelamin" name="JenisKelamin">
+                                            <option value="Laki-laki">Laki-laki</option>
+                                            <option value="Perempuan">Perempuan</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- SEKSI GAJI (Wrapper Ditambahkan) -->
+                                <div class="mb-3" id="wrapper_gaji_bulanan">
+                                    <label for="register_gaji_bulanan" class="form-label">Gaji Bersih</label>
+                                    <input type="number" class="form-control" id="register_gaji_bulanan" name="GajiBulanan" placeholder="Contoh: 5000000" min="0" step="1000">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="register_metode_pembayaran" class="form-label">Metode Pembayaran Simpanan Pokok</label>
+                                    <select class="form-select" id="register_metode_pembayaran" name="MetodePembayaran" required>
+                                        <option value="transfer_bank" selected>Transfer Bank</option>
+                                        <option value="potong_gaji">Potong Gaji</option>
+                                        <option value="tunai">Tunai</option>
                                     </select>
-                                    <input type="hidden" id="register_fakultas_hidden" name="Fakultas">
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="register_gaji_bulanan" class="form-label">Gaji Bulanan</label>
-                                <input type="number" class="form-control" id="register_gaji_bulanan" name="GajiBulanan" placeholder="Contoh: 5000000" min="0" step="1000">
-                                <small class="form-text text-muted">Masukkan gaji bulanan dalam Rupiah (tanpa titik atau koma)</small>
-                            </div>
-                            <div class="mb-3">
-                                <label for="register_metode_pembayaran" class="form-label">Metode Pembayaran Simpanan Pokok</label>
-                                <select class="form-select" id="register_metode_pembayaran" name="MetodePembayaran" required>
-                                    <option value="transfer_bank" selected>Transfer Bank</option>
-                                    <option value="potong_gaji">Potong Gaji</option>
-                                    <option value="tunai">Tunai</option>
-                                </select>
-                                <small class="form-text text-muted">Pilih transfer bank, potong gaji, atau tunai sesuai kebutuhan.</small>
-                            </div>
-                            <div class="mb-3" id="transfer_fields_wrapper">
-                                <label for="register_bukti_transfer" class="form-label">Bukti Transfer Simpanan Pokok Wajib Rp. {{ .NominalSimpanan }},-</label>
-                                <input type="file" class="form-control" id="register_bukti_transfer" name="BuktiTransfer" accept="image/*,.pdf" required>
-                                <small class="form-text text-muted">
-                                    Upload bukti transfer/pembayaran (format gambar) | 
-                                    <strong>Nomor rekening koperasi: {{ .NomorRekening }}</strong>
-                                </small>
-                            </div>
-                            <div class="mb-3 d-none" id="potong_gaji_info">
-                                <div class="alert alert-info mb-0">
-                                    Simpanan pokok akan diproses tanpa upload bukti transfer untuk metode potong gaji atau tunai.
+
+                                <div class="mb-3" id="transfer_fields_wrapper">
+                                    <label for="register_bukti_transfer" class="form-label">Bukti Transfer (Rp. {{ .NominalSimpanan }})</label>
+                                    <input type="file" class="form-control" id="register_bukti_transfer" name="BuktiTransfer" accept="image/*,.pdf" required>
+                                    <small class="form-text text-muted">Rekening: {{ .NomorRekening }}</small>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="register_alamat" class="form-label">Alamat</label>
-                                <input type="text" class="form-control" id="register_alamat" name="Alamat" required>
-                            </div>
-                            <div class="d-grid mt-4">
-                                <button type="submit" class="btn btn-primary">Daftar</button>
+
+                                <div class="mb-3 d-none" id="potong_gaji_info">
+                                    <div class="alert alert-info mb-0">Metode potong gaji/tunai tidak memerlukan upload bukti.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="register_alamat" class="form-label">Alamat</label>
+                                    <input type="text" class="form-control" id="register_alamat" name="Alamat" required>
+                                </div>
+
+                                <div class="d-grid mt-4">
+                                    <button type="submit" class="btn btn-primary btn-lg">Daftar Sekarang</button>
+                                </div>
                             </div>
                         </form>
                         
@@ -123,187 +146,101 @@
                             <p>Sudah punya akun? <a href="/login">Login</a></p>
                         </div>
                     </div>
-                    {{ template "footer.html" . }}
                 </div>
             </div>
         </div>
     </div>
 
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-                        <script>
-                            // Set max date for Tanggal Lahir (minimal 18 tahun)
-                            (function() {
-                                const tglLahirInput = document.getElementById('register_tgl_lahir');
-                                const today = new Date();
-                                const min18 = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-                                const yyyy = min18.getFullYear();
-                                const mm = String(min18.getMonth() + 1).padStart(2, '0');
-                                const dd = String(min18.getDate()).padStart(2, '0');
-                                tglLahirInput.max = `${yyyy}-${mm}-${dd}`;
-                            })();
-                        </script>
-            <script>
-                // Ambil elemen dengan id yang benar
-                const statusAnggotaSelect = document.getElementById('register_status_anggota');
-                const gajiBulananInput = document.getElementById('register_gaji_bulanan');
-                const fakultasSelect = document.getElementById('register_fakultas');
-                const fakultasHidden = document.getElementById('register_fakultas_hidden');
-                const optionRektorat = document.getElementById('option_rektorat');
-                const registerForm = document.querySelector('form');
-                const tglLahirInput = document.getElementById('register_tgl_lahir');
-                const metodePembayaranSelect = document.getElementById('register_metode_pembayaran');
-                const buktiTransferInput = document.getElementById('register_bukti_transfer');
-                const transferFieldsWrapper = document.getElementById('transfer_fields_wrapper');
-                const potongGajiInfo = document.getElementById('potong_gaji_info');
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const statusAnggotaSelect = document.getElementById('register_status_anggota');
+        const formFieldsContainer = document.getElementById('form_fields_container');
+        
+        const wrapperIdentitas = document.getElementById('wrapper_identitas_pegawai');
+        const labelIdentitas = document.getElementById('label_identitas_pegawai');
+        const inputIdentitas = document.getElementById('register_identitas_pegawai');
+        
+        const wrapperGaji = document.getElementById('wrapper_gaji_bulanan'); // Wrapper baru
+        const gajiBulananInput = document.getElementById('register_gaji_bulanan');
+        
+        const fakultasSelect = document.getElementById('register_fakultas');
+        const fakultasHidden = document.getElementById('register_fakultas_hidden');
+        const optionRektorat = document.getElementById('option_rektorat');
+        const metodePembayaranSelect = document.getElementById('register_metode_pembayaran');
+        const buktiTransferInput = document.getElementById('register_bukti_transfer');
+        const transferFieldsWrapper = document.getElementById('transfer_fields_wrapper');
+        const potongGajiInfo = document.getElementById('potong_gaji_info');
 
-                // Set max date for Tanggal Lahir (minimal 18 tahun)
-                (function() {
-                    const today = new Date();
-                    const min18 = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-                    const yyyy = min18.getFullYear();
-                    const mm = String(min18.getMonth() + 1).padStart(2, '0');
-                    const dd = String(min18.getDate()).padStart(2, '0');
-                    tglLahirInput.max = `${yyyy}-${mm}-${dd}`;
-                })();
+        function updateJabatanUI() {
+            const val = statusAnggotaSelect.value;
+            
+            if (val === "") {
+                formFieldsContainer.classList.add('d-none');
+                return;
+            } else {
+                formFieldsContainer.classList.remove('d-none');
+            }
+            
+            // Logic Identitas (NIDN/NIK)
+            if (val === 'dosen' || val === 'karyawan') {
+                wrapperIdentitas.classList.remove('d-none');
+                inputIdentitas.required = true;
+                labelIdentitas.innerText = (val === 'dosen') ? "NIDN (Nomor Induk Dosen Nasional)" : "NIK (Nomor Induk Kepegawaian)";
+            } else {
+                wrapperIdentitas.classList.add('d-none');
+                inputIdentitas.required = false;
+                inputIdentitas.value = "";
+            }
 
-                // Update hidden input setiap kali fakultas berubah
-                fakultasSelect.addEventListener('change', function() {
-                    fakultasHidden.value = fakultasSelect.value;
-                });
+            // Logic Gaji & Unit Kerja (DIPERBARUI)
+            if (val === 'mahasiswa') {
+                // Menghilangkan kolom gaji sepenuhnya
+                wrapperGaji.classList.add('d-none');
+                gajiBulananInput.value = 0; 
+                
+                // Mahasiswa tidak ada opsi Rektorat
+                optionRektorat.style.display = 'none';
+            } else {
+                // Menampilkan kembali kolom gaji untuk Dosen/Karyawan
+                wrapperGaji.classList.remove('d-none');
+                gajiBulananInput.value = ""; 
+                
+                // Hanya karyawan yang bisa pilih rektorat (opsional, sesuai logic sebelumnya)
+                optionRektorat.style.display = (val === 'dosen') ? 'none' : 'block';
+            }
+            
+            if (optionRektorat.style.display === 'none' && fakultasSelect.value === 'Rektorat / Yayasan') {
+                fakultasSelect.value = '';
+            }
+        }
 
-                // Pastikan hidden input terisi, Gaji Bulanan tidak kosong, dan Tanggal Lahir valid saat form submit
-                registerForm.addEventListener('submit', function(e) {
-                    fakultasHidden.value = fakultasSelect.value;
-                    if (!fakultasHidden.value) {
-                        e.preventDefault();
-                        alert('Silakan pilih unit kerja terlebih dahulu');
-                        return false;
-                    }
-                    if (metodePembayaranSelect.value === 'transfer_bank' && !buktiTransferInput.value) {
-                        e.preventDefault();
-                        alert('Silakan upload bukti transfer karena metode pembayaran yang dipilih adalah transfer.');
-                        return false;
-                    }
-                    // Validasi keunikan Nama Pengguna, Kata Sandi, dan No. Telepon
-                    const username = document.getElementById('register_username').value.trim();
-                    const password = document.getElementById('register_password').value.trim();
-                    const telepon = document.getElementById('register_no_telepon').value.trim();
-                    const fields = [username, password, telepon];
-                    for (let i = 0; i < fields.length; i++) {
-                        for (let j = i + 1; j < fields.length; j++) {
-                            if (fields[i] !== '' && fields[i] === fields[j]) {
-                                e.preventDefault();
-                                alert('Nama Pengguna, Kata Sandi, dan No. Telepon tidak boleh sama satu sama lain.');
-                                return false;
-                            }
-                        }
-                    }
-                    // Pastikan Gaji Bulanan tidak kosong (default 0 jika kosong)
-                    if (gajiBulananInput.value === '' || isNaN(gajiBulananInput.value)) {
-                        gajiBulananInput.value = 0;
-                    }
-                    // Validasi Tanggal Lahir minimal 18 tahun
-                    const tglLahirValue = tglLahirInput.value;
-                    if (tglLahirValue) {
-                        const today = new Date();
-                        const tglLahir = new Date(tglLahirValue);
-                        const min18 = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-                        if (tglLahir > min18) {
-                            e.preventDefault();
-                            alert('Usia minimal harus 18 tahun.');
-                            tglLahirInput.focus();
-                            return false;
-                        }
-                    }
+        function updateMetodePembayaranUI() {
+            const metode = metodePembayaranSelect.value;
+            if (metode === 'potong_gaji' || metode === 'tunai') {
+                transferFieldsWrapper.classList.add('d-none');
+                buktiTransferInput.required = false;
+                potongGajiInfo.classList.remove('d-none');
+            } else {
+                transferFieldsWrapper.classList.remove('d-none');
+                buktiTransferInput.required = true;
+                potongGajiInfo.classList.add('d-none');
+            }
+        }
 
-                });
+        statusAnggotaSelect.addEventListener('change', () => {
+            updateJabatanUI();
+            updateMetodePembayaranUI();
+        });
+        
+        fakultasSelect.addEventListener('change', () => {
+            fakultasHidden.value = fakultasSelect.value;
+        });
 
-                function updateGajiBulananStatus() {
-                    const selectedValue = statusAnggotaSelect.value;
-                    if (selectedValue === 'mahasiswa') {
-                        // Jika mahasiswa, disable input gaji dan set value ke 0 agar tidak error di backend
-                        gajiBulananInput.value = 0;
-                        gajiBulananInput.disabled = true;
-                        gajiBulananInput.required = false;
-                        gajiBulananInput.classList.add('bg-light');
+        metodePembayaranSelect.addEventListener('change', updateMetodePembayaranUI);
 
-                        // Sembunyikan opsi Rektorat/Yayasan
-                        optionRektorat.style.display = 'none';
-                        optionRektorat.disabled = true;
-                        // Reset fakultas jika sebelumnya Rektorat
-                        if (fakultasSelect.value === 'Rektorat / Yayasan') {
-                            fakultasSelect.value = '';
-                        }
-                        fakultasSelect.disabled = false;
-                        fakultasSelect.classList.remove('bg-light');
-                        fakultasHidden.value = fakultasSelect.value;
-                    } else if (selectedValue === 'dosen') {
-                        gajiBulananInput.disabled = false;
-                        gajiBulananInput.required = true;
-                        gajiBulananInput.classList.remove('bg-light');
-                        if (gajiBulananInput.value === '0') {
-                            gajiBulananInput.value = '';
-                        }
-                        // Sembunyikan opsi Rektorat/Yayasan
-                        optionRektorat.style.display = 'none';
-                        optionRektorat.disabled = true;
-                        if (fakultasSelect.value === 'Rektorat / Yayasan') {
-                            fakultasSelect.value = '';
-                        }
-                        fakultasSelect.disabled = false;
-                        fakultasSelect.classList.remove('bg-light');
-                        fakultasHidden.value = fakultasSelect.value;
-                    } else if (selectedValue === 'karyawan') {
-                        gajiBulananInput.disabled = false;
-                        gajiBulananInput.required = true;
-                        gajiBulananInput.classList.remove('bg-light');
-                        if (gajiBulananInput.value === '0') {
-                            gajiBulananInput.value = '';
-                        }
-                        // Untuk Tenaga Pendidikan, tampilkan semua pilihan Unit Kerja
-                        optionRektorat.style.display = 'block';
-                        optionRektorat.disabled = false;
-                        fakultasSelect.disabled = false;
-                        fakultasSelect.classList.remove('bg-light');
-                        fakultasHidden.value = fakultasSelect.value;
-                    } else {
-                        gajiBulananInput.disabled = false;
-                        gajiBulananInput.required = true;
-                        gajiBulananInput.classList.remove('bg-light');
-                        fakultasSelect.disabled = false;
-                        fakultasSelect.classList.remove('bg-light');
-                        optionRektorat.style.display = 'block';
-                        optionRektorat.disabled = false;
-                        fakultasHidden.value = fakultasSelect.value;
-                    }
-                }
-
-                function updateMetodePembayaranUI() {
-                    const metode = metodePembayaranSelect.value;
-                    const isMahasiswa = statusAnggotaSelect.value === 'mahasiswa';
-
-                    if (isMahasiswa && metode === 'potong_gaji') {
-                        metodePembayaranSelect.value = 'transfer_bank';
-                    }
-
-                    const metodeAktif = metodePembayaranSelect.value;
-                    if (metodeAktif === 'potong_gaji' || metodeAktif === 'tunai') {
-                        transferFieldsWrapper.classList.add('d-none');
-                        buktiTransferInput.required = false;
-                        buktiTransferInput.value = '';
-                        potongGajiInfo.classList.remove('d-none');
-                    } else {
-                        transferFieldsWrapper.classList.remove('d-none');
-                        buktiTransferInput.required = true;
-                        potongGajiInfo.classList.add('d-none');
-                    }
-                }
-
-                statusAnggotaSelect.addEventListener('change', updateGajiBulananStatus);
-                statusAnggotaSelect.addEventListener('change', updateMetodePembayaranUI);
-                metodePembayaranSelect.addEventListener('change', updateMetodePembayaranUI);
-                updateGajiBulananStatus();
-                updateMetodePembayaranUI();
-            </script>
+        // Init on load
+        updateJabatanUI();
+        updateMetodePembayaranUI();
+    </script>
 </body>
 </html>

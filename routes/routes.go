@@ -279,6 +279,8 @@ func SetupRouter() *gin.Engine {
 	adminRoutes.Use(middleware.AdminLogoMiddleware())
 	{
 		adminRoutes.GET("/dashboard", controllers.AdminDashboard)
+		adminRoutes.GET("/import-referensi", controllers.AdminImportReferensiPage)
+		adminRoutes.POST("/import-referensi", controllers.AdminImportReferensiPendaftaran)
 		adminRoutes.GET("/anggota", controllers.AdminDataAnggota)
 		adminRoutes.GET("/anggota/tambah", controllers.AdminTambahAnggotaForm)
 		adminRoutes.POST("/anggota/tambah", controllers.AdminTambahAnggotaPost)

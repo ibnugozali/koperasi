@@ -251,7 +251,7 @@
                                 <div class="info-value">{{ if eq .Anggota.UnitKerja "01" }}Dosen{{ else if eq .Anggota.UnitKerja "02" }}Tenaga Pendidikan{{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa{{ else }}{{ .Anggota.UnitKerja }}{{ end }}</div>
                             </div>
                             <div class="info-row">
-                                <div class="info-label"><i class="fas fa-money-bill-wave me-2"></i>Gaji Bulanan</div>
+                                <div class="info-label"><i class="fas fa-money-bill-wave me-2"></i>Gaji bersih</div>
                                 <div class="info-value">{{ if gt .Anggota.GajiBulanan 0 }}<span id="gajiBulanan">Rp {{ .Anggota.GajiBulanan }}</span>{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
                             </div>
                             <h5 class="mt-4 mb-3"><i class="fas fa-calendar-check me-2"></i>Data Keanggotaan</h5>

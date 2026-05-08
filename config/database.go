@@ -44,6 +44,11 @@ func InitDB() {
 		log.Printf("Peringatan: gagal memastikan tabel import_history ada: %v", err)
 	}
 
+	// Pastikan tabel referensi pendaftaran ada untuk validasi calon anggota saat register.
+	if err := ensureReferensiPendaftaranTable(); err != nil {
+		log.Printf("Peringatan: gagal memastikan tabel referensi_pendaftaran ada: %v", err)
+	}
+
 	// Pastikan tabel konfigurasi simpanan wajib ada untuk fitur pemotongan otomatis
 	if err := ensureSimpananWajibTables(); err != nil {
 		log.Printf("Peringatan: gagal memastikan tabel simpanan wajib ada: %v", err)
@@ -121,6 +126,44 @@ func ensureImportHistoryTable() error {
 	}
 
 	log.Println("✓ Tabel import_history siap digunakan")
+	return nil
+}
+
+// ensureReferensiPendaftaranTable membuat tabel master referensi pendaftaran jika belum ada.
+func ensureReferensiPendaftaranTable() error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+
+	referensiSQL := `
+	CREATE TABLE IF NOT EXISTS referensi_pendaftaran (
+		id SERIAL PRIMARY KEY,
+		nama_lengkap VARCHAR(255) NOT NULL,
+		nik_ktp VARCHAR(32) DEFAULT '',
+		no_telepon VARCHAR(32) DEFAULT '',
+		tgl_lahir VARCHAR(32) DEFAULT '',
+		jenis_kelamin VARCHAR(32) DEFAULT '',
+		status_anggota VARCHAR(32) DEFAULT '',
+		fakultas VARCHAR(255) DEFAULT '',
+		alamat TEXT DEFAULT '',
+		gaji_bulanan INT NOT NULL DEFAULT 0,
+		status_keanggotaan VARCHAR(32) NOT NULL DEFAULT 'belum_anggota',
+		sumber_file VARCHAR(255) DEFAULT '',
+		imported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_referensi_pendaftaran_nik ON referensi_pendaftaran(nik_ktp);
+	CREATE INDEX IF NOT EXISTS idx_referensi_pendaftaran_telepon ON referensi_pendaftaran(no_telepon);
+	CREATE INDEX IF NOT EXISTS idx_referensi_pendaftaran_nama ON referensi_pendaftaran(nama_lengkap);
+	`
+
+	_, err := db.Exec(referensiSQL)
+	if err != nil {
+		return fmt.Errorf("gagal membuat tabel referensi_pendaftaran: %v", err)
+	}
+
+	log.Println("Tabel referensi_pendaftaran siap digunakan")
 	return nil
 }
 

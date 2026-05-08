@@ -297,6 +297,26 @@ func ShowRegisterPage(c *gin.Context) {
 	})
 }
 
+func normalizeRegisterCompare(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func normalizeRegisterPhone(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.ReplaceAll(value, " ", "")
+	value = strings.ReplaceAll(value, "-", "")
+	if strings.HasPrefix(value, "+62") {
+		value = "0" + strings.TrimPrefix(value, "+62")
+	}
+	if strings.HasPrefix(value, "62") {
+		value = "0" + strings.TrimPrefix(value, "62")
+	}
+	if !strings.HasPrefix(value, "0") && value != "" {
+		value = "0" + value
+	}
+	return value
+}
+
 // Register memproses data registrasi anggota baru.
 func Register(c *gin.Context) {
 	// Ambil nomor rekening dari database
@@ -348,10 +368,6 @@ func Register(c *gin.Context) {
 	newAnggota.Password = c.PostForm("Password")
 	newAnggota.TglLahir = c.PostForm("TglLahir")
 	newAnggota.NikKTP = c.PostForm("NikKTP")
-	// Jika NikKTP kosong, gunakan username sebagai default
-	if newAnggota.NikKTP == "" {
-		newAnggota.NikKTP = newAnggota.Username
-	}
 	newAnggota.NoTelepon = c.PostForm("NoTelepon")
 	newAnggota.Alamat = c.PostForm("Alamat")
 	newAnggota.JenisKelamin = c.PostForm("JenisKelamin")
@@ -371,11 +387,55 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	if strings.TrimSpace(newAnggota.NikKTP) == "" {
+		renderRegisterError(http.StatusBadRequest, "NIK wajib diisi agar data bisa dicocokkan dengan master import admin.")
+		return
+	}
+
+	referensi, err := repository.FindReferensiPendaftaranForRegister(
+		newAnggota.NikKTP,
+		newAnggota.NamaAnggota,
+		newAnggota.NoTelepon,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			renderRegisterError(http.StatusBadRequest, "Data Anda belum ditemukan di master import admin. Silakan hubungi admin agar data anggota/calon anggota diimport terlebih dahulu.")
+			return
+		}
+		renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi data referensi pendaftaran.")
+		return
+	}
+
+	if normalizeRegisterCompare(referensi.StatusKeanggotaan) == "anggota" {
+		renderRegisterError(http.StatusBadRequest, "Data Anda di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses.")
+		return
+	}
+
+	if referensi.StatusAnggota != "" && normalizeRegisterCompare(referensi.StatusAnggota) != normalizeRegisterCompare(newAnggota.StatusAnggota) {
+		renderRegisterError(http.StatusBadRequest, "Jabatan yang dipilih tidak sesuai dengan data master import admin.")
+		return
+	}
+
+	if referensi.Fakultas != "" && normalizeRegisterCompare(referensi.Fakultas) != normalizeRegisterCompare(newAnggota.Fakultas) {
+		renderRegisterError(http.StatusBadRequest, "Unit kerja yang dipilih tidak sesuai dengan data master import admin.")
+		return
+	}
+
+	if referensi.TglLahir != "" && normalizeRegisterCompare(referensi.TglLahir) != normalizeRegisterCompare(newAnggota.TglLahir) {
+		renderRegisterError(http.StatusBadRequest, "Tanggal lahir tidak sesuai dengan data master import admin.")
+		return
+	}
+
+	if referensi.NoTelepon != "" && normalizeRegisterPhone(referensi.NoTelepon) != normalizeRegisterPhone(newAnggota.NoTelepon) {
+		renderRegisterError(http.StatusBadRequest, "Nomor telepon tidak sesuai dengan data master import admin.")
+		return
+	}
+
 	// Validasi: Username dan No. Telepon tidak boleh sama dengan anggota lain
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2", newAnggota.Username, newAnggota.NoTelepon).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2 OR nik_ktp = $3", newAnggota.Username, newAnggota.NoTelepon, newAnggota.NikKTP).Scan(&count)
 	if err == nil && count > 0 {
-		renderRegisterError(http.StatusBadRequest, "Nama Pengguna atau No. Telepon sudah terdaftar. Silakan gunakan data lain.")
+		renderRegisterError(http.StatusBadRequest, "Nama Pengguna, NIK, atau No. Telepon sudah terdaftar. Silakan gunakan data lain.")
 		return
 	}
 
@@ -423,7 +483,7 @@ func Register(c *gin.Context) {
 
 	// Validate required fields
 	if newAnggota.NamaAnggota == "" || newAnggota.Username == "" || newAnggota.Password == "" ||
-		newAnggota.TglLahir == "" || newAnggota.NoTelepon == "" ||
+		newAnggota.TglLahir == "" || newAnggota.NikKTP == "" || newAnggota.NoTelepon == "" ||
 		newAnggota.Alamat == "" || newAnggota.JenisKelamin == "" || newAnggota.StatusAnggota == "" ||
 		newAnggota.Fakultas == "" {
 		renderRegisterError(http.StatusBadRequest, "Semua field wajib diisi dengan benar")
@@ -558,9 +618,10 @@ func sendKetuaWhatsAppNotification(rawKetuaPhone string, anggota models.Anggota,
 	}
 
 	metode := "Transfer Bank"
-	if metodePembayaran == "potong_gaji" {
+	switch metodePembayaran {
+	case "potong_gaji":
 		metode = "Potong Gaji"
-	} else if metodePembayaran == "tunai" {
+	case "tunai":
 		metode = "Tunai"
 	}
 
