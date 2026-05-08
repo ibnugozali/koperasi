@@ -106,11 +106,15 @@
                                     </div>
                                 </div>
 
-                                <!-- SEKSI GAJI (Wrapper Ditambahkan) -->
+                                <!-- SEKSI GAJI (Diubah menjadi Informasi Teks) -->
                                 <div class="mb-3" id="wrapper_gaji_bulanan">
-                                    <label for="register_gaji_bulanan" class="form-label">Gaji Bersih</label>
-                                    <input type="number" class="form-control" id="register_gaji_bulanan" name="GajiBulanan" placeholder="Contoh: 5000000" min="0" step="1000">
-                                    <small class="form-text text-muted" id="gajiReferensiHint">Gaji bersih akan diisi otomatis dari data referensi yang diimport admin.</small>
+                                    <label class="form-label fw-bold">Status Gaji Bersih</label>
+                                    <div id="gaji_display_text" class="alert alert-secondary py-2 px-3 mb-1">
+                                        Menunggu data nama dan nomor identitas...
+                                    </div>
+                                    <!-- Input hidden tetap ada agar nilai terkirim ke server saat submit -->
+                                    <input type="hidden" id="register_gaji_bulanan" name="GajiBulanan" value="0">
+                                    <small class="form-text text-muted" id="gajiReferensiHint">Nilai ini didapat otomatis dari data referensi admin.</small>
                                 </div>
 
                                 <div class="mb-3">
@@ -161,8 +165,9 @@
         const labelIdentitas = document.getElementById('label_identitas_pegawai');
         const inputIdentitas = document.getElementById('register_identitas_pegawai');
         
-        const wrapperGaji = document.getElementById('wrapper_gaji_bulanan'); // Wrapper baru
+        const wrapperGaji = document.getElementById('wrapper_gaji_bulanan');
         const gajiBulananInput = document.getElementById('register_gaji_bulanan');
+        const gajiDisplayText = document.getElementById('gaji_display_text'); // Referensi teks display
         const gajiReferensiHint = document.getElementById('gajiReferensiHint');
         const namaAnggotaInput = document.getElementById('register_nama_anggota');
         
@@ -176,6 +181,11 @@
         const potongGajiInfo = document.getElementById('potong_gaji_info');
 
         let lookupAbortController = null;
+
+        // Fungsi Helper format Rupiah
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+        }
 
         function updateJabatanUI() {
             const val = statusAnggotaSelect.value;
@@ -191,31 +201,22 @@
                 wrapperIdentitas.classList.add('d-none');
                 inputIdentitas.required = false;
                 inputIdentitas.value = '';
-            } else {
-                wrapperIdentitas.classList.remove('d-none');
-                inputIdentitas.required = true;
-                labelIdentitas.innerText = "Nomer Identitas";
-            }
-
-            // Logic Gaji & Unit Kerja (DIPERBARUI)
-            if (val === 'mahasiswa') {
-                // Menghilangkan kolom gaji sepenuhnya
-                wrapperGaji.classList.add('d-none');
-                if (!gajiBulananInput.value) {
-                    gajiBulananInput.value = 0;
-                }
                 
-                // Mahasiswa tidak ada opsi Rektorat
+                wrapperGaji.classList.add('d-none');
+                gajiBulananInput.value = 0;
+                
                 optionRektorat.style.display = 'none';
                 optionPotongGaji.style.display = 'none';
                 if (metodePembayaranSelect.value === 'potong_gaji') {
                     metodePembayaranSelect.value = 'transfer_bank';
                 }
             } else {
-                // Menampilkan kembali kolom gaji untuk Dosen/Karyawan
+                wrapperIdentitas.classList.remove('d-none');
+                inputIdentitas.required = true;
+                labelIdentitas.innerText = "Nomer Identitas";
+                
                 wrapperGaji.classList.remove('d-none');
                 
-                // Hanya karyawan yang bisa pilih rektorat (opsional, sesuai logic sebelumnya)
                 optionRektorat.style.display = (val === 'dosen') ? 'none' : 'block';
                 optionPotongGaji.style.display = 'block';
             }
@@ -232,17 +233,13 @@
 
             if (status === 'mahasiswa') {
                 gajiBulananInput.value = 0;
-                gajiBulananInput.readOnly = false;
-                gajiReferensiHint.textContent = 'Untuk mahasiswa, data referensi import admin tidak wajib digunakan.';
                 return;
             }
 
-            if (!nama || !identitas || !status) {
-                if (status !== 'mahasiswa') {
-                    gajiBulananInput.value = '';
-                }
-                gajiBulananInput.readOnly = false;
-                gajiReferensiHint.textContent = 'Gaji bersih akan diisi otomatis dari data referensi yang diimport admin.';
+            if (!nama || !identitas) {
+                gajiBulananInput.value = 0;
+                gajiDisplayText.innerText = "Masukkan Nama dan Nomor Identitas...";
+                gajiDisplayText.className = "alert alert-secondary py-2 px-3 mb-1";
                 return;
             }
 
@@ -252,7 +249,7 @@
             lookupAbortController = new AbortController();
 
             try {
-                gajiReferensiHint.textContent = 'Sedang mengambil gaji bersih dari data referensi...';
+                gajiDisplayText.innerText = "Mengecek data...";
                 const params = new URLSearchParams({ nama, identitas });
                 const response = await fetch(`/api/register/referensi?${params.toString()}`, {
                     signal: lookupAbortController.signal,
@@ -260,30 +257,20 @@
                 });
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Gagal mengambil data referensi');
-                }
-
                 if (data.found) {
-                    gajiBulananInput.value = data.gaji_bulanan || 0;
-                    gajiBulananInput.readOnly = true;
-                    gajiReferensiHint.textContent = 'Gaji bersih otomatis diambil dari data referensi admin.';
+                    const gajiValue = data.gaji_bulanan || 0;
+                    gajiBulananInput.value = gajiValue;
+                    gajiDisplayText.innerText = "Terverifikasi: " + formatRupiah(gajiValue);
+                    gajiDisplayText.className = "alert alert-success py-2 px-3 mb-1 fw-bold";
                 } else {
-                    if (status !== 'mahasiswa') {
-                        gajiBulananInput.value = '';
-                    }
-                    gajiBulananInput.readOnly = false;
-                    gajiReferensiHint.textContent = 'Data referensi belum ditemukan. Periksa Nama Lengkap dan Nomer Identitas Anda.';
+                    gajiBulananInput.value = 0;
+                    gajiDisplayText.innerText = "Data tidak ditemukan di database referensi.";
+                    gajiDisplayText.className = "alert alert-warning py-2 px-3 mb-1";
                 }
             } catch (error) {
-                if (error.name === 'AbortError') {
-                    return;
-                }
-                if (status !== 'mahasiswa') {
-                    gajiBulananInput.value = '';
-                }
-                gajiBulananInput.readOnly = false;
-                gajiReferensiHint.textContent = 'Gagal mengambil gaji bersih referensi. Coba cek lagi data Anda.';
+                if (error.name === 'AbortError') return;
+                gajiDisplayText.innerText = "Gagal memuat data.";
+                gajiDisplayText.className = "alert alert-danger py-2 px-3 mb-1";
             }
         }
 
@@ -314,7 +301,6 @@
         namaAnggotaInput.addEventListener('blur', lookupReferensiGaji);
         inputIdentitas.addEventListener('blur', lookupReferensiGaji);
 
-        // Init on load
         updateJabatanUI();
         updateMetodePembayaranUI();
     </script>
