@@ -233,6 +233,7 @@ func SetupRouter() *gin.Engine {
 	router.GET("/login", controllers.ShowLoginPage)
 	router.POST("/login", controllers.Login)
 	router.GET("/register", controllers.ShowRegisterPage)
+	router.GET("/api/register/referensi", controllers.RegisterReferensiLookup)
 	router.POST("/register", controllers.Register)
 	router.GET("/logout", controllers.Logout)
 	router.POST("/logout", controllers.Logout)

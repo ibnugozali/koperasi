@@ -702,9 +702,9 @@ func BendaharaPesan(c *gin.Context) {
 			return
 		}
 
-		// Get anggota name for success message
-		var anggotaNama string
-		err := db.QueryRow("SELECT nama_anggota FROM anggota WHERE id_anggota = $1 AND status = 'aktif'", anggotaID).Scan(&anggotaNama)
+		// Ambil data anggota untuk pesan sukses dan notifikasi WA.
+		var anggotaNama, anggotaNoTelepon string
+		err := db.QueryRow("SELECT nama_anggota, COALESCE(no_telepon, '') FROM anggota WHERE id_anggota = $1 AND status = 'aktif'", anggotaID).Scan(&anggotaNama, &anggotaNoTelepon)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
@@ -727,6 +727,11 @@ func BendaharaPesan(c *gin.Context) {
 				"message": "Gagal mengirim pesan. Silakan coba lagi.",
 			})
 			return
+		}
+
+		appBaseURL := resolveAppBaseURL(c, db)
+		if errWA := sendAnggotaWhatsAppPesanNotification(anggotaNoTelepon, anggotaNama, judul, isi, appBaseURL); errWA != nil {
+			log.Printf("[WA PESAN ANGGOTA] gagal kirim WA ke anggota %s (%s): %v", anggotaNama, anggotaID, errWA)
 		}
 
 		c.JSON(http.StatusOK, gin.H{

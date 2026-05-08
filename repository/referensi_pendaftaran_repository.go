@@ -104,39 +104,65 @@ func UpsertReferensiPendaftaran(item models.ReferensiPendaftaran) error {
 	return err
 }
 
-func FindReferensiPendaftaranForRegister(nik, nama, telepon string) (*models.ReferensiPendaftaran, error) {
+func FindReferensiPendaftaranForRegister(nama, identitas string, gaji int) (*models.ReferensiPendaftaran, error) {
 	db := config.GetDB()
 
-	nik = strings.TrimSpace(nik)
 	nama = strings.TrimSpace(nama)
-	telepon = normalizeReferensiPhone(telepon)
+	identitas = strings.TrimSpace(identitas)
 
-	var row *sql.Row
-	switch {
-	case nik != "":
-		row = db.QueryRow(`
-			SELECT id, nama_lengkap, COALESCE(nik_ktp, ''), COALESCE(no_telepon, ''), COALESCE(tgl_lahir, ''),
-			       COALESCE(jenis_kelamin, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, ''),
-			       COALESCE(alamat, ''), COALESCE(gaji_bulanan, 0), COALESCE(status_keanggotaan, ''),
-			       COALESCE(sumber_file, ''), imported_at, updated_at
-			FROM referensi_pendaftaran
-			WHERE COALESCE(nik_ktp, '') = $1
-			ORDER BY updated_at DESC, imported_at DESC
-			LIMIT 1
-		`, nik)
-	default:
-		row = db.QueryRow(`
-			SELECT id, nama_lengkap, COALESCE(nik_ktp, ''), COALESCE(no_telepon, ''), COALESCE(tgl_lahir, ''),
-			       COALESCE(jenis_kelamin, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, ''),
-			       COALESCE(alamat, ''), COALESCE(gaji_bulanan, 0), COALESCE(status_keanggotaan, ''),
-			       COALESCE(sumber_file, ''), imported_at, updated_at
-			FROM referensi_pendaftaran
-			WHERE LOWER(TRIM(COALESCE(nama_lengkap, ''))) = LOWER(TRIM($1))
-			  AND COALESCE(no_telepon, '') = $2
-			ORDER BY updated_at DESC, imported_at DESC
-			LIMIT 1
-		`, nama, telepon)
+	row := db.QueryRow(`
+		SELECT id, nama_lengkap, COALESCE(nik_ktp, ''), COALESCE(no_telepon, ''), COALESCE(tgl_lahir, ''),
+		       COALESCE(jenis_kelamin, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, ''),
+		       COALESCE(alamat, ''), COALESCE(gaji_bulanan, 0), COALESCE(status_keanggotaan, ''),
+		       COALESCE(sumber_file, ''), imported_at, updated_at
+		FROM referensi_pendaftaran
+		WHERE LOWER(TRIM(COALESCE(nama_lengkap, ''))) = LOWER(TRIM($1))
+		  AND COALESCE(nik_ktp, '') = $2
+		  AND COALESCE(gaji_bulanan, 0) = $3
+		ORDER BY updated_at DESC, imported_at DESC
+		LIMIT 1
+	`, nama, identitas, gaji)
+
+	var item models.ReferensiPendaftaran
+	err := row.Scan(
+		&item.ID,
+		&item.NamaLengkap,
+		&item.NIKKTP,
+		&item.NoTelepon,
+		&item.TglLahir,
+		&item.JenisKelamin,
+		&item.StatusAnggota,
+		&item.Fakultas,
+		&item.Alamat,
+		&item.GajiBulanan,
+		&item.StatusKeanggotaan,
+		&item.SumberFile,
+		&item.ImportedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
 	}
+	return &item, nil
+}
+
+func FindReferensiPendaftaranForAutofill(nama, identitas string) (*models.ReferensiPendaftaran, error) {
+	db := config.GetDB()
+
+	nama = strings.TrimSpace(nama)
+	identitas = strings.TrimSpace(identitas)
+
+	row := db.QueryRow(`
+		SELECT id, nama_lengkap, COALESCE(nik_ktp, ''), COALESCE(no_telepon, ''), COALESCE(tgl_lahir, ''),
+		       COALESCE(jenis_kelamin, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, ''),
+		       COALESCE(alamat, ''), COALESCE(gaji_bulanan, 0), COALESCE(status_keanggotaan, ''),
+		       COALESCE(sumber_file, ''), imported_at, updated_at
+		FROM referensi_pendaftaran
+		WHERE LOWER(TRIM(COALESCE(nama_lengkap, ''))) = LOWER(TRIM($1))
+		  AND COALESCE(nik_ktp, '') = $2
+		ORDER BY updated_at DESC, imported_at DESC
+		LIMIT 1
+	`, nama, identitas)
 
 	var item models.ReferensiPendaftaran
 	err := row.Scan(

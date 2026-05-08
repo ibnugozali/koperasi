@@ -170,6 +170,120 @@ func sendBendaharaWhatsAppNotification(rawBendaharaPhone, namaAnggota, jenisTran
 	return fmt.Errorf("semua percobaan kirim WA gagal")
 }
 
+// sendAnggotaWhatsAppPesanNotification mengirim notifikasi WA ke anggota saat bendahara mengirim pesan.
+func sendAnggotaWhatsAppPesanNotification(rawAnggotaPhone, namaAnggota, judulPesan, isiPesan, appBaseURL string) error {
+	db := config.GetDB()
+	token := strings.TrimSpace(os.Getenv("WA_GATEWAY_TOKEN"))
+	if token == "" {
+		var tokenDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_token'").Scan(&tokenDB); err == nil {
+			token = strings.TrimSpace(tokenDB)
+		}
+	}
+	if token == "" {
+		return fmt.Errorf("WA_GATEWAY_TOKEN belum diset (env/db)")
+	}
+
+	anggotaPhone := strings.TrimSpace(rawAnggotaPhone)
+	if anggotaPhone == "" {
+		return fmt.Errorf("nomor anggota kosong")
+	}
+	anggotaPhone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", "+", "").Replace(anggotaPhone)
+	if strings.HasPrefix(anggotaPhone, "0") {
+		anggotaPhone = "62" + anggotaPhone[1:]
+	} else if !strings.HasPrefix(anggotaPhone, "62") {
+		anggotaPhone = "62" + anggotaPhone
+	}
+
+	waURL := strings.TrimSpace(os.Getenv("WA_GATEWAY_URL"))
+	if waURL == "" {
+		var urlDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_url'").Scan(&urlDB); err == nil {
+			waURL = strings.TrimSpace(urlDB)
+		}
+	}
+	if waURL == "" {
+		waURL = "https://api.fonnte.com/send"
+	}
+
+	if strings.TrimSpace(appBaseURL) == "" {
+		appBaseURL = "http://localhost:8081"
+	}
+
+	message := "Halo " + namaAnggota + ", Anda menerima pesan baru dari Bendahara Koperasi.\n" +
+		"- Judul: " + strings.TrimSpace(judulPesan) + "\n" +
+		"- Isi: " + strings.TrimSpace(isiPesan) + "\n"
+
+	linkPesan := strings.TrimRight(appBaseURL, "/") + "/anggota/pesan"
+	message += "Silakan cek detail pesan di:\n" + linkPesan
+
+	form := url.Values{"target": {anggotaPhone}, "message": {message}}
+	jsonBody, _ := json.Marshal(map[string]string{
+		"target":  anggotaPhone,
+		"message": message,
+	})
+
+	type waAttempt struct {
+		name        string
+		contentType string
+		body        string
+		auth        string
+	}
+
+	attempts := []waAttempt{
+		{name: "form/raw-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: token},
+		{name: "form/bearer-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: "Bearer " + token},
+		{name: "json/raw-token", contentType: "application/json", body: string(jsonBody), auth: token},
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	var lastErr error
+
+	for _, at := range attempts {
+		req, err := http.NewRequest(http.MethodPost, waURL, strings.NewReader(at.body))
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("Content-Type", at.contentType)
+		req.Header.Set("Authorization", at.auth)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			log.Printf("[WA PESAN ANGGOTA] attempt=%s error=%v", at.name, err)
+			continue
+		}
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		log.Printf("[WA PESAN ANGGOTA] attempt=%s status=%d response=%s", at.name, resp.StatusCode, bodyStr)
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			lastErr = fmt.Errorf("gateway status %d", resp.StatusCode)
+			continue
+		}
+
+		var parsed map[string]interface{}
+		if json.Unmarshal(bodyBytes, &parsed) == nil {
+			if okVal, exists := parsed["status"]; exists {
+				if okBool, ok := okVal.(bool); ok && !okBool {
+					lastErr = fmt.Errorf("gateway reject: %s", bodyStr)
+					continue
+				}
+			}
+		}
+
+		return nil
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("semua percobaan kirim WA gagal")
+}
+
 // ShowLoginPage menampilkan halaman login utama.
 func ShowLoginPage(c *gin.Context) {
 	status := c.Query("status")
@@ -317,6 +431,42 @@ func normalizeRegisterPhone(value string) string {
 	return value
 }
 
+func RegisterReferensiLookup(c *gin.Context) {
+	nama := strings.TrimSpace(c.Query("nama"))
+	identitas := strings.TrimSpace(c.Query("identitas"))
+
+	if nama == "" || identitas == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"found": false,
+			"error": "Nama Lengkap dan Nomer Identitas wajib diisi",
+		})
+		return
+	}
+
+	referensi, err := repository.FindReferensiPendaftaranForAutofill(nama, identitas)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusOK, gin.H{
+				"found": false,
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"found": false,
+			"error": "Gagal mengambil data referensi",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"found":              true,
+		"gaji_bulanan":       referensi.GajiBulanan,
+		"status_anggota":     referensi.StatusAnggota,
+		"fakultas":           referensi.Fakultas,
+		"status_keanggotaan": referensi.StatusKeanggotaan,
+	})
+}
+
 // Register memproses data registrasi anggota baru.
 func Register(c *gin.Context) {
 	// Ambil nomor rekening dari database
@@ -367,12 +517,12 @@ func Register(c *gin.Context) {
 	newAnggota.Username = c.PostForm("Username")
 	newAnggota.Password = c.PostForm("Password")
 	newAnggota.TglLahir = c.PostForm("TglLahir")
-	newAnggota.NikKTP = c.PostForm("NikKTP")
 	newAnggota.NoTelepon = c.PostForm("NoTelepon")
 	newAnggota.Alamat = c.PostForm("Alamat")
 	newAnggota.JenisKelamin = c.PostForm("JenisKelamin")
 	newAnggota.StatusAnggota = c.PostForm("StatusAnggota")
 	newAnggota.Fakultas = c.PostForm("Fakultas")
+	noIdentitasPegawai := strings.TrimSpace(c.PostForm("NoIdentitasPegawai"))
 	metodePembayaran := c.PostForm("MetodePembayaran")
 	if metodePembayaran == "" {
 		metodePembayaran = "transfer_bank"
@@ -387,58 +537,6 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	if strings.TrimSpace(newAnggota.NikKTP) == "" {
-		renderRegisterError(http.StatusBadRequest, "NIK wajib diisi agar data bisa dicocokkan dengan master import admin.")
-		return
-	}
-
-	referensi, err := repository.FindReferensiPendaftaranForRegister(
-		newAnggota.NikKTP,
-		newAnggota.NamaAnggota,
-		newAnggota.NoTelepon,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			renderRegisterError(http.StatusBadRequest, "Data Anda belum ditemukan di master import admin. Silakan hubungi admin agar data anggota/calon anggota diimport terlebih dahulu.")
-			return
-		}
-		renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi data referensi pendaftaran.")
-		return
-	}
-
-	if normalizeRegisterCompare(referensi.StatusKeanggotaan) == "anggota" {
-		renderRegisterError(http.StatusBadRequest, "Data Anda di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses.")
-		return
-	}
-
-	if referensi.StatusAnggota != "" && normalizeRegisterCompare(referensi.StatusAnggota) != normalizeRegisterCompare(newAnggota.StatusAnggota) {
-		renderRegisterError(http.StatusBadRequest, "Jabatan yang dipilih tidak sesuai dengan data master import admin.")
-		return
-	}
-
-	if referensi.Fakultas != "" && normalizeRegisterCompare(referensi.Fakultas) != normalizeRegisterCompare(newAnggota.Fakultas) {
-		renderRegisterError(http.StatusBadRequest, "Unit kerja yang dipilih tidak sesuai dengan data master import admin.")
-		return
-	}
-
-	if referensi.TglLahir != "" && normalizeRegisterCompare(referensi.TglLahir) != normalizeRegisterCompare(newAnggota.TglLahir) {
-		renderRegisterError(http.StatusBadRequest, "Tanggal lahir tidak sesuai dengan data master import admin.")
-		return
-	}
-
-	if referensi.NoTelepon != "" && normalizeRegisterPhone(referensi.NoTelepon) != normalizeRegisterPhone(newAnggota.NoTelepon) {
-		renderRegisterError(http.StatusBadRequest, "Nomor telepon tidak sesuai dengan data master import admin.")
-		return
-	}
-
-	// Validasi: Username dan No. Telepon tidak boleh sama dengan anggota lain
-	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2 OR nik_ktp = $3", newAnggota.Username, newAnggota.NoTelepon, newAnggota.NikKTP).Scan(&count)
-	if err == nil && count > 0 {
-		renderRegisterError(http.StatusBadRequest, "Nama Pengguna, NIK, atau No. Telepon sudah terdaftar. Silakan gunakan data lain.")
-		return
-	}
-
 	// Parse GajiBulanan
 	gajiBulananStr := c.PostForm("GajiBulanan")
 	if gajiBulananStr == "" {
@@ -450,6 +548,57 @@ func Register(c *gin.Context) {
 		} else {
 			newAnggota.GajiBulanan = 0
 		}
+	}
+
+	if newAnggota.StatusAnggota != "mahasiswa" {
+		if noIdentitasPegawai == "" {
+			renderRegisterError(http.StatusBadRequest, "Nomer identitas wajib diisi sesuai data master import referensi.")
+			return
+		}
+
+		referensi, err := repository.FindReferensiPendaftaranForRegister(
+			newAnggota.NamaAnggota,
+			noIdentitasPegawai,
+			newAnggota.GajiBulanan,
+		)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				renderRegisterError(http.StatusBadRequest, "Data referensi tidak cocok. Pastikan Nama Lengkap, Nomer Identitas, dan Gajih Bersih sama dengan data di import referensi admin.")
+				return
+			}
+			renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi data referensi pendaftaran.")
+			return
+		}
+
+		if normalizeRegisterCompare(referensi.StatusKeanggotaan) == "anggota" {
+			renderRegisterError(http.StatusBadRequest, "Data Anda di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses.")
+			return
+		}
+
+		if referensi.StatusAnggota != "" && normalizeRegisterCompare(referensi.StatusAnggota) != normalizeRegisterCompare(newAnggota.StatusAnggota) {
+			renderRegisterError(http.StatusBadRequest, "Jabatan yang dipilih tidak sesuai dengan data master import admin.")
+			return
+		}
+
+		var count int
+		err = db.QueryRow(`
+			SELECT COUNT(*)
+			FROM anggota
+			WHERE LOWER(TRIM(COALESCE(nama_anggota, ''))) = LOWER(TRIM($1))
+			  AND COALESCE(nik_ktp, '') = $2
+			  AND COALESCE(gaji_bulanan, 0) = $3
+		`, newAnggota.NamaAnggota, noIdentitasPegawai, newAnggota.GajiBulanan).Scan(&count)
+		if err == nil && count > 0 {
+			renderRegisterError(http.StatusBadRequest, "Data dengan Nama Lengkap, Nomer Identitas, dan Gajih Bersih tersebut sudah terdaftar.")
+			return
+		}
+	}
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1", newAnggota.Username).Scan(&count)
+	if err == nil && count > 0 {
+		renderRegisterError(http.StatusBadRequest, "Nama Pengguna sudah terdaftar. Silakan gunakan nama pengguna lain.")
+		return
 	}
 
 	// Metode pembayaran simpanan pokok: transfer bank, potong gaji, atau tunai
@@ -483,7 +632,7 @@ func Register(c *gin.Context) {
 
 	// Validate required fields
 	if newAnggota.NamaAnggota == "" || newAnggota.Username == "" || newAnggota.Password == "" ||
-		newAnggota.TglLahir == "" || newAnggota.NikKTP == "" || newAnggota.NoTelepon == "" ||
+		newAnggota.TglLahir == "" || newAnggota.NoTelepon == "" ||
 		newAnggota.Alamat == "" || newAnggota.JenisKelamin == "" || newAnggota.StatusAnggota == "" ||
 		newAnggota.Fakultas == "" {
 		renderRegisterError(http.StatusBadRequest, "Semua field wajib diisi dengan benar")
@@ -532,6 +681,11 @@ func Register(c *gin.Context) {
 
 	// Password disimpan dalam bentuk plain text sesuai permintaan
 	newAnggota.TglGabung, _ = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
+	if newAnggota.StatusAnggota != "mahasiswa" {
+		newAnggota.NikKTP = noIdentitasPegawai
+	} else {
+		newAnggota.NikKTP = ""
+	}
 
 	// Generate temporary id_anggota for registration (will be updated during confirmation)
 	// Use a temporary ID that will be replaced when admin confirms

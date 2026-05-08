@@ -39,10 +39,10 @@
                             <div id="form_fields_container" class="d-none">
                                 <hr class="my-4">
 
-                                <!-- BARIS 1: Kolom Dinamis (NIDN/NIK) -->
+                                <!-- BARIS 1: Nomer Identitas -->
                                 <div class="row">
-                                    <div class="col-md-12 mb-3 d-none" id="wrapper_identitas_pegawai">
-                                        <label for="register_identitas_pegawai" class="form-label" id="label_identitas_pegawai">Nomor Induk</label>
+                                    <div class="col-md-12 mb-3" id="wrapper_identitas_pegawai">
+                                        <label for="register_identitas_pegawai" class="form-label" id="label_identitas_pegawai">Nomer Identitas</label>
                                         <input type="text" class="form-control" id="register_identitas_pegawai" name="NoIdentitasPegawai" placeholder="Masukkan nomor induk">
                                     </div>
                                 </div>
@@ -110,13 +110,14 @@
                                 <div class="mb-3" id="wrapper_gaji_bulanan">
                                     <label for="register_gaji_bulanan" class="form-label">Gaji Bersih</label>
                                     <input type="number" class="form-control" id="register_gaji_bulanan" name="GajiBulanan" placeholder="Contoh: 5000000" min="0" step="1000">
+                                    <small class="form-text text-muted" id="gajiReferensiHint">Gaji bersih akan diisi otomatis dari data referensi yang diimport admin.</small>
                                 </div>
 
                                 <div class="mb-3">
                                     <label for="register_metode_pembayaran" class="form-label">Metode Pembayaran Simpanan Pokok</label>
                                     <select class="form-select" id="register_metode_pembayaran" name="MetodePembayaran" required>
                                         <option value="transfer_bank" selected>Transfer Bank</option>
-                                        <option value="potong_gaji">Potong Gaji</option>
+                                        <option value="potong_gaji" id="option_potong_gaji">Potong Gaji</option>
                                         <option value="tunai">Tunai</option>
                                     </select>
                                 </div>
@@ -162,14 +163,19 @@
         
         const wrapperGaji = document.getElementById('wrapper_gaji_bulanan'); // Wrapper baru
         const gajiBulananInput = document.getElementById('register_gaji_bulanan');
+        const gajiReferensiHint = document.getElementById('gajiReferensiHint');
+        const namaAnggotaInput = document.getElementById('register_nama_anggota');
         
         const fakultasSelect = document.getElementById('register_fakultas');
         const fakultasHidden = document.getElementById('register_fakultas_hidden');
         const optionRektorat = document.getElementById('option_rektorat');
         const metodePembayaranSelect = document.getElementById('register_metode_pembayaran');
+        const optionPotongGaji = document.getElementById('option_potong_gaji');
         const buktiTransferInput = document.getElementById('register_bukti_transfer');
         const transferFieldsWrapper = document.getElementById('transfer_fields_wrapper');
         const potongGajiInfo = document.getElementById('potong_gaji_info');
+
+        let lookupAbortController = null;
 
         function updateJabatanUI() {
             const val = statusAnggotaSelect.value;
@@ -181,36 +187,103 @@
                 formFieldsContainer.classList.remove('d-none');
             }
             
-            // Logic Identitas (NIDN/NIK)
-            if (val === 'dosen' || val === 'karyawan') {
-                wrapperIdentitas.classList.remove('d-none');
-                inputIdentitas.required = true;
-                labelIdentitas.innerText = (val === 'dosen') ? "NIDN (Nomor Induk Dosen Nasional)" : "NIK (Nomor Induk Kepegawaian)";
-            } else {
+            if (val === 'mahasiswa') {
                 wrapperIdentitas.classList.add('d-none');
                 inputIdentitas.required = false;
-                inputIdentitas.value = "";
+                inputIdentitas.value = '';
+            } else {
+                wrapperIdentitas.classList.remove('d-none');
+                inputIdentitas.required = true;
+                labelIdentitas.innerText = "Nomer Identitas";
             }
 
             // Logic Gaji & Unit Kerja (DIPERBARUI)
             if (val === 'mahasiswa') {
                 // Menghilangkan kolom gaji sepenuhnya
                 wrapperGaji.classList.add('d-none');
-                gajiBulananInput.value = 0; 
+                if (!gajiBulananInput.value) {
+                    gajiBulananInput.value = 0;
+                }
                 
                 // Mahasiswa tidak ada opsi Rektorat
                 optionRektorat.style.display = 'none';
+                optionPotongGaji.style.display = 'none';
+                if (metodePembayaranSelect.value === 'potong_gaji') {
+                    metodePembayaranSelect.value = 'transfer_bank';
+                }
             } else {
                 // Menampilkan kembali kolom gaji untuk Dosen/Karyawan
                 wrapperGaji.classList.remove('d-none');
-                gajiBulananInput.value = ""; 
                 
                 // Hanya karyawan yang bisa pilih rektorat (opsional, sesuai logic sebelumnya)
                 optionRektorat.style.display = (val === 'dosen') ? 'none' : 'block';
+                optionPotongGaji.style.display = 'block';
             }
             
             if (optionRektorat.style.display === 'none' && fakultasSelect.value === 'Rektorat / Yayasan') {
                 fakultasSelect.value = '';
+            }
+        }
+
+        async function lookupReferensiGaji() {
+            const nama = (namaAnggotaInput.value || '').trim();
+            const identitas = (inputIdentitas.value || '').trim();
+            const status = statusAnggotaSelect.value;
+
+            if (status === 'mahasiswa') {
+                gajiBulananInput.value = 0;
+                gajiBulananInput.readOnly = false;
+                gajiReferensiHint.textContent = 'Untuk mahasiswa, data referensi import admin tidak wajib digunakan.';
+                return;
+            }
+
+            if (!nama || !identitas || !status) {
+                if (status !== 'mahasiswa') {
+                    gajiBulananInput.value = '';
+                }
+                gajiBulananInput.readOnly = false;
+                gajiReferensiHint.textContent = 'Gaji bersih akan diisi otomatis dari data referensi yang diimport admin.';
+                return;
+            }
+
+            if (lookupAbortController) {
+                lookupAbortController.abort();
+            }
+            lookupAbortController = new AbortController();
+
+            try {
+                gajiReferensiHint.textContent = 'Sedang mengambil gaji bersih dari data referensi...';
+                const params = new URLSearchParams({ nama, identitas });
+                const response = await fetch(`/api/register/referensi?${params.toString()}`, {
+                    signal: lookupAbortController.signal,
+                    cache: 'no-store'
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Gagal mengambil data referensi');
+                }
+
+                if (data.found) {
+                    gajiBulananInput.value = data.gaji_bulanan || 0;
+                    gajiBulananInput.readOnly = true;
+                    gajiReferensiHint.textContent = 'Gaji bersih otomatis diambil dari data referensi admin.';
+                } else {
+                    if (status !== 'mahasiswa') {
+                        gajiBulananInput.value = '';
+                    }
+                    gajiBulananInput.readOnly = false;
+                    gajiReferensiHint.textContent = 'Data referensi belum ditemukan. Periksa Nama Lengkap dan Nomer Identitas Anda.';
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    return;
+                }
+                if (status !== 'mahasiswa') {
+                    gajiBulananInput.value = '';
+                }
+                gajiBulananInput.readOnly = false;
+                gajiReferensiHint.textContent = 'Gagal mengambil gaji bersih referensi. Coba cek lagi data Anda.';
             }
         }
 
@@ -230,6 +303,7 @@
         statusAnggotaSelect.addEventListener('change', () => {
             updateJabatanUI();
             updateMetodePembayaranUI();
+            lookupReferensiGaji();
         });
         
         fakultasSelect.addEventListener('change', () => {
@@ -237,6 +311,8 @@
         });
 
         metodePembayaranSelect.addEventListener('change', updateMetodePembayaranUI);
+        namaAnggotaInput.addEventListener('blur', lookupReferensiGaji);
+        inputIdentitas.addEventListener('blur', lookupReferensiGaji);
 
         // Init on load
         updateJabatanUI();
