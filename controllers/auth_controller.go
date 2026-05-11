@@ -435,10 +435,10 @@ func RegisterReferensiLookup(c *gin.Context) {
 	nama := strings.TrimSpace(c.Query("nama"))
 	identitas := strings.TrimSpace(c.Query("identitas"))
 
-	if nama == "" || identitas == "" {
+	if identitas == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"found": false,
-			"error": "Nama Lengkap dan Nomer Identitas wajib diisi",
+			"error": "Nomer Identitas wajib diisi",
 		})
 		return
 	}
@@ -460,6 +460,7 @@ func RegisterReferensiLookup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"found":              true,
+		"nama_lengkap":       referensi.NamaLengkap,
 		"gaji_bulanan":       referensi.GajiBulanan,
 		"status_anggota":     referensi.StatusAnggota,
 		"fakultas":           referensi.Fakultas,

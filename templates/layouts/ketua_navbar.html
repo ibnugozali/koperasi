@@ -27,13 +27,14 @@
 
     <!-- Transaksi & Laporan -->
     <a href="#" onclick="toggleSubmenu(this, 'transaksiLaporan'); return false;" class="dropdown-toggle"><i class="fa-solid fa-chart-bar me-2"></i> Transaksi & Laporan</a>
-    <div class="collapse {{ if or (eq .ActivePage "riwayat") (eq .ActivePage "laporan") (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "transaksi-anggota") (eq .ActivePage "transaksi-pinjaman") (eq .ActivePage "transaksi-simpanan") (eq .ActivePage "transaksi-angsuran") }}show{{ end }}" id="transaksiLaporan" {{ if or (eq .ActivePage "riwayat") (eq .ActivePage "laporan") (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "transaksi-anggota") (eq .ActivePage "transaksi-pinjaman") (eq .ActivePage "transaksi-simpanan") (eq .ActivePage "transaksi-angsuran") }}style="display: block;"{{ end }}>
+    <div class="collapse {{ if or (eq .ActivePage "riwayat") (eq .ActivePage "laporan") (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "transaksi-anggota") (eq .ActivePage "transaksi-pinjaman") (eq .ActivePage "transaksi-simpanan") (eq .ActivePage "transaksi-angsuran") (eq .ActivePage "upload-bukti-transfer-gaji") }}show{{ end }}" 
+    id="transaksiLaporan" {{ if or (eq .ActivePage "riwayat") (eq .ActivePage "laporan") (eq .ActivePage "konfirmasi-transaksi") (eq .ActivePage "transaksi-anggota") (eq .ActivePage "transaksi-pinjaman") (eq .ActivePage "transaksi-simpanan") (eq .ActivePage "transaksi-angsuran") (eq .ActivePage "upload-bukti-transfer-gaji") }}style="display: block;"{{ end }}>
+        <a href="/ketua/upload-bukti-transfer-gaji" class="ms-3 {{ if eq .ActivePage "upload-bukti-transfer-gaji" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Bukti Transfer Gaji Anggota</a>
         <a href="/ketua/konfirmasi-transaksi" class="ms-3 {{ if eq .ActivePage "konfirmasi-transaksi" }}active{{ end }}"><i class="fa-solid fa-check-circle me-2"></i> Konfirmasi Transaksi</a>
         <a href="/ketua/riwayat" class="ms-3 {{ if eq .ActivePage "riwayat" }}active{{ end }}"><i class="fa-solid fa-history me-2"></i> Riwayat Transaksi</a>
         <a href="/ketua/laporan" class="ms-3 {{ if eq .ActivePage "laporan" }}active{{ end }}"><i class="fa-solid fa-file-alt me-2"></i> Laporan</a>
     </div>
 
-    <a href="/ketua/upload-bukti-transfer-gaji" class="{{ if eq .ActivePage "upload-bukti-transfer-gaji" }}active{{ end }}"><i class="fa-solid fa-file-invoice-dollar me-2"></i> Upload Bukti Transfer Gaji</a>
     <a href="/ketua/ketua-pengaturan" class="{{ if eq .ActivePage "pengaturan" }}active{{ end }}"><i class="fa-solid fa-gear me-2"></i> Pengaturan</a>
     <a href="#" onclick="handleLogout(event)"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a>
 </div>

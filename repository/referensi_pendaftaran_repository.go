@@ -152,17 +152,27 @@ func FindReferensiPendaftaranForAutofill(nama, identitas string) (*models.Refere
 	nama = strings.TrimSpace(nama)
 	identitas = strings.TrimSpace(identitas)
 
-	row := db.QueryRow(`
+	query := `
 		SELECT id, nama_lengkap, COALESCE(nik_ktp, ''), COALESCE(no_telepon, ''), COALESCE(tgl_lahir, ''),
 		       COALESCE(jenis_kelamin, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, ''),
 		       COALESCE(alamat, ''), COALESCE(gaji_bulanan, 0), COALESCE(status_keanggotaan, ''),
 		       COALESCE(sumber_file, ''), imported_at, updated_at
 		FROM referensi_pendaftaran
-		WHERE LOWER(TRIM(COALESCE(nama_lengkap, ''))) = LOWER(TRIM($1))
-		  AND COALESCE(nik_ktp, '') = $2
+		WHERE COALESCE(nik_ktp, '') = $1
+	`
+
+	args := []interface{}{identitas}
+	if nama != "" {
+		query += ` AND LOWER(TRIM(COALESCE(nama_lengkap, ''))) = LOWER(TRIM($2))`
+		args = append(args, nama)
+	}
+
+	query += `
 		ORDER BY updated_at DESC, imported_at DESC
 		LIMIT 1
-	`, nama, identitas)
+	`
+
+	row := db.QueryRow(query, args...)
 
 	var item models.ReferensiPendaftaran
 	err := row.Scan(

@@ -181,6 +181,7 @@
         const potongGajiInfo = document.getElementById('potong_gaji_info');
 
         let lookupAbortController = null;
+        let lookupTimer = null;
 
         // Fungsi Helper format Rupiah
         function formatRupiah(angka) {
@@ -236,9 +237,9 @@
                 return;
             }
 
-            if (!nama || !identitas) {
+            if (!identitas) {
                 gajiBulananInput.value = 0;
-                gajiDisplayText.innerText = "Masukkan Nama dan Nomor Identitas...";
+                gajiDisplayText.innerText = "Masukkan Nomor Identitas...";
                 gajiDisplayText.className = "alert alert-secondary py-2 px-3 mb-1";
                 return;
             }
@@ -258,6 +259,7 @@
                 const data = await response.json();
 
                 if (data.found) {
+                    namaAnggotaInput.value = data.nama_lengkap || '';
                     const gajiValue = data.gaji_bulanan || 0;
                     gajiBulananInput.value = gajiValue;
                     gajiDisplayText.innerText = "Terverifikasi: " + formatRupiah(gajiValue);
@@ -272,6 +274,16 @@
                 gajiDisplayText.innerText = "Gagal memuat data.";
                 gajiDisplayText.className = "alert alert-danger py-2 px-3 mb-1";
             }
+        }
+
+        function scheduleLookupReferensiGaji() {
+            if (lookupTimer) {
+                clearTimeout(lookupTimer);
+            }
+
+            lookupTimer = setTimeout(() => {
+                lookupReferensiGaji();
+            }, 300);
         }
 
         function updateMetodePembayaranUI() {
@@ -300,6 +312,7 @@
         metodePembayaranSelect.addEventListener('change', updateMetodePembayaranUI);
         namaAnggotaInput.addEventListener('blur', lookupReferensiGaji);
         inputIdentitas.addEventListener('blur', lookupReferensiGaji);
+        inputIdentitas.addEventListener('input', scheduleLookupReferensiGaji);
 
         updateJabatanUI();
         updateMetodePembayaranUI();
