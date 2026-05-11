@@ -462,8 +462,6 @@ func RegisterReferensiLookup(c *gin.Context) {
 		"found":              true,
 		"nama_lengkap":       referensi.NamaLengkap,
 		"gaji_bulanan":       referensi.GajiBulanan,
-		"status_anggota":     referensi.StatusAnggota,
-		"fakultas":           referensi.Fakultas,
 		"status_keanggotaan": referensi.StatusKeanggotaan,
 	})
 }
@@ -573,11 +571,6 @@ func Register(c *gin.Context) {
 
 		if normalizeRegisterCompare(referensi.StatusKeanggotaan) == "anggota" {
 			renderRegisterError(http.StatusBadRequest, "Data Anda di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses.")
-			return
-		}
-
-		if referensi.StatusAnggota != "" && normalizeRegisterCompare(referensi.StatusAnggota) != normalizeRegisterCompare(newAnggota.StatusAnggota) {
-			renderRegisterError(http.StatusBadRequest, "Jabatan yang dipilih tidak sesuai dengan data master import admin.")
 			return
 		}
 

@@ -738,12 +738,6 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 
 	idxNama := findHeaderIndex(headerMap, "nama lengkap", "nama anggota", "nama")
 	idxIdentitas := findHeaderIndex(headerMap, "identitas", "nomer identitas", "nomor identitas", "nik ktp", "nik", "nik_ktp")
-	idxTelepon := findHeaderIndex(headerMap, "no telepon", "telepon", "no hp", "no hp aktif")
-	idxTglLahir := findHeaderIndex(headerMap, "tanggal lahir", "tgl lahir", "tgllahir")
-	idxJenisKelamin := findHeaderIndex(headerMap, "jenis kelamin", "jeniskelamin")
-	idxStatusAnggota := findHeaderIndex(headerMap, "status anggota", "jabatan", "kategori anggota")
-	idxFakultas := findHeaderIndex(headerMap, "fakultas", "unit kerja", "unit")
-	idxAlamat := findHeaderIndex(headerMap, "alamat")
 	idxGaji := findHeaderIndex(headerMap, "gajih bersih", "gaji bersih", "gaji bulanan", "gaji", "gajibulanan")
 	idxStatusKeanggotaan := findHeaderIndex(headerMap, "status keanggotaan", "status data", "keanggotaan")
 
@@ -764,7 +758,6 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 		rowNum := headerRowIdx + i + 2
 		nama := getCell(row, idxNama)
 		identitas := getCell(row, idxIdentitas)
-		telepon := getCell(row, idxTelepon)
 
 		if nama == "" {
 			failedCount++
@@ -816,20 +809,10 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 
 		item := models.ReferensiPendaftaran{
 			NamaLengkap:       nama,
-			NIKKTP:            identitas,
-			NoTelepon:         telepon,
-			TglLahir:          getCell(row, idxTglLahir),
-			JenisKelamin:      getCell(row, idxJenisKelamin),
-			StatusAnggota:     strings.ToLower(strings.TrimSpace(getCell(row, idxStatusAnggota))),
-			Fakultas:          getCell(row, idxFakultas),
-			Alamat:            getCell(row, idxAlamat),
+			NomorIdentitas:    identitas,
 			GajiBulanan:       gajiBulanan,
 			StatusKeanggotaan: statusKeanggotaan,
 			SumberFile:        file.Filename,
-		}
-
-		if item.StatusAnggota == "tenaga pendidikan" {
-			item.StatusAnggota = "karyawan"
 		}
 
 		if err := repository.UpsertReferensiPendaftaran(item); err != nil {

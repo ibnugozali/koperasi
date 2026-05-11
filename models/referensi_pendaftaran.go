@@ -7,13 +7,7 @@ import "time"
 type ReferensiPendaftaran struct {
 	ID                int
 	NamaLengkap       string
-	NIKKTP            string
-	NoTelepon         string
-	TglLahir          string
-	JenisKelamin      string
-	StatusAnggota     string
-	Fakultas          string
-	Alamat            string
+	NomorIdentitas    string
 	GajiBulanan       int
 	StatusKeanggotaan string
 	SumberFile        string
