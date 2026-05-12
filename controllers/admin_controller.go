@@ -738,6 +738,7 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 
 	idxNama := findHeaderIndex(headerMap, "nama lengkap", "nama anggota", "nama")
 	idxIdentitas := findHeaderIndex(headerMap, "identitas", "nomer identitas", "nomor identitas", "nik ktp", "nik", "nik_ktp")
+	idxJabatan := findHeaderIndex(headerMap, "jabatan", "status anggota", "status_anggota", "status calon anggota", "kategori pegawai")
 	idxGaji := findHeaderIndex(headerMap, "gajih bersih", "gaji bersih", "gaji bulanan", "gaji", "gajibulanan")
 	idxStatusKeanggotaan := findHeaderIndex(headerMap, "status keanggotaan", "status data", "keanggotaan")
 
@@ -810,6 +811,7 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 		item := models.ReferensiPendaftaran{
 			NamaLengkap:       nama,
 			NomorIdentitas:    identitas,
+			Jabatan:           strings.TrimSpace(getCell(row, idxJabatan)),
 			GajiBulanan:       gajiBulanan,
 			StatusKeanggotaan: statusKeanggotaan,
 			SumberFile:        file.Filename,

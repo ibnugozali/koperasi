@@ -36,14 +36,16 @@ func UpsertReferensiPendaftaran(item models.ReferensiPendaftaran) error {
 			UPDATE referensi_pendaftaran
 			SET nama_lengkap = $1,
 			    nomor_identitas = $2,
-			    gaji_bulanan = $3,
-			    status_keanggotaan = $4,
-			    sumber_file = $5,
+			    jabatan = $3,
+			    gaji_bulanan = $4,
+			    status_keanggotaan = $5,
+			    sumber_file = $6,
 			    updated_at = CURRENT_TIMESTAMP
-			WHERE id = $6
+			WHERE id = $7
 		`,
 			nama,
 			nomorIdentitas,
+			strings.TrimSpace(item.Jabatan),
 			item.GajiBulanan,
 			strings.TrimSpace(item.StatusKeanggotaan),
 			strings.TrimSpace(item.SumberFile),
@@ -54,11 +56,12 @@ func UpsertReferensiPendaftaran(item models.ReferensiPendaftaran) error {
 
 	_, err = db.Exec(`
 		INSERT INTO referensi_pendaftaran (
-			nama_lengkap, nomor_identitas, gaji_bulanan, status_keanggotaan, sumber_file
-		) VALUES ($1, $2, $3, $4, $5)
+			nama_lengkap, nomor_identitas, jabatan, gaji_bulanan, status_keanggotaan, sumber_file
+		) VALUES ($1, $2, $3, $4, $5, $6)
 	`,
 		nama,
 		nomorIdentitas,
+		strings.TrimSpace(item.Jabatan),
 		item.GajiBulanan,
 		strings.TrimSpace(item.StatusKeanggotaan),
 		strings.TrimSpace(item.SumberFile),
@@ -73,7 +76,7 @@ func FindReferensiPendaftaranForRegister(nama, identitas string, gaji int) (*mod
 	identitas = strings.TrimSpace(identitas)
 
 	row := db.QueryRow(`
-		SELECT id, nama_lengkap, COALESCE(nomor_identitas, ''), COALESCE(gaji_bulanan, 0),
+		SELECT id, nama_lengkap, COALESCE(nomor_identitas, ''), COALESCE(jabatan, ''), COALESCE(gaji_bulanan, 0),
 		       COALESCE(status_keanggotaan, ''), COALESCE(sumber_file, ''), imported_at, updated_at
 		FROM referensi_pendaftaran
 		WHERE LOWER(TRIM(COALESCE(nama_lengkap, ''))) = LOWER(TRIM($1))
@@ -88,6 +91,7 @@ func FindReferensiPendaftaranForRegister(nama, identitas string, gaji int) (*mod
 		&item.ID,
 		&item.NamaLengkap,
 		&item.NomorIdentitas,
+		&item.Jabatan,
 		&item.GajiBulanan,
 		&item.StatusKeanggotaan,
 		&item.SumberFile,
@@ -107,7 +111,7 @@ func FindReferensiPendaftaranForAutofill(nama, identitas string) (*models.Refere
 	identitas = strings.TrimSpace(identitas)
 
 	query := `
-		SELECT id, nama_lengkap, COALESCE(nomor_identitas, ''), COALESCE(gaji_bulanan, 0),
+		SELECT id, nama_lengkap, COALESCE(nomor_identitas, ''), COALESCE(jabatan, ''), COALESCE(gaji_bulanan, 0),
 		       COALESCE(status_keanggotaan, ''), COALESCE(sumber_file, ''), imported_at, updated_at
 		FROM referensi_pendaftaran
 		WHERE COALESCE(nomor_identitas, '') = $1
@@ -131,6 +135,42 @@ func FindReferensiPendaftaranForAutofill(nama, identitas string) (*models.Refere
 		&item.ID,
 		&item.NamaLengkap,
 		&item.NomorIdentitas,
+		&item.Jabatan,
+		&item.GajiBulanan,
+		&item.StatusKeanggotaan,
+		&item.SumberFile,
+		&item.ImportedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func FindReferensiPendaftaranByIdentitas(identitas string) (*models.ReferensiPendaftaran, error) {
+	db := config.GetDB()
+
+	identitas = strings.TrimSpace(identitas)
+
+	row := db.QueryRow(`
+		SELECT id, nama_lengkap, COALESCE(nomor_identitas, ''), COALESCE(jabatan, ''), COALESCE(gaji_bulanan, 0),
+		       COALESCE(status_keanggotaan, ''), COALESCE(sumber_file, ''), imported_at, updated_at
+		FROM referensi_pendaftaran
+		WHERE COALESCE(nomor_identitas, '') = $1
+		ORDER BY
+			CASE WHEN COALESCE(jabatan, '') <> '' THEN 0 ELSE 1 END,
+			updated_at DESC,
+			imported_at DESC
+		LIMIT 1
+	`, identitas)
+
+	var item models.ReferensiPendaftaran
+	err := row.Scan(
+		&item.ID,
+		&item.NamaLengkap,
+		&item.NomorIdentitas,
+		&item.Jabatan,
 		&item.GajiBulanan,
 		&item.StatusKeanggotaan,
 		&item.SumberFile,

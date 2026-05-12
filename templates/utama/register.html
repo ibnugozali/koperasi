@@ -32,6 +32,7 @@
                                         <option value="mahasiswa">Mahasiswa</option>
                                     </select>
                                     <small class="text-muted">Silakan pilih status untuk menampilkan formulir lengkap.</small>
+                                    <div id="referensi_status_warning" class="alert alert-warning mt-2 py-2 px-3 d-none mb-0"></div>
                                 </div>
                             </div>
 
@@ -179,13 +180,44 @@
         const buktiTransferInput = document.getElementById('register_bukti_transfer');
         const transferFieldsWrapper = document.getElementById('transfer_fields_wrapper');
         const potongGajiInfo = document.getElementById('potong_gaji_info');
+        const referensiStatusWarning = document.getElementById('referensi_status_warning');
 
         let lookupAbortController = null;
         let lookupTimer = null;
+        let latestReferensiStatus = '';
 
         // Fungsi Helper format Rupiah
         function formatRupiah(angka) {
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+        }
+
+        function getStatusMismatchMessage(selectedStatus, referensiStatus) {
+            if (!selectedStatus || !referensiStatus || selectedStatus === referensiStatus) {
+                return '';
+            }
+            if (referensiStatus === 'dosen') {
+                return 'Nomor Identitas ini terdaftar sebagai dosen di data referensi. Ubah Status Calon Anggota ke Dosen.';
+            }
+            if (referensiStatus === 'karyawan') {
+                return 'Nomor Identitas ini terdaftar sebagai tenaga pendidikan di data referensi. Ubah Status Calon Anggota ke Tenaga Pendidikan.';
+            }
+            return '';
+        }
+
+        function updateReferensiStatusWarning() {
+            const warningMessage = getStatusMismatchMessage(statusAnggotaSelect.value, latestReferensiStatus);
+            if (warningMessage) {
+                referensiStatusWarning.textContent = warningMessage;
+                referensiStatusWarning.classList.remove('d-none');
+                statusAnggotaSelect.setCustomValidity(warningMessage);
+                inputIdentitas.setCustomValidity(warningMessage);
+                return;
+            }
+
+            referensiStatusWarning.textContent = '';
+            referensiStatusWarning.classList.add('d-none');
+            statusAnggotaSelect.setCustomValidity('');
+            inputIdentitas.setCustomValidity('');
         }
 
         function updateJabatanUI() {
@@ -234,13 +266,17 @@
 
             if (status === 'mahasiswa') {
                 gajiBulananInput.value = 0;
+                latestReferensiStatus = '';
+                updateReferensiStatusWarning();
                 return;
             }
 
             if (!identitas) {
                 gajiBulananInput.value = 0;
+                latestReferensiStatus = '';
                 gajiDisplayText.innerText = "Masukkan Nomor Identitas...";
                 gajiDisplayText.className = "alert alert-secondary py-2 px-3 mb-1";
+                updateReferensiStatusWarning();
                 return;
             }
 
@@ -262,15 +298,20 @@
                     namaAnggotaInput.value = data.nama_lengkap || '';
                     const gajiValue = data.gaji_bulanan || 0;
                     gajiBulananInput.value = gajiValue;
+                    latestReferensiStatus = data.status_referensi || '';
                     gajiDisplayText.innerText = "Terverifikasi: " + formatRupiah(gajiValue);
                     gajiDisplayText.className = "alert alert-success py-2 px-3 mb-1 fw-bold";
                 } else {
                     gajiBulananInput.value = 0;
+                    latestReferensiStatus = '';
                     gajiDisplayText.innerText = "Data tidak ditemukan di database referensi.";
                     gajiDisplayText.className = "alert alert-warning py-2 px-3 mb-1";
                 }
+                updateReferensiStatusWarning();
             } catch (error) {
                 if (error.name === 'AbortError') return;
+                latestReferensiStatus = '';
+                updateReferensiStatusWarning();
                 gajiDisplayText.innerText = "Gagal memuat data.";
                 gajiDisplayText.className = "alert alert-danger py-2 px-3 mb-1";
             }
@@ -302,6 +343,7 @@
         statusAnggotaSelect.addEventListener('change', () => {
             updateJabatanUI();
             updateMetodePembayaranUI();
+            updateReferensiStatusWarning();
             lookupReferensiGaji();
         });
         

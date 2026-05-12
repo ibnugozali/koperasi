@@ -415,6 +415,42 @@ func normalizeRegisterCompare(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
 }
 
+func normalizeReferensiJabatan(value string) string {
+	value = normalizeRegisterCompare(value)
+	switch {
+	case strings.Contains(value, "dosen"):
+		return "dosen"
+	case strings.Contains(value, "tenaga pendidikan"),
+		strings.Contains(value, "tendik"),
+		strings.Contains(value, "karyawan"),
+		strings.Contains(value, "pegawai"),
+		strings.Contains(value, "staff"),
+		strings.Contains(value, "staf"):
+		return "karyawan"
+	default:
+		return ""
+	}
+}
+
+func validateReferensiStatusAnggota(selectedStatus, jabatan string) string {
+	selectedStatus = normalizeReferensiJabatan(selectedStatus)
+	jabatan = normalizeReferensiJabatan(jabatan)
+
+	if selectedStatus == "" || jabatan == "" || selectedStatus == jabatan {
+		return ""
+	}
+
+	if jabatan == "dosen" {
+		return "Nomor Identitas ini terdaftar sebagai dosen di data referensi. Ubah Status Calon Anggota ke Dosen."
+	}
+
+	if jabatan == "karyawan" {
+		return "Nomor Identitas ini terdaftar sebagai tenaga pendidikan di data referensi. Ubah Status Calon Anggota ke Tenaga Pendidikan."
+	}
+
+	return ""
+}
+
 func normalizeRegisterPhone(value string) string {
 	value = strings.TrimSpace(value)
 	value = strings.ReplaceAll(value, " ", "")
@@ -460,6 +496,8 @@ func RegisterReferensiLookup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"found":              true,
+		"jabatan":            referensi.Jabatan,
+		"status_referensi":   normalizeReferensiJabatan(referensi.Jabatan),
 		"nama_lengkap":       referensi.NamaLengkap,
 		"gaji_bulanan":       referensi.GajiBulanan,
 		"status_keanggotaan": referensi.StatusKeanggotaan,
@@ -555,7 +593,23 @@ func Register(c *gin.Context) {
 			return
 		}
 
-		referensi, err := repository.FindReferensiPendaftaranForRegister(
+		referensiByIdentitas, err := repository.FindReferensiPendaftaranByIdentitas(noIdentitasPegawai)
+		if err == nil {
+			if normalizeRegisterCompare(referensiByIdentitas.StatusKeanggotaan) == "anggota" {
+				renderRegisterError(http.StatusBadRequest, "Data Anda di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses.")
+				return
+			}
+
+			if statusWarning := validateReferensiStatusAnggota(newAnggota.StatusAnggota, referensiByIdentitas.Jabatan); statusWarning != "" {
+				renderRegisterError(http.StatusBadRequest, statusWarning)
+				return
+			}
+		} else if err != sql.ErrNoRows {
+			renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi data referensi pendaftaran.")
+			return
+		}
+
+		_, err = repository.FindReferensiPendaftaranForRegister(
 			newAnggota.NamaAnggota,
 			noIdentitasPegawai,
 			newAnggota.GajiBulanan,
@@ -566,11 +620,6 @@ func Register(c *gin.Context) {
 				return
 			}
 			renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi data referensi pendaftaran.")
-			return
-		}
-
-		if normalizeRegisterCompare(referensi.StatusKeanggotaan) == "anggota" {
-			renderRegisterError(http.StatusBadRequest, "Data Anda di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses.")
 			return
 		}
 

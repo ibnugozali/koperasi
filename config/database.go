@@ -140,6 +140,7 @@ func ensureReferensiPendaftaranTable() error {
 		id SERIAL PRIMARY KEY,
 		nama_lengkap VARCHAR(255) NOT NULL,
 		nomor_identitas VARCHAR(32) DEFAULT '',
+		jabatan VARCHAR(64) DEFAULT '',
 		gaji_bulanan INT NOT NULL DEFAULT 0,
 		status_keanggotaan VARCHAR(32) NOT NULL DEFAULT 'belum_anggota',
 		sumber_file VARCHAR(255) DEFAULT '',
@@ -149,6 +150,14 @@ func ensureReferensiPendaftaranTable() error {
 
 	DO $$
 	BEGIN
+		IF NOT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_name = 'referensi_pendaftaran' AND column_name = 'jabatan'
+		) THEN
+			ALTER TABLE referensi_pendaftaran ADD COLUMN jabatan VARCHAR(64) DEFAULT '';
+		END IF;
+
 		IF EXISTS (
 			SELECT 1
 			FROM information_schema.columns
