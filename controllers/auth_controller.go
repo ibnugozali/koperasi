@@ -434,9 +434,22 @@ func normalizeReferensiJabatan(value string) string {
 
 func validateReferensiStatusAnggota(selectedStatus, jabatan string) string {
 	selectedStatus = normalizeReferensiJabatan(selectedStatus)
+	rawJabatan := strings.TrimSpace(jabatan)
 	jabatan = normalizeReferensiJabatan(jabatan)
 
-	if selectedStatus == "" || jabatan == "" || selectedStatus == jabatan {
+	if selectedStatus == "" {
+		return ""
+	}
+
+	if rawJabatan == "" {
+		return "Data referensi untuk Nomor Identitas ini belum memiliki jabatan. Silakan lengkapi jabatan pada import referensi admin sebelum mendaftar."
+	}
+
+	if jabatan == "" {
+		return "Jabatan pada data referensi untuk Nomor Identitas ini belum dikenali sistem. Silakan perbarui data referensi admin sebelum mendaftar."
+	}
+
+	if selectedStatus == jabatan {
 		return ""
 	}
 
