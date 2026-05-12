@@ -467,6 +467,21 @@ func normalizeRegisterPhone(value string) string {
 	return value
 }
 
+func parseNominalPengaturan(value string, fallback int) int {
+	value = strings.TrimSpace(value)
+	value = strings.ReplaceAll(value, ".", "")
+	value = strings.ReplaceAll(value, ",", "")
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 0 {
+		return fallback
+	}
+	return parsed
+}
+
 func RegisterReferensiLookup(c *gin.Context) {
 	nama := strings.TrimSpace(c.Query("nama"))
 	identitas := strings.TrimSpace(c.Query("identitas"))
@@ -520,6 +535,7 @@ func Register(c *gin.Context) {
 	if err != nil {
 		nominalSimpanan = "100000" // Default jika belum diset
 	}
+	nominalSimpananPokok := parseNominalPengaturan(nominalSimpanan, 100000)
 
 	// Ambil nomor ketua dari konten halaman hubungi_kami (fallback ke telepon admin)
 	ketuaTelepon := ""
@@ -663,6 +679,10 @@ func Register(c *gin.Context) {
 	case "potong_gaji":
 		if newAnggota.StatusAnggota == "mahasiswa" {
 			renderRegisterError(http.StatusBadRequest, "Metode potong gaji hanya untuk anggota dengan gaji. Untuk mahasiswa gunakan transfer.")
+			return
+		}
+		if newAnggota.GajiBulanan < nominalSimpananPokok {
+			renderRegisterError(http.StatusBadRequest, fmt.Sprintf("Gaji bersih harus minimal Rp %d untuk menggunakan metode potong gaji karena nominal simpanan pokok saat ini Rp %d.", nominalSimpananPokok, nominalSimpananPokok))
 			return
 		}
 		newAnggota.BuktiTransfer = "POTONG_GAJI"
