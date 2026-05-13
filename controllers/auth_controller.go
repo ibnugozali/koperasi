@@ -22,18 +22,89 @@ import (
 	"koperasi-simpan-pinjam/repository"
 )
 
+func getPengaturanValue(db *sql.DB, keys ...string) string {
+	for _, key := range keys {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+
+		var value string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = $1", key).Scan(&value); err == nil {
+			if trimmed := strings.TrimSpace(value); trimmed != "" {
+				return trimmed
+			}
+		}
+	}
+
+	return ""
+}
+
+func resolveWAGatewayURL(db *sql.DB, preferredKeys ...string) string {
+	waURL := strings.TrimSpace(os.Getenv("WA_GATEWAY_URL"))
+	if waURL == "" {
+		keys := append([]string{}, preferredKeys...)
+		keys = append(keys, "wa_gateway_url")
+		waURL = getPengaturanValue(db, keys...)
+	}
+	if isSuspiciousWAGatewayURL(db, waURL) {
+		log.Printf("[WA NOTIF] URL gateway '%s' terlihat mengarah ke aplikasi sendiri, fallback ke wa_gateway_url", waURL)
+		waURL = getPengaturanValue(db, "wa_gateway_url")
+	}
+	if waURL == "" {
+		waURL = "https://api.fonnte.com/send"
+	}
+
+	return waURL
+}
+
+func isSuspiciousWAGatewayURL(db *sql.DB, rawURL string) bool {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return false
+	}
+
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+
+	host := strings.ToLower(strings.TrimSpace(parsedURL.Host))
+	path := strings.TrimSpace(parsedURL.Path)
+	if host == "" {
+		return false
+	}
+
+	isLocalAppHost := strings.Contains(host, "localhost:8081") || strings.Contains(host, "127.0.0.1:8081")
+	if isLocalAppHost && (path == "" || path == "/") {
+		return true
+	}
+
+	appBaseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("APP_BASE_URL")), "/")
+	if appBaseURL == "" && db != nil {
+		appBaseURL = strings.TrimRight(getPengaturanValue(db, "app_base_url"), "/")
+	}
+	if appBaseURL == "" {
+		return false
+	}
+
+	parsedAppURL, err := url.Parse(appBaseURL)
+	if err != nil {
+		return false
+	}
+
+	appHost := strings.ToLower(strings.TrimSpace(parsedAppURL.Host))
+	appPath := strings.TrimSpace(parsedAppURL.Path)
+	return host == appHost && path == appPath
+}
+
 // getBendaharaWhatsAppPhone mengambil nomor WhatsApp bendahara dari pengaturan/profil aktif
 func getBendaharaWhatsAppPhone() string {
 	db := config.GetDB()
 
 	// 1) Prioritas dari pengaturan WA bendahara di tabel pengaturan
-	for _, key := range []string{"wa_bendahara_phone", "nomor_wa_bendahara", "telepon_bendahara"} {
-		var configuredPhone string
-		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = $1", key).Scan(&configuredPhone); err == nil {
-			if p := strings.TrimSpace(configuredPhone); p != "" {
-				return p
-			}
-		}
+	if configuredPhone := getPengaturanValue(db, "wa_bendahara_phone", "nomor_wa_bendahara", "telepon_bendahara"); configuredPhone != "" {
+		return configuredPhone
 	}
 
 	// 2) Fallback ke user pengelola level bendahara aktif
@@ -80,16 +151,7 @@ func sendBendaharaWhatsAppNotification(rawBendaharaPhone, namaAnggota, jenisTran
 		bendaharaPhone = "62" + bendaharaPhone
 	}
 
-	waURL := strings.TrimSpace(os.Getenv("WA_GATEWAY_URL"))
-	if waURL == "" {
-		var urlDB string
-		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_url'").Scan(&urlDB); err == nil {
-			waURL = strings.TrimSpace(urlDB)
-		}
-	}
-	if waURL == "" {
-		waURL = "https://api.fonnte.com/send"
-	}
+	waURL := resolveWAGatewayURL(db)
 
 	if strings.TrimSpace(appBaseURL) == "" {
 		appBaseURL = "http://localhost:8081"
@@ -195,16 +257,7 @@ func sendAnggotaWhatsAppPesanNotification(rawAnggotaPhone, namaAnggota, judulPes
 		anggotaPhone = "62" + anggotaPhone
 	}
 
-	waURL := strings.TrimSpace(os.Getenv("WA_GATEWAY_URL"))
-	if waURL == "" {
-		var urlDB string
-		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_url'").Scan(&urlDB); err == nil {
-			waURL = strings.TrimSpace(urlDB)
-		}
-	}
-	if waURL == "" {
-		waURL = "https://api.fonnte.com/send"
-	}
+	waURL := resolveWAGatewayURL(db)
 
 	if strings.TrimSpace(appBaseURL) == "" {
 		appBaseURL = "http://localhost:8081"
@@ -777,7 +830,9 @@ func Register(c *gin.Context) {
 
 	// Notifikasi otomatis ke WhatsApp Ketua (jika gateway dikonfigurasi)
 	appBaseURL := resolveAppBaseURL(c, db)
-	if err := sendKetuaWhatsAppNotification(ketuaTelepon, newAnggota, metodePembayaran, appBaseURL); err != nil {
+	// Kirim dengan nomor kosong agar helper selalu memakai prioritas konfigurasi resmi:
+	// wa_ketua_phone -> halaman hubungi_kami -> profil pengelola ketua aktif.
+	if err := sendKetuaWhatsAppNotification("", newAnggota, metodePembayaran, appBaseURL); err != nil {
 		log.Printf("[WA NOTIF] gagal kirim notifikasi ketua: %v", err)
 	}
 
@@ -836,16 +891,7 @@ func sendKetuaWhatsAppNotification(rawKetuaPhone string, anggota models.Anggota,
 		ketuaPhone = "62" + ketuaPhone
 	}
 
-	waURL := strings.TrimSpace(os.Getenv("WA_GATEWAY_URL"))
-	if waURL == "" {
-		var urlDB string
-		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_url'").Scan(&urlDB); err == nil {
-			waURL = strings.TrimSpace(urlDB)
-		}
-	}
-	if waURL == "" {
-		waURL = "https://api.fonnte.com/send"
-	}
+	waURL := resolveWAGatewayURL(db, "wa_url_ketua")
 
 	metode := "Transfer Bank"
 	switch metodePembayaran {
@@ -941,13 +987,8 @@ func getKetuaWhatsAppPhone() string {
 	db := config.GetDB()
 
 	// 1) Prioritas dari pengaturan WA ketua di tabel pengaturan (akomodasi beberapa key lama/baru)
-	for _, key := range []string{"wa_ketua_phone", "nomor_wa_ketua", "telepon_ketua"} {
-		var configuredPhone string
-		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = $1", key).Scan(&configuredPhone); err == nil {
-			if p := strings.TrimSpace(configuredPhone); p != "" {
-				return p
-			}
-		}
+	if configuredPhone := getPengaturanValue(db, "wa_ketua_phone", "nomor_wa_ketua", "telepon_ketua"); configuredPhone != "" {
+		return configuredPhone
 	}
 
 	// 2) Ambil dari halaman hubungi_kami (telepon_ketua -> telepon)
@@ -1012,16 +1053,7 @@ func sendKetuaWhatsAppTransactionNotification(rawKetuaPhone, namaAnggota, jenisT
 		ketuaPhone = "62" + ketuaPhone
 	}
 
-	waURL := strings.TrimSpace(os.Getenv("WA_GATEWAY_URL"))
-	if waURL == "" {
-		var urlDB string
-		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_url'").Scan(&urlDB); err == nil {
-			waURL = strings.TrimSpace(urlDB)
-		}
-	}
-	if waURL == "" {
-		waURL = "https://api.fonnte.com/send"
-	}
+	waURL := resolveWAGatewayURL(db, "wa_url_ketua")
 
 	if strings.TrimSpace(appBaseURL) == "" {
 		appBaseURL = "http://localhost:8081"
