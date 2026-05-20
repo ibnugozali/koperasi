@@ -8,15 +8,16 @@ import (
 func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, error) {
 	db := config.GetDB()
 	var details []models.Detail
-	// FIX: Include ALL simpanan records regardless of status (pending, confirmed, NULL, rejected, etc.)
-	// Users should see their simpanan in riwayat even while waiting for bendahara confirmation
+	// Include seluruh riwayat simpanan anggota selain simpanan pokok.
+	// Simpanan pokok dianggap selesai di alur konfirmasi anggota dan tidak perlu tampil di riwayat anggota.
 	query := `
-        SELECT d.id_detail, d.id_anggota, d.id_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, COALESCE(d.total_simpanan, 0),
+        SELECT d.id_detail, d.id_anggota, d.id_simpanan, COALESCE(d.id_pengelola, 0), d.tgl_transaksi, d.jumlah_simpanan, COALESCE(d.total_simpanan, 0),
                s.jenis_simpanan, COALESCE(d.status, 'pending') as status
         FROM detail d
         JOIN simpanan s ON d.id_simpanan = s.id_simpanan
         WHERE d.id_anggota = $1
-        -- Explicitly include all status values: pending, confirmed, NULL, rejected, etc.
+        AND d.id_simpanan <> 1
+        AND LOWER(TRIM(COALESCE(s.jenis_simpanan, ''))) <> 'pokok'
         AND (d.status IS NULL OR d.status IN ('pending', 'confirmed', 'diterima', 'lunas', 'rejected'))
     `
 	args := []interface{}{id}

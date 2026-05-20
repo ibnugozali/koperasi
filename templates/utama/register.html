@@ -102,7 +102,7 @@
                                 </div>
 
                                 <div class="mb-3" id="wrapper_gaji_bulanan">
-                                    <label class="form-label fw-bold text-primary">Status Gaji Bersih (Data Referensi)</label>
+                                    <label class="form-label fw-bold text-primary">Status Gaji Bersih</label>
                                     <div id="gaji_display_text" class="alert alert-secondary py-2 px-3 mb-1">
                                         Menunggu data identitas...
                                     </div>
@@ -221,7 +221,7 @@
                 identitasInput.value = '';
                 namaHidden.value = '';
                 namaHidden.placeholder = 'Masukkan nama lengkap';
-                namaHintText.textContent = 'Silakan isi nama lengkap secara manual untuk pendaftar mahasiswa.';
+                namaHintText.textContent = 'Silakan isi nama lengkap.';
                 gajiHidden.value = 0;
             } else {
                 namaHidden.value = '';
@@ -294,7 +294,7 @@
                 latestRefFound = true;
                 latestRefStatus = 'mahasiswa';
                 resetDisplays('Mahasiswa (Input Manual)', true);
-                namaHintText.textContent = 'Silakan isi nama lengkap secara manual untuk pendaftar mahasiswa.';
+                namaHintText.textContent = 'Silakan isi nama lengkap.';
                 updateReferensiWarning();
                 updateMetodePembayaranUI();
                 updateSubmitState();

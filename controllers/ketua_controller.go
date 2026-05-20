@@ -2717,9 +2717,21 @@ func KetuaKonfirmasiTransaksi(c *gin.Context) {
 	pendingAngsuran, errAngsuran := repository.GetConfirmedAngsuran()
 	pendingPengambilan, errPengambilan := repository.GetPendingPengambilanSimpanan()
 
-	if errSimpanan != nil || errPinjaman != nil || errAngsuran != nil || errPengambilan != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal mengambil data konfirmasi transaksi"})
-		return
+	if errSimpanan != nil {
+		log.Printf("[WARN] KetuaKonfirmasiTransaksi: gagal mengambil simpanan terkonfirmasi: %v", errSimpanan)
+		pendingSimpanan = []models.Detail{}
+	}
+	if errPinjaman != nil {
+		log.Printf("[WARN] KetuaKonfirmasiTransaksi: gagal mengambil pinjaman pending: %v", errPinjaman)
+		pendingPinjaman = []models.Pinjaman{}
+	}
+	if errAngsuran != nil {
+		log.Printf("[WARN] KetuaKonfirmasiTransaksi: gagal mengambil angsuran terkonfirmasi: %v", errAngsuran)
+		pendingAngsuran = []models.Angsuran{}
+	}
+	if errPengambilan != nil {
+		log.Printf("[WARN] KetuaKonfirmasiTransaksi: gagal mengambil pengambilan simpanan pending: %v", errPengambilan)
+		pendingPengambilan = []models.PengambilanSimpanan{}
 	}
 
 	// Cari logo terbaru di static/images
@@ -2890,68 +2902,24 @@ func KetuaDataAnggota(c *gin.Context) {
 	}
 
 	// Ambil konfigurasi simpanan wajib
-	konfigSimpanan, err := repository.GetKonfigurasiSimpananWajib()
-	var nominalTargetSimpananWajib float64 = 0
-	var tanggalPotong int = 1
-	if err == nil {
-		if val, ok := konfigSimpanan["PersentasePotong"].(float64); ok {
-			nominalTargetSimpananWajib = val
-		}
-		if val, ok := konfigSimpanan["TanggalPotong"].(int); ok {
-			tanggalPotong = val
-		}
+	potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+	if err != nil {
+		potonganBulanIni = make(map[string]float64)
 	}
-
-	now := time.Now()
-	tanggalSekarang := now.Day()
-	bulanSekarang := int(now.Month())
-	tahunSekarang := now.Year()
-
-	// Hitung potongan bulan ini
-	potonganBulanIni := make(map[string]float64)
-	db := config.GetDB()
-	logQuery := `SELECT id_anggota, jumlah_potong FROM log_pemotongan_simpanan 
-	             WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil' AND id_anggota != 'SYSTEM'`
-	rows, err := db.Query(logQuery, bulanSekarang, tahunSekarang)
-
-	sudahAdaLog := false
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var idAnggota string
-			var jumlahPotong float64
-			if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
-				continue
-			}
-			potonganBulanIni[idAnggota] = jumlahPotong
-			sudahAdaLog = true
-		}
-	}
-
-	// Jika belum ada log dan tanggal sekarang >= tanggal potong, hitung estimasi potongan
-	if !sudahAdaLog && tanggalSekarang >= tanggalPotong {
-		for _, anggota := range anggotas {
-			if anggota.GajiBulanan > 0 && anggota.Status == "aktif" {
-				simpananSaatIni := simpananWajib[anggota.IDAnggota]
-				kekurangan := nominalTargetSimpananWajib - simpananSaatIni
-				if kekurangan > 0 {
-					potonganBulanIni[anggota.IDAnggota] = kekurangan
-				} else {
-					potonganBulanIni[anggota.IDAnggota] = 0
-				}
-			}
-		}
+	potonganRegister, err := repository.GetPotonganRegisterPotongGajiBulanIniAllAnggota()
+	if err != nil {
+		potonganRegister = make(map[string]float64)
 	}
 
 	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
 	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
-		potongan := potonganBulanIni[anggota.IDAnggota]
+		potongan := potonganBulanIni[anggota.IDAnggota] + potonganRegister[anggota.IDAnggota]
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 
 		// Fallback tampilan jika total simpanan wajib belum tercatat.
-		if simpananWajib[anggota.IDAnggota] <= 0 && potongan > 0 {
-			simpananWajib[anggota.IDAnggota] = potongan
+		if simpananWajib[anggota.IDAnggota] <= 0 && potonganBulanIni[anggota.IDAnggota] > 0 {
+			simpananWajib[anggota.IDAnggota] = potonganBulanIni[anggota.IDAnggota]
 		}
 	}
 	// Cari logo terbaru di static/images
@@ -3103,8 +3071,9 @@ func KetuaViewAnggota(c *gin.Context) {
 		}
 	}
 
-	// Hitung Total Simpanan dari semua simpanan yang ada
-	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
+	// Samakan dengan halaman profil anggota:
+	// total simpanan tidak memasukkan simpanan pokok dari pendaftaran.
+	totalSimpanan := simpananByJenis["wajib"] +
 		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
 		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)

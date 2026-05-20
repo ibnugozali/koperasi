@@ -308,6 +308,7 @@ func SetupRouter() *gin.Engine {
 		adminRoutes.GET("/tentang", controllers.AdminTentang)
 		adminRoutes.GET("/pengaturan", controllers.AdminPengaturan)
 		adminRoutes.POST("/pengaturan/wa-notif", controllers.AdminSaveWAGatewayConfig)
+		adminRoutes.POST("/pengaturan/wa-notif/test", controllers.AdminTestWAGatewayConfig)
 		adminRoutes.POST("/update-user", controllers.UpdateUser)
 		adminRoutes.POST("/update-anggota", controllers.UpdateAnggota)
 		adminRoutes.GET("/keamanan/login", controllers.AdminKeamananLogin)

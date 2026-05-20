@@ -573,7 +573,7 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 			if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
 				continue
 			}
-			potonganBulanIni[idAnggota] = jumlahPotong
+			potonganBulanIni[idAnggota] += jumlahPotong
 		}
 	}
 
@@ -624,6 +624,47 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 	}
 
 	return potonganBulanIni, nil
+}
+
+// GetPotonganRegisterPotongGajiBulanIniAllAnggota mengambil potongan simpanan pokok
+// dari pendaftaran metode potong gaji pada bulan berjalan.
+// Nilai ini dipakai untuk mengurangi sisa gaji, tetapi tidak ditampilkan
+// sebagai "Potongan Bulan Ini" karena tidak mengikuti jadwal simpanan wajib bulanan.
+func GetPotonganRegisterPotongGajiBulanIniAllAnggota() (map[string]float64, error) {
+	db := config.GetDB()
+	potonganRegister := make(map[string]float64)
+
+	now := time.Now()
+	bulan := int(now.Month())
+	tahun := now.Year()
+
+	query := `
+		SELECT id_anggota, COALESCE(SUM(jumlah_simpanan), 0)
+		FROM detail
+		WHERE id_simpanan = 1
+		  AND COALESCE(status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
+		  AND REPLACE(LOWER(COALESCE(metode_pembayaran, '')), ' ', '_') = 'potong_gaji'
+		  AND EXTRACT(MONTH FROM tgl_transaksi) = $1
+		  AND EXTRACT(YEAR FROM tgl_transaksi) = $2
+		GROUP BY id_anggota
+	`
+
+	rows, err := db.Query(query, bulan, tahun)
+	if err != nil {
+		return potonganRegister, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var idAnggota string
+		var jumlahPotong float64
+		if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
+			continue
+		}
+		potonganRegister[idAnggota] += jumlahPotong
+	}
+
+	return potonganRegister, nil
 }
 
 // GetKonfigurasiSimpananWajib mengambil konfigurasi pemotongan simpanan wajib

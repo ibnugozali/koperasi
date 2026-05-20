@@ -3,9 +3,11 @@ package controllers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -56,6 +58,152 @@ func resolveWAGatewayURL(db *sql.DB, preferredKeys ...string) string {
 	}
 
 	return waURL
+}
+
+func normalizeWAGatewayURL(rawURL string) (string, error) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return "", fmt.Errorf("URL gateway WA kosong")
+	}
+
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("URL gateway WA tidak valid: %w", err)
+	}
+	if parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return "", fmt.Errorf("URL gateway WA harus memakai format lengkap, misalnya https://api.fonnte.com/send")
+	}
+	if parsedURL.Path == "" || parsedURL.Path == "/" {
+		parsedURL.Path = "/send"
+	}
+
+	return parsedURL.String(), nil
+}
+
+func formatWhatsAppPhone(rawPhone string) string {
+	phone := strings.TrimSpace(rawPhone)
+	phone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", "+", "").Replace(phone)
+	if strings.HasPrefix(phone, "0") && len(phone) > 1 {
+		return "62" + phone[1:]
+	}
+	if phone != "" && !strings.HasPrefix(phone, "62") {
+		return "62" + phone
+	}
+	return phone
+}
+
+func describeWAGatewayError(waURL string, err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return fmt.Errorf("gagal resolve host gateway WA %s. Server/aplikasi tidak bisa menemukan domain tujuan. Cek DNS/internet server atau ubah URL gateway jika salah", waURL)
+	}
+
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		if opErr.Timeout() {
+			return fmt.Errorf("koneksi ke gateway WA %s timeout. Cek internet server atau firewall outbound", waURL)
+		}
+	}
+
+	if ne, ok := err.(net.Error); ok && ne.Timeout() {
+		return fmt.Errorf("koneksi ke gateway WA %s timeout. Cek internet server atau firewall outbound", waURL)
+	}
+
+	errText := strings.ToLower(strings.TrimSpace(err.Error()))
+	switch {
+	case strings.Contains(errText, "no such host"):
+		return fmt.Errorf("gagal resolve host gateway WA %s. Server/aplikasi tidak bisa menemukan domain tujuan. Cek DNS/internet server atau ubah URL gateway jika salah", waURL)
+	case strings.Contains(errText, "connection refused"):
+		return fmt.Errorf("gateway WA %s menolak koneksi. Cek URL gateway, port, atau firewall server", waURL)
+	case strings.Contains(errText, "timeout"):
+		return fmt.Errorf("koneksi ke gateway WA %s timeout. Cek internet server atau firewall outbound", waURL)
+	default:
+		return fmt.Errorf("gagal menghubungi gateway WA %s: %w", waURL, err)
+	}
+}
+
+func sendWhatsAppMessage(waURL, token, phone, message, logPrefix string) error {
+	normalizedURL, err := normalizeWAGatewayURL(waURL)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(token) == "" {
+		return fmt.Errorf("token gateway WA kosong")
+	}
+	if strings.TrimSpace(phone) == "" {
+		return fmt.Errorf("nomor tujuan WA kosong")
+	}
+
+	form := url.Values{"target": {phone}, "message": {message}}
+	jsonBody, _ := json.Marshal(map[string]string{
+		"target":  phone,
+		"message": message,
+	})
+
+	type waAttempt struct {
+		name        string
+		contentType string
+		body        string
+		auth        string
+	}
+
+	attempts := []waAttempt{
+		{name: "form/raw-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: token},
+		{name: "form/bearer-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: "Bearer " + token},
+		{name: "json/raw-token", contentType: "application/json", body: string(jsonBody), auth: token},
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	var lastErr error
+
+	for _, at := range attempts {
+		req, reqErr := http.NewRequest(http.MethodPost, normalizedURL, strings.NewReader(at.body))
+		if reqErr != nil {
+			lastErr = reqErr
+			continue
+		}
+		req.Header.Set("Content-Type", at.contentType)
+		req.Header.Set("Authorization", at.auth)
+
+		resp, doErr := client.Do(req)
+		if doErr != nil {
+			lastErr = describeWAGatewayError(normalizedURL, doErr)
+			log.Printf("%s attempt=%s error=%v", logPrefix, at.name, lastErr)
+			continue
+		}
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		bodyStr := strings.TrimSpace(string(bodyBytes))
+		log.Printf("%s attempt=%s status=%d response=%s", logPrefix, at.name, resp.StatusCode, bodyStr)
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			lastErr = fmt.Errorf("gateway WA merespons status %d", resp.StatusCode)
+			continue
+		}
+
+		var parsed map[string]interface{}
+		if json.Unmarshal(bodyBytes, &parsed) == nil {
+			if okVal, exists := parsed["status"]; exists {
+				if okBool, ok := okVal.(bool); ok && !okBool {
+					lastErr = fmt.Errorf("gateway WA menolak request: %s", bodyStr)
+					continue
+				}
+			}
+		}
+
+		return nil
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("semua percobaan kirim WA gagal")
 }
 
 func isSuspiciousWAGatewayURL(db *sql.DB, rawURL string) bool {
@@ -144,12 +292,7 @@ func sendBendaharaWhatsAppNotification(rawBendaharaPhone, namaAnggota, jenisTran
 	if bendaharaPhone == "" {
 		return fmt.Errorf("nomor bendahara kosong")
 	}
-	bendaharaPhone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", "+", "").Replace(bendaharaPhone)
-	if strings.HasPrefix(bendaharaPhone, "0") {
-		bendaharaPhone = "62" + bendaharaPhone[1:]
-	} else if !strings.HasPrefix(bendaharaPhone, "62") {
-		bendaharaPhone = "62" + bendaharaPhone
-	}
+	bendaharaPhone = formatWhatsAppPhone(bendaharaPhone)
 
 	waURL := resolveWAGatewayURL(db)
 
@@ -165,71 +308,7 @@ func sendBendaharaWhatsAppNotification(rawBendaharaPhone, namaAnggota, jenisTran
 	linkKonfirmasiBendahara := strings.TrimRight(appBaseURL, "/") + "/bendahara/konfirmasi-transaksi"
 	message += "Silakan cek menu konfirmasi transaksi:\n" + linkKonfirmasiBendahara
 
-	form := url.Values{"target": {bendaharaPhone}, "message": {message}}
-	jsonBody, _ := json.Marshal(map[string]string{
-		"target":  bendaharaPhone,
-		"message": message,
-	})
-
-	type waAttempt struct {
-		name        string
-		contentType string
-		body        string
-		auth        string
-	}
-
-	attempts := []waAttempt{
-		{name: "form/raw-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: token},
-		{name: "form/bearer-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: "Bearer " + token},
-		{name: "json/raw-token", contentType: "application/json", body: string(jsonBody), auth: token},
-	}
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	var lastErr error
-
-	for _, at := range attempts {
-		req, err := http.NewRequest(http.MethodPost, waURL, strings.NewReader(at.body))
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		req.Header.Set("Content-Type", at.contentType)
-		req.Header.Set("Authorization", at.auth)
-
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			log.Printf("[WA NOTIF] attempt=%s error=%v", at.name, err)
-			continue
-		}
-
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		bodyStr := strings.TrimSpace(string(bodyBytes))
-		log.Printf("[WA NOTIF] attempt=%s status=%d response=%s", at.name, resp.StatusCode, bodyStr)
-
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			lastErr = fmt.Errorf("gateway status %d", resp.StatusCode)
-			continue
-		}
-
-		var parsed map[string]interface{}
-		if json.Unmarshal(bodyBytes, &parsed) == nil {
-			if okVal, exists := parsed["status"]; exists {
-				if okBool, ok := okVal.(bool); ok && !okBool {
-					lastErr = fmt.Errorf("gateway reject: %s", bodyStr)
-					continue
-				}
-			}
-		}
-
-		return nil
-	}
-
-	if lastErr != nil {
-		return lastErr
-	}
-	return fmt.Errorf("semua percobaan kirim WA gagal")
+	return sendWhatsAppMessage(waURL, token, bendaharaPhone, message, "[WA NOTIF]")
 }
 
 // sendAnggotaWhatsAppPesanNotification mengirim notifikasi WA ke anggota saat bendahara mengirim pesan.
@@ -250,12 +329,7 @@ func sendAnggotaWhatsAppPesanNotification(rawAnggotaPhone, namaAnggota, judulPes
 	if anggotaPhone == "" {
 		return fmt.Errorf("nomor anggota kosong")
 	}
-	anggotaPhone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", "+", "").Replace(anggotaPhone)
-	if strings.HasPrefix(anggotaPhone, "0") {
-		anggotaPhone = "62" + anggotaPhone[1:]
-	} else if !strings.HasPrefix(anggotaPhone, "62") {
-		anggotaPhone = "62" + anggotaPhone
-	}
+	anggotaPhone = formatWhatsAppPhone(anggotaPhone)
 
 	waURL := resolveWAGatewayURL(db)
 
@@ -270,71 +344,7 @@ func sendAnggotaWhatsAppPesanNotification(rawAnggotaPhone, namaAnggota, judulPes
 	linkPesan := strings.TrimRight(appBaseURL, "/") + "/anggota/pesan"
 	message += "Silakan cek detail pesan di:\n" + linkPesan
 
-	form := url.Values{"target": {anggotaPhone}, "message": {message}}
-	jsonBody, _ := json.Marshal(map[string]string{
-		"target":  anggotaPhone,
-		"message": message,
-	})
-
-	type waAttempt struct {
-		name        string
-		contentType string
-		body        string
-		auth        string
-	}
-
-	attempts := []waAttempt{
-		{name: "form/raw-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: token},
-		{name: "form/bearer-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: "Bearer " + token},
-		{name: "json/raw-token", contentType: "application/json", body: string(jsonBody), auth: token},
-	}
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	var lastErr error
-
-	for _, at := range attempts {
-		req, err := http.NewRequest(http.MethodPost, waURL, strings.NewReader(at.body))
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		req.Header.Set("Content-Type", at.contentType)
-		req.Header.Set("Authorization", at.auth)
-
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			log.Printf("[WA PESAN ANGGOTA] attempt=%s error=%v", at.name, err)
-			continue
-		}
-
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		bodyStr := strings.TrimSpace(string(bodyBytes))
-		log.Printf("[WA PESAN ANGGOTA] attempt=%s status=%d response=%s", at.name, resp.StatusCode, bodyStr)
-
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			lastErr = fmt.Errorf("gateway status %d", resp.StatusCode)
-			continue
-		}
-
-		var parsed map[string]interface{}
-		if json.Unmarshal(bodyBytes, &parsed) == nil {
-			if okVal, exists := parsed["status"]; exists {
-				if okBool, ok := okVal.(bool); ok && !okBool {
-					lastErr = fmt.Errorf("gateway reject: %s", bodyStr)
-					continue
-				}
-			}
-		}
-
-		return nil
-	}
-
-	if lastErr != nil {
-		return lastErr
-	}
-	return fmt.Errorf("semua percobaan kirim WA gagal")
+	return sendWhatsAppMessage(waURL, token, anggotaPhone, message, "[WA PESAN ANGGOTA]")
 }
 
 // ShowLoginPage menampilkan halaman login utama.
@@ -884,12 +894,7 @@ func sendKetuaWhatsAppNotification(rawKetuaPhone string, anggota models.Anggota,
 	if ketuaPhone == "" {
 		return fmt.Errorf("nomor ketua kosong")
 	}
-	ketuaPhone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", "+", "").Replace(ketuaPhone)
-	if strings.HasPrefix(ketuaPhone, "0") {
-		ketuaPhone = "62" + ketuaPhone[1:]
-	} else if !strings.HasPrefix(ketuaPhone, "62") {
-		ketuaPhone = "62" + ketuaPhone
-	}
+	ketuaPhone = formatWhatsAppPhone(ketuaPhone)
 
 	waURL := resolveWAGatewayURL(db, "wa_url_ketua")
 
@@ -916,71 +921,7 @@ func sendKetuaWhatsAppNotification(rawKetuaPhone string, anggota models.Anggota,
 
 	message += "Silakan cek menu konfirmasi anggota:\n" + linkKonfirmasiKetua
 
-	form := url.Values{"target": {ketuaPhone}, "message": {message}}
-	jsonBody, _ := json.Marshal(map[string]string{
-		"target":  ketuaPhone,
-		"message": message,
-	})
-
-	type waAttempt struct {
-		name        string
-		contentType string
-		body        string
-		auth        string
-	}
-
-	attempts := []waAttempt{
-		{name: "form/raw-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: token},
-		{name: "form/bearer-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: "Bearer " + token},
-		{name: "json/raw-token", contentType: "application/json", body: string(jsonBody), auth: token},
-	}
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	var lastErr error
-
-	for _, at := range attempts {
-		req, err := http.NewRequest(http.MethodPost, waURL, strings.NewReader(at.body))
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		req.Header.Set("Content-Type", at.contentType)
-		req.Header.Set("Authorization", at.auth)
-
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			log.Printf("[WA NOTIF] attempt=%s error=%v", at.name, err)
-			continue
-		}
-
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		bodyStr := strings.TrimSpace(string(bodyBytes))
-		log.Printf("[WA NOTIF] attempt=%s status=%d response=%s", at.name, resp.StatusCode, bodyStr)
-
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			lastErr = fmt.Errorf("gateway status %d", resp.StatusCode)
-			continue
-		}
-
-		var parsed map[string]interface{}
-		if json.Unmarshal(bodyBytes, &parsed) == nil {
-			if okVal, exists := parsed["status"]; exists {
-				if okBool, ok := okVal.(bool); ok && !okBool {
-					lastErr = fmt.Errorf("gateway reject: %s", bodyStr)
-					continue
-				}
-			}
-		}
-
-		return nil
-	}
-
-	if lastErr != nil {
-		return lastErr
-	}
-	return fmt.Errorf("semua percobaan kirim WA gagal")
+	return sendWhatsAppMessage(waURL, token, ketuaPhone, message, "[WA NOTIF]")
 }
 
 func getKetuaWhatsAppPhone() string {
@@ -1046,12 +987,7 @@ func sendKetuaWhatsAppTransactionNotification(rawKetuaPhone, namaAnggota, jenisT
 	if ketuaPhone == "" {
 		return fmt.Errorf("nomor ketua kosong")
 	}
-	ketuaPhone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", "+", "").Replace(ketuaPhone)
-	if strings.HasPrefix(ketuaPhone, "0") {
-		ketuaPhone = "62" + ketuaPhone[1:]
-	} else if !strings.HasPrefix(ketuaPhone, "62") {
-		ketuaPhone = "62" + ketuaPhone
-	}
+	ketuaPhone = formatWhatsAppPhone(ketuaPhone)
 
 	waURL := resolveWAGatewayURL(db, "wa_url_ketua")
 
@@ -1066,71 +1002,7 @@ func sendKetuaWhatsAppTransactionNotification(rawKetuaPhone, namaAnggota, jenisT
 		"- Nominal: " + nominal + "\n" +
 		"Silakan cek menu konfirmasi transaksi Ketua:\n" + linkKonfirmasiKetua
 
-	form := url.Values{"target": {ketuaPhone}, "message": {message}}
-	jsonBody, _ := json.Marshal(map[string]string{
-		"target":  ketuaPhone,
-		"message": message,
-	})
-
-	type waAttempt struct {
-		name        string
-		contentType string
-		body        string
-		auth        string
-	}
-
-	attempts := []waAttempt{
-		{name: "form/raw-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: token},
-		{name: "form/bearer-token", contentType: "application/x-www-form-urlencoded", body: form.Encode(), auth: "Bearer " + token},
-		{name: "json/raw-token", contentType: "application/json", body: string(jsonBody), auth: token},
-	}
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	var lastErr error
-
-	for _, at := range attempts {
-		req, err := http.NewRequest(http.MethodPost, waURL, strings.NewReader(at.body))
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		req.Header.Set("Content-Type", at.contentType)
-		req.Header.Set("Authorization", at.auth)
-
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			log.Printf("[WA NOTIF KETUA] attempt=%s error=%v", at.name, err)
-			continue
-		}
-
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		bodyStr := strings.TrimSpace(string(bodyBytes))
-		log.Printf("[WA NOTIF KETUA] attempt=%s status=%d response=%s", at.name, resp.StatusCode, bodyStr)
-
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			lastErr = fmt.Errorf("gateway status %d", resp.StatusCode)
-			continue
-		}
-
-		var parsed map[string]interface{}
-		if json.Unmarshal(bodyBytes, &parsed) == nil {
-			if okVal, exists := parsed["status"]; exists {
-				if okBool, ok := okVal.(bool); ok && !okBool {
-					lastErr = fmt.Errorf("gateway reject: %s", bodyStr)
-					continue
-				}
-			}
-		}
-
-		return nil
-	}
-
-	if lastErr != nil {
-		return lastErr
-	}
-	return fmt.Errorf("semua percobaan kirim WA ke ketua gagal")
+	return sendWhatsAppMessage(waURL, token, ketuaPhone, message, "[WA NOTIF KETUA]")
 }
 
 // Login memproses otentikasi pengguna.

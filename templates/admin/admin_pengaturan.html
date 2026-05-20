@@ -45,27 +45,31 @@
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">URL Gateway WA Ketua (Opsional)</label>
                                         <input type="text" class="form-control" name="wa_url_ketua" value="{{.WAURLKetua}}" placeholder="Contoh: https://api.fonnte.com/send">
-                                        <small class="text-muted">Kosongkan jika sama dengan URL gateway utama.</small>
+                                        <!-- <small class="text-muted">Kosongkan jika sama dengan URL gateway utama.</small> -->
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">App Base URL (untuk link klik di WhatsApp)</label>
+                                        <label class="form-label">App Base URL</label>
                                         <input type="text" class="form-control" name="app_base_url" value="{{.AppBaseURL}}" placeholder="Contoh: https://koperasi-kampus.com">
-                                        <small class="text-muted">Isi domain publik aplikasi. Jika kosong, sistem pakai host request saat ini.</small>
+                                        <!-- <small class="text-muted">Isi domain publik aplikasi. Jika kosong, sistem pakai host request saat ini.</small> -->
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Nomor WA Bendahara (untuk notifikasi simpanan/angsuran)</label>
+                                        <label class="form-label">Nomor WA Bendahara</label>
                                         <input type="text" class="form-control" name="wa_bendahara_phone" value="{{.WABendahara}}" placeholder="Contoh: 081234567890 atau 6281234567890">
-                                        <small class="text-muted">Jika diisi, nomor ini diprioritaskan untuk menerima notifikasi transaksi anggota.</small>
+                                        <!-- <small class="text-muted">Jika diisi, nomor ini diprioritaskan untuk menerima notifikasi transaksi anggota.</small> -->
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Nomor WA Ketua (untuk notifikasi ke ketua)</label>
+                                        <label class="form-label">Nomor WA Ketua</label>
                                         <input type="text" class="form-control" name="wa_ketua_phone" value="{{.WAKetua}}" placeholder="Contoh: 081234567890 atau 6281234567890">
-                                        <small class="text-muted">Nomor WA Ketua untuk menerima notifikasi penting.</small>
+                                        <!-- <small class="text-muted">Nomor WA Ketua untuk menerima notifikasi penting.</small> -->
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary">Simpan Konfigurasi WA</button>
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <button type="submit" class="btn btn-primary">Simpan Konfigurasi WA</button>
+                                    <button type="submit" class="btn btn-outline-success" formaction="/admin/pengaturan/wa-notif/test">Tes Kirim WA Ketua</button>
+                                </div>
+                                <small class="text-muted d-block mt-2">Jika tes gagal dengan pesan host/DNS, berarti server aplikasi belum bisa mengakses domain gateway WhatsApp seperti `api.fonnte.com`.</small>
                             </form>
                         </div>
                     </div>

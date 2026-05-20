@@ -1697,7 +1697,7 @@ func AdminPengaturan(c *gin.Context) {
 // AdminSaveWAGatewayConfig menyimpan konfigurasi token/url gateway WhatsApp notifikasi.
 func AdminSaveWAGatewayConfig(c *gin.Context) {
 	token := strings.TrimSpace(c.PostForm("wa_gateway_token"))
-	url := strings.TrimSpace(c.PostForm("wa_gateway_url"))
+	waURLInput := strings.TrimSpace(c.PostForm("wa_gateway_url"))
 	urlKetua := strings.TrimSpace(c.PostForm("wa_url_ketua"))
 	appBaseURL := strings.TrimSpace(c.PostForm("app_base_url"))
 	bendaharaPhone := strings.TrimSpace(c.PostForm("wa_bendahara_phone"))
@@ -1707,8 +1707,30 @@ func AdminSaveWAGatewayConfig(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Token WA wajib diisi")
 		return
 	}
-	if url == "" {
-		url = "https://api.fonnte.com/send"
+	if waURLInput == "" {
+		waURLInput = "https://api.fonnte.com/send"
+	}
+	normalizedURL, err := normalizeWAGatewayURL(waURLInput)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error="+url.QueryEscape(err.Error()))
+		return
+	}
+	waURLInput = normalizedURL
+	if isSuspiciousWAGatewayURL(nil, waURLInput) {
+		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=URL gateway WA tidak boleh mengarah ke aplikasi sendiri")
+		return
+	}
+	if urlKetua != "" {
+		normalizedKetuaURL, err := normalizeWAGatewayURL(urlKetua)
+		if err != nil {
+			c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error="+url.QueryEscape("URL gateway WA Ketua tidak valid: "+err.Error()))
+			return
+		}
+		if isSuspiciousWAGatewayURL(nil, normalizedKetuaURL) {
+			c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=URL gateway WA Ketua tidak boleh mengarah ke aplikasi sendiri")
+			return
+		}
+		urlKetua = normalizedKetuaURL
 	}
 
 	db := config.GetDB()
@@ -1726,7 +1748,7 @@ func AdminSaveWAGatewayConfig(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan token WA")
 		return
 	}
-	if err := upsert("wa_gateway_url", url); err != nil {
+	if err := upsert("wa_gateway_url", waURLInput); err != nil {
 		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan URL gateway WA")
 		return
 	}
@@ -1756,6 +1778,35 @@ func AdminSaveWAGatewayConfig(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, "/admin/pengaturan?wa_success=Konfigurasi WA berhasil disimpan")
+}
+
+func AdminTestWAGatewayConfig(c *gin.Context) {
+	db := config.GetDB()
+	token := strings.TrimSpace(getPengaturanValue(db, "wa_gateway_token"))
+	if token == "" {
+		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Token gateway WA belum disimpan")
+		return
+	}
+
+	waURL := resolveWAGatewayURL(db, "wa_url_ketua")
+	if _, err := normalizeWAGatewayURL(waURL); err != nil {
+		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error="+url.QueryEscape(err.Error()))
+		return
+	}
+
+	ketuaPhone := formatWhatsAppPhone(getKetuaWhatsAppPhone())
+	if ketuaPhone == "" {
+		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Nomor WA Ketua belum diisi")
+		return
+	}
+
+	message := "Tes koneksi gateway WhatsApp dari aplikasi koperasi pada " + time.Now().Format("02-01-2006 15:04:05")
+	if err := sendWhatsAppMessage(waURL, token, ketuaPhone, message, "[WA TEST]"); err != nil {
+		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error="+url.QueryEscape(err.Error()))
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin/pengaturan?wa_success=Tes notifikasi WA berhasil dikirim ke nomor Ketua")
 }
 
 // UpdateAdminProfile memproses update username dan password admin

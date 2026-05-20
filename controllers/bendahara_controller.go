@@ -80,8 +80,9 @@ func BendaharaViewAnggotaKeluar(c *gin.Context) {
 		}
 	}
 
-	// Hitung Total Simpanan dari semua simpanan yang ada
-	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
+	// Samakan dengan halaman profil anggota dan detail ketua:
+	// total simpanan tidak memasukkan simpanan pokok dari pendaftaran.
+	totalSimpanan := simpananByJenis["wajib"] +
 		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"]
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
@@ -1048,78 +1049,27 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		simpananPokok[anggota.IDAnggota] = nominalSimpananPokok
 	}
 
-	// Ambil konfigurasi simpanan wajib
-	konfigSimpanan, err := repository.GetKonfigurasiSimpananWajib()
-	var nominalTargetSimpananWajib float64 = 0
-	var tanggalPotong int = 1
-	if err == nil {
-		if val, ok := konfigSimpanan["PersentasePotong"].(float64); ok {
-			nominalTargetSimpananWajib = val
-		}
-		if val, ok := konfigSimpanan["TanggalPotong"].(int); ok {
-			tanggalPotong = val
-		}
+	potonganBulanIni, err := repository.GetPotonganBulanIniAllAnggota()
+	if err != nil {
+		potonganBulanIni = make(map[string]float64)
 	}
-
-	// Cek apakah sudah waktunya pemotongan (tanggal sekarang >= tanggal potong)
-	now := time.Now()
-	tanggalSekarang := now.Day()
-	bulanSekarang := int(now.Month())
-	tahunSekarang := now.Year()
-
-	// Hitung potongan bulan ini
-	potonganBulanIni := make(map[string]float64)
-
-	// Cek apakah sudah ada log pemotongan bulan ini
-	db := config.GetDB()
-	logQuery := `SELECT id_anggota, jumlah_potong FROM log_pemotongan_simpanan 
-	             WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil' AND id_anggota != 'SYSTEM'`
-	rows, err := db.Query(logQuery, bulanSekarang, tahunSekarang)
-
-	sudahAdaLog := false
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var idAnggota string
-			var jumlahPotong float64
-			if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
-				continue
-			}
-			potonganBulanIni[idAnggota] = jumlahPotong
-			sudahAdaLog = true
-		}
-	}
-
-	// Jika belum ada log dan tanggal sekarang >= tanggal potong, hitung estimasi potongan
-	if !sudahAdaLog && tanggalSekarang >= tanggalPotong {
-		// Hitung potongan berdasarkan kekurangan simpanan wajib
-		for _, anggota := range anggotas {
-			if anggota.GajiBulanan > 0 && anggota.Status == "aktif" {
-				simpananSaatIni := simpananWajib[anggota.IDAnggota]
-				kekurangan := nominalTargetSimpananWajib - simpananSaatIni
-
-				// Jika ada kekurangan, itu yang akan dipotong bulan ini
-				if kekurangan > 0 {
-					potonganBulanIni[anggota.IDAnggota] = kekurangan
-				} else {
-					// Jika sudah cukup atau lebih, tidak ada potongan
-					potonganBulanIni[anggota.IDAnggota] = 0
-				}
-			}
-		}
+	potonganRegister, err := repository.GetPotonganRegisterPotongGajiBulanIniAllAnggota()
+	if err != nil {
+		potonganRegister = make(map[string]float64)
 	}
 
 	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
 	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
-		potongan := potonganBulanIni[anggota.IDAnggota]
-		// Sisa gaji = Gaji bulanan dikurangi potongan bulan ini saja
+		potongan := potonganBulanIni[anggota.IDAnggota] + potonganRegister[anggota.IDAnggota]
+		// Sisa gaji = Gaji bulanan dikurangi potongan bulanan terjadwal
+		// ditambah potongan simpanan pokok dari pendaftaran potong gaji bulan berjalan.
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 
 		// Fallback tampilan: jika total simpanan wajib belum tercatat,
 		// gunakan potongan bulan ini agar kolom "Simpanan Wajib" tidak kosong.
-		if simpananWajib[anggota.IDAnggota] <= 0 && potongan > 0 {
-			simpananWajib[anggota.IDAnggota] = potongan
+		if simpananWajib[anggota.IDAnggota] <= 0 && potonganBulanIni[anggota.IDAnggota] > 0 {
+			simpananWajib[anggota.IDAnggota] = potonganBulanIni[anggota.IDAnggota]
 		}
 	}
 
@@ -5266,12 +5216,13 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 
 	query := `
 		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota,
-		       a.tgl_bayar, a.sisa_pinjaman,
+		       a.tgl_bayar, a.jumlah_angsuran, a.sisa_pinjaman,
 		       COALESCE(a.bukti_angsuran, '') as bukti_angsuran,
 		       COALESCE(a.status, '') as status,
 		       ang.nama_anggota, ang.no_telepon,
 		       p.jumlah_pinjaman, p.jangka_waktu,
-		       COALESCE(p.metode_pencairan, '') as metode_pencairan
+		       COALESCE(p.metode_pencairan, '') as metode_pencairan,
+		       COALESCE(p.metode_angsuran, '') as metode_angsuran
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
@@ -5281,13 +5232,13 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 	var namaAnggota, noTelepon string
 	var jumlahPinjaman float64
 	var jangkaWaktu int
-	var metodePencairan string
+	var metodePencairan, metodeAngsuran string
 
 	err := db.QueryRow(query, idAngsuran).Scan(
 		&angsuran.IDAngsuran, &angsuran.IDPinjaman, &angsuran.IDAnggota,
-		&tglBayar, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran,
+		&tglBayar, &angsuran.JumlahAngsuran, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran,
 		&angsuran.Status, &namaAnggota, &noTelepon,
-		&jumlahPinjaman, &jangkaWaktu, &metodePencairan,
+		&jumlahPinjaman, &jangkaWaktu, &metodePencairan, &metodeAngsuran,
 	)
 
 	if err != nil {
@@ -5295,8 +5246,11 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 		return
 	}
 
-	// Assignment ke angsuran.TglBayar dihapus karena tidak digunakan
-	// Assignment ke angsuran.NamaAnggota dihapus karena tidak digunakan
+	if tglBayar.Valid {
+		angsuran.TglBayar = tglBayar.Time
+	}
+	angsuran.NamaAnggota = namaAnggota
+	angsuran.MetodeAngsuran = metodeAngsuran
 
 	// Hitung angsuran ke berapa
 	var angsuranKe int
@@ -5319,17 +5273,19 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 
 	// Ambil semua angsuran untuk riwayat
 	angsurans := []models.Angsuran{}
-	rows2, err := db.Query(`SELECT id_angsuran, tgl_bayar, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	rows2, err := db.Query(`SELECT id_angsuran, tgl_bayar, jumlah_angsuran, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
 	if err == nil {
 		defer rows2.Close()
 		for rows2.Next() {
 			var a models.Angsuran
-			if scanErr := rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran); scanErr != nil {
+			if scanErr := rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran); scanErr != nil {
 				continue
 			}
 			angsurans = append(angsurans, a)
 		}
 	}
+
+	nomorRekening, _ := repository.GetNomorRekening("angsuran")
 
 	// Cari logo terbaru
 	dirFiles, errLogo := os.ReadDir("static/images")
@@ -5361,9 +5317,12 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 			"NoTelepon":   noTelepon,
 		},
 		"JumlahPinjaman":  jumlahPinjaman,
+		"Angsuran":        angsuran,
 		"SisaPinjaman":    angsuran.SisaPinjaman,
 		"AngsuranKe":      angsuranKe,
 		"MetodePencairan": metodePencairan,
+		"MetodeAngsuran":  metodeAngsuran,
+		"NomorRekening":   nomorRekening,
 		"Angsurans":       angsurans,
 		"CurrentLogo":     latestLogo,
 		"ActivePage":      "riwayat",

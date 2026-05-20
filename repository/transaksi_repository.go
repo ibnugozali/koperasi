@@ -9,16 +9,19 @@ import (
 	"koperasi-simpan-pinjam/models"
 )
 
-// GetConfirmedSimpanan mengambil simpanan yang sudah dikonfirmasi bendahara (status 'confirmed')
+// GetConfirmedSimpanan mengambil simpanan yang sudah dikonfirmasi bendahara (status 'confirmed'),
+// kecuali simpanan pokok karena itu sudah selesai di alur konfirmasi anggota ketua.
 func GetConfirmedSimpanan() ([]models.Detail, error) {
 	db := config.GetDB()
 	var details []models.Detail
 	query := `
-		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, COALESCE(d.status, ''), COALESCE(d.metode_pembayaran, '')
+		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, COALESCE(d.id_pengelola, 0), d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, COALESCE(d.status, ''), COALESCE(d.metode_pembayaran, '')
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 		WHERE d.status = 'confirmed'
+		  AND d.id_simpanan <> 1
+		  AND LOWER(TRIM(COALESCE(s.jenis_simpanan, ''))) <> 'pokok'
 		ORDER BY d.tgl_transaksi DESC
 	`
 	rows, err := db.Query(query)
@@ -390,7 +393,7 @@ func GetPendingSimpanan() ([]models.Detail, error) {
 	db := config.GetDB()
 	var details []models.Detail
 	query := `
-		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, COALESCE(d.status, ''), COALESCE(d.metode_pembayaran, '')
+		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, COALESCE(d.id_pengelola, 0), d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, COALESCE(d.status, ''), COALESCE(d.metode_pembayaran, '')
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
@@ -557,7 +560,7 @@ func GetAllDetails() ([]models.Detail, error) {
 	db := config.GetDB()
 	var details []models.Detail
 	query := `
-		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan
+		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, COALESCE(d.id_pengelola, 0), d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
@@ -1030,7 +1033,7 @@ func GetPendingSimpananByCriteria(idAnggota string, idSimpanan int, jumlah float
 	db := config.GetDB()
 	var details []models.Detail
 	query := `
-		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, d.id_pengelola, d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, COALESCE(d.status, ''), COALESCE(d.metode_pembayaran, '')
+		SELECT d.id_detail, d.id_anggota, a.nama_anggota, d.id_simpanan, s.jenis_simpanan, COALESCE(d.id_pengelola, 0), d.tgl_transaksi, d.jumlah_simpanan, d.total_simpanan, COALESCE(d.status, ''), COALESCE(d.metode_pembayaran, '')
 		FROM detail d
 		JOIN anggota a ON d.id_anggota = a.id_anggota
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
