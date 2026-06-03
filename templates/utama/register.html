@@ -131,11 +131,22 @@
                                     <textarea class="form-control" name="Alamat" rows="2" required></textarea>
                                 </div>
 
-                                <div class="d-grid">
+                                <div class="d-grid mb-3">
                                     <button type="submit" id="submitBtn" class="btn btn-primary btn-lg" disabled>Daftar Sekarang</button>
+                                </div>
+
+                                <div class="text-center">
+                                    <span class="text-muted">Sudah punya akun?</span>
+                                    <a href="/login" class="ms-1 text-decoration-none fw-bold">Login di sini</a>
                                 </div>
                             </div>
                         </form>
+
+                        {{/* Link login juga ditampilkan sebelum memilih status, agar langsung terlihat */}}
+                        <div id="login_link_top" class="text-center mt-3">
+                            <span class="text-muted">Sudah punya akun?</span>
+                            <a href="/login" class="ms-1 text-decoration-none fw-bold">Login di sini</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -161,6 +172,7 @@
         const buktiTransferInput = document.getElementById('register_bukti_transfer');
         const transferFieldsWrapper = document.getElementById('transfer_fields_wrapper');
         const potongGajiInfo = document.getElementById('potong_gaji_info');
+        const loginLinkTop = document.getElementById('login_link_top');
 
         const namaHidden = document.getElementById('register_nama_anggota');
         const namaHintText = document.getElementById('nama_hint_text');
@@ -345,10 +357,13 @@
         statusSelect.addEventListener('change', () => {
             if (statusSelect.value) {
                 formContainer.classList.remove('d-none');
+                // Sembunyikan link login atas karena sudah ada di dalam form
+                loginLinkTop.classList.add('d-none');
                 updateStatusUI();
                 checkReferensi();
             } else {
                 formContainer.classList.add('d-none');
+                loginLinkTop.classList.remove('d-none');
                 submitBtn.disabled = true;
             }
         });

@@ -17,7 +17,7 @@ func InitDB() {
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
 		// Fallback lokal agar backward-compatible di environment dev lama.
-		connStr = "postgres://postgres:SuTa@localhost:5432/koperasi?sslmode=disable"
+		connStr = "postgres://postgres:postgres@localhost:5432/koperasi?sslmode=disable"
 		log.Println("⚠️ DATABASE_URL tidak diset, menggunakan fallback koneksi lokal")
 	}
 
