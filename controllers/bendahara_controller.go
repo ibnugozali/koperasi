@@ -4182,7 +4182,7 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 	persentasePotong, _ := strconv.ParseFloat(c.PostForm("PersentasePotong"), 64)
 	nominalTetap := 0.0            // Set ke 0 karena tidak digunakan lagi
 	tipePemotongan := "persentase" // Set default karena field dihapus dari form
-	statusAktif := true
+	statusAktif := c.PostForm("StatusAktif") == "1"
 
 	// Log data yang akan disimpan
 	log.Printf("💾 Menyimpan konfigurasi simpanan wajib:")
@@ -4241,7 +4241,7 @@ func BendaharaSaveSettingSimpananWajib(c *gin.Context) {
 	log.Printf("📋 Data yang akan ditampilkan: TanggalPotong=%v, Status=%v", config["TanggalPotong"], config["StatusAktif"])
 
 	successMsg := fmt.Sprintf("Konfigurasi berhasil disimpan. Simpanan wajib otomatis aktif setiap tanggal %d.", tanggalPotong)
-	if false {
+	if statusAktif {
 		successMsg = fmt.Sprintf("✓ Konfigurasi berhasil disimpan! Pemotongan otomatis AKTIF setiap tanggal %d", tanggalPotong)
 	} else {
 		successMsg = "✓ Konfigurasi berhasil disimpan! Pemotongan otomatis NONAKTIF"

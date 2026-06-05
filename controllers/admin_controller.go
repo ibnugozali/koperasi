@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -247,12 +248,29 @@ func renderAdminTambahAnggota(c *gin.Context, status int, data gin.H) {
 	data["ActivePage"] = "anggota"
 	data["LogoPath"] = logoPath
 	data["CurrentLogo"] = logoPath
+
+	// Ambil nomor rekening dan nominal simpanan untuk tampilan form
+	db := config.GetDB()
+	var nomorRekening string
+	if err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nomor_rekening'").Scan(&nomorRekening); err != nil {
+		nomorRekening = "-"
+	}
+	var nominalSimpanan string
+	if err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpanan); err != nil {
+		nominalSimpanan = "100000"
+	}
+	data["NomorRekening"] = nomorRekening
+	data["NominalSimpanan"] = nominalSimpanan
+
 	c.HTML(status, "admin_data_anggota_tambah.html", data)
 }
 
 // AdminTambahAnggotaForm menampilkan form tambah anggota (langsung aktif tanpa acc ketua).
 func AdminTambahAnggotaForm(c *gin.Context) {
-	renderAdminTambahAnggota(c, http.StatusOK, gin.H{})
+	renderAdminTambahAnggota(c, http.StatusOK, gin.H{
+		"Success":     c.Query("success"),
+		"ImportError": c.Query("error"),
+	})
 }
 
 // AdminTambahAnggotaPost menyimpan anggota baru langsung aktif.
@@ -267,17 +285,19 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 	fakultas := strings.TrimSpace(c.PostForm("Fakultas"))
 	alamat := strings.TrimSpace(c.PostForm("Alamat"))
 	gajiBulananStr := strings.TrimSpace(c.PostForm("GajiBulanan"))
+	noIdentitasPegawai := strings.TrimSpace(c.PostForm("NoIdentitasPegawai"))
 
 	formData := gin.H{
-		"FormNamaAnggota":   namaAnggota,
-		"FormUsername":      username,
-		"FormNoTelepon":     noTelepon,
-		"FormTglLahir":      tglLahir,
-		"FormJenisKelamin":  jenisKelamin,
-		"FormStatusAnggota": statusAnggota,
-		"FormFakultas":      fakultas,
-		"FormAlamat":        alamat,
-		"FormGajiBulanan":   gajiBulananStr,
+		"FormNamaAnggota":        namaAnggota,
+		"FormUsername":           username,
+		"FormNoTelepon":          noTelepon,
+		"FormTglLahir":           tglLahir,
+		"FormJenisKelamin":       jenisKelamin,
+		"FormStatusAnggota":      statusAnggota,
+		"FormFakultas":           fakultas,
+		"FormAlamat":             alamat,
+		"FormGajiBulanan":        gajiBulananStr,
+		"FormNoIdentitasPegawai": noIdentitasPegawai,
 	}
 
 	if namaAnggota == "" || username == "" || password == "" || noTelepon == "" || tglLahir == "" ||
@@ -310,6 +330,44 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		return
 	}
 
+	// Validasi referensi untuk non-mahasiswa (sama seperti alur register)
+	db := config.GetDB()
+	nikKTP := noIdentitasPegawai
+	if strings.ToLower(statusAnggota) != "mahasiswa" {
+		if noIdentitasPegawai == "" {
+			formData["Error"] = "Nomer identitas wajib diisi sesuai data master import referensi."
+			renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+			return
+		}
+
+		referensiByIdentitas, err := repository.FindReferensiPendaftaranByIdentitas(noIdentitasPegawai)
+		if err == nil {
+			if strings.ToLower(strings.TrimSpace(referensiByIdentitas.StatusKeanggotaan)) == "anggota" {
+				formData["Error"] = "Data ini di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses."
+				renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+				return
+			}
+		} else if err != sql.ErrNoRows {
+			formData["Error"] = "Gagal memvalidasi data referensi pendaftaran."
+			renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
+			return
+		}
+
+		_, err = repository.FindReferensiPendaftaranForRegister(namaAnggota, noIdentitasPegawai, gajiBulanan)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				formData["Error"] = "Data referensi tidak cocok. Pastikan Nama Lengkap, Nomer Identitas, dan Gaji Bersih sama dengan data di import referensi admin."
+				renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+				return
+			}
+			formData["Error"] = "Gagal memvalidasi data referensi pendaftaran."
+			renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
+			return
+		}
+	} else {
+		nikKTP = "" // mahasiswa tidak pakai NIK
+	}
+
 	unitKerja := mapStatusToUnitKerja(statusAnggota)
 	fakultasCode := mapFakultasToCode(fakultas)
 	if unitKerja == "" || fakultasCode == "" {
@@ -317,8 +375,6 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
 		return
 	}
-
-	db := config.GetDB()
 
 	// Validasi unik username / telepon agar tidak bentrok akun.
 	var count int
@@ -345,9 +401,6 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 	nomorUrut := fmt.Sprintf("%04d", lastNumber+1)
 	tahun := time.Now().Format("06")
 	idAnggota := fmt.Sprintf("%s%s%s%s", unitKerja, fakultasCode, tahun, nomorUrut)
-
-	// Nik KTP diisi otomatis agar tidak perlu input NIK di form user.
-	nikKTP := username
 
 	insertQuery := `
 		INSERT INTO anggota (
@@ -415,44 +468,44 @@ func containsHeaderToken(cell string, tokens ...string) bool {
 func AdminImportAnggotaExcel(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak ditemukan."})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error=File+Excel+tidak+ditemukan")
 		return
 	}
 
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if ext != ".xlsx" && ext != ".xls" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format file harus .xlsx atau .xls"})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error=Format+file+harus+.xlsx+atau+.xls")
 		return
 	}
 
 	if file.Size > 10*1024*1024 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran file maksimal 10MB"})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error=Ukuran+file+maksimal+10MB")
 		return
 	}
 
 	tempPath := "./static/uploads/" + uuid.New().String() + ext
 	if err := c.SaveUploadedFile(file, tempPath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file upload"})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error=Gagal+menyimpan+file+upload")
 		return
 	}
 	defer os.Remove(tempPath)
 
 	f, err := excelize.OpenFile(tempPath)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak bisa dibaca"})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error=File+Excel+tidak+bisa+dibaca")
 		return
 	}
 	defer f.Close()
 
 	sheets := f.GetSheetList()
 	if len(sheets) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File Excel tidak memiliki sheet"})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error=File+Excel+tidak+memiliki+sheet")
 		return
 	}
 
 	rows, err := f.GetRows(sheets[0])
 	if err != nil || len(rows) < 2 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data Excel kosong atau tidak valid"})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error=Data+Excel+kosong+atau+tidak+valid")
 		return
 	}
 
@@ -487,7 +540,7 @@ func AdminImportAnggotaExcel(c *gin.Context) {
 
 	idxNama := findHeaderIndex(headerMap, "nama anggota", "nama", "nama_anggota")
 	if idxNama < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Kolom 'Nama Anggota' tidak ditemukan di file Excel"})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error=Kolom+Nama+Anggota+tidak+ditemukan+di+file+Excel")
 		return
 	}
 
@@ -504,7 +557,7 @@ func AdminImportAnggotaExcel(c *gin.Context) {
 	db := config.GetDB()
 	var lastNumber int
 	if err := db.QueryRow("SELECT COALESCE(MAX(CAST(nomor_urut AS INTEGER)), 0) FROM anggota WHERE id_anggota NOT LIKE 'TEMP%'").Scan(&lastNumber); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca nomor urut anggota"})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error=Gagal+membaca+nomor+urut+anggota")
 		return
 	}
 
@@ -652,21 +705,12 @@ func AdminImportAnggotaExcel(c *gin.Context) {
 	}
 
 	if successCount == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":       "Tidak ada data yang berhasil diimport",
-			"success":     successCount,
-			"failed":      failedCount,
-			"parseErrors": parseErrors,
-		})
+		c.Redirect(http.StatusFound, "/admin/anggota/tambah?error="+url.QueryEscape(fmt.Sprintf("Tidak ada data yang berhasil diimport. Gagal: %d", failedCount)))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":     "Import anggota berhasil diproses",
-		"success":     successCount,
-		"failed":      failedCount,
-		"parseErrors": parseErrors,
-	})
+	msg := fmt.Sprintf("Import anggota selesai. Berhasil: %d, Gagal: %d", successCount, failedCount)
+	c.Redirect(http.StatusFound, "/admin/anggota/tambah?success="+url.QueryEscape(msg))
 }
 
 // AdminImportReferensiPendaftaran mengimpor data master referensi untuk validasi register.
@@ -1288,8 +1332,7 @@ func UpdateHalaman(c *gin.Context) {
 			return
 		}
 
-		// Redirect to admin pengaturan instead of dashboard for consistency
-		c.Redirect(http.StatusFound, "/admin/pengaturan")
+		c.Redirect(http.StatusFound, "/admin/halaman/edit/"+slug)
 		return
 	}
 

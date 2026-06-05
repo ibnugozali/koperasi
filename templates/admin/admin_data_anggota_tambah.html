@@ -4,22 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
-    <title>KOPMA</title>
+    <title>KOPMA - Tambah Anggota</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+    <style>
+        .is-invalid-custom { border-color: #dc3545 !important; }
+    </style>
 </head>
 <body>
     {{ template "admin_navbar.html" . }}
     <div class="main-content">
         <div class="container-fluid">
             <br><br><br>
+
+            {{ if .Success }}
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ .Success }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {{ end }}
+            {{ if .ImportError }}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {{ .ImportError }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {{ end }}
+
             <div class="page-header">
                 <h1><i class="fas fa-user-plus me-3"></i>Tambah Anggota Baru</h1>
                 <p>Anggota yang ditambahkan dari admin akan langsung aktif tanpa acc ketua.</p>
             </div>
 
-            <div class="card">
+            <!-- ===== FORM ANGGOTA (logika seperti /register) ===== -->
+            <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Form Anggota</h5>
                     <a href="/admin/anggota" class="btn btn-secondary btn-sm">
@@ -31,157 +49,358 @@
                     <div class="alert alert-danger">{{ .Error }}</div>
                     {{ end }}
 
-                    <form method="POST" action="/admin/anggota/tambah">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Nama Lengkap</label>
-                                <input type="text" class="form-control" name="NamaAnggota" value="{{ .FormNamaAnggota }}" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">No. Telepon</label>
-                                <input type="text" class="form-control" name="NoTelepon" value="{{ .FormNoTelepon }}" required pattern="[1-9][0-9]{8,12}" maxlength="13" inputmode="numeric">
-                            </div>
+                    <form id="formTambahAnggota" method="POST" action="/admin/anggota/tambah">
+
+                        <!-- Pilih Jabatan dulu, seperti register -->
+                        <div class="mb-4">
+                            <label for="statusAnggotaSelect" class="form-label fw-bold">Jabatan / Status Anggota</label>
+                            <select class="form-select form-select-lg border-primary" id="statusAnggotaSelect" name="StatusAnggota" required>
+                                <option value="">-- Pilih Jabatan --</option>
+                                <option value="dosen"    {{ if eq .FormStatusAnggota "dosen"    }}selected{{ end }}>Dosen</option>
+                                <option value="karyawan" {{ if eq .FormStatusAnggota "karyawan" }}selected{{ end }}>Tenaga Pendidikan</option>
+                                <option value="mahasiswa"{{ if eq .FormStatusAnggota "mahasiswa"}}selected{{ end }}>Mahasiswa</option>
+                            </select>
+                            <div id="referensiWarningBox" class="alert alert-danger mt-2 py-2 px-3 d-none mb-0"></div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Nama Pengguna</label>
-                                <input type="text" class="form-control" name="Username" value="{{ .FormUsername }}" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Kata Sandi</label>
-                                <input type="text" class="form-control" name="Password" required>
-                            </div>
-                        </div>
+                        <!-- Semua field berikutnya muncul setelah jabatan dipilih -->
+                        <div id="formFieldsContainer" class="{{ if .FormStatusAnggota }}{{ else }}d-none{{ end }}">
+                            <hr class="my-3">
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tanggal Lahir</label>
-                                <input type="date" class="form-control" name="TglLahir" value="{{ .FormTglLahir }}" required>
+                            <!-- Nomer Identitas (hanya untuk non-mahasiswa) -->
+                            <div class="mb-3" id="wrapperIdentitas">
+                                <label for="noIdentitasPegawai" class="form-label fw-bold">Nomer Identitas (NIDN/NIP)</label>
+                                <input type="text" class="form-control" id="noIdentitasPegawai" name="NoIdentitasPegawai"
+                                    value="{{ .FormNoIdentitasPegawai }}"
+                                    placeholder="Masukkan NIDN/NIP untuk validasi referensi">
+                                <small class="text-muted" id="identitasHint">Masukkan Nomer Identitas untuk mengambil nama dan gaji otomatis dari data referensi.</small>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Jenis Kelamin</label>
-                                <select class="form-select" name="JenisKelamin" required>
-                                    <option value="">Pilih Jenis Kelamin</option>
-                                    <option value="Laki-laki" {{ if eq .FormJenisKelamin "Laki-laki" }}selected{{ end }}>Laki-laki</option>
-                                    <option value="Perempuan" {{ if eq .FormJenisKelamin "Perempuan" }}selected{{ end }}>Perempuan</option>
-                                </select>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Nama Lengkap</label>
+                                    <input type="text" class="form-control" id="namaAnggotaInput" name="NamaAnggota"
+                                        value="{{ .FormNamaAnggota }}"
+                                        placeholder="Nama terisi otomatis dari referensi" required>
+                                    <small class="text-muted" id="namaHint">Nama akan terisi otomatis dari data referensi.</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Unit Kerja</label>
+                                    <select class="form-select" id="fakultasSelect" required>
+                                        <option value="">Pilih Unit Kerja</option>
+                                        <option value="Fakultas Agama Islam (FAI)"                    {{ if eq .FormFakultas "Fakultas Agama Islam (FAI)"                    }}selected{{ end }}>Fakultas Agama Islam (FAI)</option>
+                                        <option value="Fakultas Ekonomi (FE)"                         {{ if eq .FormFakultas "Fakultas Ekonomi (FE)"                         }}selected{{ end }}>Fakultas Ekonomi (FE)</option>
+                                        <option value="Fakultas Hukum (FH)"                           {{ if eq .FormFakultas "Fakultas Hukum (FH)"                           }}selected{{ end }}>Fakultas Hukum (FH)</option>
+                                        <option value="Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)" {{ if eq .FormFakultas "Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)" }}selected{{ end }}>Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)</option>
+                                        <option value="Fakultas Keguruan dan Ilmu Pendidikan (FKIP)" {{ if eq .FormFakultas "Fakultas Keguruan dan Ilmu Pendidikan (FKIP)" }}selected{{ end }}>Fakultas Keguruan dan Ilmu Pendidikan (FKIP)</option>
+                                        <option value="Fakultas Kesehatan Masyarakat (FKM)"           {{ if eq .FormFakultas "Fakultas Kesehatan Masyarakat (FKM)"           }}selected{{ end }}>Fakultas Kesehatan Masyarakat (FKM)</option>
+                                        <option value="Fakultas Pertanian (FAPERTA)"                  {{ if eq .FormFakultas "Fakultas Pertanian (FAPERTA)"                  }}selected{{ end }}>Fakultas Pertanian (FAPERTA)</option>
+                                        <option value="Fakultas Teknik (FT)"                          {{ if eq .FormFakultas "Fakultas Teknik (FT)"                          }}selected{{ end }}>Fakultas Teknik (FT)</option>
+                                        <option value="Paskasarjana"                                  {{ if eq .FormFakultas "Paskasarjana"                                  }}selected{{ end }}>Paskasarjana</option>
+                                        <option value="Rektorat / Yayasan" id="optionRektorat"        {{ if eq .FormFakultas "Rektorat / Yayasan"                            }}selected{{ end }}>Rektorat</option>
+                                    </select>
+                                    <input type="hidden" id="fakultasHidden" name="Fakultas" value="{{ .FormFakultas }}">
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Jabatan</label>
-                                <select class="form-select" name="StatusAnggota" required>
-                                    <option value="">Pilih Jabatan</option>
-                                    <option value="dosen" {{ if eq .FormStatusAnggota "dosen" }}selected{{ end }}>Dosen</option>
-                                    <option value="karyawan" {{ if eq .FormStatusAnggota "karyawan" }}selected{{ end }}>Tenaga Pendidikan</option>
-                                    <option value="mahasiswa" {{ if eq .FormStatusAnggota "mahasiswa" }}selected{{ end }}>Mahasiswa</option>
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Username</label>
+                                    <input type="text" class="form-control" name="Username"
+                                        value="{{ .FormUsername }}" autocomplete="off" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Password</label>
+                                    <input type="text" class="form-control" name="Password"
+                                        autocomplete="new-password" required>
+                                </div>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Unit Kerja</label>
-                                <select class="form-select" name="Fakultas" required>
-                                    <option value="">Pilih Unit Kerja</option>
-                                    <option value="Fakultas Agama Islam (FAI)" {{ if eq .FormFakultas "Fakultas Agama Islam (FAI)" }}selected{{ end }}>Fakultas Agama Islam (FAI)</option>
-                                    <option value="Fakultas Ekonomi (FE)" {{ if eq .FormFakultas "Fakultas Ekonomi (FE)" }}selected{{ end }}>Fakultas Ekonomi (FE)</option>
-                                    <option value="Fakultas Hukum (FH)" {{ if eq .FormFakultas "Fakultas Hukum (FH)" }}selected{{ end }}>Fakultas Hukum (FH)</option>
-                                    <option value="Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)" {{ if eq .FormFakultas "Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)" }}selected{{ end }}>Fakultas Ilmu Sosial dan Ilmu Politik (FISIP)</option>
-                                    <option value="Fakultas Keguruan dan Ilmu Pendidikan (FKIP)" {{ if eq .FormFakultas "Fakultas Keguruan dan Ilmu Pendidikan (FKIP)" }}selected{{ end }}>Fakultas Keguruan dan Ilmu Pendidikan (FKIP)</option>
-                                    <option value="Fakultas Kesehatan Masyarakat (FKM)" {{ if eq .FormFakultas "Fakultas Kesehatan Masyarakat (FKM)" }}selected{{ end }}>Fakultas Kesehatan Masyarakat (FKM)</option>
-                                    <option value="Fakultas Pertanian (FAPERTA)" {{ if eq .FormFakultas "Fakultas Pertanian (FAPERTA)" }}selected{{ end }}>Fakultas Pertanian (FAPERTA)</option>
-                                    <option value="Fakultas Teknik (FT)" {{ if eq .FormFakultas "Fakultas Teknik (FT)" }}selected{{ end }}>Fakultas Teknik (FT)</option>
-                                    <option value="Paskasarjana" {{ if eq .FormFakultas "Paskasarjana" }}selected{{ end }}>Paskasarjana</option>
-                                    <option value="Rektoriat" {{ if eq .FormFakultas "Rektoriat" }}selected{{ end }}>Rektoriat</option>
-                                </select>
+
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">No. Telepon</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">+62</span>
+                                        <input type="text" class="form-control" id="noTeleponInput" name="NoTelepon"
+                                            value="{{ .FormNoTelepon }}"
+                                            required
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^0+/, '')">
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Tanggal Lahir</label>
+                                    <input type="date" class="form-control" name="TglLahir"
+                                        value="{{ .FormTglLahir }}" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Jenis Kelamin</label>
+                                    <select class="form-select" name="JenisKelamin" required>
+                                        <option value="Laki-laki" {{ if eq .FormJenisKelamin "Laki-laki" }}selected{{ end }}>Laki-laki</option>
+                                        <option value="Perempuan"  {{ if eq .FormJenisKelamin "Perempuan"  }}selected{{ end }}>Perempuan</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Gaji Bulanan</label>
-                            <input type="number" class="form-control" name="GajiBulanan" value="{{ .FormGajiBulanan }}" min="0" step="1000">
-                            <small class="text-muted">Wajib diisi untuk dosen dan tenaga pendidikan.</small>
-                        </div>
+                            <!-- Gaji (hanya non-mahasiswa, terisi dari referensi) -->
+                            <div class="mb-3" id="wrapperGaji">
+                                <label class="form-label fw-bold text-primary">Gaji Bersih</label>
+                                <div id="gajiDisplayText" class="alert alert-secondary py-2 px-3 mb-1">
+                                    Menunggu data identitas...
+                                </div>
+                                <input type="hidden" id="gajiBulananHidden" name="GajiBulanan" value="{{ .FormGajiBulanan }}">
+                            </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Alamat</label>
-                            <textarea class="form-control" name="Alamat" rows="3" required>{{ .FormAlamat }}</textarea>
-                        </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Alamat</label>
+                                <textarea class="form-control" name="Alamat" rows="2" required>{{ .FormAlamat }}</textarea>
+                            </div>
 
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i>Simpan Anggota
-                            </button>
-                            <a href="/admin/anggota" class="btn btn-light border">Batal</a>
-                        </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" id="submitBtn" class="btn btn-primary" disabled>
+                                    <i class="fas fa-save me-1"></i>Simpan Anggota
+                                </button>
+                                <a href="/admin/anggota" class="btn btn-light border">Batal</a>
+                            </div>
+                        </div><!-- /formFieldsContainer -->
                     </form>
                 </div>
             </div>
 
-            <div class="card mt-3">
-                <div class="card-header">
+            <!-- ===== TAMBAH MASSAL via Excel (logika seperti /admin/import-referensi) ===== -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
                     <h5 class="mb-0"><i class="fas fa-file-excel me-2"></i>Tambah Massal via Excel</h5>
                 </div>
                 <div class="card-body">
-                    <div id="importAlert"></div>
-                    <form id="importForm" enctype="multipart/form-data">
+                    <p class="text-muted mb-3">Upload file Excel berisi daftar anggota. Semua anggota yang diimport akan langsung aktif.</p>
+                    <form method="POST" action="/admin/anggota/tambah/import" enctype="multipart/form-data">
                         <div class="mb-3">
-                            <label class="form-label">File Excel (.xlsx/.xls)</label>
-                            <input type="file" class="form-control" name="file" accept=".xlsx,.xls" required>
-                            <small class="text-muted">
-                                Urutan kolom: Nama Anggota, Unit Kerja, Tanggal Lahir, No Telepon, Jenis Kelamin, Fakultas, Gaji Bulanan, Alamat.
-                            </small>
+                            <label for="excelFile" class="form-label">File Excel (.xlsx / .xls)</label>
+                            <input type="file" class="form-control" id="excelFile" name="file" accept=".xlsx,.xls" required>
                         </div>
-                        <button type="submit" class="btn btn-success" id="importBtn">
-                            <i class="fas fa-upload me-1"></i>Import Excel
+                        <div class="small text-muted mb-3">
+                            Header kolom yang dikenali: <code>Nama Anggota</code>, <code>Unit Kerja</code>, <code>Jabatan</code>, <code>Tanggal Lahir</code>, <code>No Telepon</code>, <code>Jenis Kelamin</code>, <code>Gaji Bulanan</code>, <code>Alamat</code>, <code>Username</code>, <code>Password</code>.
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-upload me-2"></i>Import Excel
                         </button>
                     </form>
                 </div>
             </div>
+
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const importForm = document.getElementById('importForm');
-        const importBtn = document.getElementById('importBtn');
-        const importAlert = document.getElementById('importAlert');
+    (function () {
+        const statusSelect     = document.getElementById('statusAnggotaSelect');
+        const formContainer    = document.getElementById('formFieldsContainer');
+        const identitasInput   = document.getElementById('noIdentitasPegawai');
+        const identitasHint    = document.getElementById('identitasHint');
+        const namaInput        = document.getElementById('namaAnggotaInput');
+        const namaHint         = document.getElementById('namaHint');
+        const fakultasSelect   = document.getElementById('fakultasSelect');
+        const fakultasHidden   = document.getElementById('fakultasHidden');
+        const optionRektorat   = document.getElementById('optionRektorat');
+        const gajiDisplay      = document.getElementById('gajiDisplayText');
+        const gajiHidden       = document.getElementById('gajiBulananHidden');
+        const wrapperIdentitas = document.getElementById('wrapperIdentitas');
+        const wrapperGaji      = document.getElementById('wrapperGaji');
+        const warningBox       = document.getElementById('referensiWarningBox');
+        const submitBtn        = document.getElementById('submitBtn');
 
-        function showImportAlert(type, message) {
-            importAlert.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+        let latestRefStatus = '';
+        let latestRefFound  = false;
+        let lookupTimer     = null;
+
+        function formatRupiah(n) {
+            return 'Rp ' + new Intl.NumberFormat('id-ID').format(n);
         }
 
-        importForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            importBtn.disabled = true;
-            importBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
+        // Restore gaji display on page load if value already set (e.g. after POST error)
+        (function restoreGajiDisplay() {
+            const v = parseInt(gajiHidden.value || '0', 10);
+            if (v > 0) {
+                gajiDisplay.innerText = formatRupiah(v);
+                gajiDisplay.className = 'alert alert-success py-2 px-3 mb-1 fw-bold';
+            }
+        })();
+
+        function isMahasiswa() {
+            return statusSelect.value === 'mahasiswa';
+        }
+
+        function updateReferensiWarning() {
+            const selected = statusSelect.value;
+            let errorMsg = '';
+
+            if (selected && selected !== 'mahasiswa' && latestRefFound && !latestRefStatus) {
+                errorMsg = 'Data referensi ditemukan, tetapi jabatan pada Nomer Identitas ini belum dikenali sistem. Perbarui import referensi.';
+            } else if (selected && latestRefStatus && selected !== latestRefStatus) {
+                const label = latestRefStatus === 'dosen' ? 'DOSEN' : 'TENAGA PENDIDIKAN';
+                errorMsg = `Data Nomer Identitas terdaftar sebagai <b>${label}</b>. Anda memilih jabatan yang salah.`;
+            }
+
+            if (errorMsg) {
+                warningBox.innerHTML = errorMsg;
+                warningBox.classList.remove('d-none');
+                statusSelect.classList.add('is-invalid-custom');
+                return false;
+            }
+            warningBox.innerHTML = '';
+            warningBox.classList.add('d-none');
+            statusSelect.classList.remove('is-invalid-custom');
+            return true;
+        }
+
+        function updateSubmitState() {
+            if (!statusSelect.value) { submitBtn.disabled = true; return; }
+            if (isMahasiswa())       { submitBtn.disabled = false; return; }
+            if (!latestRefFound)     { submitBtn.disabled = true; return; }
+            submitBtn.disabled = !updateReferensiWarning();
+        }
+
+        function updateStatusUI() {
+            const mhs = isMahasiswa();
+
+            wrapperIdentitas.classList.toggle('d-none', mhs);
+            wrapperGaji.classList.toggle('d-none', mhs);
+            identitasInput.required = !mhs;
+
+            // Mahasiswa: nama bisa diedit bebas
+            namaInput.readOnly = !mhs;
+
+            if (mhs) {
+                identitasInput.value = '';
+                namaInput.placeholder = 'Masukkan nama lengkap';
+                namaHint.textContent  = 'Silakan isi nama lengkap.';
+                gajiHidden.value = 0;
+                gajiDisplay.innerText  = 'Mahasiswa (tidak ada gaji)';
+                gajiDisplay.className  = 'alert alert-secondary py-2 px-3 mb-1';
+            } else {
+                namaInput.placeholder = 'Nama terisi otomatis dari data referensi';
+                namaHint.textContent  = 'Masukkan Nomer Identitas untuk mengambil nama otomatis dari data referensi.';
+                if (!gajiHidden.value || gajiHidden.value === '0') {
+                    gajiDisplay.innerText = 'Menunggu data identitas...';
+                    gajiDisplay.className = 'alert alert-secondary py-2 px-3 mb-1';
+                }
+            }
+
+            // Rektorat hanya untuk non-dosen
+            optionRektorat.style.display = (statusSelect.value === 'dosen') ? 'none' : 'block';
+            if (optionRektorat.style.display === 'none' && fakultasSelect.value === 'Rektorat / Yayasan') {
+                fakultasSelect.value = '';
+                fakultasHidden.value = '';
+            }
+        }
+
+        async function checkReferensi() {
+            const identitas = identitasInput.value.trim();
+            const statusVal = statusSelect.value;
+
+            if (statusVal === 'mahasiswa') {
+                latestRefFound  = true;
+                latestRefStatus = 'mahasiswa';
+                updateReferensiWarning();
+                updateSubmitState();
+                return;
+            }
+
+            if (!identitas) {
+                latestRefFound  = false;
+                latestRefStatus = '';
+                namaInput.value = '';
+                gajiHidden.value = 0;
+                gajiDisplay.innerText = 'Menunggu Nomer Identitas...';
+                gajiDisplay.className = 'alert alert-secondary py-2 px-3 mb-1';
+                identitasHint.textContent = 'Masukkan Nomer Identitas untuk mengambil nama dan gaji otomatis dari data referensi.';
+                updateReferensiWarning();
+                updateSubmitState();
+                return;
+            }
 
             try {
-                const formData = new FormData(importForm);
-                const response = await fetch('/admin/anggota/tambah/import', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
+                identitasHint.textContent = 'Mencari data referensi...';
+                gajiDisplay.innerText     = 'Mencari data...';
+                const res  = await fetch(`/api/register/referensi?identitas=${encodeURIComponent(identitas)}`, { cache: 'no-store' });
+                const data = await res.json();
 
-                if (!response.ok || data.error) {
-                    showImportAlert('danger', data.error || 'Gagal import data anggota.');
-                    return;
+                if (data.found) {
+                    latestRefFound  = true;
+                    latestRefStatus = data.status_referensi || '';
+                    namaInput.value = data.nama_lengkap || '';
+                    namaHint.textContent = data.nama_lengkap
+                        ? 'Nama otomatis terisi dari data referensi.'
+                        : 'Data referensi ditemukan (nama kosong).';
+                    gajiHidden.value = data.gaji_bulanan || 0;
+                    gajiDisplay.innerText = formatRupiah(data.gaji_bulanan || 0);
+                    gajiDisplay.className = 'alert alert-success py-2 px-3 mb-1 fw-bold';
+                    identitasHint.textContent = 'Data referensi ditemukan.';
+                } else {
+                    latestRefFound  = false;
+                    latestRefStatus = '';
+                    namaInput.value = '';
+                    gajiHidden.value = 0;
+                    gajiDisplay.innerText = 'Data tidak ditemukan di database referensi';
+                    gajiDisplay.className = 'alert alert-warning py-2 px-3 mb-1';
+                    identitasHint.textContent = 'Nomer Identitas tidak ada di data referensi. Import referensi terlebih dahulu.';
                 }
+            } catch (e) {
+                latestRefFound  = false;
+                latestRefStatus = '';
+                gajiDisplay.innerText = 'Gagal menghubungi server';
+                gajiDisplay.className = 'alert alert-danger py-2 px-3 mb-1';
+            }
 
-                const success = data.success || 0;
-                const failed = data.failed || 0;
-                showImportAlert('success', 'Import selesai. Berhasil: ' + success + ', Gagal: ' + failed + '.');
-                setTimeout(function() {
-                    window.location.href = '/admin/anggota?success=' + encodeURIComponent('Import anggota selesai. Berhasil: ' + success + ', Gagal: ' + failed);
-                }, 1200);
-            } catch (err) {
-                showImportAlert('danger', 'Terjadi kesalahan saat upload file Excel.');
-            } finally {
-                importBtn.disabled = false;
-                importBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Import Excel';
+            updateReferensiWarning();
+            updateSubmitState();
+        }
+
+        // Events
+        statusSelect.addEventListener('change', function () {
+            if (statusSelect.value) {
+                formContainer.classList.remove('d-none');
+                updateStatusUI();
+                checkReferensi();
+            } else {
+                formContainer.classList.add('d-none');
+                submitBtn.disabled = true;
             }
         });
+
+        identitasInput.addEventListener('input', function () {
+            clearTimeout(lookupTimer);
+            lookupTimer = setTimeout(checkReferensi, 400);
+        });
+
+        fakultasSelect.addEventListener('change', function () {
+            fakultasHidden.value = fakultasSelect.value;
+        });
+
+        document.getElementById('formTambahAnggota').addEventListener('submit', function (e) {
+            updateReferensiWarning();
+            updateSubmitState();
+            if (submitBtn.disabled) {
+                e.preventDefault();
+                alert('Mohon perbaiki data sebelum menyimpan.');
+            }
+        });
+
+        // Init: if jabatan already selected (e.g. after POST error), show fields
+        if (statusSelect.value) {
+            formContainer.classList.remove('d-none');
+            updateStatusUI();
+            // If identitas already filled, trigger lookup
+            if (identitasInput.value.trim()) {
+                checkReferensi();
+            } else if (isMahasiswa()) {
+                latestRefFound  = true;
+                latestRefStatus = 'mahasiswa';
+                submitBtn.disabled = false;
+            }
+        }
+    })();
     </script>
 </body>
 </html>

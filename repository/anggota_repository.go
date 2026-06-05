@@ -411,7 +411,8 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 	var totalSimpananWajibDetail float64
 	detailWajibQuery := `SELECT COALESCE(SUM(jumlah_simpanan), 0) 
 	                     FROM detail 
-	                     WHERE id_anggota = $1 AND id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed'`
+	                     WHERE id_anggota = $1 AND id_simpanan = 2
+	                       AND COALESCE(LOWER(status), 'confirmed') IN ('confirmed', 'diterima', 'lunas')`
 	err = db.QueryRow(detailWajibQuery, id).Scan(&totalSimpananWajibDetail)
 	if err != nil {
 		totalSimpananWajibDetail = 0
@@ -510,12 +511,14 @@ func GetSimpananWajibAllAnggota() (map[string]float64, error) {
 		}
 	}
 
-	// Tambahkan simpanan wajib dari detail (konfirmasi manual oleh bendahara)
+	// Tambahkan simpanan wajib dari detail (konfirmasi manual oleh bendahara/ketua)
 	// id_simpanan = 2 adalah simpanan wajib
 	// Menggunakan SUM dari jumlah_simpanan, bukan total_simpanan terbaru
+	// Status yang valid: 'confirmed' (bendahara), 'diterima' (ketua), 'lunas', atau NULL (default confirmed)
 	queryDetail := `SELECT id_anggota, COALESCE(SUM(jumlah_simpanan), 0) as total_simpanan_wajib
 	                FROM detail
-	                WHERE id_simpanan = 2 AND COALESCE(status, 'confirmed') = 'confirmed'
+	                WHERE id_simpanan = 2
+	                  AND COALESCE(LOWER(status), 'confirmed') IN ('confirmed', 'diterima', 'lunas')
 	                GROUP BY id_anggota`
 
 	rows2, err := db.Query(queryDetail)
@@ -579,6 +582,12 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 
 	// Jika sudah ada data dari log, return data tersebut (tidak peduli status aktif atau tidak)
 	if len(potonganBulanIni) > 0 {
+		return potonganBulanIni, nil
+	}
+
+	// Jika status tidak aktif, tidak perlu menghitung preview potongan
+	statusAktif, _ := config["StatusAktif"].(bool)
+	if !statusAktif {
 		return potonganBulanIni, nil
 	}
 

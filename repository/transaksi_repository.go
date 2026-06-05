@@ -840,14 +840,58 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 
 // GetTotalSimpanan mengambil total simpanan semua anggota yang sudah dikonfirmasi
 func GetTotalSimpanan(db *sql.DB) (float64, error) {
-	var total float64
-	query := `
+	// Simpanan pokok: nominal registrasi × jumlah anggota aktif
+	// (sama dengan logika di ketua/anggota: setiap anggota aktif mendapat simpanan pokok)
+	var nominalPokok float64
+	db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalPokok)
+	if nominalPokok <= 0 {
+		nominalPokok = 100000
+	}
+
+	var jumlahAnggotaAktif float64
+	db.QueryRow(`SELECT COUNT(*) FROM anggota WHERE status = 'aktif'`).Scan(&jumlahAnggotaAktif)
+
+	totalPokok := nominalPokok * jumlahAnggotaAktif
+
+	// Simpanan wajib: gunakan fungsi yang sama persis dengan halaman /ketua/anggota
+	// agar nilainya selalu konsisten
+	simpananWajibMap, _ := GetSimpananWajibAllAnggota()
+	potonganBulanIniMap, _ := GetPotonganBulanIniAllAnggota()
+	var totalWajib float64
+	rows, err := db.Query(`SELECT id_anggota FROM anggota WHERE status = 'aktif'`)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var idAnggota string
+			if scanErr := rows.Scan(&idAnggota); scanErr != nil {
+				continue
+			}
+
+			wajib := simpananWajibMap[idAnggota]
+			if wajib <= 0 && potonganBulanIniMap[idAnggota] > 0 {
+				wajib = potonganBulanIniMap[idAnggota]
+			}
+			totalWajib += wajib
+		}
+	} else {
+		for _, wajib := range simpananWajibMap {
+			totalWajib += wajib
+		}
+	}
+
+	// Simpanan lainnya (sukarela, hari raya, umroh, qurban, dll) dari detail,
+	// selain pokok (id_simpanan=1) dan wajib (id_simpanan=2).
+	// Gunakan COALESCE(status,'confirmed') = 'confirmed' agar konsisten dengan query per-anggota.
+	var totalLainnya float64
+	db.QueryRow(`
 		SELECT COALESCE(SUM(jumlah_simpanan), 0)
 		FROM detail
-		WHERE COALESCE(LOWER(status), 'pending') IN ('confirmed', 'diterima', 'lunas')
-	`
-	err := db.QueryRow(query).Scan(&total)
-	return total, err
+		WHERE id_simpanan NOT IN (1, 2)
+		  AND COALESCE(status, 'confirmed') = 'confirmed'
+	`).Scan(&totalLainnya)
+
+	total := totalPokok + totalWajib + totalLainnya
+	return total, nil
 }
 
 // GetTotalPinjaman mengambil total pinjaman semua anggota yang aktif
