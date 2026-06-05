@@ -83,11 +83,13 @@ func ensureAngsuranTable() error {
 	  id_pinjaman INT REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
 	  id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL,
 	  tgl_bayar TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	  jumlah_angsuran NUMERIC(15,2) DEFAULT 0,
 	  sisa_pinjaman NUMERIC(15,2),
 	  status_angsuran VARCHAR(25) CHECK (status_angsuran IN ('belum_lunas', 'lunas', 'terlambat')),
 	  bukti_angsuran VARCHAR(255),
 	  status VARCHAR(25) DEFAULT 'valid' CHECK (status IN ('valid', 'invalid'))
 	);
+	ALTER TABLE angsuran ADD COLUMN IF NOT EXISTS jumlah_angsuran NUMERIC(15,2) DEFAULT 0;
 	CREATE INDEX IF NOT EXISTS idx_angsuran_pinjaman ON angsuran(id_pinjaman);
 	`
 

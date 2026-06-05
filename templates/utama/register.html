@@ -121,7 +121,14 @@
                                 <div id="transfer_fields_wrapper" class="mb-3">
                                     <label class="form-label fw-bold">Upload Bukti Transfer</label>
                                     <input type="file" class="form-control" id="register_bukti_transfer" name="BuktiTransfer" accept="image/*,.pdf">
-                                    <small class="text-danger">Nominal: {{ .NominalSimpanan }}</small>
+                                    <div class="row g-2 mt-2">
+                                        <div class="col-md-6">
+                                            <small class="text-danger fw-semibold">Nominal: {{ .NominalSimpanan }}</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-primary fw-semibold">No. Rekening: {{ .NomorRekening }}</small>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div id="potong_gaji_info" class="alert alert-info d-none"></div>

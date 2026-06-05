@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS angsuran (
   id_pinjaman INT REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
   id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL,
   tgl_bayar TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  jumlah_angsuran NUMERIC(15,2) DEFAULT 0,
   sisa_pinjaman NUMERIC(15,2),
   status_angsuran VARCHAR(25) CHECK (status_angsuran IN ('belum_lunas', 'lunas', 'terlambat')),
   bukti_angsuran VARCHAR(255),
@@ -400,6 +401,7 @@ ALTER TABLE pinjaman ALTER COLUMN tgl_pinjaman SET DEFAULT CURRENT_TIMESTAMP;
 
 ALTER TABLE angsuran ALTER COLUMN tgl_bayar TYPE TIMESTAMP WITHOUT TIME ZONE;
 ALTER TABLE angsuran ALTER COLUMN tgl_bayar SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE angsuran ADD COLUMN IF NOT EXISTS jumlah_angsuran NUMERIC(15,2) DEFAULT 0;
 ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS metode_pencairan VARCHAR(20);
 ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS metode_angsuran VARCHAR(20);
 ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS nomor_rekening VARCHAR(50);

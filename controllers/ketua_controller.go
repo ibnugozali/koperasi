@@ -4018,6 +4018,14 @@ func sendCurrentMonthBuktiTransferReminderIfNeeded(c *gin.Context, buktiList []b
 		return
 	}
 
+	token := strings.TrimSpace(os.Getenv("WA_GATEWAY_TOKEN"))
+	if token == "" {
+		token = getPengaturanValue(db, "wa_gateway_token")
+	}
+	if token == "" {
+		return
+	}
+
 	appBaseURL := resolveAppBaseURL(c, db)
 	if err := sendKetuaWhatsAppTransactionNotification(
 		"",

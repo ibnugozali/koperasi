@@ -1395,50 +1395,42 @@ $(document).ready(function() {
         });
     }
 
-    // Initialize DataTables for 5 yearly report tables
-    $('#simpananWajibTable').DataTable({
+    // DataTables tidak mendukung row body dengan colspan. Hapus row pesan kosong/error
+    // sebelum init agar jumlah kolom selalu sesuai dengan header.
+    const prepareDataTableBody = function(tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        table.querySelectorAll('tbody tr').forEach(function(row) {
+            if (row.querySelector('td[colspan]')) {
+                row.remove();
+            }
+        });
+    };
+
+    const yearlyDataTableOptions = function(emptyMessage) {
+        return {
             "language": {
                 "url": "/static/js/datatables/i18n/id.json",
-                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
+                "info": "Menampilkan halaman _PAGE_ dari _PAGES_",
+                "emptyTable": emptyMessage
             },
-        "pageLength": 10,
-        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-        "order": [[0, 'desc']],
-        "responsive": true
-    });
+            "pageLength": 10,
+            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+            "order": [[0, 'desc']],
+            "responsive": true
+        };
+    };
+
+    ['simpananWajibTable', 'simpananSukarelaTable', 'pinjamanTahunanTable', 'angsuranTahunanTable'].forEach(prepareDataTableBody);
+
+    // Initialize DataTables for yearly report tables
+    $('#simpananWajibTable').DataTable(yearlyDataTableOptions('Tidak ada data simpanan anggota untuk periode ini'));
     
-    $('#simpananSukarelaTable').DataTable({
-            "language": {
-                "url": "/static/js/datatables/i18n/id.json",
-                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
-            },
-        "pageLength": 10,
-        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-        "order": [[0, 'desc']],
-        "responsive": true
-    });
+    $('#simpananSukarelaTable').DataTable(yearlyDataTableOptions('Tidak ada data piutang anggota untuk periode ini'));
     
-    $('#pinjamanTahunanTable').DataTable({
-            "language": {
-                "url": "/static/js/datatables/i18n/id.json",
-                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
-            },
-        "pageLength": 10,
-        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-        "order": [[0, 'desc']],
-        "responsive": true
-    });
+    $('#pinjamanTahunanTable').DataTable(yearlyDataTableOptions('Tidak ada data piutang macet anggota untuk periode ini'));
     
-    $('#angsuranTahunanTable').DataTable({
-            "language": {
-                "url": "/static/js/datatables/i18n/id.json",
-                "info": "Menampilkan halaman _PAGE_ dari _PAGES_"
-            },
-        "pageLength": 10,
-        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
-        "order": [[0, 'desc']],
-        "responsive": true
-    });
+    $('#angsuranTahunanTable').DataTable(yearlyDataTableOptions('Tidak ada data SHU anggota'));
 });
 
 // Fungsi untuk tambah item baru
