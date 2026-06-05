@@ -2911,15 +2911,28 @@ func KetuaDataAnggota(c *gin.Context) {
 		potonganRegister = make(map[string]float64)
 	}
 
+	nominalSimpananWajib := 0.0
+	if configSimpananWajib, err := repository.GetKonfigurasiSimpananWajib(); err == nil {
+		if nominal, ok := configSimpananWajib["PersentasePotong"].(float64); ok {
+			nominalSimpananWajib = nominal
+		}
+	}
+
 	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
 	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
-		potongan := potonganBulanIni[anggota.IDAnggota] + potonganRegister[anggota.IDAnggota]
+		potonganWajib := potonganBulanIni[anggota.IDAnggota]
+		if potonganWajib <= 0 && nominalSimpananWajib > 0 {
+			potonganWajib = nominalSimpananWajib
+		}
+		potongan := potonganWajib + potonganRegister[anggota.IDAnggota]
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 
 		// Fallback tampilan jika total simpanan wajib belum tercatat.
-		if simpananWajib[anggota.IDAnggota] <= 0 && potonganBulanIni[anggota.IDAnggota] > 0 {
-			simpananWajib[anggota.IDAnggota] = potonganBulanIni[anggota.IDAnggota]
+		if simpananWajib[anggota.IDAnggota] <= 0 && potonganWajib > 0 {
+			simpananWajib[anggota.IDAnggota] = potonganWajib
+		} else if simpananWajib[anggota.IDAnggota] <= 0 && nominalSimpananWajib > 0 {
+			simpananWajib[anggota.IDAnggota] = nominalSimpananWajib
 		}
 	}
 	// Cari logo terbaru di static/images

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-       <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
+    <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
     <title>KOPMA</title>
 
     <!-- Bootstrap & Font Awesome -->
@@ -20,11 +20,14 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="container-fluid">
-            <br><br>
+            <div class="dashboard-header">
+                <h4 class="dashboard-title mb-1">Ringkasan Dashboard Bendahara</h4>
+                <p class="dashboard-subtitle mb-0">Pantau statistik anggota dan kondisi keuangan koperasi secara cepat.</p>
+            </div>
         
             <!-- Statistik -->
-            <div class="row g-4 mb-5">
-                <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="row g-4 mb-4">
+                <div class="col-xxl-2 col-lg-4 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-primary"><i class="fa-solid fa-users"></i></div>
                         <div class="stat-number text-primary" data-value="{{ .TotalAnggota }}">{{ .TotalAnggota }}</div>
@@ -32,7 +35,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="col-xxl-2 col-lg-4 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-warning"><i class="fa-solid fa-user-clock"></i></div>
                         <div class="stat-number text-warning" data-value="{{ .MenungguKonfirmasi }}">{{ .MenungguKonfirmasi }}</div>
@@ -40,7 +43,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="col-xxl-2 col-lg-4 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-success"><i class="fa-solid fa-wallet"></i></div>
                         <div class="stat-number text-success" data-value="{{ printf "%.0f" .TotalSimpanan }}">{{ printf "%.0f" .TotalSimpanan }}</div>
@@ -48,7 +51,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="col-xxl-2 col-lg-4 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-danger"><i class="fa-solid fa-money-bill-wave"></i></div>
                         <div class="stat-number text-danger" data-value="{{ printf "%.0f" .TotalPinjaman }}">{{ printf "%.0f" .TotalPinjaman }}</div>
@@ -56,7 +59,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-2 col-md-6 col-sm-6">
+                <div class="col-xxl-2 col-lg-4 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-info"><i class="fa-solid fa-hand-holding-dollar"></i></div>
                         <div class="stat-number text-info" data-value="{{ printf "%.0f" .TotalAngsuran }}">{{ printf "%.0f" .TotalAngsuran }}</div>
@@ -64,7 +67,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-2 col-md-6 col-sm-6">
+                <div class="col-xxl-2 col-lg-4 col-md-6 col-sm-6">
                     <div class="stat-card">
                         <div class="stat-icon text-secondary"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
                         <div class="stat-number text-secondary" data-value="{{ printf "%.0f" .TotalPengambilan }}">{{ printf "%.0f" .TotalPengambilan }}</div>
@@ -76,12 +79,12 @@
             <!-- Ringkasan Keuangan - Grafik -->
             <div class="row">
                 <div class="col-12">
-                    <div class="card shadow-sm">
+                    <div class="card dashboard-chart-card shadow-sm">
                         <div class="card-header bg-primary text-white">
                             <i class="fa-solid fa-chart-pie me-2"></i> Ringkasan Keuangan Koperasi
                         </div>
                         <div class="card-body">
-                            <div style="position: relative; height: 400px; width: 100%;">
+                            <div class="chart-wrapper">
                                 <canvas id="activityChart" 
                                     data-anggota="{{ .TotalAnggota }}"
                                     data-menunggu="{{ .MenungguKonfirmasi }}"
@@ -144,11 +147,15 @@
             ? [1]
             : (useCompressedScale ? rawValues.map((v) => v > 0 ? Math.log10(v + 1) : 0) : rawValues);
 
-        // Update display dengan format rupiah untuk card yang menampilkan angka rupiah
+        // Update display dengan format rupiah hanya untuk metrik keuangan
         document.querySelectorAll('.stat-number[data-value]').forEach((el) => {
             const value = parseFloat(el.getAttribute('data-value')) || 0;
-            // Jika value > 1000, kemungkinan besar ini adalah nilai rupiah
-            if (value >= 1000) {
+            const parentCard = el.closest('.stat-card');
+            const labelText = parentCard
+                ? (parentCard.querySelector('.stat-label')?.textContent || '').toLowerCase()
+                : '';
+            const isCurrencyMetric = /simpanan|pinjaman|angsuran|penarikan/.test(labelText);
+            if (isCurrencyMetric) {
                 el.textContent = formatRupiah(value);
             }
         });
@@ -286,7 +293,7 @@
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'right',
+                        position: window.innerWidth <= 768 ? 'bottom' : 'right',
                         labels: {
                             usePointStyle: true,
                             pointStyle: 'circle',

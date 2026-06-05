@@ -857,6 +857,12 @@ func GetTotalSimpanan(db *sql.DB) (float64, error) {
 	// agar nilainya selalu konsisten
 	simpananWajibMap, _ := GetSimpananWajibAllAnggota()
 	potonganBulanIniMap, _ := GetPotonganBulanIniAllAnggota()
+	nominalSimpananWajib := 0.0
+	if configSimpananWajib, configErr := GetKonfigurasiSimpananWajib(); configErr == nil {
+		if nominal, ok := configSimpananWajib["PersentasePotong"].(float64); ok {
+			nominalSimpananWajib = nominal
+		}
+	}
 	var totalWajib float64
 	rows, err := db.Query(`SELECT id_anggota FROM anggota WHERE status = 'aktif'`)
 	if err == nil {
@@ -870,6 +876,8 @@ func GetTotalSimpanan(db *sql.DB) (float64, error) {
 			wajib := simpananWajibMap[idAnggota]
 			if wajib <= 0 && potonganBulanIniMap[idAnggota] > 0 {
 				wajib = potonganBulanIniMap[idAnggota]
+			} else if wajib <= 0 && nominalSimpananWajib > 0 {
+				wajib = nominalSimpananWajib
 			}
 			totalWajib += wajib
 		}
