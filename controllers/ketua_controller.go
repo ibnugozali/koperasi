@@ -3991,6 +3991,7 @@ func KetuaUploadBuktiTransferGaji(c *gin.Context) {
 		"CurrentYear":    now.Year(),
 		"SuccessMessage": successMsg,
 		"ErrorMessage":   errorMsg,
+		"ActivePage":     "upload-bukti-transfer-gaji",
 	})
 }
 
