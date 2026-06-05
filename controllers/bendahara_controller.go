@@ -731,14 +731,25 @@ func BendaharaPesan(c *gin.Context) {
 		}
 
 		appBaseURL := resolveAppBaseURL(c, db)
+		waErr := ""
 		if errWA := sendAnggotaWhatsAppPesanNotification(anggotaNoTelepon, anggotaNama, judul, isi, appBaseURL); errWA != nil {
 			log.Printf("[WA PESAN ANGGOTA] gagal kirim WA ke anggota %s (%s): %v", anggotaNama, anggotaID, errWA)
+			waErr = errWA.Error()
 		}
 
-		c.JSON(http.StatusOK, gin.H{
+		respData := gin.H{
 			"success": true,
 			"message": fmt.Sprintf("✅ Pesan berhasil dikirim ke <strong>%s</strong>", anggotaNama),
-		})
+		}
+		if waErr != "" {
+			respData["wa_error"] = waErr
+			if strings.Contains(waErr, "belum diset") {
+				respData["wa_info"] = "Notifikasi WhatsApp tidak terkirim karena WA Gateway Token belum dikonfigurasi. Pesan tetap tersimpan di sistem."
+			} else {
+				respData["wa_info"] = "Notifikasi WhatsApp gagal: " + waErr + ". Pesan tetap tersimpan di sistem."
+			}
+		}
+		c.JSON(http.StatusOK, respData)
 		return
 	}
 
@@ -806,12 +817,25 @@ func BendaharaPesan(c *gin.Context) {
 		log.Printf("[WARN] gagal memuat daftar pesan bendahara: %v", err)
 	}
 
+	// Cek apakah WA token sudah dikonfigurasi
+	waTokenSet := false
+	waToken := strings.TrimSpace(os.Getenv("WA_GATEWAY_TOKEN"))
+	if waToken != "" {
+		waTokenSet = true
+	} else {
+		var tokenDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_token'").Scan(&tokenDB); err == nil && strings.TrimSpace(tokenDB) != "" {
+			waTokenSet = true
+		}
+	}
+
 	c.HTML(http.StatusOK, "bendahara_pesan.html", gin.H{
 		"AnggotaList": anggotaList,
 		"PesanList":   pesanList,
 		"Title":       "Pesan Bendahara",
 		"ActivePage":  "pesan",
 		"CurrentLogo": latestLogo,
+		"WATokenSet":  waTokenSet,
 	})
 }
 

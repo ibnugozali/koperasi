@@ -66,8 +66,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 showToast(data.message || 'Pesan berhasil dikirim!', 'success');
                 form.reset();
-                // Refresh pesan list if needed (could add AJAX reload here)
-                setTimeout(() => location.reload(), 2000);
+                // Tampilkan warning jika WA tidak terkirim
+                if (data.wa_info) {
+                    setTimeout(() => showToast('<i class="fa-brands fa-whatsapp me-1"></i> ' + data.wa_info, 'warning'), 600);
+                }
+                setTimeout(() => location.reload(), 2800);
             } else {
                 showToast(data.message || 'Gagal mengirim pesan', 'danger');
             }
