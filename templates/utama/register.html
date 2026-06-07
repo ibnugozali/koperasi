@@ -91,6 +91,7 @@
                                     <div class="col-md-4 mb-3">
                                         <label class="form-label fw-bold">Tgl Lahir</label>
                                         <input type="date" class="form-control" id="register_tgl_lahir" name="TglLahir" required>
+                                        <div class="invalid-feedback">Pendaftar harus berusia minimal 18 tahun.</div>
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label class="form-label fw-bold">Gender</label>
@@ -185,10 +186,48 @@
         const namaHintText = document.getElementById('nama_hint_text');
         const gajiDisplay = document.getElementById('gaji_display_text');
         const gajiHidden = document.getElementById('register_gaji_bulanan');
+        const tglLahirInput = document.getElementById('register_tgl_lahir');
 
         let latestRefStatus = '';
         let latestRefFound = false;
         let lookupTimer = null;
+
+        // ── Validasi Tgl Lahir: minimal 18 tahun ──────────────────────────────
+        (function setMaxTglLahir() {
+            const today = new Date();
+            const max = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+            const yyyy = max.getFullYear();
+            const mm = String(max.getMonth() + 1).padStart(2, '0');
+            const dd = String(max.getDate()).padStart(2, '0');
+            tglLahirInput.max = `${yyyy}-${mm}-${dd}`;
+        })();
+
+        function isTglLahirValid() {
+            const val = tglLahirInput.value;
+            if (!val) return false;
+            const today = new Date();
+            const batasUmur = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+            return new Date(val) <= batasUmur;
+        }
+
+        function validateTglLahir() {
+            if (!tglLahirInput.value) {
+                tglLahirInput.classList.remove('is-invalid');
+                tglLahirInput.setCustomValidity('');
+                return true;
+            }
+            if (!isTglLahirValid()) {
+                tglLahirInput.classList.add('is-invalid');
+                tglLahirInput.setCustomValidity('Pendaftar harus berusia minimal 18 tahun.');
+                return false;
+            }
+            tglLahirInput.classList.remove('is-invalid');
+            tglLahirInput.setCustomValidity('');
+            return true;
+        }
+
+        tglLahirInput.addEventListener('change', validateTglLahir);
+        // ─────────────────────────────────────────────────────────────────────
 
         function formatRupiah(angka) {
             return 'Rp ' + new Intl.NumberFormat('id-ID').format(angka);
@@ -390,6 +429,14 @@
             updateReferensiWarning();
             updateMetodePembayaranUI();
             updateSubmitState();
+
+            // Validasi umur minimal 18 tahun
+            if (!validateTglLahir()) {
+                e.preventDefault();
+                tglLahirInput.reportValidity();
+                return;
+            }
+
             if (submitBtn.disabled) {
                 e.preventDefault();
                 alert('Mohon perbaiki Status Anggota agar sesuai dengan Data Identitas.');

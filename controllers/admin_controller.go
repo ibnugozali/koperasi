@@ -240,6 +240,22 @@ func mapFakultasToCode(fakultas string) string {
 	}
 }
 
+func normalizePhone(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.ReplaceAll(value, " ", "")
+	value = strings.ReplaceAll(value, "-", "")
+	if strings.HasPrefix(value, "+62") {
+		value = "0" + strings.TrimPrefix(value, "+62")
+	}
+	if strings.HasPrefix(value, "62") {
+		value = "0" + strings.TrimPrefix(value, "62")
+	}
+	if value != "" && !strings.HasPrefix(value, "0") {
+		value = "0" + value
+	}
+	return value
+}
+
 func renderAdminTambahAnggota(c *gin.Context, status int, data gin.H) {
 	logoPath, exists := c.Get("LogoPath")
 	if !exists {
@@ -278,7 +294,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 	namaAnggota := strings.TrimSpace(c.PostForm("NamaAnggota"))
 	username := strings.TrimSpace(c.PostForm("Username"))
 	password := strings.TrimSpace(c.PostForm("Password"))
-	noTelepon := strings.TrimSpace(c.PostForm("NoTelepon"))
+	noTelepon := normalizePhone(strings.TrimSpace(c.PostForm("NoTelepon")))
 	tglLahir := strings.TrimSpace(c.PostForm("TglLahir"))
 	jenisKelamin := strings.TrimSpace(c.PostForm("JenisKelamin"))
 	statusAnggota := strings.TrimSpace(c.PostForm("StatusAnggota"))
@@ -499,6 +515,39 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		formData["Error"] = "Gagal menyimpan anggota baru"
 		renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
 		return
+	}
+
+	// Jika metode pembayaran potong_gaji, catat simpanan pokok sebagai 'confirmed' seperti proses konfirmasi
+	if strings.EqualFold(strings.TrimSpace(buktiTransfer), "POTONG_GAJI") {
+		var nominalSimpananPokok float64
+		err = db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok)
+		if err != nil {
+			nominalSimpananPokok = 100000
+		}
+
+		var sudahAda bool
+		err = db.QueryRow(`
+			SELECT EXISTS(
+				SELECT 1
+				FROM detail
+				WHERE id_anggota = $1 AND id_simpanan = 1 AND COALESCE(status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
+			)
+		`, idAnggota).Scan(&sudahAda)
+		if err != nil {
+			log.Printf("[WARN] gagal cek simpanan pokok potong gaji untuk anggota %s: %v", idAnggota, err)
+		}
+
+		if !sudahAda {
+			_, err = db.Exec(`
+				INSERT INTO detail (
+					id_anggota, id_simpanan, id_pengelola, tgl_transaksi,
+					jumlah_simpanan, total_simpanan, status, bukti_pembayaran, metode_pembayaran
+				) VALUES ($1, 1, NULL, CURRENT_TIMESTAMP, $2, $2, 'confirmed', 'POTONG_GAJI', 'potong_gaji')
+			`, idAnggota, nominalSimpananPokok)
+			if err != nil {
+				log.Printf("[ERROR] gagal mencatat simpanan pokok potong gaji untuk anggota %s: %v", idAnggota, err)
+			}
+		}
 	}
 
 	c.Redirect(http.StatusFound, "/admin/anggota?success=Anggota baru berhasil ditambahkan dan langsung aktif")

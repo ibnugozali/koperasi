@@ -881,28 +881,37 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 }
 
 // GetTotalSimpanan mengambil total simpanan semua anggota yang sudah dikonfirmasi
+// GetTotalSimpanan mengambil total simpanan semua anggota yang sudah dikonfirmasi.
+// Ini mencakup simpanan pokok dari registrasi jika anggota aktif dan sudah
+// memiliki bukti transfer, sekaligus simpanan wajib dan simpanan lainnya.
 func GetTotalSimpanan(db *sql.DB) (float64, error) {
-	// Simpanan pokok: nominal registrasi × jumlah anggota aktif
-	// (sama dengan logika di ketua/anggota: setiap anggota aktif mendapat simpanan pokok)
+	var totalPokok float64
+	var jumlahAnggotaPokok float64
+	db.QueryRow(`
+		SELECT COUNT(*)
+		FROM anggota
+		WHERE status = 'aktif' AND COALESCE(bukti_transfer, '') != ''
+	`).Scan(&jumlahAnggotaPokok)
+
 	var nominalPokok float64
 	db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalPokok)
 	if nominalPokok <= 0 {
 		nominalPokok = 100000
 	}
-
-	var jumlahAnggotaAktif float64
-	db.QueryRow(`SELECT COUNT(*) FROM anggota WHERE status = 'aktif'`).Scan(&jumlahAnggotaAktif)
-
-	totalPokok := nominalPokok * jumlahAnggotaAktif
+	totalPokok = nominalPokok * jumlahAnggotaPokok
 
 	// Simpanan wajib: gunakan fungsi yang sama persis dengan halaman /ketua/anggota
 	// agar nilainya selalu konsisten
 	simpananWajibMap, _ := GetSimpananWajibAllAnggota()
 	potonganBulanIniMap, _ := GetPotonganBulanIniAllAnggota()
 	nominalSimpananWajib := 0.0
+	statusSimpananWajibAktif := false
 	if configSimpananWajib, configErr := GetKonfigurasiSimpananWajib(); configErr == nil {
 		if nominal, ok := configSimpananWajib["PersentasePotong"].(float64); ok {
 			nominalSimpananWajib = nominal
+		}
+		if aktif, ok := configSimpananWajib["StatusAktif"].(bool); ok {
+			statusSimpananWajibAktif = aktif
 		}
 	}
 	var totalWajib float64
@@ -918,7 +927,7 @@ func GetTotalSimpanan(db *sql.DB) (float64, error) {
 			wajib := simpananWajibMap[idAnggota]
 			if wajib <= 0 && potonganBulanIniMap[idAnggota] > 0 {
 				wajib = potonganBulanIniMap[idAnggota]
-			} else if wajib <= 0 && nominalSimpananWajib > 0 {
+			} else if wajib <= 0 && nominalSimpananWajib > 0 && statusSimpananWajibAktif {
 				wajib = nominalSimpananWajib
 			}
 			totalWajib += wajib

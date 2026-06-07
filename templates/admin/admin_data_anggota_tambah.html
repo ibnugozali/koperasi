@@ -53,9 +53,9 @@
 
                         <!-- Pilih Jabatan dulu, seperti register -->
                         <div class="mb-4">
-                            <label for="statusAnggotaSelect" class="form-label fw-bold">Jabatan / Status Anggota</label>
+                            <label for="statusAnggotaSelect" class="form-label fw-bold">Status Calon Anggota</label>
                             <select class="form-select form-select-lg border-primary" id="statusAnggotaSelect" name="StatusAnggota" required>
-                                <option value="">-- Pilih Jabatan --</option>
+                                <option value="">-- Pilih Status Calon Anggota --</option>
                                 <option value="dosen"    {{ if eq .FormStatusAnggota "dosen"    }}selected{{ end }}>Dosen</option>
                                 <option value="karyawan" {{ if eq .FormStatusAnggota "karyawan" }}selected{{ end }}>Tenaga Pendidikan</option>
                                 <option value="mahasiswa"{{ if eq .FormStatusAnggota "mahasiswa"}}selected{{ end }}>Mahasiswa</option>
@@ -69,11 +69,11 @@
 
                             <!-- Nomer Identitas (hanya untuk non-mahasiswa) -->
                             <div class="mb-3" id="wrapperIdentitas">
-                                <label for="noIdentitasPegawai" class="form-label fw-bold">Nomer Identitas (NIDN/NIP)</label>
+                                <label for="noIdentitasPegawai" class="form-label fw-bold">Nomer Identitas</label>
                                 <input type="text" class="form-control" id="noIdentitasPegawai" name="NoIdentitasPegawai"
                                     value="{{ .FormNoIdentitasPegawai }}"
-                                    placeholder="Masukkan NIDN/NIP untuk validasi referensi">
-                                <small class="text-muted" id="identitasHint">Masukkan Nomer Identitas untuk mengambil nama dan gaji otomatis dari data referensi.</small>
+                                    placeholder="Masukkan nomor induk">
+                                <small class="text-muted" id="identitasHint">Gunakan NIDN/NIP untuk validasi sistem.</small>
                             </div>
 
                             <div class="row">
@@ -86,7 +86,7 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Unit Kerja</label>
-                                    <select class="form-select" id="fakultasSelect" required>
+                                    <select class="form-select" id="fakultasSelect" name="Fakultas" required>
                                         <option value="">Pilih Unit Kerja</option>
                                         <option value="Fakultas Agama Islam (FAI)"                    {{ if eq .FormFakultas "Fakultas Agama Islam (FAI)"                    }}selected{{ end }}>Fakultas Agama Islam (FAI)</option>
                                         <option value="Fakultas Ekonomi (FE)"                         {{ if eq .FormFakultas "Fakultas Ekonomi (FE)"                         }}selected{{ end }}>Fakultas Ekonomi (FE)</option>
@@ -99,7 +99,6 @@
                                         <option value="Paskasarjana"                                  {{ if eq .FormFakultas "Paskasarjana"                                  }}selected{{ end }}>Paskasarjana</option>
                                         <option value="Rektorat / Yayasan" id="optionRektorat"        {{ if eq .FormFakultas "Rektorat / Yayasan"                            }}selected{{ end }}>Rektorat</option>
                                     </select>
-                                    <input type="hidden" id="fakultasHidden" name="Fakultas" value="{{ .FormFakultas }}">
                                 </div>
                             </div>
 
@@ -124,12 +123,12 @@
                                         <input type="text" class="form-control" id="noTeleponInput" name="NoTelepon"
                                             value="{{ .FormNoTelepon }}"
                                             required
-                                            oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^0+/, '')">
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                                     </div>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">Tanggal Lahir</label>
-                                    <input type="date" class="form-control" name="TglLahir"
+                                    <input type="date" class="form-control" id="tglLahirInput" name="TglLahir"
                                         value="{{ .FormTglLahir }}" required>
                                 </div>
                                 <div class="col-md-4 mb-3">
@@ -143,7 +142,7 @@
 
                             <!-- Gaji (hanya non-mahasiswa, terisi dari referensi) -->
                             <div class="mb-3" id="wrapperGaji">
-                                <label class="form-label fw-bold text-primary">Gaji Bersih</label>
+                                <label class="form-label fw-bold text-primary">Status Gaji Bersih</label>
                                 <div id="gajiDisplayText" class="alert alert-secondary py-2 px-3 mb-1">
                                     Menunggu data identitas...
                                 </div>
@@ -225,10 +224,10 @@
         const namaInput             = document.getElementById('namaAnggotaInput');
         const namaHint              = document.getElementById('namaHint');
         const fakultasSelect        = document.getElementById('fakultasSelect');
-        const fakultasHidden        = document.getElementById('fakultasHidden');
         const optionRektorat        = document.getElementById('optionRektorat');
         const gajiDisplay           = document.getElementById('gajiDisplayText');
         const gajiHidden            = document.getElementById('gajiBulananHidden');
+        const tglLahirInput         = document.getElementById('tglLahirInput');
         const wrapperIdentitas      = document.getElementById('wrapperIdentitas');
         const wrapperGaji           = document.getElementById('wrapperGaji');
         const metodePembayaranSelect = document.getElementById('metodePembayaranSelect');
@@ -247,6 +246,51 @@
 
         function formatRupiah(n) {
             return 'Rp ' + new Intl.NumberFormat('id-ID').format(n);
+        }
+
+        (function setMaxTglLahir() {
+            const today = new Date();
+            const max = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+            const yyyy = max.getFullYear();
+            const mm = String(max.getMonth() + 1).padStart(2, '0');
+            const dd = String(max.getDate()).padStart(2, '0');
+            if (tglLahirInput) {
+                tglLahirInput.max = `${yyyy}-${mm}-${dd}`;
+            }
+        })();
+
+        function isTglLahirValid() {
+            const val = tglLahirInput.value;
+            if (!val) return false;
+            const today = new Date();
+            const batasUmur = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+            return new Date(val) <= batasUmur;
+        }
+
+        function validateTglLahir() {
+            if (!tglLahirInput.value) {
+                tglLahirInput.classList.remove('is-invalid');
+                tglLahirInput.setCustomValidity('');
+                return true;
+            }
+            if (!isTglLahirValid()) {
+                tglLahirInput.classList.add('is-invalid');
+                tglLahirInput.setCustomValidity('Pendaftar harus berusia minimal 18 tahun.');
+                return false;
+            }
+            tglLahirInput.classList.remove('is-invalid');
+            tglLahirInput.setCustomValidity('');
+            return true;
+        }
+
+        function resetDisplays(msg, isMahasiswa, theme = 'alert-secondary') {
+            gajiDisplay.innerText = msg;
+            gajiDisplay.className = `alert ${theme} py-2 px-3 mb-1`;
+            if (!isMahasiswa) {
+                namaInput.value = '';
+                gajiHidden.value = 0;
+                namaHint.textContent = msg;
+            }
         }
 
         // Restore gaji display on page load if value already set (e.g. after POST error)
@@ -322,7 +366,6 @@
             optionRektorat.style.display = (statusSelect.value === 'dosen') ? 'none' : 'block';
             if (optionRektorat.style.display === 'none' && fakultasSelect.value === 'Rektorat / Yayasan') {
                 fakultasSelect.value = '';
-                fakultasHidden.value = '';
             }
 
             updateMetodePembayaranUI();
@@ -367,60 +410,58 @@
             const statusVal = statusSelect.value;
 
             if (statusVal === 'mahasiswa') {
-                latestRefFound  = true;
+                latestRefFound = true;
                 latestRefStatus = 'mahasiswa';
+                resetDisplays('Mahasiswa (Input Manual)', true);
+                namaHint.textContent = 'Silakan isi nama lengkap.';
                 updateReferensiWarning();
+                updateMetodePembayaranUI();
                 updateSubmitState();
                 return;
             }
 
             if (!identitas) {
-                latestRefFound  = false;
+                latestRefFound = false;
                 latestRefStatus = '';
-                namaInput.value = '';
-                gajiHidden.value = 0;
-                gajiDisplay.innerText = 'Menunggu Nomer Identitas...';
-                gajiDisplay.className = 'alert alert-secondary py-2 px-3 mb-1';
+                resetDisplays('Menunggu Nomer Identitas...', false);
                 identitasHint.textContent = 'Masukkan Nomer Identitas untuk mengambil nama dan gaji otomatis dari data referensi.';
                 updateReferensiWarning();
+                updateMetodePembayaranUI();
                 updateSubmitState();
                 return;
             }
 
             try {
                 identitasHint.textContent = 'Mencari data referensi...';
-                gajiDisplay.innerText     = 'Mencari data...';
-                const res  = await fetch(`/api/register/referensi?identitas=${encodeURIComponent(identitas)}`, { cache: 'no-store' });
+                gajiDisplay.innerText = 'Mencari data...';
+                const res = await fetch(`/api/register/referensi?identitas=${encodeURIComponent(identitas)}`, { cache: 'no-store' });
                 const data = await res.json();
 
                 if (data.found) {
-                    latestRefFound  = true;
+                    latestRefFound = true;
                     latestRefStatus = data.status_referensi || '';
                     namaInput.value = data.nama_lengkap || '';
                     namaHint.textContent = data.nama_lengkap
                         ? 'Nama otomatis terisi dari data referensi.'
-                        : 'Data referensi ditemukan (nama kosong).';
+                        : 'Data referensi ditemukan.';
                     gajiHidden.value = data.gaji_bulanan || 0;
                     gajiDisplay.innerText = formatRupiah(data.gaji_bulanan || 0);
                     gajiDisplay.className = 'alert alert-success py-2 px-3 mb-1 fw-bold';
                     identitasHint.textContent = 'Data referensi ditemukan.';
                 } else {
-                    latestRefFound  = false;
+                    latestRefFound = false;
                     latestRefStatus = '';
-                    namaInput.value = '';
-                    gajiHidden.value = 0;
-                    gajiDisplay.innerText = 'Data tidak ditemukan di database referensi';
-                    gajiDisplay.className = 'alert alert-warning py-2 px-3 mb-1';
+                    resetDisplays('Data tidak ditemukan di database referensi', false, 'alert-warning');
                     identitasHint.textContent = 'Nomer Identitas tidak ada di data referensi. Import referensi terlebih dahulu.';
                 }
             } catch (e) {
-                latestRefFound  = false;
+                latestRefFound = false;
                 latestRefStatus = '';
-                gajiDisplay.innerText = 'Gagal menghubungi server';
-                gajiDisplay.className = 'alert alert-danger py-2 px-3 mb-1';
+                resetDisplays('Gagal menghubungi server', false, 'alert-danger');
             }
 
             updateReferensiWarning();
+            updateMetodePembayaranUI();
             updateSubmitState();
         }
 
@@ -441,22 +482,39 @@
             lookupTimer = setTimeout(checkReferensi, 400);
         });
 
-        fakultasSelect.addEventListener('change', function () {
-            fakultasHidden.value = fakultasSelect.value;
-        });
-
         metodePembayaranSelect.addEventListener('change', updateMetodePembayaranUI);
+
+        if (tglLahirInput) {
+            tglLahirInput.addEventListener('change', validateTglLahir);
+        }
 
         document.getElementById('formTambahAnggota').addEventListener('submit', function (e) {
             updateReferensiWarning();
             updateMetodePembayaranUI();
             updateSubmitState();
+
+            if (!validateTglLahir()) {
+                e.preventDefault();
+                tglLahirInput.reportValidity();
+                return;
+            }
+
+            // Jika metode pembayaran dipilih potong_gaji, set flag localStorage
+            try {
+                if (metodePembayaranSelect && metodePembayaranSelect.value === 'potong_gaji') {
+                    localStorage.setItem('pemotonganUpdated', 'true');
+                    localStorage.setItem('triggerPemotonganCheck', 'true');
+                    console.log('🔔 Admin selected potong_gaji — set localStorage trigger for bendahara');
+                }
+            } catch (err) {
+                console.warn('Gagal set localStorage trigger:', err);
+            }
+
             if (submitBtn.disabled) {
                 e.preventDefault();
-                alert('Mohon perbaiki data sebelum menyimpan.');
+                alert('Mohon perbaiki Status Anggota agar sesuai dengan Data Identitas.');
             }
         });
-
         // Init: if jabatan already selected (e.g. after POST error), show fields
         if (statusSelect.value) {
             formContainer.classList.remove('d-none');
