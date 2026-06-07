@@ -39,24 +39,8 @@
                     <p><strong>Metode Angsuran:</strong> 
                         {{if eq .MetodeAngsuran "transfer_bank"}}
                             Transfer Bank
-                        {{else if eq .MetodeAngsuran "tunai"}}
-                            Tunai
-                        {{else}}
-                            {{.MetodeAngsuran}}
-                        {{end}}
-                    </p>
-                    <p><strong>Metode Pencairan:</strong> 
-                        {{if eq .MetodePencairan "transfer_bank"}}
-                            Transfer Bank
-                        {{else if eq .MetodePencairan "tunai"}}
-                            Tunai
-                        {{else}}
-                            {{.MetodePencairan}}
-                        {{end}}
-                    </p>
-                    <p><strong>Metode Angsuran:</strong> 
-                        {{if eq .MetodeAngsuran "transfer_bank"}}
-                            Transfer Bank
+                        {{else if eq .MetodeAngsuran "potong_gaji"}}
+                            Potong Gaji
                         {{else if eq .MetodeAngsuran "tunai"}}
                             Tunai
                         {{else}}

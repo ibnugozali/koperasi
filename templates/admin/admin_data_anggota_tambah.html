@@ -49,7 +49,7 @@
                     <div class="alert alert-danger">{{ .Error }}</div>
                     {{ end }}
 
-                    <form id="formTambahAnggota" method="POST" action="/admin/anggota/tambah">
+                    <form id="formTambahAnggota" method="POST" action="/admin/anggota/tambah" enctype="multipart/form-data">
 
                         <!-- Pilih Jabatan dulu, seperti register -->
                         <div class="mb-4">
@@ -151,6 +151,30 @@
                             </div>
 
                             <div class="mb-3">
+                                <label class="form-label fw-bold">Metode Pembayaran Simpanan</label>
+                                <select class="form-select" id="metodePembayaranSelect" name="MetodePembayaran" required>
+                                    <option value="transfer_bank" {{ if or (eq .FormMetodePembayaran "") (eq .FormMetodePembayaran "transfer_bank") }}selected{{ end }}>Transfer Bank</option>
+                                    <option value="potong_gaji" id="optionPotongGaji" {{ if eq .FormMetodePembayaran "potong_gaji" }}selected{{ end }}>Potong Gaji</option>
+                                    <option value="tunai" {{ if eq .FormMetodePembayaran "tunai" }}selected{{ end }}>Tunai</option>
+                                </select>
+                            </div>
+
+                            <div id="transferFieldsWrapper" class="mb-3">
+                                <label class="form-label fw-bold">Upload Bukti Transfer</label>
+                                <input type="file" class="form-control" id="buktiTransferInput" name="BuktiTransfer" accept="image/*,.pdf">
+                                <div class="row g-2 mt-2">
+                                    <div class="col-md-6">
+                                        <small class="text-danger fw-semibold">Nominal: {{ .NominalSimpanan }}</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-primary fw-semibold">No. Rekening: {{ .NomorRekening }}</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="potongGajiInfo" class="alert alert-info d-none"></div>
+
+                            <div class="mb-3">
                                 <label class="form-label fw-bold">Alamat</label>
                                 <textarea class="form-control" name="Alamat" rows="2" required>{{ .FormAlamat }}</textarea>
                             </div>
@@ -194,21 +218,28 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     (function () {
-        const statusSelect     = document.getElementById('statusAnggotaSelect');
-        const formContainer    = document.getElementById('formFieldsContainer');
-        const identitasInput   = document.getElementById('noIdentitasPegawai');
-        const identitasHint    = document.getElementById('identitasHint');
-        const namaInput        = document.getElementById('namaAnggotaInput');
-        const namaHint         = document.getElementById('namaHint');
-        const fakultasSelect   = document.getElementById('fakultasSelect');
-        const fakultasHidden   = document.getElementById('fakultasHidden');
-        const optionRektorat   = document.getElementById('optionRektorat');
-        const gajiDisplay      = document.getElementById('gajiDisplayText');
-        const gajiHidden       = document.getElementById('gajiBulananHidden');
-        const wrapperIdentitas = document.getElementById('wrapperIdentitas');
-        const wrapperGaji      = document.getElementById('wrapperGaji');
-        const warningBox       = document.getElementById('referensiWarningBox');
-        const submitBtn        = document.getElementById('submitBtn');
+        const statusSelect          = document.getElementById('statusAnggotaSelect');
+        const formContainer         = document.getElementById('formFieldsContainer');
+        const identitasInput        = document.getElementById('noIdentitasPegawai');
+        const identitasHint         = document.getElementById('identitasHint');
+        const namaInput             = document.getElementById('namaAnggotaInput');
+        const namaHint              = document.getElementById('namaHint');
+        const fakultasSelect        = document.getElementById('fakultasSelect');
+        const fakultasHidden        = document.getElementById('fakultasHidden');
+        const optionRektorat        = document.getElementById('optionRektorat');
+        const gajiDisplay           = document.getElementById('gajiDisplayText');
+        const gajiHidden            = document.getElementById('gajiBulananHidden');
+        const wrapperIdentitas      = document.getElementById('wrapperIdentitas');
+        const wrapperGaji           = document.getElementById('wrapperGaji');
+        const metodePembayaranSelect = document.getElementById('metodePembayaranSelect');
+        const optionPotongGaji      = document.getElementById('optionPotongGaji');
+        const transferFieldsWrapper = document.getElementById('transferFieldsWrapper');
+        const buktiTransferInput    = document.getElementById('buktiTransferInput');
+        const potongGajiInfo        = document.getElementById('potongGajiInfo');
+        const warningBox            = document.getElementById('referensiWarningBox');
+        const submitBtn             = document.getElementById('submitBtn');
+
+        const nominalSimpananPokok = parseInt("{{ .NominalSimpanan }}".replace(/[.,]/g, ''), 10) || 100000;
 
         let latestRefStatus = '';
         let latestRefFound  = false;
@@ -292,6 +323,42 @@
             if (optionRektorat.style.display === 'none' && fakultasSelect.value === 'Rektorat / Yayasan') {
                 fakultasSelect.value = '';
                 fakultasHidden.value = '';
+            }
+
+            updateMetodePembayaranUI();
+        }
+
+        function updateMetodePembayaranUI() {
+            const metode = metodePembayaranSelect.value;
+            const gajiValue = parseInt(gajiHidden.value || '0', 10) || 0;
+            const mahasiswa = isMahasiswa();
+            const potongGajiTidakCukup = mahasiswa || gajiValue < nominalSimpananPokok;
+
+            optionPotongGaji.disabled = potongGajiTidakCukup;
+            if (potongGajiTidakCukup && metode === 'potong_gaji') {
+                metodePembayaranSelect.value = 'transfer_bank';
+            }
+
+            const metodeAktif = metodePembayaranSelect.value;
+            const isTransfer = metodeAktif === 'transfer_bank';
+            transferFieldsWrapper.classList.toggle('d-none', !isTransfer);
+            buktiTransferInput.required = isTransfer;
+
+            if (mahasiswa) {
+                potongGajiInfo.textContent = 'Mahasiswa menggunakan input manual dan tidak dapat memilih metode potong gaji.';
+                potongGajiInfo.classList.remove('d-none');
+            } else if (potongGajiTidakCukup) {
+                potongGajiInfo.textContent = `Metode potong gaji tidak bisa dipilih karena gaji bersih lebih kecil dari nominal simpanan pokok ${formatRupiah(nominalSimpananPokok)}.`;
+                potongGajiInfo.classList.remove('d-none');
+            } else if (metodeAktif === 'potong_gaji') {
+                potongGajiInfo.textContent = 'Simpanan pokok akan diproses melalui potong gaji setelah pendaftaran anggota disimpan.';
+                potongGajiInfo.classList.remove('d-none');
+            } else if (metodeAktif === 'tunai') {
+                potongGajiInfo.textContent = 'Metode tunai tidak memerlukan upload bukti transfer.';
+                potongGajiInfo.classList.remove('d-none');
+            } else {
+                potongGajiInfo.classList.add('d-none');
+                potongGajiInfo.textContent = '';
             }
         }
 
@@ -378,8 +445,11 @@
             fakultasHidden.value = fakultasSelect.value;
         });
 
+        metodePembayaranSelect.addEventListener('change', updateMetodePembayaranUI);
+
         document.getElementById('formTambahAnggota').addEventListener('submit', function (e) {
             updateReferensiWarning();
+            updateMetodePembayaranUI();
             updateSubmitState();
             if (submitBtn.disabled) {
                 e.preventDefault();
@@ -391,6 +461,7 @@
         if (statusSelect.value) {
             formContainer.classList.remove('d-none');
             updateStatusUI();
+            updateMetodePembayaranUI();
             // If identitas already filled, trigger lookup
             if (identitasInput.value.trim()) {
                 checkReferensi();

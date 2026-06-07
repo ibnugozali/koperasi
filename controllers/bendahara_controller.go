@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -1083,9 +1084,13 @@ func BendaharaListAllAnggota(c *gin.Context) {
 	}
 
 	nominalSimpananWajib := 0.0
+	statusSimpananWajibAktif := false
 	if configSimpananWajib, err := repository.GetKonfigurasiSimpananWajib(); err == nil {
 		if nominal, ok := configSimpananWajib["PersentasePotong"].(float64); ok {
 			nominalSimpananWajib = nominal
+		}
+		if status, ok := configSimpananWajib["StatusAktif"].(bool); ok {
+			statusSimpananWajibAktif = status
 		}
 	}
 
@@ -1093,7 +1098,7 @@ func BendaharaListAllAnggota(c *gin.Context) {
 	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
 		potonganWajib := potonganBulanIni[anggota.IDAnggota]
-		if potonganWajib <= 0 && nominalSimpananWajib > 0 {
+		if potonganWajib <= 0 && nominalSimpananWajib > 0 && statusSimpananWajibAktif {
 			potonganWajib = nominalSimpananWajib
 		}
 		potongan := potonganWajib + potonganRegister[anggota.IDAnggota]
@@ -1105,7 +1110,7 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		// gunakan potongan bulan ini agar kolom "Simpanan Wajib" tidak kosong.
 		if simpananWajib[anggota.IDAnggota] <= 0 && potonganWajib > 0 {
 			simpananWajib[anggota.IDAnggota] = potonganWajib
-		} else if simpananWajib[anggota.IDAnggota] <= 0 && nominalSimpananWajib > 0 {
+		} else if simpananWajib[anggota.IDAnggota] <= 0 && nominalSimpananWajib > 0 && statusSimpananWajibAktif {
 			simpananWajib[anggota.IDAnggota] = nominalSimpananWajib
 		}
 	}
@@ -1732,12 +1737,6 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 		pendingSimpanan = []models.Detail{}
 	}
 
-	// Ambil pending pinjaman
-	pendingPinjaman, err := repository.GetPendingPinjaman()
-	if err != nil {
-		pendingPinjaman = []models.Pinjaman{}
-	}
-
 	// Ambil pending angsuran
 	pendingAngsuran, err := repository.GetPendingAngsuran()
 	if err != nil {
@@ -1775,11 +1774,6 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 	var numberedSimpanan []numberedDetail
 	for i, d := range pendingSimpanan {
 		numberedSimpanan = append(numberedSimpanan, numberedDetail{No: i + 1, Detail: d})
-	}
-
-	var numberedPinjamans []numberedPinjaman
-	for i, p := range pendingPinjaman {
-		numberedPinjamans = append(numberedPinjamans, numberedPinjaman{No: i + 1, Pinjaman: p})
 	}
 
 	var numberedAngsurans []numberedAngsuran
@@ -1891,7 +1885,6 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "bendahara_konfirmasi_transaksi.html", gin.H{
 		"PendingSimpanan":       numberedSimpanan,
-		"PendingPinjaman":       numberedPinjamans,
 		"PendingAngsuran":       numberedAngsurans,
 		"PendingPengambilan":    numberedPengambilans,
 		"ActivePage":            "konfirmasi-transaksi",
@@ -2308,11 +2301,10 @@ func ensurePendingAngsuranPotongGaji() {
 	rows, err := db.Query(`
 		SELECT p.id_pinjaman
 		FROM pinjaman p
-		WHERE p.status IN ('proses', 'aktif')
-		  AND REPLACE(LOWER(COALESCE(p.metode_angsuran, '')), ' ', '_') = 'potong_gaji'
+		WHERE p.status = 'aktif'
 	`)
 	if err != nil {
-		log.Printf("[WARN] Gagal sinkronisasi cicilan pending potong gaji: %v", err)
+		log.Printf("[WARN] Gagal sinkronisasi cicilan pending: %v", err)
 		return
 	}
 	defer rows.Close()
@@ -2323,14 +2315,14 @@ func ensurePendingAngsuranPotongGaji() {
 			log.Printf("[WARN] Gagal membaca pinjaman untuk sinkronisasi cicilan pending: %v", err)
 			continue
 		}
-		if err := ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman, time.Now()); err != nil {
+		if err := ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman); err != nil {
 			log.Printf("[WARN] Gagal membuat cicilan pending sinkronisasi untuk pinjaman %d: %v", idPinjaman, err)
 		}
 	}
 }
 
 func createPendingAngsuranPotongGajiAwal(idPinjaman int) error {
-	return ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman, time.Now())
+	return ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman)
 }
 
 func countJatuhTempoAngsuran(tglPinjaman, now time.Time, jangkaWaktu int) int {
@@ -2349,7 +2341,7 @@ func countJatuhTempoAngsuran(tglPinjaman, now time.Time, jangkaWaktu int) int {
 	return dueCount
 }
 
-func ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman int, now time.Time) error {
+func ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman int) error {
 	db := config.GetDB()
 
 	var pinjaman models.Pinjaman
@@ -2372,8 +2364,7 @@ func ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman int, now time.Time)
 		return err
 	}
 
-	metode := strings.TrimSpace(strings.ToLower(strings.ReplaceAll(pinjaman.MetodeAngsuran, " ", "_")))
-	if metode != "potong_gaji" {
+	if strings.ToLower(strings.TrimSpace(pinjaman.Status)) != "aktif" {
 		return nil
 	}
 
@@ -2381,43 +2372,81 @@ func ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman int, now time.Time)
 		return nil
 	}
 
-	angsuranList, err := repository.GetAngsuranByPinjamanID(idPinjaman)
-	if err != nil {
-		return err
-	}
-
-	jatuhTempoSampaiHariIni := countJatuhTempoAngsuran(pinjaman.TglPinjaman, now, pinjaman.JangkaWaktu)
-	existingCount := len(angsuranList)
-	if existingCount >= jatuhTempoSampaiHariIni {
-		return nil
-	}
-
 	bungaNominal := pinjaman.JumlahPinjaman * pinjaman.Bunga / 100
 	totalKewajiban := pinjaman.JumlahPinjaman + bungaNominal
-	jumlahAngsuran := totalKewajiban / float64(pinjaman.JangkaWaktu)
+	jumlahAngsuran := math.Round(totalKewajiban / float64(pinjaman.JangkaWaktu))
 	if jumlahAngsuran <= 0 {
 		return nil
 	}
 
-	for angsuranKe := existingCount + 1; angsuranKe <= jatuhTempoSampaiHariIni; angsuranKe++ {
-		jatuhTempo := pinjaman.TglPinjaman.AddDate(0, angsuranKe-1, 0)
-		sisaSetelah := totalKewajiban - (jumlahAngsuran * float64(angsuranKe))
-		if sisaSetelah < 0 {
-			sisaSetelah = 0
-		}
+	var angsuranTerkonfirmasi int
+	if err := db.QueryRow(`
+		SELECT COUNT(*)
+		FROM angsuran
+		WHERE id_pinjaman = $1
+		  AND COALESCE(LOWER(status), '') IN ('confirmed', 'diterima', 'lunas')
+	`, idPinjaman).Scan(&angsuranTerkonfirmasi); err != nil {
+		return err
+	}
+	if angsuranTerkonfirmasi >= pinjaman.JangkaWaktu {
+		return nil
+	}
 
-		err = repository.CreateAngsuran(models.Angsuran{
-			IDPinjaman:     idPinjaman,
-			IDPengelola:    sql.NullInt64{},
-			TglBayar:       jatuhTempo,
-			JumlahAngsuran: jumlahAngsuran,
-			SisaPinjaman:   sisaSetelah,
-			BuktiAngsuran:  fmt.Sprintf("POTONG_GAJI_AUTO_%02d", angsuranKe),
-			Status:         "pending",
-		})
-		if err != nil {
-			return err
-		}
+	angsuranKe := angsuranTerkonfirmasi + 1
+	metode := strings.TrimSpace(strings.ToLower(strings.ReplaceAll(pinjaman.MetodeAngsuran, " ", "_")))
+	var buktiAuto string
+	switch metode {
+	case "potong_gaji":
+		buktiAuto = fmt.Sprintf("POTONG_GAJI_AUTO_%02d", angsuranKe)
+	case "tunai":
+		buktiAuto = fmt.Sprintf("TUNAI_AUTO_%02d", angsuranKe)
+	case "transfer_bank":
+		buktiAuto = fmt.Sprintf("TRANSFER_AUTO_%02d", angsuranKe)
+	default:
+		buktiAuto = fmt.Sprintf("AUTO_%02d", angsuranKe)
+	}
+
+	jatuhTempo := pinjaman.TglPinjaman.AddDate(0, angsuranKe-1, 0)
+	sisaSetelah := totalKewajiban - (jumlahAngsuran * float64(angsuranKe))
+	if sisaSetelah < 0 {
+		sisaSetelah = 0
+	}
+
+	var existingPendingID int
+	err = db.QueryRow(`
+		SELECT id_angsuran
+		FROM angsuran
+		WHERE id_pinjaman = $1
+		  AND COALESCE(LOWER(status), 'pending') = 'pending'
+		ORDER BY tgl_bayar ASC, id_angsuran ASC
+		LIMIT 1
+	`, idPinjaman).Scan(&existingPendingID)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if existingPendingID > 0 {
+		_, err = db.Exec(`
+			UPDATE angsuran
+			SET tgl_bayar = $1,
+			    jumlah_angsuran = $2,
+			    sisa_pinjaman = $3,
+			    bukti_angsuran = $4
+			WHERE id_angsuran = $5
+		`, jatuhTempo, jumlahAngsuran, sisaSetelah, buktiAuto, existingPendingID)
+		return err
+	}
+
+	err = repository.CreateAngsuran(models.Angsuran{
+		IDPinjaman:     idPinjaman,
+		IDPengelola:    sql.NullInt64{},
+		TglBayar:       jatuhTempo,
+		JumlahAngsuran: jumlahAngsuran,
+		SisaPinjaman:   sisaSetelah,
+		BuktiAngsuran:  buktiAuto,
+		Status:         "pending",
+	})
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -5376,10 +5405,24 @@ func ApiJenisAngsuran(c *gin.Context) {
 		return
 	}
 	for _, p := range pinjamans {
+		bungaNominal := p.JumlahPinjaman * p.Bunga / 100
+		totalKewajiban := p.JumlahPinjaman + bungaNominal
+		perkiraanAngsuran := 0.0
+		if p.JangkaWaktu > 0 {
+			perkiraanAngsuran = math.Round(totalKewajiban / float64(p.JangkaWaktu))
+		}
 		label := fmt.Sprintf("Pinjaman #%d - %d bulan - Rp %.0f", p.IDPinjaman, p.JangkaWaktu, p.JumlahPinjaman)
 		result = append(result, map[string]interface{}{
-			"key":  p.IDPinjaman,
-			"nama": label,
+			"key":                p.IDPinjaman,
+			"nama":               label,
+			"jumlah_pinjaman":    p.JumlahPinjaman,
+			"jangka_waktu":       p.JangkaWaktu,
+			"bunga":              p.Bunga,
+			"bunga_nominal":      bungaNominal,
+			"total_kewajiban":    totalKewajiban,
+			"perkiraan_angsuran": perkiraanAngsuran,
+			"metode_angsuran":    p.MetodeAngsuran,
+			"status":             p.Status,
 		})
 	}
 	c.JSON(200, gin.H{"jenis_angsuran": result})

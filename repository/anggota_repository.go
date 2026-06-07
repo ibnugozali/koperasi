@@ -676,6 +676,46 @@ func GetPotonganRegisterPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 	return potonganRegister, nil
 }
 
+// GetPotonganAngsuranPotongGajiBulanIniAllAnggota mengambil cicilan pinjaman
+// metode potong gaji pada bulan berjalan, termasuk yang masih pending setelah
+// pinjaman disetujui ketua.
+func GetPotonganAngsuranPotongGajiBulanIniAllAnggota() (map[string]float64, error) {
+	db := config.GetDB()
+	potonganAngsuran := make(map[string]float64)
+
+	now := time.Now()
+	bulan := int(now.Month())
+	tahun := now.Year()
+
+	query := `
+		SELECT p.id_anggota, COALESCE(SUM(a.jumlah_angsuran), 0)
+		FROM angsuran a
+		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
+		WHERE REPLACE(LOWER(COALESCE(p.metode_angsuran, '')), ' ', '_') = 'potong_gaji'
+		  AND COALESCE(LOWER(a.status), 'pending') IN ('pending', 'confirmed', 'diterima', 'lunas')
+		  AND EXTRACT(MONTH FROM a.tgl_bayar) = $1
+		  AND EXTRACT(YEAR FROM a.tgl_bayar) = $2
+		GROUP BY p.id_anggota
+	`
+
+	rows, err := db.Query(query, bulan, tahun)
+	if err != nil {
+		return potonganAngsuran, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var idAnggota string
+		var jumlahPotong float64
+		if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
+			continue
+		}
+		potonganAngsuran[idAnggota] += jumlahPotong
+	}
+
+	return potonganAngsuran, nil
+}
+
 // GetKonfigurasiSimpananWajib mengambil konfigurasi pemotongan simpanan wajib
 func GetKonfigurasiSimpananWajib() (map[string]interface{}, error) {
 	db := config.GetDB()

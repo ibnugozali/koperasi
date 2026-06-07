@@ -110,8 +110,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 <span class="resume-pinjaman-header-title">Resume Pinjaman Aktif #{{add $i 1}}</span>
                 <span class="badge text-bg-primary">Pinjaman Aktif/Proses</span>
             </div>
-            <div class="card-body">
-                <div class="row g-1 mb-2" style="font-size: 15px;">
+           <div class="row g-1 mb-2" style="font-size: 15px;">
                     <div class="col-md-6"><strong>Status:</strong> {{$resume.Status}}</div>
                     <div class="col-md-6"><strong>Tanggal Pinjaman:</strong> {{$resume.TglPinjaman.Format "02 Jan 2006"}}</div>
                     <div class="col-md-6"><strong>Tenor Total:</strong> {{$resume.JangkaWaktu}} bulan</div>
@@ -120,6 +119,10 @@ document.addEventListener('DOMContentLoaded', function(){
                     <div class="col-md-6"><strong>Total Pinjaman (Pokok + Bunga):</strong> Rp {{add $resume.JumlahPinjaman $resume.Bunga | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{$resume.TotalTerbayar | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{$resume.SisaPokok | formatRupiah}}</div>
+                    <!-- <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{$resume.AngsuranTerbayar}} kali</div>
+                    <div class="col-md-6"><strong>Sisa Tenor:</strong> {{$resume.JangkaWaktu}} bulan</div>
+                    <div class="col-md-6"><strong>Total Sisa Pinjaman Berjalan:</strong> Rp {{$resume.SisaPokok | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{$resume.TotalTerbayar | formatRupiah}}</div> -->
                     <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{$resume.AngsuranTerbayar}} kali</div>
                     <div class="col-md-6"><strong>Perkiraan Angsuran per Bulan:</strong> Rp {{$resume.AngsuranPerBulan | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Metode Pencairan:</strong> {{$resume.MetodePencairan}}</div>
@@ -147,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
                 <div class="d-flex gap-2 mt-3">
                     {{if $resume.BisaAjukanLagi}}
-                        <a href="#ajukanPinjamanForm" class="btn btn-success">Melakukan Pinjaman Lagi</a>
+                        <a href="#ajukanPinjamanForm" class="btn btn-success btn-pinjam-lagi">Melakukan Pinjaman Lagi</a>
                     {{else}}
                         <a href="/anggota/angsuran" class="btn btn-outline-primary">Lanjut Bayar Angsuran</a>
                     {{end}}
@@ -160,34 +163,6 @@ document.addEventListener('DOMContentLoaded', function(){
 {{end}}
 
 <form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" class="{{if .ResumeGabungan}}d-none{{end}}">
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var btnPinjamLagi = document.querySelector('.btn-success[href="#ajukanPinjamanForm"]');
-        var form = document.getElementById('ajukanPinjamanForm');
-        var infoKemampuanBayar = document.getElementById('informasiKemampuanBayar');
-        if (btnPinjamLagi && form) {
-            btnPinjamLagi.addEventListener('click', function(e) {
-                e.preventDefault();
-                var resumeCard = btnPinjamLagi.closest('.floating-resume-pinjaman');
-                // Tampilkan form pengajuan jika user sudah boleh pinjam lagi
-                form.classList.remove('d-none');
-                // Ubah class agar tidak floating
-                if (resumeCard) {
-                    resumeCard.classList.remove('floating-resume-pinjaman');
-                    resumeCard.classList.add('resume-pinjaman-static');
-                    // Pindahkan Resume Pinjaman ke atas form
-                    form.parentNode.insertBefore(resumeCard, form);
-                }
-                // Tampilkan Informasi Kemampuan Bayar
-                if (infoKemampuanBayar) {
-                    infoKemampuanBayar.style.display = 'block';
-                }
-                // Scroll ke form
-                form.scrollIntoView({behavior: 'smooth'});
-            });
-        }
-    });
-    </script>
     <!-- Bagian 1: Rincian Permohonan Pinjaman -->
     <fieldset class="border p-3 mb-4">
         <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
@@ -383,29 +358,31 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
     </fieldset>
 
-    {{if not .ResumeGabungan}}
-    <button type="submit" class="btn btn-primary"
+    <!-- ✅ FIXED: Tombol selalu di-render, cukup d-none jika ada ResumeGabungan -->
+    <button type="submit"
+        id="btnAjukanPinjaman"
+        class="btn btn-primary {{if .ResumeGabungan}}d-none{{end}}"
         {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} disabled {{end}}>
         Ajukan Pinjaman
     </button>
-    {{end}}
 </form>
 </div>
 
 <script>
-// Set progress bar width dari data-progress (menghindari warning CSS dari Go template)
+// Set progress bar width dari data-progress
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.progress-bar[data-progress]').forEach(function(el) {
         el.style.width = el.getAttribute('data-progress') + '%';
     });
 });
 
-// Initialize on page load based on unit kerja
+// ✅ FIXED: Satu DOMContentLoaded untuk semua inisialisasi
 document.addEventListener('DOMContentLoaded', function() {
     const unitKerjaValue = '{{.Anggota.UnitKerja}}';
     const gajiContainer = document.getElementById('gaji_bulanan_container');
     const gajiInput = document.getElementById('gaji_bulanan');
 
+    // Sembunyikan/tampilkan input gaji berdasarkan jenis anggota
     if (unitKerjaValue === '03') { // Mahasiswa
         gajiContainer.style.display = 'none';
         gajiInput.required = false;
@@ -414,6 +391,45 @@ document.addEventListener('DOMContentLoaded', function() {
         gajiContainer.style.display = 'block';
         gajiInput.required = true;
     }
+
+    // ✅ FIXED: Handler tombol "Melakukan Pinjaman Lagi"
+    var btnsPinjamLagi = document.querySelectorAll('.btn-pinjam-lagi');
+    var form = document.getElementById('ajukanPinjamanForm');
+    var infoKemampuanBayar = document.getElementById('informasiKemampuanBayar');
+    var btnSubmit = document.getElementById('btnAjukanPinjaman');
+
+    btnsPinjamLagi.forEach(function(btnPinjamLagi) {
+        btnPinjamLagi.addEventListener('click', function(e) {
+            e.preventDefault();
+            var resumeCard = btnPinjamLagi.closest('.floating-resume-pinjaman');
+
+            // Tampilkan form
+            if (form) {
+                form.classList.remove('d-none');
+            }
+
+            // ✅ Tampilkan tombol submit
+            if (btnSubmit) {
+                btnSubmit.classList.remove('d-none');
+            }
+
+            // Ubah class resume card agar tidak floating (JANGAN dipindah posisinya)
+            if (resumeCard) {
+                resumeCard.classList.remove('floating-resume-pinjaman');
+                resumeCard.classList.add('resume-pinjaman-static');
+            }
+
+            // Tampilkan Informasi Kemampuan Bayar
+            if (infoKemampuanBayar) {
+                infoKemampuanBayar.style.display = 'block';
+            }
+
+            // Scroll ke form
+            if (form) {
+                form.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    });
 
     // Handle perubahan metode pencairan
     const metodePencairan = document.getElementById('metodePencairan');
@@ -448,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Hapus opsi Potong Gaji dari Metode Angsuran jika mahasiswa (tidak punya gaji)
+    // Hapus opsi Potong Gaji dari Metode Angsuran jika mahasiswa
     const metodeAngsuranSelect = document.getElementById('metodeAngsuran');
     if (metodeAngsuranSelect && unitKerjaValue === '03') {
         const potongGajiOption = metodeAngsuranSelect.querySelector('option[value="potong_gaji"]');
@@ -457,131 +473,140 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Hitung perkiraan angsuran saat input berubah
+    // Hitung perkiraan angsuran saat halaman load
     calculateAngsuran();
+
+    // Event listeners kalkulasi real-time
+    var elJumlah = document.getElementById('jumlah_pinjaman');
+    var elJangka = document.getElementById('jangka_waktu');
+    var elGaji   = document.getElementById('gaji_bulanan');
+    if (elJumlah) elJumlah.addEventListener('input', calculateAngsuran);
+    if (elJangka) elJangka.addEventListener('change', calculateAngsuran);
+    if (elGaji)   elGaji.addEventListener('input', calculateAngsuran);
+
+    // Handler "Centang Semua"
+    var cekSemua = document.getElementById('cek_semua');
+    if (cekSemua) {
+        cekSemua.addEventListener('change', function() {
+            document.querySelectorAll('.pernyataan-checkbox').forEach(function(cb) {
+                cb.checked = cekSemua.checked;
+            });
+        });
+    }
+
+    // Update "Centang Semua" saat checkbox individual berubah
+    document.querySelectorAll('.pernyataan-checkbox').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            var all  = document.querySelectorAll('.pernyataan-checkbox');
+            var checked = document.querySelectorAll('.pernyataan-checkbox:checked');
+            var master = document.getElementById('cek_semua');
+            if (master) {
+                master.checked = (checked.length === all.length);
+            }
+        });
+    });
 });
 
-// Function to calculate perkiraan angsuran
+// Fungsi kalkulasi angsuran
 function calculateAngsuran() {
-    const jumlahPinjaman = parseFloat(document.getElementById('jumlah_pinjaman').value) || 0;
-    const jangkaWaktu = parseInt(document.getElementById('jangka_waktu').value) || 0;
-    const gajiBulanan = parseFloat(document.getElementById('gaji_bulanan').value) || 0;
+    var elJumlah = document.getElementById('jumlah_pinjaman');
+    var elJangka = document.getElementById('jangka_waktu');
+    var elGaji   = document.getElementById('gaji_bulanan');
+
+    const jumlahPinjaman = parseFloat(elJumlah ? elJumlah.value : 0) || 0;
+    const jangkaWaktu    = parseInt(elJangka ? elJangka.value : 0) || 0;
+    const gajiBulanan    = parseFloat(elGaji ? elGaji.value : 0) || 0;
     const unitKerjaValue = '{{.Anggota.UnitKerja}}';
-    const totalSimpanan = parseFloat('{{.TotalSimpanan | printf "%.0f"}}') || 0;
+    const totalSimpanan  = parseFloat('{{.TotalSimpanan | printf "%.0f"}}') || 0;
 
     let limitPinjaman = 0;
-    let jenisAnggota = '';
+    let jenisAnggota  = '';
 
-    if (unitKerjaValue === '03') { // Mahasiswa
-        jenisAnggota = 'Mahasiswa';
+    if (unitKerjaValue === '03') {
+        jenisAnggota  = 'Mahasiswa';
         limitPinjaman = 5 * totalSimpanan;
-    } else { // Dosen/Tenaga Pendidikan
+    } else {
         jenisAnggota = 'Dosen/Tenaga Pendidikan';
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
             limitPinjaman = 0.4 * gajiBulanan * jangkaWaktu;
         }
     }
 
-    const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
+    const bungaInfoEl  = document.getElementById('bunga_info');
+    const bungaTerkini = parseFloat(bungaInfoEl?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
     const bungaPersenTampil = bungaTerkini.toFixed(2);
 
     const limitInfo = document.getElementById('limit_info');
-    const bungaInfo = document.getElementById('bunga_info');
 
     if (jenisAnggota === 'Mahasiswa') {
-        limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
-        bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
+        if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
+        if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
     } else if (jenisAnggota === 'Dosen/Tenaga Pendidikan') {
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
             const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
-            limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor)';
-            bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
+            if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor)';
         } else {
-            limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
-            bungaInfo.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
+            if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
         }
+        if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Bunga:</strong> ' + bungaPersenTampil + '% (flat)';
     } else {
-        limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan';
-        bungaInfo.innerHTML = '<strong>Bunga:</strong> -';
+        if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan';
+        if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Bunga:</strong> -';
     }
 
-    // Check limit and show warning
+    // Validasi limit dan tampilkan warning
     const limitWarning = document.getElementById('limit_warning');
-    if (jenisAnggota === 'Dosen/Tenaga Pendidikan' && gajiBulanan > 0 && jangkaWaktu > 0) {
-        const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
-        if (jumlahPinjaman > kemampuanBayar) {
-            limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor).';
-            limitWarning.style.color = 'red';
+    if (limitWarning) {
+        if (jenisAnggota === 'Dosen/Tenaga Pendidikan' && gajiBulanan > 0 && jangkaWaktu > 0) {
+            const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
+            if (jumlahPinjaman > kemampuanBayar) {
+                limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor).';
+                limitWarning.style.color = 'red';
+            } else if (jumlahPinjaman > 0) {
+                limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';
+                limitWarning.style.color = 'green';
+            } else {
+                limitWarning.textContent = '';
+            }
+        } else if (jenisAnggota === 'Mahasiswa' && limitPinjaman > 0) {
+            if (jumlahPinjaman > limitPinjaman) {
+                limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan).';
+                limitWarning.style.color = 'red';
+            } else if (jumlahPinjaman > 0) {
+                limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';
+                limitWarning.style.color = 'green';
+            } else {
+                limitWarning.textContent = '';
+            }
         } else {
-            limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';
-            limitWarning.style.color = 'green';
+            limitWarning.textContent = '';
         }
-    } else if (jenisAnggota === 'Mahasiswa' && limitPinjaman > 0) {
-        if (jumlahPinjaman > limitPinjaman) {
-            limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan).';
-            limitWarning.style.color = 'red';
-        } else {
-            limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';
-            limitWarning.style.color = 'green';
-        }
-    } else {
-        limitWarning.textContent = '';
     }
 
-    // Calculate total pinjaman (pokok + bunga) dan tampilkan
+    // Hitung total pinjaman (pokok + bunga) dan angsuran per bulan
     const totalPinjamanRp = document.getElementById('total_pinjaman_rp');
+    const perkiraanAngsuran = document.getElementById('perkiraan_angsuran');
+
     if (jumlahPinjaman > 0) {
-        const bungaTerkini = parseFloat(document.getElementById('bunga_info')?.textContent.match(/[\d.]+/)?.[0]) || 2.0;
         const bungaDecimal = bungaTerkini / 100;
-        const bungaTotal = bungaDecimal * jumlahPinjaman;
+        const bungaTotal   = bungaDecimal * jumlahPinjaman;
         const totalPinjaman = jumlahPinjaman + bungaTotal;
+
         if (totalPinjamanRp) {
             totalPinjamanRp.textContent = 'Rp ' + totalPinjaman.toLocaleString('id-ID');
         }
-        // Perkiraan angsuran per bulan
-        if (jangkaWaktu > 0) {
-            const pokok = jumlahPinjaman / jangkaWaktu;
+
+        if (jangkaWaktu > 0 && perkiraanAngsuran) {
+            const pokok         = jumlahPinjaman / jangkaWaktu;
             const bungaPerBulan = bungaTotal / jangkaWaktu;
-            const totalAngsuran = pokok + bungaPerBulan;
-            document.getElementById('perkiraan_angsuran').value = Math.round(totalAngsuran);
+            perkiraanAngsuran.value = Math.round(pokok + bungaPerBulan);
         }
     } else {
-        if (totalPinjamanRp) {
-            totalPinjamanRp.textContent = 'Rp 0';
-        }
-        document.getElementById('perkiraan_angsuran').value = '';
+        if (totalPinjamanRp) totalPinjamanRp.textContent = 'Rp 0';
+        if (perkiraanAngsuran) perkiraanAngsuran.value = '';
     }
 }
-
-// Add event listeners for real-time calculation
-document.getElementById('jumlah_pinjaman').addEventListener('input', calculateAngsuran);
-document.getElementById('jangka_waktu').addEventListener('change', calculateAngsuran);
-document.getElementById('gaji_bulanan').addEventListener('input', calculateAngsuran);
-
-// Function to handle "Centang Semua" checkbox
-document.getElementById('cek_semua').addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('.pernyataan-checkbox');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-    });
-});
-
-// Function to update "Centang Semua" when individual checkboxes change
-document.querySelectorAll('.pernyataan-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        const allCheckboxes = document.querySelectorAll('.pernyataan-checkbox');
-        const checkedCheckboxes = document.querySelectorAll('.pernyataan-checkbox:checked');
-        const masterCheckbox = document.getElementById('cek_semua');
-
-        if (checkedCheckboxes.length === allCheckboxes.length) {
-            masterCheckbox.checked = true;
-        } else {
-            masterCheckbox.checked = false;
-        }
-    });
-});
 </script>
-
 
 {{ template "footer.html" . }}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

@@ -285,6 +285,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 	fakultas := strings.TrimSpace(c.PostForm("Fakultas"))
 	alamat := strings.TrimSpace(c.PostForm("Alamat"))
 	gajiBulananStr := strings.TrimSpace(c.PostForm("GajiBulanan"))
+	metodePembayaran := strings.TrimSpace(c.PostForm("MetodePembayaran"))
 	noIdentitasPegawai := strings.TrimSpace(c.PostForm("NoIdentitasPegawai"))
 
 	formData := gin.H{
@@ -297,6 +298,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		"FormFakultas":           fakultas,
 		"FormAlamat":             alamat,
 		"FormGajiBulanan":        gajiBulananStr,
+		"FormMetodePembayaran":   metodePembayaran,
 		"FormNoIdentitasPegawai": noIdentitasPegawai,
 	}
 
@@ -324,6 +326,13 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		gajiBulanan = parsedGaji
 	}
 
+	if metodePembayaran == "" {
+		metodePembayaran = "transfer_bank"
+	}
+	if metodePembayaran == "transfer" {
+		metodePembayaran = "transfer_bank"
+	}
+
 	if strings.ToLower(statusAnggota) != "mahasiswa" && gajiBulanan <= 0 {
 		formData["Error"] = "Gaji bulanan wajib diisi untuk dosen dan tenaga pendidikan."
 		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
@@ -332,6 +341,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 
 	// Validasi referensi untuk non-mahasiswa (sama seperti alur register)
 	db := config.GetDB()
+	var err error
 	nikKTP := noIdentitasPegawai
 	if strings.ToLower(statusAnggota) != "mahasiswa" {
 		if noIdentitasPegawai == "" {
@@ -376,9 +386,71 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		return
 	}
 
+	// Validasi metode pembayaran seperti register
+	var buktiTransfer string
+	var nominalSimpanan string
+	err = db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpanan)
+	if err != nil {
+		nominalSimpanan = "100000"
+	}
+	nominalSimpananPokok := parseNominalPengaturan(nominalSimpanan, 100000)
+
+	switch metodePembayaran {
+	case "transfer_bank":
+		file, err := c.FormFile("BuktiTransfer")
+		if err != nil {
+			formData["Error"] = "Bukti transfer wajib diupload jika memilih metode transfer."
+			renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+			return
+		}
+
+		filename := time.Now().Format("20060102150405") + "_" + file.Filename
+		dst := "./static/uploads/" + filename
+		if err := c.SaveUploadedFile(file, dst); err != nil {
+			formData["Error"] = "Gagal menyimpan file bukti transfer."
+			renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
+			return
+		}
+		buktiTransfer = filename
+	case "potong_gaji":
+		if strings.ToLower(statusAnggota) == "mahasiswa" {
+			formData["Error"] = "Metode potong gaji hanya untuk anggota dengan gaji. Untuk mahasiswa gunakan transfer."
+			renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+			return
+		}
+		if gajiBulanan < nominalSimpananPokok {
+			formData["Error"] = fmt.Sprintf("Gaji bersih harus minimal Rp %d untuk menggunakan metode potong gaji karena nominal simpanan pokok saat ini Rp %d.", nominalSimpananPokok, nominalSimpananPokok)
+			renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+			return
+		}
+		buktiTransfer = "POTONG_GAJI"
+	case "tunai":
+		buktiTransfer = "TUNAI"
+	default:
+		formData["Error"] = "Metode pembayaran tidak valid."
+		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+		return
+	}
+
+	if strings.ToLower(statusAnggota) != "mahasiswa" {
+		var duplicateCount int
+		err = db.QueryRow(`
+			SELECT COUNT(*)
+			FROM anggota
+			WHERE LOWER(TRIM(COALESCE(nama_anggota, ''))) = LOWER(TRIM($1))
+			  AND COALESCE(nik_ktp, '') = $2
+			  AND COALESCE(gaji_bulanan, 0) = $3
+		`, namaAnggota, noIdentitasPegawai, gajiBulanan).Scan(&duplicateCount)
+		if err == nil && duplicateCount > 0 {
+			formData["Error"] = "Data dengan Nama Lengkap, Nomer Identitas, dan Gaji Bersih tersebut sudah terdaftar."
+			renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+			return
+		}
+	}
+
 	// Validasi unik username / telepon agar tidak bentrok akun.
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2", username, noTelepon).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2", username, noTelepon).Scan(&count)
 	if err != nil {
 		formData["Error"] = "Gagal memvalidasi data anggota."
 		renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
@@ -412,7 +484,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 			$1, $2, $3, $4, $5,
 			$6, $7, CURRENT_DATE, $8, $9,
 			$10, $11, 'aktif', $12, $13,
-			'', $14, $15, $16
+			$14, $15, $16, $17
 		)
 	`
 	_, err = db.Exec(
@@ -420,7 +492,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		idAnggota, namaAnggota, username, password, tglLahir,
 		nikKTP, noTelepon, alamat, jenisKelamin,
 		statusAnggota, fakultas, unitKerja, fakultasCode,
-		gajiBulanan, tahun, nomorUrut,
+		buktiTransfer, gajiBulanan, tahun, nomorUrut,
 	)
 	if err != nil {
 		log.Printf("[ERROR] AdminTambahAnggota simpan anggota baru gagal: %v", err)

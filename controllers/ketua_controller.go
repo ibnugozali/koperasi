@@ -59,6 +59,13 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 	case "pinjaman":
 		if action == "confirm" {
 			err = repository.UpdatePinjamanStatus(id, "aktif")
+			if err == nil {
+				if createErr := createPendingAngsuranPotongGajiAwal(id); createErr != nil {
+					log.Printf("[ERROR] KetuaKonfirmasiTransaksiPost: gagal membuat cicilan pending otomatis untuk pinjaman %d: %v", id, createErr)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Pinjaman dikonfirmasi, tetapi gagal membuat cicilan pending otomatis"})
+					return
+				}
+			}
 		} else {
 			err = repository.UpdatePinjamanStatus(id, "gagal")
 		}
@@ -595,11 +602,13 @@ func KetuaDetailAngsuran(c *gin.Context) {
 	var angsuranKe int
 	var nomorRekening string
 	var metodePencairan string
-	err = db.QueryRow(`SELECT jumlah_pinjaman, nomor_rekening, COALESCE(metode_pencairan, 'tunai') FROM pinjaman WHERE id_pinjaman = $1`, angsuran.IDPinjaman).Scan(&jumlahPinjaman, &nomorRekening, &metodePencairan)
+	var metodeAngsuran string
+	err = db.QueryRow(`SELECT jumlah_pinjaman, nomor_rekening, COALESCE(metode_pencairan, 'tunai'), COALESCE(metode_angsuran, 'tunai') FROM pinjaman WHERE id_pinjaman = $1`, angsuran.IDPinjaman).Scan(&jumlahPinjaman, &nomorRekening, &metodePencairan, &metodeAngsuran)
 	if err != nil {
 		jumlahPinjaman = 0
 		nomorRekening = "-"
 		metodePencairan = "tunai"
+		metodeAngsuran = "tunai"
 	}
 	// Hitung angsuran ke-berapa (berdasarkan urutan tgl_bayar)
 	rows, err := db.Query(`SELECT id_angsuran FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
@@ -663,6 +672,7 @@ func KetuaDetailAngsuran(c *gin.Context) {
 		"AngsuranKe":      angsuranKe,
 		"NomorRekening":   nomorRekening,
 		"MetodePencairan": metodePencairan,
+		"MetodeAngsuran":  metodeAngsuran,
 		"Angsurans":       angsurans,
 		"CurrentLogo":     latestLogo,
 	})
@@ -2713,7 +2723,7 @@ func ExportLaporanKeuangan(c *gin.Context) {
 func KetuaKonfirmasiTransaksi(c *gin.Context) {
 	// Ambil data pending dari repository
 	pendingSimpanan, errSimpanan := repository.GetConfirmedSimpanan()
-	pendingPinjaman, errPinjaman := repository.GetPendingPinjaman() // pinjaman tetap status 'proses'
+	pendingPinjaman, errPinjaman := repository.GetPendingPinjaman() // ambil pinjaman dengan status 'proses' untuk konfirmasi ketua
 	pendingAngsuran, errAngsuran := repository.GetConfirmedAngsuran()
 	pendingPengambilan, errPengambilan := repository.GetPendingPengambilanSimpanan()
 
@@ -2910,11 +2920,19 @@ func KetuaDataAnggota(c *gin.Context) {
 	if err != nil {
 		potonganRegister = make(map[string]float64)
 	}
+	potonganAngsuran, err := repository.GetPotonganAngsuranPotongGajiBulanIniAllAnggota()
+	if err != nil {
+		potonganAngsuran = make(map[string]float64)
+	}
 
 	nominalSimpananWajib := 0.0
+	statusSimpananWajibAktif := false
 	if configSimpananWajib, err := repository.GetKonfigurasiSimpananWajib(); err == nil {
 		if nominal, ok := configSimpananWajib["PersentasePotong"].(float64); ok {
 			nominalSimpananWajib = nominal
+		}
+		if status, ok := configSimpananWajib["StatusAktif"].(bool); ok {
+			statusSimpananWajibAktif = status
 		}
 	}
 
@@ -2922,16 +2940,16 @@ func KetuaDataAnggota(c *gin.Context) {
 	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
 		potonganWajib := potonganBulanIni[anggota.IDAnggota]
-		if potonganWajib <= 0 && nominalSimpananWajib > 0 {
+		if potonganWajib <= 0 && nominalSimpananWajib > 0 && statusSimpananWajibAktif {
 			potonganWajib = nominalSimpananWajib
 		}
-		potongan := potonganWajib + potonganRegister[anggota.IDAnggota]
+		potongan := potonganWajib + potonganRegister[anggota.IDAnggota] + potonganAngsuran[anggota.IDAnggota]
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 
 		// Fallback tampilan jika total simpanan wajib belum tercatat.
 		if simpananWajib[anggota.IDAnggota] <= 0 && potonganWajib > 0 {
 			simpananWajib[anggota.IDAnggota] = potonganWajib
-		} else if simpananWajib[anggota.IDAnggota] <= 0 && nominalSimpananWajib > 0 {
+		} else if simpananWajib[anggota.IDAnggota] <= 0 && nominalSimpananWajib > 0 && statusSimpananWajibAktif {
 			simpananWajib[anggota.IDAnggota] = nominalSimpananWajib
 		}
 	}
@@ -3287,11 +3305,19 @@ func KetuaLaporan(c *gin.Context) {
 	if err != nil {
 		potonganBulanIni = make(map[string]float64)
 	}
+	potonganRegister, err := repository.GetPotonganRegisterPotongGajiBulanIniAllAnggota()
+	if err != nil {
+		potonganRegister = make(map[string]float64)
+	}
+	potonganAngsuran, err := repository.GetPotonganAngsuranPotongGajiBulanIniAllAnggota()
+	if err != nil {
+		potonganAngsuran = make(map[string]float64)
+	}
 
 	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
 	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
-		potongan := potonganBulanIni[anggota.IDAnggota]
+		potongan := potonganBulanIni[anggota.IDAnggota] + potonganRegister[anggota.IDAnggota] + potonganAngsuran[anggota.IDAnggota]
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 	}
 

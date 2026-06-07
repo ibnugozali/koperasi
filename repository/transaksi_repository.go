@@ -71,14 +71,20 @@ func GetConfirmedAngsuran() ([]models.Angsuran, error) {
 func GetPinjamanAktifByAnggota(idAnggota string) ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
-	rows, err := db.Query("SELECT id_pinjaman, status, metode_angsuran FROM pinjaman WHERE id_anggota = $1 AND status IN ('proses', 'aktif')", idAnggota)
+	rows, err := db.Query(`
+		SELECT id_pinjaman, jumlah_pinjaman, jangka_waktu, COALESCE(bunga, 0), status, COALESCE(metode_angsuran, '')
+		FROM pinjaman
+		WHERE id_anggota = $1
+		  AND status IN ('proses', 'aktif')
+		ORDER BY tgl_pinjaman DESC, id_pinjaman DESC
+	`, idAnggota)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var p models.Pinjaman
-		if err := rows.Scan(&p.IDPinjaman, &p.Status, &p.MetodeAngsuran); err != nil {
+		if err := rows.Scan(&p.IDPinjaman, &p.JumlahPinjaman, &p.JangkaWaktu, &p.Bunga, &p.Status, &p.MetodeAngsuran); err != nil {
 			return nil, err
 		}
 		pinjamans = append(pinjamans, p)
@@ -363,7 +369,7 @@ func GetPendingPinjaman() ([]models.Pinjaman, error) {
 	}
 
 	query := `
-		SELECT p.id_pinjaman, p.id_anggota, a.nama_anggota, p.id_pengelola, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status, 
+		SELECT p.id_pinjaman, p.id_anggota, a.nama_anggota, p.id_pengelola, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status,
 		COALESCE(p.metode_pencairan, ''), COALESCE(p.metode_angsuran, '')
 		FROM pinjaman p
 		JOIN anggota a ON p.id_anggota = a.id_anggota
@@ -382,6 +388,42 @@ func GetPendingPinjaman() ([]models.Pinjaman, error) {
 			return nil, err
 		}
 		// Override bunga dengan nilai terkini dari pengaturan
+		p.Bunga = currentBunga
+		pinjamans = append(pinjamans, p)
+	}
+	return pinjamans, nil
+}
+
+func GetPendingPinjamanForBendahara() ([]models.Pinjaman, error) {
+	db := config.GetDB()
+	var pinjamans []models.Pinjaman
+
+	// Ambil bunga terkini dari pengaturan
+	var currentBunga float64
+	err := db.QueryRow("SELECT nilai FROM pengaturan WHERE nama_pengaturan = 'bunga_pinjaman'").Scan(&currentBunga)
+	if err != nil {
+		currentBunga = 2.0
+	}
+
+	query := `
+		SELECT p.id_pinjaman, p.id_anggota, a.nama_anggota, p.id_pengelola, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status,
+		COALESCE(p.metode_pencairan, ''), COALESCE(p.metode_angsuran, '')
+		FROM pinjaman p
+		JOIN anggota a ON p.id_anggota = a.id_anggota
+		WHERE p.status = 'aktif'
+		ORDER BY p.tgl_pinjaman DESC
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var p models.Pinjaman
+		if err := rows.Scan(&p.IDPinjaman, &p.IDAnggota, &p.NamaAnggota, &p.IDPengelola, &p.TglPinjaman, &p.JumlahPinjaman, &p.JangkaWaktu, &p.Bunga, &p.Status, &p.MetodePencairan, &p.MetodeAngsuran); err != nil {
+			return nil, err
+		}
 		p.Bunga = currentBunga
 		pinjamans = append(pinjamans, p)
 	}
@@ -1032,7 +1074,22 @@ func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
 func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
-	query := ` SELECT p.id_pinjaman, p.id_anggota, p.id_pengelola, p.tgl_pinjaman, p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status, p.metode_pencairan, p.metode_angsuran FROM pinjaman p LEFT JOIN ( SELECT id_pinjaman, SUM(CASE WHEN status IN ('confirmed','lunas','diterima') THEN sisa_pinjaman ELSE 0 END) AS total_angsuran FROM angsuran GROUP BY id_pinjaman ) a ON p.id_pinjaman = a.id_pinjaman WHERE p.id_anggota = $1 AND (p.status = 'aktif' OR p.status = 'proses') AND (p.jumlah_pinjaman - COALESCE(a.total_angsuran,0)) > 0 ORDER BY p.tgl_pinjaman DESC, p.id_pinjaman DESC `
+	query := `
+		SELECT p.id_pinjaman, p.id_anggota, p.id_pengelola, p.tgl_pinjaman,
+		       p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.status,
+		       p.metode_pencairan, p.metode_angsuran
+		FROM pinjaman p
+		LEFT JOIN (
+			SELECT id_pinjaman,
+			       SUM(CASE WHEN status IN ('confirmed','lunas','diterima') THEN jumlah_angsuran ELSE 0 END) AS total_angsuran
+			FROM angsuran
+			GROUP BY id_pinjaman
+		) a ON p.id_pinjaman = a.id_pinjaman
+		WHERE p.id_anggota = $1
+		  AND p.status IN ('aktif', 'proses')
+		  AND ((p.jumlah_pinjaman + (p.jumlah_pinjaman * COALESCE(p.bunga, 0) / 100)) - COALESCE(a.total_angsuran, 0)) > 0
+		ORDER BY p.tgl_pinjaman DESC, p.id_pinjaman DESC
+	`
 	rows, err := db.Query(query, idAnggota)
 	if err != nil {
 		return nil, err

@@ -102,6 +102,74 @@ document.addEventListener('DOMContentLoaded', function() {
     var isSubmittingAngsuran = false;
     var formAngsuran = document.querySelector('form[action="/bendahara/transaksi/angsuran"]');
     if (formAngsuran) {
+        var inputAnggotaAngsuran = formAngsuran.querySelector('input[name="id_anggota"]');
+        var selectPinjamanAngsuran = formAngsuran.querySelector('select[name="jenis_angsuran"]');
+        var inputJumlahAngsuran = formAngsuran.querySelector('input[name="jumlah_angsuran"]');
+        var pinjamanAngsuranByID = {};
+
+        function resetPinjamanAngsuranOptions(message) {
+            pinjamanAngsuranByID = {};
+            if (selectPinjamanAngsuran) {
+                selectPinjamanAngsuran.innerHTML = '<option value="">' + message + '</option>';
+            }
+            if (inputJumlahAngsuran) {
+                inputJumlahAngsuran.value = '';
+            }
+        }
+
+        function loadPinjamanAngsuran() {
+            if (!inputAnggotaAngsuran || !selectPinjamanAngsuran) return;
+
+            var idAnggota = inputAnggotaAngsuran.value.trim();
+            if (!idAnggota) {
+                resetPinjamanAngsuranOptions('Masukkan ID anggota dulu...');
+                return;
+            }
+
+            resetPinjamanAngsuranOptions('Memuat pinjaman aktif...');
+            fetch('/api/jenis-angsuran?id_anggota=' + encodeURIComponent(idAnggota), {
+                credentials: 'same-origin'
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var items = data && Array.isArray(data.jenis_angsuran) ? data.jenis_angsuran : [];
+                selectPinjamanAngsuran.innerHTML = '<option value="">Pilih pinjaman aktif...</option>';
+                pinjamanAngsuranByID = {};
+
+                if (items.length === 0) {
+                    resetPinjamanAngsuranOptions('Tidak ada pinjaman aktif');
+                    return;
+                }
+
+                items.forEach(function(item) {
+                    var opt = document.createElement('option');
+                    opt.value = item.key;
+                    opt.textContent = item.nama;
+                    opt.dataset.perkiraanAngsuran = item.perkiraan_angsuran || 0;
+                    selectPinjamanAngsuran.appendChild(opt);
+                    pinjamanAngsuranByID[String(item.key)] = item;
+                });
+            })
+            .catch(function() {
+                resetPinjamanAngsuranOptions('Gagal memuat pinjaman');
+            });
+        }
+
+        function syncJumlahAngsuranFromPinjaman() {
+            if (!selectPinjamanAngsuran || !inputJumlahAngsuran) return;
+            var selected = pinjamanAngsuranByID[String(selectPinjamanAngsuran.value)];
+            var perkiraan = selected ? Number(selected.perkiraan_angsuran || 0) : 0;
+            inputJumlahAngsuran.value = perkiraan > 0 ? String(Math.round(perkiraan)) : '';
+        }
+
+        if (inputAnggotaAngsuran) {
+            inputAnggotaAngsuran.addEventListener('change', loadPinjamanAngsuran);
+            inputAnggotaAngsuran.addEventListener('blur', loadPinjamanAngsuran);
+        }
+        if (selectPinjamanAngsuran) {
+            selectPinjamanAngsuran.addEventListener('change', syncJumlahAngsuranFromPinjaman);
+        }
+
         var btnAngsuran = formAngsuran.querySelector('button[type="submit"]');
         formAngsuran.addEventListener('submit', function(e) {
             e.preventDefault();
