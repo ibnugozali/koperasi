@@ -296,6 +296,7 @@
                                         <th>ID Anggota</th>
                                         <th>Nama Anggota</th>
                                         <th class="text-end">Jumlah Cicilan</th>
+                                        <th class="text-center">Keterangan Pinjaman</th>
                                         <th class="text-center">Metode Cicilan</th>
                                         <th style="width:12%" class="text-center">Tanggal Bayar</th>
                                         <th style="width:16%" class="text-center">Aksi</th>
@@ -311,6 +312,24 @@
                                             <div>Rp {{printf "%.0f" .Angsuran.JumlahAngsuran}}</div>
                                             {{if gt .AngsuranKe 0}}
                                             <div><span class="badge bg-light text-dark border">Cicilan ke-{{.AngsuranKe}}</span></div>
+                                            {{end}}
+                                        </td>
+                                        <td class="text-center">
+                                            {{if .ResumePinjamanAktif}}
+                                            <div><span class="badge bg-light text-dark border">Pinjaman #{{.NomorResume}}</span></div>
+                                            {{else}}
+                                            <div><span class="badge bg-light text-dark border">Pinjaman #{{.Angsuran.IDPinjaman}}</span></div>
+                                            {{end}}
+                                            {{if .PinjamanBaruDenganSisaLama}}
+                                            <div class="mt-1"><span class="badge bg-primary badge-custom">Pinjaman Baru</span></div>
+                                            <div class="small text-muted mt-1">
+                                                Pinjaman sebelumnya #{{.IDPinjamanSebelumnya}} belum lunas 100%.
+                                            </div>
+                                            <div class="small text-danger">
+                                                Sisa sebelumnya: Rp {{printf "%.0f" .SisaPinjamanSebelumnya}}
+                                            </div>
+                                            {{else}}
+                                            <div class="small text-muted mt-1">Pinjaman berjalan</div>
                                             {{end}}
                                         </td>
                                         <td class="text-center">

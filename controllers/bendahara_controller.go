@@ -1758,12 +1758,17 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 		Pinjaman models.Pinjaman
 	}
 	type numberedAngsuran struct {
-		No            int
-		Angsuran      models.Angsuran
-		AngsuranKe    int
-		PeriodeLabel  string
-		StatusWaktu   string
-		StatusWaktuBG string
+		No                         int
+		Angsuran                   models.Angsuran
+		AngsuranKe                 int
+		PeriodeLabel               string
+		StatusWaktu                string
+		StatusWaktuBG              string
+		PinjamanBaruDenganSisaLama bool
+		SisaPinjamanSebelumnya     float64
+		IDPinjamanSebelumnya       int
+		NomorResume                int
+		ResumePinjamanAktif        bool
 	}
 	type numberedPengambilan struct {
 		No                  int
@@ -1806,13 +1811,30 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 				}
 			}
 		}
+		resumePinjaman := getResumePinjamanGabungan(a.IDAnggota, true)
+		resumeAktifUntukAngsuran := resumePinjaman != nil && resumePinjaman.IDPinjaman == a.IDPinjaman
+		pinjamanBaru := false
+		sisaPinjamanSebelumnya := 0.0
+		idPinjamanSebelumnya := 0
+		nomorResume := 1
+		if resumeAktifUntukAngsuran {
+			pinjamanBaru = resumePinjaman.SisaPinjamanSebelumnya > 0
+			sisaPinjamanSebelumnya = resumePinjaman.SisaPinjamanSebelumnya
+			idPinjamanSebelumnya = resumePinjaman.IDPinjamanSebelumnya
+			nomorResume = resumePinjaman.NomorResume
+		}
 		numberedAngsurans = append(numberedAngsurans, numberedAngsuran{
-			No:            i + 1,
-			Angsuran:      a,
-			AngsuranKe:    angsuranKe,
-			PeriodeLabel:  periodeLabel,
-			StatusWaktu:   statusWaktu,
-			StatusWaktuBG: statusWaktuBG,
+			No:                         i + 1,
+			Angsuran:                   a,
+			AngsuranKe:                 angsuranKe,
+			PeriodeLabel:               periodeLabel,
+			StatusWaktu:                statusWaktu,
+			StatusWaktuBG:              statusWaktuBG,
+			PinjamanBaruDenganSisaLama: pinjamanBaru,
+			SisaPinjamanSebelumnya:     sisaPinjamanSebelumnya,
+			IDPinjamanSebelumnya:       idPinjamanSebelumnya,
+			NomorResume:                nomorResume,
+			ResumePinjamanAktif:        resumeAktifUntukAngsuran,
 		})
 	}
 

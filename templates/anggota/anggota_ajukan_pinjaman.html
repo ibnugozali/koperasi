@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function(){
     {{range $i, $resume := .ResumeGabungan}}
         <div id="resumePinjamanCardGabungan{{$i}}" class="card mb-4 border-0 floating-resume-pinjaman">
             <div class="card-header bg-light d-flex justify-content-between align-items-center gap-3 flex-wrap" style="font-size: 15px;">
-                <span class="resume-pinjaman-header-title">Resume Pinjaman Aktif #{{add $i 1}}</span>
+                <span class="resume-pinjaman-header-title">Resume Pinjaman Aktif #{{$resume.NomorResume}}</span>
                 <span class="badge text-bg-primary">Pinjaman Aktif/Proses</span>
             </div>
            <div class="row g-1 mb-2" style="font-size: 15px;">
@@ -116,7 +116,12 @@ document.addEventListener('DOMContentLoaded', function(){
                     <div class="col-md-6"><strong>Tenor Total:</strong> {{$resume.JangkaWaktu}} bulan</div>
                     <div class="col-md-6"><strong>Pokok Pinjaman:</strong> Rp {{$resume.JumlahPinjaman | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Bunga Pinjaman Total:</strong> Rp {{$resume.Bunga | formatRupiah}}</div>
-                    <div class="col-md-6"><strong>Total Pinjaman (Pokok + Bunga):</strong> Rp {{add $resume.JumlahPinjaman $resume.Bunga | formatRupiah}}</div>
+                    {{if gt $resume.SisaPinjamanSebelumnya 0.0}}
+                    <div class="col-md-6"><strong>Sisa Pinjaman Sebelumnya:</strong> Rp {{$resume.SisaPinjamanSebelumnya | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Total Pinjaman (Pokok + Bunga + Sisa Pinjaman Sebelumnya):</strong> Rp {{$resume.TotalPinjamanDenganSisaLama | formatRupiah}}</div>
+                    {{else}}
+                    <div class="col-md-6"><strong>Total Pinjaman (Pokok + Bunga):</strong> Rp {{$resume.TotalPinjamanDenganSisaLama | formatRupiah}}</div>
+                    {{end}}
                     <div class="col-md-6"><strong>Total Terbayar:</strong> Rp {{$resume.TotalTerbayar | formatRupiah}}</div>
                     <div class="col-md-6"><strong>Sisa Pinjaman:</strong> Rp {{$resume.SisaPokok | formatRupiah}}</div>
                     <!-- <div class="col-md-6"><strong>Angsuran Terbayar:</strong> {{$resume.AngsuranTerbayar}} kali</div>

@@ -154,21 +154,25 @@ type profilSimpananRow struct {
 }
 
 type resumePinjamanInfo struct {
-	IDPinjaman         int
-	Status             string
-	TglPinjaman        time.Time
-	JumlahPinjaman     float64
-	JangkaWaktu        int
-	AngsuranTerbayar   int
-	SisaAngsuran       int
-	TotalTerbayar      float64
-	SisaPokok          float64
-	AngsuranPerBulan   float64
-	PersentaseTerbayar float64
-	BisaAjukanLagi     bool
-	MetodePencairan    string
-	MetodeAngsuran     string
-	Bunga              float64
+	IDPinjaman                  int
+	Status                      string
+	TglPinjaman                 time.Time
+	JumlahPinjaman              float64
+	JangkaWaktu                 int
+	AngsuranTerbayar            int
+	SisaAngsuran                int
+	TotalTerbayar               float64
+	SisaPokok                   float64
+	AngsuranPerBulan            float64
+	PersentaseTerbayar          float64
+	BisaAjukanLagi              bool
+	MetodePencairan             string
+	MetodeAngsuran              string
+	Bunga                       float64
+	SisaPinjamanSebelumnya      float64
+	TotalPinjamanDenganSisaLama float64
+	NomorResume                 int
+	IDPinjamanSebelumnya        int
 }
 
 func hitungAngsuranPerBulan(jumlahPinjaman, bungaNominal float64, jangkaWaktu int) float64 {
@@ -370,7 +374,9 @@ func getResumePinjamanGabungan(userID string, includeProses bool) *resumePinjama
 		}
 		if err == nil {
 			// Temukan pinjaman proses terbaru dan langsung gunakan
-			return buildResumePinjamanInfo(&p)
+			resume := buildResumePinjamanInfo(&p)
+			tambahkanSisaPinjamanSebelumnya(userID, resume, p.IDPinjaman)
+			return resume
 		}
 	}
 
@@ -390,7 +396,67 @@ func getResumePinjamanGabungan(userID string, includeProses bool) *resumePinjama
 	if pAktif == nil {
 		return nil
 	}
-	return buildResumePinjamanInfo(pAktif)
+	resume := buildResumePinjamanInfo(pAktif)
+	tambahkanSisaPinjamanSebelumnya(userID, resume, pAktif.IDPinjaman)
+	return resume
+}
+
+func tambahkanSisaPinjamanSebelumnya(userID string, resume *resumePinjamanInfo, currentPinjamanID int) {
+	if resume == nil {
+		return
+	}
+
+	totalKewajibanSekarang := resume.JumlahPinjaman + resume.Bunga
+	resume.TotalPinjamanDenganSisaLama = totalKewajibanSekarang
+	resume.NomorResume = 1
+
+	pList, err := repository.GetPinjamanAktifByAnggotaID(userID)
+	if err != nil {
+		return
+	}
+
+	totalSisaSebelumnya := 0.0
+	jumlahPinjamanSebelumnya := 0
+	idPinjamanSebelumnya := 0
+	var tglPinjamanSebelumnya time.Time
+	for i := range pList {
+		pinjamanSebelumnya := &pList[i]
+		status := strings.ToLower(strings.TrimSpace(pinjamanSebelumnya.Status))
+		if pinjamanSebelumnya.IDPinjaman == currentPinjamanID || status != "aktif" {
+			continue
+		}
+		if !isPinjamanSebelumnyaUntukResume(pinjamanSebelumnya, resume, currentPinjamanID) {
+			continue
+		}
+
+		resumeSebelumnya := buildResumePinjamanInfo(pinjamanSebelumnya)
+		if resumeSebelumnya != nil && resumeSebelumnya.SisaPokok > 0 {
+			totalSisaSebelumnya += resumeSebelumnya.SisaPokok
+			jumlahPinjamanSebelumnya++
+			if idPinjamanSebelumnya == 0 || pinjamanSebelumnya.TglPinjaman.After(tglPinjamanSebelumnya) {
+				idPinjamanSebelumnya = pinjamanSebelumnya.IDPinjaman
+				tglPinjamanSebelumnya = pinjamanSebelumnya.TglPinjaman
+			}
+		}
+	}
+	resume.NomorResume = jumlahPinjamanSebelumnya + 1
+
+	if totalSisaSebelumnya <= 0 {
+		return
+	}
+
+	resume.SisaPinjamanSebelumnya = totalSisaSebelumnya
+	resume.IDPinjamanSebelumnya = idPinjamanSebelumnya
+	resume.TotalPinjamanDenganSisaLama = totalKewajibanSekarang + totalSisaSebelumnya
+	resume.SisaPokok += totalSisaSebelumnya
+	resume.AngsuranPerBulan = hitungAngsuranPerBulan(resume.JumlahPinjaman, resume.Bunga+totalSisaSebelumnya, resume.JangkaWaktu)
+}
+
+func isPinjamanSebelumnyaUntukResume(pinjaman *models.Pinjaman, resume *resumePinjamanInfo, currentPinjamanID int) bool {
+	if pinjaman.TglPinjaman.Before(resume.TglPinjaman) {
+		return true
+	}
+	return pinjaman.TglPinjaman.Equal(resume.TglPinjaman) && pinjaman.IDPinjaman < currentPinjamanID
 }
 
 func buildResumePinjamanInfo(p *models.Pinjaman) *resumePinjamanInfo {
@@ -450,40 +516,44 @@ func buildResumePinjamanInfo(p *models.Pinjaman) *resumePinjamanInfo {
 
 	if persentaseGabungan >= 100 {
 		return &resumePinjamanInfo{
-			IDPinjaman:         p.IDPinjaman,
-			Status:             "lunas",
-			TglPinjaman:        tglPinjamanGabungan,
-			JumlahPinjaman:     totalPinjaman,
-			JangkaWaktu:        totalJangkaWaktu,
-			AngsuranTerbayar:   angsuranTerbayar,
-			SisaAngsuran:       0,
-			TotalTerbayar:      totalTerbayar,
-			SisaPokok:          0,
-			AngsuranPerBulan:   angsuranPerBulan,
-			PersentaseTerbayar: 100,
-			BisaAjukanLagi:     true,
-			Bunga:              bungaNominal,
-			MetodePencairan:    metodePencairanGabungan,
-			MetodeAngsuran:     metodeAngsuranGabungan,
+			IDPinjaman:                  p.IDPinjaman,
+			Status:                      "lunas",
+			TglPinjaman:                 tglPinjamanGabungan,
+			JumlahPinjaman:              totalPinjaman,
+			JangkaWaktu:                 totalJangkaWaktu,
+			AngsuranTerbayar:            angsuranTerbayar,
+			SisaAngsuran:                0,
+			TotalTerbayar:               totalTerbayar,
+			SisaPokok:                   0,
+			AngsuranPerBulan:            angsuranPerBulan,
+			PersentaseTerbayar:          100,
+			BisaAjukanLagi:              true,
+			Bunga:                       bungaNominal,
+			MetodePencairan:             metodePencairanGabungan,
+			MetodeAngsuran:              metodeAngsuranGabungan,
+			TotalPinjamanDenganSisaLama: totalKewajiban,
+			NomorResume:                 1,
 		}
 	}
 
 	return &resumePinjamanInfo{
-		IDPinjaman:         p.IDPinjaman,
-		Status:             statusGabungan,
-		TglPinjaman:        tglPinjamanGabungan,
-		JumlahPinjaman:     totalPinjaman,
-		JangkaWaktu:        totalJangkaWaktu,
-		AngsuranTerbayar:   angsuranTerbayar,
-		SisaAngsuran:       sisaAngsuran,
-		TotalTerbayar:      totalTerbayar,
-		SisaPokok:          sisaPokok,
-		AngsuranPerBulan:   angsuranPerBulan,
-		PersentaseTerbayar: persentaseGabungan,
-		BisaAjukanLagi:     bisaAjukanLagi,
-		Bunga:              bungaNominal,
-		MetodePencairan:    metodePencairanGabungan,
-		MetodeAngsuran:     metodeAngsuranGabungan,
+		IDPinjaman:                  p.IDPinjaman,
+		Status:                      statusGabungan,
+		TglPinjaman:                 tglPinjamanGabungan,
+		JumlahPinjaman:              totalPinjaman,
+		JangkaWaktu:                 totalJangkaWaktu,
+		AngsuranTerbayar:            angsuranTerbayar,
+		SisaAngsuran:                sisaAngsuran,
+		TotalTerbayar:               totalTerbayar,
+		SisaPokok:                   sisaPokok,
+		AngsuranPerBulan:            angsuranPerBulan,
+		PersentaseTerbayar:          persentaseGabungan,
+		BisaAjukanLagi:              bisaAjukanLagi,
+		Bunga:                       bungaNominal,
+		MetodePencairan:             metodePencairanGabungan,
+		MetodeAngsuran:              metodeAngsuranGabungan,
+		TotalPinjamanDenganSisaLama: totalKewajiban,
+		NomorResume:                 1,
 	}
 }
 
