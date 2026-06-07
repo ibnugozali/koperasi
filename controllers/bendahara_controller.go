@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"koperasi-simpan-pinjam/config"
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 	"log"
 	"math"
 	"net/http"
@@ -21,10 +24,6 @@ import (
 	"github.com/jung-kurt/gofpdf"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
-
-	"koperasi-simpan-pinjam/config"
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
 )
 
 // BendaharaUploadKop menerima file kop surat dan menyimpannya ke folder static/uploads/kop/
@@ -5349,6 +5348,36 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 			}
 			angsurans = append(angsurans, a)
 		}
+
+		// Pastikan riwayat pending tidak menampilkan sisa pinjaman yang sudah kadaluarsa dari jadwal lama.
+		// Untuk baris pending, tampilkan sisa pinjaman aktual sebelum pembayaran berikutnya,
+		// sehingga pending row menggunakan saldo terkini dari angsuran terakhir yang sudah diterima.
+		currentRemaining := jumlahPinjaman
+		for i, a := range angsurans {
+			if a.Status == "confirmed" || a.Status == "diterima" || a.Status == "lunas" {
+				currentRemaining = a.SisaPinjaman
+				continue
+			}
+			if a.Status == "pending" {
+				angsurans[i].SisaPinjaman = currentRemaining
+			}
+		}
+	}
+
+	displaySisaPinjaman := angsuran.SisaPinjaman
+	if angsuran.Status == "pending" {
+		currentBefore := jumlahPinjaman
+		for _, a := range angsurans {
+			if a.IDAngsuran == angsuran.IDAngsuran {
+				break
+			}
+			if a.Status == "confirmed" || a.Status == "diterima" || a.Status == "lunas" {
+				currentBefore = a.SisaPinjaman
+			}
+		}
+		if currentBefore != 0 {
+			displaySisaPinjaman = currentBefore
+		}
 	}
 
 	nomorRekening, _ := repository.GetNomorRekening("angsuran")
@@ -5384,7 +5413,7 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 		},
 		"JumlahPinjaman":  jumlahPinjaman,
 		"Angsuran":        angsuran,
-		"SisaPinjaman":    angsuran.SisaPinjaman,
+		"SisaPinjaman":    displaySisaPinjaman,
 		"AngsuranKe":      angsuranKe,
 		"MetodePencairan": metodePencairan,
 		"MetodeAngsuran":  metodeAngsuran,
@@ -5411,6 +5440,44 @@ func ApiJenisAngsuran(c *gin.Context) {
 		if p.JangkaWaktu > 0 {
 			perkiraanAngsuran = math.Round(totalKewajiban / float64(p.JangkaWaktu))
 		}
+
+		// Hitung sisa pinjaman dari angsuran terakhir yang sudah dikonfirmasi/lunas/diterima
+		angsurans, _ := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+		sisaPinjaman := p.JumlahPinjaman
+		confirmedFound := false
+		if len(angsurans) > 0 {
+			// angsuran sudah diurutkan DESC (terbaru duluan), ambil yang pertama dengan status confirmed/lunas/diterima
+			var latestConfirmedSisa float64
+			for _, a := range angsurans {
+				if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
+					latestConfirmedSisa = a.SisaPinjaman
+					confirmedFound = true
+					break
+				}
+			}
+			if confirmedFound {
+				sisaPinjaman = latestConfirmedSisa
+			}
+		}
+
+		// Jika belum ada angsuran terkonfirmasi, gunakan total due dari Jumlah Angsuran + Sisa Pinjaman untuk angsuran pending pertama
+		if !confirmedFound {
+			var pendingJumlah, pendingSisa float64
+			db := config.GetDB()
+			pendingErr := db.QueryRow(`
+			SELECT COALESCE(jumlah_angsuran, 0), COALESCE(sisa_pinjaman, 0)
+			FROM angsuran
+			WHERE id_pinjaman = $1 AND status = 'pending'
+			ORDER BY tgl_bayar ASC, id_angsuran ASC
+			LIMIT 1
+		`, p.IDPinjaman).Scan(&pendingJumlah, &pendingSisa)
+			if pendingErr == nil {
+				if pendingJumlah > 0 || pendingSisa > 0 {
+					sisaPinjaman = pendingJumlah + pendingSisa
+				}
+			}
+		}
+
 		label := fmt.Sprintf("Pinjaman #%d - %d bulan - Rp %.0f", p.IDPinjaman, p.JangkaWaktu, p.JumlahPinjaman)
 		result = append(result, map[string]interface{}{
 			"key":                p.IDPinjaman,
@@ -5421,11 +5488,30 @@ func ApiJenisAngsuran(c *gin.Context) {
 			"bunga_nominal":      bungaNominal,
 			"total_kewajiban":    totalKewajiban,
 			"perkiraan_angsuran": perkiraanAngsuran,
+			"sisa_pinjaman":      sisaPinjaman,
 			"metode_angsuran":    p.MetodeAngsuran,
 			"status":             p.Status,
 		})
 	}
 	c.JSON(200, gin.H{"jenis_angsuran": result})
+}
+
+func recalculatePendingAngsuranSisa(idAnggota string, idPinjaman int, currentRemaining float64) {
+	pendingAngsurans, err := repository.GetPendingAngsuranByPinjamanAndAnggota(idAnggota, idPinjaman)
+	if err != nil {
+		log.Printf("[WARN] Gagal ambil pending angsuran untuk rekalkulasi sisa pinjaman (id_pinjaman=%d): %v", idPinjaman, err)
+		return
+	}
+
+	for _, pending := range pendingAngsurans {
+		currentRemaining -= pending.JumlahAngsuran
+		if currentRemaining < 0 {
+			currentRemaining = 0
+		}
+		if err := repository.UpdateAngsuranAmountAndSisa(pending.IDAngsuran, pending.JumlahAngsuran, currentRemaining); err != nil {
+			log.Printf("[WARN] Gagal rekalkulasi sisa angsuran pending (id_angsuran=%d): %v", pending.IDAngsuran, err)
+		}
+	}
 }
 
 // BendaharaCatatAngsuran memproses pencatatan angsuran baru oleh bendahara
@@ -5487,14 +5573,32 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	// Ambil angsuran terakhir yang statusnya confirmed/lunas/diterima (urut ASC)
 	angsuransSebelum, _ := repository.GetAngsuranByPinjamanID(idPinjaman)
 	sisaSebelum := pinjaman.JumlahPinjaman
+	confirmedFound := false
 	if len(angsuransSebelum) > 0 {
-		for i := len(angsuransSebelum) - 1; i >= 0; i-- {
-			a := angsuransSebelum[i]
+		for _, a := range angsuransSebelum {
 			if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
 				sisaSebelum = a.SisaPinjaman
+				confirmedFound = true
 				break
 			}
 		}
+	}
+
+	// Jika belum ada angsuran terkonfirmasi, gunakan total due dari angsuran pending pertama.
+	if !confirmedFound {
+		if pendingList, err := repository.GetPendingAngsuranByPinjamanAndAnggota(angsuran.IDAnggota, angsuran.IDPinjaman); err == nil && len(pendingList) > 0 {
+			pendingTotal := pendingList[0].JumlahAngsuran + pendingList[0].SisaPinjaman
+			if pendingTotal > 0 {
+				sisaSebelum = pendingTotal
+			}
+		}
+	}
+
+	bungaNominal := pinjaman.JumlahPinjaman * pinjaman.Bunga / 100
+	totalKewajiban := pinjaman.JumlahPinjaman + bungaNominal
+	minCicilan := 0.0
+	if pinjaman.JangkaWaktu > 0 {
+		minCicilan = math.Round(totalKewajiban / float64(pinjaman.JangkaWaktu))
 	}
 	sisaSetelah := sisaSebelum - jumlahAngsuran
 	if sisaSetelah < 0 {
@@ -5506,23 +5610,90 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	// Entri manual Tunai langsung confirmed (tidak perlu konfirmasi lagi)
 	// Cari pending angsuran yang cocok, lalu konfirmasi tanpa membuat record baru
 	pendingAngsuranList, err := repository.GetPendingAngsuranByCriteria(angsuran.IDAnggota, angsuran.IDPinjaman, angsuran.JumlahAngsuran)
-	if err != nil || len(pendingAngsuranList) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak sesuai dengan angsuran pending. Entri manual tunai hanya diperbolehkan untuk data yang sudah ada di daftar angsuran pending."})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memeriksa angsuran pending"})
 		return
+	}
+
+	var matchedPending *models.Angsuran
+	var fallbackPendings []models.Angsuran
+	if len(pendingAngsuranList) == 0 {
+		// Fallback 1: cari pending angsuran berdasar pinjaman + anggota, lalu cocokkan total due (jumlah angsuran + sisa pinjaman)
+		fallbackPendings, err = repository.GetPendingAngsuranByPinjamanAndAnggota(angsuran.IDAnggota, angsuran.IDPinjaman)
+		if err != nil {
+			log.Printf("[WARN] Gagal cari fallback pending angsuran: %v", err)
+		} else {
+			for i := range fallbackPendings {
+				pending := fallbackPendings[i]
+				if math.Abs((pending.JumlahAngsuran+pending.SisaPinjaman)-angsuran.JumlahAngsuran) < 0.01 {
+					pendingAngsuranList = append(pendingAngsuranList, pending)
+					matchedPending = &fallbackPendings[i]
+					break
+				}
+			}
+		}
+	}
+
+	createdDirect := false
+	if len(pendingAngsuranList) == 0 {
+		// Jika tidak ada pending angsuran yang cocok, bolehkan entri tunai langsung jika nominal valid
+		if angsuran.JumlahAngsuran >= minCicilan && angsuran.JumlahAngsuran <= sisaSebelum {
+			if len(fallbackPendings) > 0 {
+				matchedPending = &fallbackPendings[0]
+				if err := repository.UpdateAngsuranAmountAndSisa(matchedPending.IDAngsuran, angsuran.JumlahAngsuran, angsuran.SisaPinjaman); err != nil {
+					log.Printf("[WARN] Gagal update jumlah angsuran pending (id_angsuran=%d): %v", matchedPending.IDAngsuran, err)
+				}
+				pendingAngsuranList = append(pendingAngsuranList, *matchedPending)
+			} else {
+				if err := repository.CreateAngsuran(models.Angsuran{
+					IDPinjaman:     angsuran.IDPinjaman,
+					IDPengelola:    angsuran.IDPengelola,
+					TglBayar:       time.Now(),
+					JumlahAngsuran: angsuran.JumlahAngsuran,
+					SisaPinjaman:   angsuran.SisaPinjaman,
+					Status:         "confirmed",
+					MetodeAngsuran: angsuran.MetodeAngsuran,
+				}); err != nil {
+					log.Printf("[ERROR] Gagal membuat angsuran tunai langsung: %v", err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses entri angsuran tunai langsung"})
+					return
+				}
+				createdDirect = true
+			}
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak sesuai dengan angsuran pending. Entri manual tunai hanya diperbolehkan untuk jumlah yang valid sesuai cicilan minimal dan sisa pinjaman."})
+			return
+		}
+	}
+
+	if !createdDirect {
+		if matchedPending != nil {
+			if err := repository.UpdateAngsuranAmountAndSisa(matchedPending.IDAngsuran, angsuran.JumlahAngsuran, angsuran.SisaPinjaman); err != nil {
+				log.Printf("[WARN] Gagal update jumlah angsuran pending (id_angsuran=%d): %v", matchedPending.IDAngsuran, err)
+			}
+		}
 	}
 
 	confirmedAngsuranCount := 0
-	for _, pending := range pendingAngsuranList {
-		if err := repository.UpdateAngsuranStatus(pending.IDAngsuran, "confirmed"); err != nil {
-			log.Printf("[ERROR] Gagal update status angsuran pending (id_angsuran=%d): %v", pending.IDAngsuran, err)
-			continue
+	if !createdDirect {
+		for _, pending := range pendingAngsuranList {
+			if err := repository.UpdateAngsuranStatus(pending.IDAngsuran, "confirmed"); err != nil {
+				log.Printf("[ERROR] Gagal update status angsuran pending (id_angsuran=%d): %v", pending.IDAngsuran, err)
+				continue
+			}
+			confirmedAngsuranCount++
 		}
-		confirmedAngsuranCount++
+
+		if confirmedAngsuranCount == 0 {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengonfirmasi data angsuran pending"})
+			return
+		}
 	}
 
-	if confirmedAngsuranCount == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengonfirmasi data angsuran pending"})
-		return
+	if createdDirect {
+		recalculatePendingAngsuranSisa(angsuran.IDAnggota, angsuran.IDPinjaman, sisaSetelah)
+	} else {
+		recalculatePendingAngsuranSisa(angsuran.IDAnggota, angsuran.IDPinjaman, sisaSetelah)
 	}
 
 	// Notifikasi WA ke ketua agar melakukan konfirmasi tahap ketua.

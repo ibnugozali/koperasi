@@ -72,6 +72,19 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 	case "angsuran":
 		if action == "confirm" {
 			err = repository.UpdateAngsuranStatus(id, "diterima")
+			if err == nil {
+				angsuran, getErr := repository.GetAngsuranByID(id)
+				if getErr != nil {
+					log.Printf("[WARN] KetuaKonfirmasiTransaksiPost: gagal mengambil angsuran %d setelah konfirmasi: %v", id, getErr)
+				} else if angsuran.SisaPinjaman <= 0 {
+					if updateErr := repository.UpdatePinjamanStatus(angsuran.IDPinjaman, "lunas"); updateErr != nil {
+						log.Printf("[WARN] KetuaKonfirmasiTransaksiPost: gagal update pinjaman %d ke lunas: %v", angsuran.IDPinjaman, updateErr)
+					}
+					if deleteErr := repository.DeletePendingAngsuranByPinjaman(angsuran.IDPinjaman); deleteErr != nil {
+						log.Printf("[WARN] KetuaKonfirmasiTransaksiPost: gagal hapus cicilan pending pinjaman %d: %v", angsuran.IDPinjaman, deleteErr)
+					}
+				}
+			}
 		} else {
 			err = repository.UpdateAngsuranStatus(id, "rejected")
 		}
@@ -91,7 +104,57 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 		return
 	}
 
+	if action == "confirm" && (transactionType == "simpanan" || transactionType == "angsuran") {
+		anggotaPhone, anggotaNama, jenisLabel, nominal, errInfo := getAnggotaApprovedTransactionNotifInfo(transactionType, id)
+		if errInfo != nil {
+			log.Printf("[WA NOTIF ANGGOTA] gagal ambil data transaksi type=%s id=%d: %v", transactionType, id, errInfo)
+		} else {
+			appBaseURL := resolveAppBaseURL(c, config.GetDB())
+			if errWA := sendAnggotaWhatsAppTransactionApprovalNotification(anggotaPhone, anggotaNama, jenisLabel, nominal, appBaseURL); errWA != nil {
+				log.Printf("[WA NOTIF ANGGOTA] gagal kirim notifikasi ACC ketua: %v", errWA)
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Transaksi berhasil diproses"})
+}
+
+func getAnggotaApprovedTransactionNotifInfo(transactionType string, id int) (anggotaPhone, anggotaNama, jenisLabel, nominal string, err error) {
+	db := config.GetDB()
+	var nominalFloat float64
+
+	switch transactionType {
+	case "simpanan":
+		jenisLabel = "Simpanan"
+		err = db.QueryRow(`
+			SELECT COALESCE(a.no_telepon, ''), COALESCE(a.nama_anggota, ''), COALESCE(d.jumlah_simpanan, 0)
+			FROM detail d
+			JOIN anggota a ON a.id_anggota = d.id_anggota
+			WHERE d.id_detail = $1
+			LIMIT 1
+		`, id).Scan(&anggotaPhone, &anggotaNama, &nominalFloat)
+	case "angsuran":
+		jenisLabel = "Cicilan"
+		err = db.QueryRow(`
+			SELECT COALESCE(a.no_telepon, ''), COALESCE(a.nama_anggota, ''), COALESCE(ang.jumlah_angsuran, 0)
+			FROM angsuran ang
+			JOIN pinjaman p ON p.id_pinjaman = ang.id_pinjaman
+			JOIN anggota a ON a.id_anggota = p.id_anggota
+			WHERE ang.id_angsuran = $1
+			LIMIT 1
+		`, id).Scan(&anggotaPhone, &anggotaNama, &nominalFloat)
+	default:
+		return "", "", "", "", fmt.Errorf("tipe transaksi tidak didukung untuk notifikasi anggota: %s", transactionType)
+	}
+
+	if err != nil {
+		return "", "", "", "", err
+	}
+	if strings.TrimSpace(anggotaNama) == "" {
+		anggotaNama = "-"
+	}
+	nominal = fmt.Sprintf("%.2f", nominalFloat)
+	return anggotaPhone, anggotaNama, jenisLabel, nominal, nil
 }
 
 // getFloat extracts a float64 value from a map[string]interface{} by key, returns 0 if not found or not convertible

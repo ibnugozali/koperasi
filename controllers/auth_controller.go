@@ -347,6 +347,42 @@ func sendAnggotaWhatsAppPesanNotification(rawAnggotaPhone, namaAnggota, judulPes
 	return sendWhatsAppMessage(waURL, token, anggotaPhone, message, "[WA PESAN ANGGOTA]")
 }
 
+// sendAnggotaWhatsAppTransactionApprovalNotification mengirim notifikasi transaksi ke anggota setelah ACC ketua.
+func sendAnggotaWhatsAppTransactionApprovalNotification(rawAnggotaPhone, namaAnggota, jenisTransaksi, nominal, appBaseURL string) error {
+	db := config.GetDB()
+	token := strings.TrimSpace(os.Getenv("WA_GATEWAY_TOKEN"))
+	if token == "" {
+		var tokenDB string
+		if err := db.QueryRow("SELECT COALESCE(nilai, '') FROM pengaturan WHERE nama_pengaturan = 'wa_gateway_token'").Scan(&tokenDB); err == nil {
+			token = strings.TrimSpace(tokenDB)
+		}
+	}
+	if token == "" {
+		return fmt.Errorf("WA_GATEWAY_TOKEN belum diset (env/db)")
+	}
+
+	anggotaPhone := strings.TrimSpace(rawAnggotaPhone)
+	if anggotaPhone == "" {
+		return fmt.Errorf("nomor anggota kosong")
+	}
+	anggotaPhone = formatWhatsAppPhone(anggotaPhone)
+
+	waURL := resolveWAGatewayURL(db)
+
+	if strings.TrimSpace(appBaseURL) == "" {
+		appBaseURL = "http://localhost:8081"
+	}
+
+	message := "Halo " + namaAnggota + ", transaksi Anda telah disetujui oleh Ketua Koperasi.\n" +
+		"- Jenis Transaksi: " + jenisTransaksi + "\n" +
+		"- Nominal: " + nominal + "\n"
+
+	linkRiwayat := strings.TrimRight(appBaseURL, "/") + "/anggota/riwayat"
+	message += "Silakan cek riwayat transaksi di:\n" + linkRiwayat
+
+	return sendWhatsAppMessage(waURL, token, anggotaPhone, message, "[WA NOTIF ANGGOTA]")
+}
+
 // ShowLoginPage menampilkan halaman login utama.
 func ShowLoginPage(c *gin.Context) {
 	status := c.Query("status")

@@ -251,18 +251,16 @@
                                                 <a class="btn btn-outline-info btn-sm" href="/bendahara/view-detail-simpanan/{{.Detail.IDDetail}}" title="Lihat detail transaksi simpanan">
                                                     <i class="fa-solid fa-file-invoice"></i>
                                                 </a>
-                                                {{if eq .Detail.MetodePembayaran "transfer_bank"}}
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/simpanan/{{.Detail.IDDetail}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
                                                     <input type="hidden" name="id_anggota" value="{{.Detail.IDAnggota}}">
-                                                    <button type="submit" class="btn btn-success btn-sm" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
+                                                    <button type="submit" class="btn btn-success btn-sm" title="Teruskan ke Ketua"><i class="fa-solid fa-check"></i></button>
                                                 </form>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/simpanan/{{.Detail.IDDetail}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="reject">
                                                     <input type="hidden" name="id_anggota" value="{{.Detail.IDAnggota}}">
                                                     <button type="submit" class="btn btn-danger btn-sm" title="Tolak"><i class="fa-solid fa-times"></i></button>
                                                 </form>
-                                                {{end}}
                                             </div>
                                         </td>
                                     </tr>
@@ -336,18 +334,16 @@
                                                 <a class="btn btn-outline-primary btn-sm" href="/bendahara/detail-angsuran/{{.Angsuran.IDAngsuran}}" title="Lihat detail cicilan">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                {{if eq .Angsuran.MetodeAngsuran "transfer_bank"}}
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/angsuran/{{.Angsuran.IDAngsuran}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
                                                     <input type="hidden" name="id_anggota" value="{{.Angsuran.IDAnggota}}">
-                                                    <button type="submit" class="btn btn-success btn-sm" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
+                                                    <button type="submit" class="btn btn-success btn-sm" title="Teruskan ke Ketua"><i class="fa-solid fa-check"></i></button>
                                                 </form>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/angsuran/{{.Angsuran.IDAngsuran}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="reject">
                                                     <input type="hidden" name="id_anggota" value="{{.Angsuran.IDAnggota}}">
                                                     <button type="submit" class="btn btn-danger btn-sm" title="Tolak"><i class="fa-solid fa-times"></i></button>
                                                 </form>
-                                                {{end}}
                                             </div>
                                         </td>
                                     </tr>
@@ -579,26 +575,34 @@
                             <h6 class="text-success mb-3"><i class="fa-solid fa-coins me-2"></i>Entri Cicilan Tunai</h6>
                             <form class="row g-3" method="POST" action="/bendahara/transaksi/angsuran">
                                 <input type="hidden" name="metode_angsuran" value="tunai">
+                                <input type="hidden" id="idPinjamanHidden" name="jenis_angsuran" value="">
                                 <div class="col-md-4">
                                     <label class="form-label">ID Anggota</label>
-                                    <input type="text" class="form-control" name="id_anggota" required>
+                                    <input type="text" class="form-control" id="idAnggotaCicilan" name="id_anggota" required>
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label">Jenis Cicilan</label>
                                     <input type="text" class="form-control" value="Tunai" readonly>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Pinjaman Aktif</label>
-                                    <select class="form-select" id="jenisCicilanSelect" name="jenis_angsuran" required>
-                                        <option value="">Pilih pinjaman aktif...</option>
-                                    </select>
+                                <div class="col-md-6">
+                                    <label class="form-label">Info Pinjaman</label>
+                                    <div class="alert alert-info p-2 mb-0" id="infoPinjamanDisplay" style="display:none;">
+                                        <small>
+                                            <span id="minCicilanText"></span><br>
+                                            <span id="sisaPinjamanText"></span>
+                                        </small>
+                                    </div>
+                                    <div class="alert alert-warning p-2 mb-0" id="pinjamanWarning" style="display:none;">
+                                        <small id="warningText"></small>
+                                    </div>
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-3">
                                     <label class="form-label">Jumlah Cicilan</label>
-                                    <input type="number" class="form-control" name="jumlah_angsuran" min="1000" required>
+                                    <input type="number" class="form-control" id="jumlahCicilanInput" name="jumlah_angsuran" min="1000" required>
+                                    <small class="text-danger" id="validasiJumlahText" style="display:none;"></small>
                                 </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                    <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-plus"></i> Simpan</button>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100" id="submitCicilanBtn" disabled><i class="fa-solid fa-plus"></i> Simpan</button>
                                 </div>
                             </form>
                         </div>
@@ -638,33 +642,128 @@
 
     // Otomatisasi dropdown jenis cicilan berdasarkan ID Anggota
     document.addEventListener('DOMContentLoaded', function() {
-        var idAnggotaInput = document.querySelector('#formEntriCicilan form input[name="id_anggota"]');
-        var jenisCicilanSelect = document.getElementById('jenisCicilanSelect');
-        if (idAnggotaInput && jenisCicilanSelect) {
-            idAnggotaInput.addEventListener('change', function() {
-                var idAnggota = idAnggotaInput.value;
-                jenisCicilanSelect.innerHTML = '<option value="">Memuat data...</option>';
+        var idAnggotaCicilanInput = document.getElementById('idAnggotaCicilan');
+        var jumlahCicilanInput = document.getElementById('jumlahCicilanInput');
+        var idPinjamanHidden = document.getElementById('idPinjamanHidden');
+        var infoPinjamanDisplay = document.getElementById('infoPinjamanDisplay');
+        var pinjamanWarning = document.getElementById('pinjamanWarning');
+        var submitCicilanBtn = document.getElementById('submitCicilanBtn');
+        var minCicilanText = document.getElementById('minCicilanText');
+        var sisaPinjamanText = document.getElementById('sisaPinjamanText');
+        var validasiJumlahText = document.getElementById('validasiJumlahText');
+        var warningText = document.getElementById('warningText');
+        
+        let selectedLoan = null;
+        
+        // Ketika ID Anggota berubah, fetch pinjaman aktif
+        if (idAnggotaCicilanInput) {
+            idAnggotaCicilanInput.addEventListener('change', function() {
+                var idAnggota = idAnggotaCicilanInput.value.trim();
+                infoPinjamanDisplay.style.display = 'none';
+                pinjamanWarning.style.display = 'none';
+                validasiJumlahText.style.display = 'none';
+                idPinjamanHidden.value = '';
+                selectedLoan = null;
+                jumlahCicilanInput.value = '';
+                submitCicilanBtn.disabled = true;
+                
                 if (idAnggota) {
                     fetch('/api/jenis-angsuran?id_anggota=' + encodeURIComponent(idAnggota))
                         .then(res => res.json())
                         .then(data => {
-                            jenisCicilanSelect.innerHTML = '';
                             if (data && Array.isArray(data.jenis_angsuran) && data.jenis_angsuran.length > 0) {
-                                data.jenis_angsuran.forEach(function(item) {
-                                    var opt = document.createElement('option');
-                                    opt.value = item.key;
-                                    opt.textContent = item.nama;
-                                    jenisCicilanSelect.appendChild(opt);
-                                });
+                                // Jika ada 1 pinjaman aktif, auto-select
+                                if (data.jenis_angsuran.length === 1) {
+                                    selectedLoan = data.jenis_angsuran[0];
+                                    idPinjamanHidden.value = selectedLoan.key;
+                                    
+                                    // Tampilkan info pinjaman
+                                    var minCicilan = Math.ceil(selectedLoan.perkiraan_angsuran);
+                                    var sisaPinjaman = selectedLoan.sisa_pinjaman || selectedLoan.jumlah_pinjaman;
+                                    
+                                    minCicilanText.textContent = `Cicilan Minimum: Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
+                                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))}`;
+                                    infoPinjamanDisplay.style.display = 'block';
+                                    pinjamanWarning.style.display = 'none';
+                                    
+                                    submitCicilanBtn.disabled = false;
+                                } else {
+                                    // Jika ada lebih dari 1 pinjaman aktif, tampilkan warning
+                                    warningText.textContent = `⚠️ Anggota ini memiliki ${data.jenis_angsuran.length} pinjaman aktif. Sistem menggunakan pinjaman pertama. Hubungi admin jika perlu detail spesifik.`;
+                                    pinjamanWarning.style.display = 'block';
+                                    
+                                    // Gunakan pinjaman pertama
+                                    selectedLoan = data.jenis_angsuran[0];
+                                    idPinjamanHidden.value = selectedLoan.key;
+                                    
+                                    var minCicilan = Math.ceil(selectedLoan.perkiraan_angsuran);
+                                    var sisaPinjaman = selectedLoan.sisa_pinjaman || selectedLoan.jumlah_pinjaman;
+                                    
+                                    minCicilanText.textContent = `Cicilan Minimum: Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
+                                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))}`;
+                                    infoPinjamanDisplay.style.display = 'block';
+                                    
+                                    submitCicilanBtn.disabled = false;
+                                }
                             } else {
-                                jenisCicilanSelect.innerHTML = '<option value="">Tidak ada cicilan tersedia</option>';
+                                warningText.textContent = `⚠️ Anggota ${idAnggota} tidak memiliki pinjaman aktif.`;
+                                pinjamanWarning.style.display = 'block';
+                                submitCicilanBtn.disabled = true;
                             }
                         })
-                        .catch(() => {
-                            jenisCicilanSelect.innerHTML = '<option value="">Gagal memuat data</option>';
+                        .catch((err) => {
+                            console.error('Error:', err);
+                            warningText.textContent = '❌ Gagal memuat data pinjaman.';
+                            pinjamanWarning.style.display = 'block';
+                            submitCicilanBtn.disabled = true;
                         });
                 } else {
-                    jenisCicilanSelect.innerHTML = '<option value="">Pilih pinjaman aktif...</option>';
+                    submitCicilanBtn.disabled = true;
+                }
+            });
+        }
+        
+        // Validasi Jumlah Cicilan real-time
+        if (jumlahCicilanInput && submitCicilanBtn) {
+            jumlahCicilanInput.addEventListener('input', function() {
+                validasiJumlahText.style.display = 'none';
+                submitCicilanBtn.disabled = false;
+                
+                if (!selectedLoan) {
+                    validasiJumlahText.textContent = '⚠️ Pilih ID Anggota terlebih dahulu';
+                    validasiJumlahText.style.display = 'block';
+                    submitCicilanBtn.disabled = true;
+                    return;
+                }
+                
+                var jumlah = parseFloat(jumlahCicilanInput.value);
+                if (isNaN(jumlah) || jumlah <= 0) {
+                    validasiJumlahText.style.display = 'none';
+                    submitCicilanBtn.disabled = false;
+                    // Reset ke info awal jika kosong
+                    var minCicilan = Math.ceil(selectedLoan.perkiraan_angsuran);
+                    var sisaPinjaman = selectedLoan.sisa_pinjaman || selectedLoan.jumlah_pinjaman;
+                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))}`;
+                    return;
+                }
+                
+                var minCicilan = Math.ceil(selectedLoan.perkiraan_angsuran);
+                var sisaPinjaman = selectedLoan.sisa_pinjaman || selectedLoan.jumlah_pinjaman;
+                var sisaSetelahBayar = sisaPinjaman - jumlah;
+                
+                if (jumlah < minCicilan) {
+                    validasiJumlahText.textContent = `❌ Jumlah cicilan minimal Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
+                    validasiJumlahText.style.display = 'block';
+                    submitCicilanBtn.disabled = true;
+                } else if (jumlah > sisaPinjaman) {
+                    validasiJumlahText.textContent = `❌ Jumlah cicilan tidak boleh melebihi sisa pinjaman Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))}`;
+                    validasiJumlahText.style.display = 'block';
+                    submitCicilanBtn.disabled = true;
+                } else {
+                    validasiJumlahText.style.display = 'none';
+                    submitCicilanBtn.disabled = false;
+                    // Tampilkan sisa pinjaman setelah pembayaran
+                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))} → setelah bayar Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaSetelahBayar))}`;
                 }
             });
         }

@@ -138,7 +138,7 @@ import (
 
 func isAngsuranTerbayar(status string) bool {
 	s := strings.ToLower(strings.TrimSpace(status))
-	return s == "confirmed" || s == "lunas" || s == "diterima"
+	return s == "lunas" || s == "diterima"
 }
 
 type pinjamanAngsuranInfo struct {
@@ -358,57 +358,43 @@ func buildProfilSimpananRows(simpananByJenis map[string]float64) []profilSimpana
 }
 
 // Fungsi untuk menggabungkan seluruh pinjaman aktif/proses menjadi satu resume gabungan
-func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
-	// Ambil data pinjaman aktif dari repository
-	pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
+func getResumePinjamanGabungan(userID string, includeProses bool) *resumePinjamanInfo {
+	// Prioritaskan pinjaman proses jika ada
+	var p models.Pinjaman
+	var err error
 
-	// --- KONDISI 1: JIKA TIDAK ADA PINJAMAN AKTIF, CEK YANG MASIH 'PROSES' ---
-	if err != nil || len(pinjamans) == 0 {
-		db := config.GetDB()
-		row := db.QueryRow(`SELECT id_pinjaman, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, metode_pencairan, metode_angsuran 
-                            FROM pinjaman WHERE id_anggota = $1 AND status = 'proses' 
-                            ORDER BY tgl_pinjaman DESC, id_pinjaman DESC LIMIT 1`, userID)
-
-		var idPinjaman int
-		var tglPinjamanGabungan time.Time
-		var totalPinjaman, bungaVal float64
-		var totalJangkaWaktu int
-		var statusGabungan, metodePencairanGabungan, metodeAngsuranGabungan string
-
-		err := row.Scan(&idPinjaman, &tglPinjamanGabungan, &totalPinjaman, &totalJangkaWaktu, &bungaVal, &statusGabungan, &metodePencairanGabungan, &metodeAngsuranGabungan)
-		if err != nil {
+	if includeProses {
+		p, err = repository.GetLatestPinjamanByStatusAndAnggotaID(userID, "proses")
+		if err != nil && err != sql.ErrNoRows {
 			return nil
 		}
-
-		if bungaVal == 0 {
-			bungaVal = 4
-		}
-		bungaNominal := totalPinjaman * bungaVal / 100
-		totalKewajiban := totalPinjaman + bungaNominal
-
-		// Reset semua nilai perhitungan ke 0 karena masih proses
-		return &resumePinjamanInfo{
-			IDPinjaman:         idPinjaman,
-			Status:             statusGabungan,
-			TglPinjaman:        tglPinjamanGabungan,
-			JumlahPinjaman:     totalPinjaman,
-			JangkaWaktu:        totalJangkaWaktu,
-			AngsuranTerbayar:   0,
-			SisaAngsuran:       totalJangkaWaktu,
-			TotalTerbayar:      0,
-			SisaPokok:          totalKewajiban,
-			AngsuranPerBulan:   hitungAngsuranPerBulan(totalPinjaman, bungaNominal, totalJangkaWaktu),
-			PersentaseTerbayar: 0,
-			BisaAjukanLagi:     false, // Jangan izinkan ajukan lagi jika masih ada proses
-			Bunga:              bungaNominal,
-			MetodePencairan:    metodePencairanGabungan,
-			MetodeAngsuran:     metodeAngsuranGabungan,
+		if err == nil {
+			// Temukan pinjaman proses terbaru dan langsung gunakan
+			return buildResumePinjamanInfo(&p)
 		}
 	}
 
-	// --- KONDISI 2: JIKA ADA PINJAMAN AKTIF ---
-	p := pinjamans[0]
-	statusGabungan := p.Status
+	pList, err := repository.GetPinjamanAktifByAnggotaID(userID)
+	if err != nil || len(pList) == 0 {
+		return nil
+	}
+
+	var pAktif *models.Pinjaman
+	for i := range pList {
+		status := strings.ToLower(strings.TrimSpace(pList[i].Status))
+		if status == "aktif" {
+			pAktif = &pList[i]
+			break
+		}
+	}
+	if pAktif == nil {
+		return nil
+	}
+	return buildResumePinjamanInfo(pAktif)
+}
+
+func buildResumePinjamanInfo(p *models.Pinjaman) *resumePinjamanInfo {
+	statusGabungan := strings.ToLower(strings.TrimSpace(p.Status))
 	tglPinjamanGabungan := p.TglPinjaman
 	metodePencairanGabungan := p.MetodePencairan
 	metodeAngsuranGabungan := p.MetodeAngsuran
@@ -418,7 +404,6 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 	totalKewajiban := totalPinjaman + bungaNominal
 	angsuranPerBulan := hitungAngsuranPerBulan(totalPinjaman, bungaNominal, totalJangkaWaktu)
 
-	// Hitung angsuran terbayar
 	angsurans, _ := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
 	angsuranTerbayar := 0
 	totalAngsuranTerbayar := 0.0
@@ -434,7 +419,6 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 		sisaAngsuran = 0
 	}
 
-	// Kalkulasi progress berdasarkan total kewajiban pinjaman (pokok + bunga)
 	persentaseGabungan := 0.0
 	if totalKewajiban > 0 {
 		persentaseGabungan = totalAngsuranTerbayar / totalKewajiban * 100
@@ -454,7 +438,6 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 		sisaPokok = totalKewajiban
 	}
 
-	// Pengamanan utama: status 'proses' harus selalu dianggap belum ada pembayaran.
 	if statusGabungan == "proses" {
 		angsuranTerbayar = 0
 		sisaAngsuran = totalJangkaWaktu
@@ -463,10 +446,8 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 		sisaPokok = totalKewajiban
 	}
 
-	// Syarat pengajuan baru: minimal 50% sudah terbayar dan status bukan proses
 	bisaAjukanLagi := (persentaseGabungan >= 50) && (statusGabungan != "proses")
 
-	// Jika progress pelunasan 100% (lunas), tetap kembalikan resume dengan status 'lunas' dan BisaAjukanLagi: true
 	if persentaseGabungan >= 100 {
 		return &resumePinjamanInfo{
 			IDPinjaman:         p.IDPinjaman,
@@ -486,6 +467,7 @@ func getResumePinjamanGabungan(userID string) *resumePinjamanInfo {
 			MetodeAngsuran:     metodeAngsuranGabungan,
 		}
 	}
+
 	return &resumePinjamanInfo{
 		IDPinjaman:         p.IDPinjaman,
 		Status:             statusGabungan,
@@ -763,7 +745,7 @@ func getRingkasanPinjamanAktifByAnggotaID(idAnggota string) (float64, float64, e
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		WHERE p.id_anggota = $1
 		  AND p.status = 'aktif'
-		  AND COALESCE(LOWER(a.status), '') IN ('confirmed', 'lunas', 'diterima')
+		  AND COALESCE(LOWER(a.status), '') IN ('lunas', 'diterima')
 	`
 	if err := db.QueryRow(queryAngsuran, idAnggota).Scan(&totalAngsuranTerkonfirmasi); err != nil {
 		return 0, 0, err
@@ -1517,7 +1499,7 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 		bungaTerkini = 2.0
 	}
 
-	resumeGabungan := getResumePinjamanGabungan(userID)
+	resumeGabungan := getResumePinjamanGabungan(userID, true)
 	var resumeGabunganSlice []resumePinjamanInfo
 	if resumeGabungan != nil {
 		resumeGabunganSlice = append(resumeGabunganSlice, *resumeGabungan)
@@ -1604,7 +1586,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 	}
 
 	// PATCH: Validasi pengajuan pinjaman baru menggunakan resumeGabungan
-	resumeGabungan := getResumePinjamanGabungan(userID)
+	resumeGabungan := getResumePinjamanGabungan(userID, true)
 	if resumeGabungan != nil && !resumeGabungan.BisaAjukanLagi {
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
 		errMsg := "Anda belum memenuhi syarat untuk mengajukan pinjaman baru."
@@ -1784,7 +1766,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 	pinjaman.TglPinjaman = time.Now() // Set tanggal pengajuan otomatis
 	pinjaman.Status = "proses"        // Status proses untuk konfirmasi bendahara
 
-	idPinjamanBaru, err := repository.CreatePinjamanReturningID(pinjaman)
+	_, err = repository.CreatePinjamanReturningID(pinjaman)
 	if err != nil {
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
 		templateData["Error"] = "Gagal mengajukan pinjaman. Silakan coba lagi."
@@ -1792,14 +1774,8 @@ func AjukanPinjamanPost(c *gin.Context) {
 		return
 	}
 
-	if strings.TrimSpace(strings.ToLower(strings.ReplaceAll(pinjaman.MetodeAngsuran, " ", "_"))) == "potong_gaji" {
-		if err := createPendingAngsuranPotongGajiAwal(idPinjamanBaru); err != nil {
-			templateData := getAjukanPinjamanTemplateData(userID, anggota)
-			templateData["Error"] = "Pinjaman tersimpan, tetapi gagal membuat cicilan pending otomatis."
-			c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
-			return
-		}
-	}
+	// Jangan buat jadwal angsuran otomatis saat pengajuan pinjaman masih berstatus 'proses'.
+	// Jadwal angsuran baru akan dibuat setelah pinjaman dikonfirmasi dan status diubah menjadi 'aktif'.
 
 	// Kirim notifikasi WA ke bendahara jika ada pengajuan pinjaman baru
 	bendahara, err := repository.GetBendahara()
@@ -1843,7 +1819,7 @@ func AnggotaSimpanan(c *gin.Context) {
 	sisaGajiPotong := float64(anggota.GajiBulanan) - potonganBulanIni[userID]
 
 	// Ambil data resume gabungan (bungkus ke slice jika tidak nil)
-	resumeGabungan := getResumePinjamanGabungan(userID)
+	resumeGabungan := getResumePinjamanGabungan(userID, true)
 	var resumeGabunganSlice []resumePinjamanInfo
 	if resumeGabungan != nil {
 		resumeGabunganSlice = append(resumeGabunganSlice, *resumeGabungan)
@@ -2231,7 +2207,7 @@ func AnggotaAngsuran(c *gin.Context) {
 	}
 
 	// Ambil data gabungan pinjaman aktif
-	resumeGabungan := getResumePinjamanGabungan(userID)
+	resumeGabungan := getResumePinjamanGabungan(userID, false)
 	var jumlahPinjaman, sisaPinjaman, totalTerbayar, bunga float64
 	var angsuranKe, sisaAngsuran, jangkaWaktu int
 	var persentasePelunasan float64

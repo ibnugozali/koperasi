@@ -331,7 +331,7 @@ func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float
 			SELECT DISTINCT ON (d.id_simpanan) d.id_simpanan, d.total_simpanan
 			FROM detail d
 			JOIN simpanan s ON d.id_simpanan = s.id_simpanan
-			WHERE d.id_anggota = $1 AND COALESCE(d.status, 'confirmed') = 'confirmed'
+			WHERE d.id_anggota = $1 AND COALESCE(LOWER(d.status), '') IN ('diterima', 'lunas')
 				AND s.jenis_simpanan != 'pokok'
 			ORDER BY d.id_simpanan, d.tgl_transaksi DESC, d.id_detail DESC
 		) as latest
@@ -358,7 +358,7 @@ func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float
 			continue
 		}
 		var sisaPinjaman float64
-		err = db.QueryRow(`SELECT sisa_pinjaman FROM angsuran WHERE id_pinjaman = $1 AND status IN ('confirmed','lunas','diterima') ORDER BY tgl_bayar DESC, id_angsuran DESC LIMIT 1`, idPinjaman).Scan(&sisaPinjaman)
+		err = db.QueryRow(`SELECT sisa_pinjaman FROM angsuran WHERE id_pinjaman = $1 AND status IN ('lunas','diterima') ORDER BY tgl_bayar DESC, id_angsuran DESC LIMIT 1`, idPinjaman).Scan(&sisaPinjaman)
 		if err != nil {
 			sisaPinjaman = jumlahPinjaman // Jika belum ada angsuran, gunakan jumlah pinjaman
 		}
@@ -412,7 +412,7 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 	detailWajibQuery := `SELECT COALESCE(SUM(jumlah_simpanan), 0) 
 	                     FROM detail 
 	                     WHERE id_anggota = $1 AND id_simpanan = 2
-	                       AND COALESCE(LOWER(status), 'confirmed') IN ('confirmed', 'diterima', 'lunas')`
+	                       AND COALESCE(LOWER(status), '') IN ('diterima', 'lunas')`
 	err = db.QueryRow(detailWajibQuery, id).Scan(&totalSimpananWajibDetail)
 	if err != nil {
 		totalSimpananWajibDetail = 0
@@ -428,7 +428,7 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 		FROM detail d
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 		WHERE d.id_anggota = $1
-		  AND COALESCE(d.status, 'confirmed') = 'confirmed'
+		  AND COALESCE(LOWER(d.status), '') IN ('diterima', 'lunas')
 		  AND s.jenis_simpanan IN ('sukarela', 'hari_raya', 'umroh_haji', 'qurban')
 		GROUP BY s.jenis_simpanan
 	`
