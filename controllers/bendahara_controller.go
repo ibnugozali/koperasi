@@ -2323,6 +2323,7 @@ func ensurePendingAngsuranPotongGaji() {
 		SELECT p.id_pinjaman
 		FROM pinjaman p
 		WHERE p.status = 'aktif'
+		  AND LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) = 'potong_gaji'
 	`)
 	if err != nil {
 		log.Printf("[WARN] Gagal sinkronisasi cicilan pending: %v", err)
@@ -2393,6 +2394,11 @@ func ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman int) error {
 		return nil
 	}
 
+	metode := strings.TrimSpace(strings.ToLower(strings.ReplaceAll(pinjaman.MetodeAngsuran, " ", "_")))
+	if metode != "potong_gaji" {
+		return nil
+	}
+
 	bungaNominal := pinjaman.JumlahPinjaman * pinjaman.Bunga / 100
 	totalKewajiban := pinjaman.JumlahPinjaman + bungaNominal
 	jumlahAngsuran := math.Round(totalKewajiban / float64(pinjaman.JangkaWaktu))
@@ -2414,7 +2420,6 @@ func ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman int) error {
 	}
 
 	angsuranKe := angsuranTerkonfirmasi + 1
-	metode := strings.TrimSpace(strings.ToLower(strings.ReplaceAll(pinjaman.MetodeAngsuran, " ", "_")))
 	var buktiAuto string
 	switch metode {
 	case "potong_gaji":

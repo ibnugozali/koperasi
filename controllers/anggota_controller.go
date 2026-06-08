@@ -138,7 +138,7 @@ import (
 
 func isAngsuranTerbayar(status string) bool {
 	s := strings.ToLower(strings.TrimSpace(status))
-	return s == "lunas" || s == "diterima"
+	return s == "confirmed" || s == "lunas" || s == "diterima"
 }
 
 type pinjamanAngsuranInfo struct {
@@ -726,7 +726,7 @@ func getPinjamanAngsuranInfos(pinjamans []models.Pinjaman) ([]pinjamanAngsuranIn
 		jumlahAngsuranTerbayar := 0
 		for _, a := range angsurans {
 			if isAngsuranTerbayar(a.Status) {
-				totalAngsuranTerbayar += a.SisaPinjaman
+				totalAngsuranTerbayar += a.JumlahAngsuran
 				jumlahAngsuranTerbayar++
 			}
 		}
@@ -810,12 +810,12 @@ func getRingkasanPinjamanAktifByAnggotaID(idAnggota string) (float64, float64, e
 
 	var totalAngsuranTerkonfirmasi float64
 	queryAngsuran := `
-		SELECT COALESCE(SUM(a.sisa_pinjaman), 0)
+		SELECT COALESCE(SUM(a.jumlah_angsuran), 0)
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		WHERE p.id_anggota = $1
 		  AND p.status = 'aktif'
-		  AND COALESCE(LOWER(a.status), '') IN ('lunas', 'diterima')
+		  AND COALESCE(LOWER(a.status), '') IN ('confirmed', 'lunas', 'diterima')
 	`
 	if err := db.QueryRow(queryAngsuran, idAnggota).Scan(&totalAngsuranTerkonfirmasi); err != nil {
 		return 0, 0, err
@@ -1094,9 +1094,9 @@ func AnggotaProfil(c *gin.Context) {
 
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
-	// Total Pinjaman (Pokok) di profil hanya menghitung pinjaman yang sudah aktif.
+	// Tampilkan sisa pinjaman aktif yang sudah dikurangi angsuran terbayar.
 	// Pengajuan yang masih status "proses" belum boleh muncul di ringkasan ini.
-	totalPinjaman, _, err := getRingkasanPinjamanAktifByAnggotaID(userID)
+	_, totalPinjaman, err := getRingkasanPinjamanAktifByAnggotaID(userID)
 	if err != nil {
 		totalPinjaman = 0
 	}
@@ -2401,6 +2401,8 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		var sisaPinjaman float64
 		var angsuranKe int
 		var perkiraanAngsuranBulan float64
+		var bunga float64
+		var metodeAngsuran string
 
 		totalPinjamanAktif, totalSisaAktif, errTotal := getRingkasanPinjamanAktifByAnggotaID(userID)
 		pinjamanInfo, err := getPinjamanPrioritasAngsuran(pinjamans)
@@ -2410,6 +2412,8 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		}
 		if err == nil && pinjamanInfo != nil && sisaPinjaman > 0 {
 			angsuranKe = pinjamanInfo.AngsuranKe
+			bunga = pinjamanInfo.Pinjaman.Bunga
+			metodeAngsuran = pinjamanInfo.Pinjaman.MetodeAngsuran
 			if pinjamanInfo.Pinjaman.JangkaWaktu > 0 {
 				pokokPerBulan := pinjamanInfo.Pinjaman.JumlahPinjaman / float64(pinjamanInfo.Pinjaman.JangkaWaktu)
 				jasaPerBulan := (pinjamanInfo.Pinjaman.Bunga / 100 * pinjamanInfo.Pinjaman.JumlahPinjaman) / float64(pinjamanInfo.Pinjaman.JangkaWaktu)
@@ -2424,9 +2428,11 @@ func AnggotaAngsuranPost(c *gin.Context) {
 			"JumlahPinjaman":         jumlahPinjaman,
 			"SisaPinjaman":           sisaPinjaman,
 			"AngsuranKe":             angsuranKe,
+			"Bunga":                  bunga,
 			"Pinjamans":              pinjamans,
 			"TotalPinjaman":          jumlahPinjaman,
 			"PerkiraanAngsuranBulan": perkiraanAngsuranBulan,
+			"MetodeAngsuran":         metodeAngsuran,
 		})
 	}
 
@@ -2525,37 +2531,17 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	now := time.Now()
 	tanggalPembayaran := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location())
 
-	// Handle file upload: only required for transfer method
-	var filename string
-	if strings.ToLower(metodePembayaran) == "transfer" {
-		file, err := c.FormFile("bukti")
-		if err != nil {
-			renderWithTotals(http.StatusBadRequest, "Bukti pembayaran wajib diupload.")
-			return
-		}
-
-		// Save the uploaded file
-		filename = time.Now().Format("20060102150405") + "_" + file.Filename
-		dst := "./static/uploads/" + filename
-		if err := c.SaveUploadedFile(file, dst); err != nil {
-			renderWithTotals(http.StatusInternalServerError, "Gagal menyimpan file bukti pembayaran.")
-			return
-		}
-	} else {
-		// not a transfer, bukti optional
-		filename = ""
-	}
-
 	// Ambil ID pinjaman dari form (jika ada) atau gunakan pinjaman aktif pertama
 	idPinjamanStr := c.PostForm("id_pinjaman")
 	var idPinjaman int
+	var pinjamansAktif []models.Pinjaman
 	if idPinjamanStr != "" {
 		if parsedID, err := strconv.Atoi(idPinjamanStr); err == nil {
 			idPinjaman = parsedID
 		} else {
 			// fallback: cari pinjaman aktif
-			pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
-			pinjamanInfo, errInfo := getPinjamanPrioritasAngsuran(pinjamans)
+			pinjamansAktif, err = repository.GetPinjamanAktifByAnggotaID(userID)
+			pinjamanInfo, errInfo := getPinjamanPrioritasAngsuran(pinjamansAktif)
 			if err != nil || errInfo != nil || pinjamanInfo == nil {
 				c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
 					"Judul":          "Angsuran",
@@ -2572,8 +2558,8 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		}
 	} else {
 		// Jika tidak ada ID pinjaman di form, ambil pinjaman aktif pertama
-		pinjamans, err := repository.GetPinjamanAktifByAnggotaID(userID)
-		pinjamanInfo, errInfo := getPinjamanPrioritasAngsuran(pinjamans)
+		pinjamansAktif, err = repository.GetPinjamanAktifByAnggotaID(userID)
+		pinjamanInfo, errInfo := getPinjamanPrioritasAngsuran(pinjamansAktif)
 		if err != nil || errInfo != nil || pinjamanInfo == nil {
 			c.HTML(http.StatusBadRequest, "anggota_angsuran.html", gin.H{
 				"Judul":          "Angsuran",
@@ -2589,26 +2575,58 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		idPinjaman = pinjamanInfo.Pinjaman.IDPinjaman
 	}
 
-	// Hitung sisa pinjaman terakhir
-	sisaPinjamanSebelum := 0.0
-	angsuransSebelum, _ := repository.GetAngsuranByPinjamanID(idPinjaman)
-	if len(angsuransSebelum) > 0 {
-		// Cari angsuran terakhir yang statusnya confirmed/lunas/diterima, urut ASC
-		for j := 0; j < len(angsuransSebelum); j++ {
-			a := angsuransSebelum[j]
-			if isAngsuranTerbayar(a.Status) {
-				sisaPinjamanSebelum = a.SisaPinjaman
-			}
+	if pinjamansAktif == nil {
+		pinjamansAktif, err = repository.GetPinjamanAktifByAnggotaID(userID)
+		if err != nil {
+			renderWithTotals(http.StatusInternalServerError, "Gagal mengambil data pinjaman aktif.")
+			return
 		}
-	} else {
-		// Belum ada angsuran, sisa pinjaman = jumlah pinjaman
-		pinjaman, _ := repository.GetPinjamanByID(idPinjaman)
-		sisaPinjamanSebelum = pinjaman.JumlahPinjaman
 	}
+
+	infosAngsuran, err := getPinjamanAngsuranInfos(pinjamansAktif)
+	if err != nil {
+		renderWithTotals(http.StatusInternalServerError, "Gagal menghitung sisa pinjaman.")
+		return
+	}
+
+	sisaPinjamanSebelum := 0.0
+	for _, info := range infosAngsuran {
+		if info.Pinjaman.IDPinjaman == idPinjaman {
+			sisaPinjamanSebelum = info.SisaPinjaman
+			break
+		}
+	}
+	if sisaPinjamanSebelum <= 0 {
+		renderWithTotals(http.StatusBadRequest, "Tidak ada sisa pinjaman aktif yang dapat dibayar.")
+		return
+	}
+	if jumlahAngsuran > sisaPinjamanSebelum {
+		renderWithTotals(http.StatusBadRequest, fmt.Sprintf("Jumlah angsuran tidak boleh melebihi sisa pinjaman Rp %.0f.", sisaPinjamanSebelum))
+		return
+	}
+
 	sisaSetelah := sisaPinjamanSebelum - jumlahAngsuran
 	if sisaSetelah < 0 {
 		sisaSetelah = 0
 	}
+
+	// Handle file upload: only required for transfer method, after amount validation passes.
+	var filename string
+	if strings.ToLower(metodePembayaran) == "transfer" {
+		file, err := c.FormFile("bukti")
+		if err != nil {
+			renderWithTotals(http.StatusBadRequest, "Bukti pembayaran wajib diupload.")
+			return
+		}
+
+		filename = time.Now().Format("20060102150405") + "_" + file.Filename
+		dst := "./static/uploads/" + filename
+		if err := c.SaveUploadedFile(file, dst); err != nil {
+			renderWithTotals(http.StatusInternalServerError, "Gagal menyimpan file bukti pembayaran.")
+			return
+		}
+	}
+
 	// Buat angsuran baru
 	angsuran := models.Angsuran{
 		IDPinjaman:     idPinjaman,

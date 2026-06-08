@@ -17,6 +17,10 @@
       <div class="card-body p-4 p-md-5 bg-white">
         <h1 class="card-title mb-4">{{ .Judul }}</h1>
 
+        {{if .Error}}
+          <div class="alert alert-danger" role="alert">{{.Error}}</div>
+        {{end}}
+
         {{if ne .JumlahPinjaman 0.0}}
           <p class="text-muted">
             Jumlah Pinjaman (Pokok): Rp {{if gt .JumlahPinjaman 0.0}}{{printf "%.0f" .JumlahPinjaman}}{{else}}0{{end}},
@@ -47,8 +51,11 @@
               </div>
               <form action="/anggota/angsuran" method="POST" enctype="multipart/form-data" style="max-width: 600px; margin: auto;">
                 <div style="margin-bottom: 10px;">
-                  <label>Jumlah Angsuran (Rp) <small class="text-muted">({{if gt .PerkiraanAngsuranBulan 0.0}}Minimal: Rp {{printf "%.0f" .PerkiraanAngsuranBulan}}{{else}}Masukkan nominal{{end}})</small></label><br>
-                  <input type="number" name="jumlah_angsuran" min="{{if gt .PerkiraanAngsuranBulan 0.0}}{{printf "%.0f" .PerkiraanAngsuranBulan}}{{else}}1{{end}}" step="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                  <label>Jumlah Angsuran (Rp) <small class="text-muted">(Maksimal: Rp {{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}})</small></label><br>
+                  <input type="number" name="jumlah_angsuran" min="1" max="{{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}}" step="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                  {{if gt .PerkiraanAngsuranBulan 0.0}}
+                    <small class="text-muted">Perkiraan angsuran per bulan: Rp {{printf "%.0f" .PerkiraanAngsuranBulan}}</small>
+                  {{end}}
                 </div>
                 <div style="margin-bottom: 10px;">
                   <label>Metode Pembayaran</label><br>
