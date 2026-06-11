@@ -2785,11 +2785,33 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 	type JenisSimpanan struct {
 		ID    int    `json:"id"`
 		Jenis string `json:"jenis"`
+		Label string `json:"label"`
+	}
+	formatJenisLabel := func(jenis string) string {
+		jenis = strings.TrimSpace(jenis)
+		switch jenis {
+		case "sukarela":
+			return "Simpanan Sukarela"
+		case "hari_raya":
+			return "Simpanan Hari Raya"
+		case "umroh_haji":
+			return "Simpanan Umroh/Haji"
+		case "qurban":
+			return "Simpanan Qurban"
+		default:
+			label := strings.Title(strings.ReplaceAll(jenis, "_", " "))
+			if label == "" || strings.HasPrefix(strings.ToLower(label), "simpanan") {
+				return label
+			}
+			return "Simpanan " + label
+		}
 	}
 	var jenisSimpananList []JenisSimpanan
 	for rows.Next() {
 		var js JenisSimpanan
 		if err := rows.Scan(&js.ID, &js.Jenis); err == nil {
+			js.Jenis = strings.TrimSpace(js.Jenis)
+			js.Label = formatJenisLabel(js.Jenis)
 			jenisSimpananList = append(jenisSimpananList, js)
 		}
 	}

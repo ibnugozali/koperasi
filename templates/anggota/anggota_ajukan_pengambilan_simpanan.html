@@ -111,11 +111,9 @@
                 <option value="">-- Pilih Jenis Simpanan --</option>
                 {{ range .JenisSimpananList }}
                   {{ if and (not (or (eq .Jenis "Simpanan Pokok") (eq .Jenis "pokok") (eq .Jenis "Simpanan Wajib") (eq .Jenis "wajib"))) }}
-                    <option value="{{ .ID }}" data-jenis="{{ .Jenis }}">{{ .Jenis }}</option>
+                    <option value="{{ .ID }}" data-jenis="{{ .Jenis }}">{{ .Label }}</option>
                   {{ end }}
                 {{ end }}
-                <option value="umroh_haji" data-jenis="Simpanan Umroh/Haji">Simpanan Umroh/Haji</option>
-                <option value="qurban" data-jenis="Simpanan Qurban">Simpanan Qurban</option>
               </select>
               <div class="form-text">
                 <i class="bi bi-info-circle me-1"></i>
@@ -231,7 +229,9 @@
             'pokok': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "pokok") }}'),
             'wajib': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "wajib") }}'),
             'sukarela': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "sukarela") }}'),
-            'hari_raya': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "hari_raya") }}')
+            'hari_raya': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "hari_raya") }}'),
+            'umroh_haji': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "umroh_haji") }}'),
+            'qurban': parseFloat('{{ printf "%.2f" (index .SimpananByJenis "qurban") }}')
         };
         
         let currentMaxSaldo = 0;

@@ -477,7 +477,7 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 	}
 
 	// Pastikan semua jenis simpanan ada dengan nilai 0 jika tidak ada data (kecuali wajib yang sudah diset)
-	jenisList := []string{"sukarela", "hari_raya"}
+	jenisList := []string{"sukarela", "hari_raya", "umroh_haji", "qurban"}
 	for _, jenis := range jenisList {
 		if _, exists := simpananByJenis[jenis]; !exists {
 			simpananByJenis[jenis] = 0
