@@ -516,12 +516,9 @@ func GetPendingAngsuran() ([]models.Angsuran, error) {
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
 		WHERE a.status = 'pending'
-		  AND NOT (
-		      LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) <> 'potong_gaji'
-		      AND COALESCE(a.bukti_angsuran, '') ~ '^[A-Z_]+_AUTO_[0-9]+$'
-		  )
 		ORDER BY a.tgl_bayar DESC
 	`
+
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
