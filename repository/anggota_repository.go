@@ -49,7 +49,7 @@ func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 		       username,
 		       password,
 		       tgl_lahir,
-		       nik_ktp,
+		       username,
 		       no_telepon,
 		       tgl_gabung,
 		       tgl_keluar,
@@ -107,7 +107,7 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 	db := config.GetDB() // Fungsi untuk mendapatkan koneksi DB
 	var anggotas []models.Anggota
 
-	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, nik_ktp, no_telepon, tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, '') FROM anggota WHERE status = 'pending' ORDER BY LPAD(nomor_urut, 4, '0') DESC")
+	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, username, no_telepon, tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, '') FROM anggota WHERE status = 'pending' ORDER BY LPAD(nomor_urut, 4, '0') DESC")
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func GetPendingAnggotaKeluar() ([]models.Anggota, error) {
 	db := config.GetDB()
 	var anggotas []models.Anggota
 
-	rows, err := db.Query(`SELECT id_anggota, nama_anggota, username, nik_ktp, no_telepon, 
+	rows, err := db.Query(`SELECT id_anggota, nama_anggota, username, username, no_telepon, 
 		tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, ''), status, status_anggota 
 		FROM anggota WHERE status_anggota = 'pending_keluar' ORDER BY tgl_gabung DESC`)
 	if err != nil {
@@ -174,8 +174,8 @@ func CreateAnggota(anggota models.Anggota) error {
 	// Pastikan waktu gabung menyimpan jam-menit-detik
 	anggota.TglGabung = time.Now()
 	query := `
-	INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, nik_ktp, no_telepon, alamat, jenis_kelamin, status, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer, gaji_bulanan, tahun, nomor_urut)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+	INSERT INTO anggota (id_anggota, nama_anggota, username, password, tgl_lahir, no_telepon, alamat, jenis_kelamin, status, status_anggota, fakultas, tgl_gabung, unit_kerja, fakultas_code, bukti_transfer, gaji_bulanan, tahun, nomor_urut)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 	`
 	var nomorUrut interface{}
 	if anggota.NomorUrut == "NULL" {
@@ -189,7 +189,6 @@ func CreateAnggota(anggota models.Anggota) error {
 		anggota.Username,
 		anggota.Password,
 		anggota.TglLahir,
-		anggota.NikKTP,
 		anggota.NoTelepon,
 		anggota.Alamat,
 		anggota.JenisKelamin,
@@ -218,7 +217,7 @@ func GetAnggotaByID(id string) (models.Anggota, error) {
 	query := `
 		       SELECT
 			       id_anggota, nama_anggota, username, password,
-			       tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
+			       tgl_lahir, username, no_telepon, tgl_gabung,
 			       alamat, jenis_kelamin, status,
 			       unit_kerja, fakultas_code, COALESCE(tahun, ''), COALESCE(CAST(nomor_urut AS TEXT), '0'), COALESCE(bukti_transfer, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, ''), COALESCE(gaji_bulanan, 0)
 		       FROM anggota
@@ -248,7 +247,7 @@ func GetAllAnggota() ([]models.Anggota, error) {
 	query := `
 		SELECT
 		 id_anggota, nama_anggota, username, password,
-		 tgl_lahir, nik_ktp, no_telepon, tgl_gabung,
+		 tgl_lahir, username, no_telepon, tgl_gabung,
 		 alamat, jenis_kelamin, status, unit_kerja, fakultas, COALESCE(gaji_bulanan, 0)
 		FROM anggota
 		WHERE status = 'aktif'
@@ -1088,17 +1087,13 @@ func BatchInsertAnggota(db *sql.DB, anggotaList []models.Anggota) (successCount 
 
 		// Cek apakah username sudah ada
 		var existingUsername string
-		var existingNIK string
-		checkQuery := "SELECT COALESCE(username, ''), COALESCE(nik_ktp, '') FROM anggota WHERE username = $1 OR nik_ktp = $2 LIMIT 1"
-		err := db.QueryRow(checkQuery, anggota.Username, anggota.NikKTP).Scan(&existingUsername, &existingNIK)
+		checkQuery := "SELECT COALESCE(username, '') FROM anggota WHERE username = $1 LIMIT 1"
+		err := db.QueryRow(checkQuery, anggota.Username).Scan(&existingUsername)
 
 		if err == nil {
 			// Data ditemukan - ada duplikat
 			if existingUsername == anggota.Username {
 				detailErrors = append(detailErrors, fmt.Sprintf("Baris %d: Username '%s' sudah digunakan oleh anggota lain", rowNum, anggota.Username))
-			}
-			if existingNIK == anggota.NikKTP && anggota.NikKTP != "" {
-				detailErrors = append(detailErrors, fmt.Sprintf("Baris %d: NIK '%s' sudah terdaftar", rowNum, anggota.NikKTP))
 			}
 			failedCount++
 			continue
@@ -1107,9 +1102,9 @@ func BatchInsertAnggota(db *sql.DB, anggotaList []models.Anggota) (successCount 
 		query := `
 			INSERT INTO anggota (
 				id_anggota, nama_anggota, username, password, tgl_lahir, 
-				nik_ktp, no_telepon, alamat, jenis_kelamin, status_anggota, 
+				no_telepon, alamat, jenis_kelamin, status_anggota, 
 				fakultas, tgl_gabung, unit_kerja, fakultas_code, status
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		`
 
 		_, err = db.Exec(query,
@@ -1118,7 +1113,6 @@ func BatchInsertAnggota(db *sql.DB, anggotaList []models.Anggota) (successCount 
 			anggota.Username,
 			anggota.Password,
 			anggota.TglLahir,
-			anggota.NikKTP,
 			anggota.NoTelepon,
 			anggota.Alamat,
 			anggota.JenisKelamin,

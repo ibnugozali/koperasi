@@ -720,6 +720,7 @@ func Register(c *gin.Context) {
 			renderRegisterError(http.StatusBadRequest, "Nomer identitas wajib diisi sesuai data master import referensi.")
 			return
 		}
+		newAnggota.Username = noIdentitasPegawai
 
 		referensiByIdentitas, err := repository.FindReferensiPendaftaranByIdentitas(noIdentitasPegawai)
 		if err == nil {
@@ -756,7 +757,7 @@ func Register(c *gin.Context) {
 			SELECT COUNT(*)
 			FROM anggota
 			WHERE LOWER(TRIM(COALESCE(nama_anggota, ''))) = LOWER(TRIM($1))
-			  AND COALESCE(nik_ktp, '') = $2
+			  AND COALESCE(username, '') = $2
 			  AND COALESCE(gaji_bulanan, 0) = $3
 		`, newAnggota.NamaAnggota, noIdentitasPegawai, newAnggota.GajiBulanan).Scan(&count)
 		if err == nil && count > 0 {
@@ -857,7 +858,7 @@ func Register(c *gin.Context) {
 	// Password disimpan dalam bentuk plain text sesuai permintaan
 	newAnggota.TglGabung, _ = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 	if newAnggota.StatusAnggota != "mahasiswa" {
-		newAnggota.NikKTP = noIdentitasPegawai
+		newAnggota.NikKTP = newAnggota.Username
 	} else {
 		newAnggota.NikKTP = ""
 	}

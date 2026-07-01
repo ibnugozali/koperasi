@@ -1258,11 +1258,11 @@ func BendaharaUpdateAnggota(c *gin.Context) {
 	db := config.GetDB()
 	query := `
 		UPDATE anggota SET
-			nama_anggota = $1, username = $2, tgl_lahir = $3, nik_ktp = $4,
-			no_telepon = $5, alamat = $6, jenis_kelamin = $7, status_anggota = $8, fakultas = $9, gaji_bulanan = $10
-		WHERE id_anggota = $11`
+			nama_anggota = $1, username = $2, tgl_lahir = $3,
+			no_telepon = $4, alamat = $5, jenis_kelamin = $6, status_anggota = $7, fakultas = $8, gaji_bulanan = $9
+		WHERE id_anggota = $10`
 	_, err := db.Exec(query,
-		anggota.NamaAnggota, anggota.Username, anggota.TglLahir, anggota.NikKTP,
+		anggota.NamaAnggota, anggota.Username, anggota.TglLahir,
 		anggota.NoTelepon, anggota.Alamat, anggota.JenisKelamin, anggota.StatusAnggota, anggota.Fakultas, anggota.GajiBulanan, idStr)
 	if err != nil {
 		log.Printf("Error updating anggota %s: %v", idStr, err)
@@ -3216,8 +3216,12 @@ func BendaharaImportAnggota(c *gin.Context) {
 		gajiBulananStr := getValue(row, 7)
 		alamat := getValue(row, 8)
 
-		// Generate username otomatis dari nama (lowercase, tanpa spasi)
-		username := strings.ToLower(strings.ReplaceAll(namaAnggota, " ", ""))
+		// Gunakan nomor identitas sebagai username jika tersedia; tanpa kolom nik_ktp,
+		// username menjadi kunci identitas anggota.
+		username := strings.TrimSpace(nikKTP)
+		if username == "" {
+			username = strings.ToLower(strings.ReplaceAll(namaAnggota, " ", ""))
+		}
 
 		// Status anggota default aktif
 		statusAnggota := "Aktif"
@@ -3241,8 +3245,8 @@ func BendaharaImportAnggota(c *gin.Context) {
 			var gajiBulananDB int
 
 			// Ambil ID anggota dan gaji bulanan dari database
-			checkAnggotaQuery := "SELECT id_anggota, COALESCE(gaji_bulanan, 0) FROM anggota WHERE nik_ktp = $1 LIMIT 1"
-			err := config.GetDB().QueryRow(checkAnggotaQuery, nikKTP).Scan(&idAnggotaExisting, &gajiBulananDB)
+			checkAnggotaQuery := "SELECT id_anggota, COALESCE(gaji_bulanan, 0) FROM anggota WHERE username = $1 LIMIT 1"
+			err := config.GetDB().QueryRow(checkAnggotaQuery, username).Scan(&idAnggotaExisting, &gajiBulananDB)
 
 			if err == nil {
 				// Anggota sudah ada - hitung sisa gaji (Gaji Bulanan - Potongan Bulan Ini)
@@ -3347,10 +3351,10 @@ func BendaharaImportAnggota(c *gin.Context) {
 
 	// Simpan setiap anggota ke database
 	for _, anggota := range anggotaList {
-		// Cek apakah NIK sudah ada (untuk update atau insert)
+		// Cek apakah username/nomor identitas sudah ada (untuk update atau insert)
 		var existingID string
-		checkQuery := "SELECT id_anggota FROM anggota WHERE nik_ktp = $1 LIMIT 1"
-		err := db.QueryRow(checkQuery, anggota.NikKTP).Scan(&existingID)
+		checkQuery := "SELECT id_anggota FROM anggota WHERE username = $1 LIMIT 1"
+		err := db.QueryRow(checkQuery, anggota.Username).Scan(&existingID)
 
 		if err == nil && existingID != "" {
 			// Anggota sudah ada, lakukan UPDATE
@@ -3399,9 +3403,9 @@ func BendaharaImportAnggota(c *gin.Context) {
 		insertQuery := `
 			INSERT INTO anggota (
 				id_anggota, nama_anggota, username, password, tgl_lahir, 
-				jenis_kelamin, alamat, nik_ktp, no_telepon, unit_kerja, 
+				jenis_kelamin, alamat, no_telepon, unit_kerja, 
 				fakultas, fakultas_code, gaji_bulanan, status_anggota, status, tgl_gabung
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		`
 
 		_, err = db.Exec(
@@ -3413,7 +3417,6 @@ func BendaharaImportAnggota(c *gin.Context) {
 			anggota.TglLahir,
 			anggota.JenisKelamin,
 			anggota.Alamat,
-			anggota.NikKTP,
 			anggota.NoTelepon,
 			anggota.UnitKerja,
 			anggota.Fakultas,
@@ -5226,7 +5229,7 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 		       COALESCE(p.nama_pemilik_rekening, '') as nama_pemilik_rekening,
 		       COALESCE(p.gaji_bulanan, 0) as gaji_bulanan,
 		       COALESCE(p.tujuan_pinjaman, '') as tujuan_pinjaman,
-		       a.nama_anggota, a.no_telepon, a.nik_ktp, a.username, a.alamat, a.unit_kerja
+		       a.nama_anggota, a.no_telepon, a.username, a.username, a.alamat, a.unit_kerja
 		FROM pinjaman p
 		JOIN anggota a ON p.id_anggota = a.id_anggota
 		WHERE p.id_pinjaman = $1

@@ -20,6 +20,12 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             {{ end }}
+            {{ if .Warning }}
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                {{ .Warning }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {{ end }}
             {{ if .Error }}
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 {{ .Error }}

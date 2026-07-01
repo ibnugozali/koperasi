@@ -175,6 +175,7 @@ func AdminImportReferensiPage(c *gin.Context) {
 		"CurrentLogo": c.MustGet("LogoPath"),
 		"ActivePage":  "import_referensi",
 		"Success":     c.Query("success"),
+		"Warning":     c.Query("warning"),
 		"Error":       c.Query("error"),
 	})
 }
@@ -358,13 +359,14 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 	// Validasi referensi untuk non-mahasiswa (sama seperti alur register)
 	db := config.GetDB()
 	var err error
-	nikKTP := noIdentitasPegawai
 	if strings.ToLower(statusAnggota) != "mahasiswa" {
 		if noIdentitasPegawai == "" {
 			formData["Error"] = "Nomer identitas wajib diisi sesuai data master import referensi."
 			renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
 			return
 		}
+		username = noIdentitasPegawai
+		formData["FormUsername"] = username
 
 		referensiByIdentitas, err := repository.FindReferensiPendaftaranByIdentitas(noIdentitasPegawai)
 		if err == nil {
@@ -390,8 +392,6 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 			renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
 			return
 		}
-	} else {
-		nikKTP = "" // mahasiswa tidak pakai NIK
 	}
 
 	unitKerja := mapStatusToUnitKerja(statusAnggota)
@@ -454,7 +454,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 			SELECT COUNT(*)
 			FROM anggota
 			WHERE LOWER(TRIM(COALESCE(nama_anggota, ''))) = LOWER(TRIM($1))
-			  AND COALESCE(nik_ktp, '') = $2
+			  AND COALESCE(username, '') = $2
 			  AND COALESCE(gaji_bulanan, 0) = $3
 		`, namaAnggota, noIdentitasPegawai, gajiBulanan).Scan(&duplicateCount)
 		if err == nil && duplicateCount > 0 {
@@ -493,20 +493,20 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 	insertQuery := `
 		INSERT INTO anggota (
 			id_anggota, nama_anggota, username, password, tgl_lahir,
-			nik_ktp, no_telepon, tgl_gabung, alamat, jenis_kelamin,
+			no_telepon, tgl_gabung, alamat, jenis_kelamin,
 			status_anggota, fakultas, status, unit_kerja, fakultas_code,
 			bukti_transfer, gaji_bulanan, tahun, nomor_urut
 		) VALUES (
 			$1, $2, $3, $4, $5,
-			$6, $7, CURRENT_DATE, $8, $9,
-			$10, $11, 'aktif', $12, $13,
-			$14, $15, $16, $17
+			$6, CURRENT_DATE, $7, $8,
+			$9, $10, 'aktif', $11, $12,
+			$13, $14, $15, $16
 		)
 	`
 	_, err = db.Exec(
 		insertQuery,
 		idAnggota, namaAnggota, username, password, tglLahir,
-		nikKTP, noTelepon, alamat, jenisKelamin,
+		noTelepon, alamat, jenisKelamin,
 		statusAnggota, fakultas, unitKerja, fakultasCode,
 		buktiTransfer, gajiBulanan, tahun, nomorUrut,
 	)
@@ -573,6 +573,121 @@ func getCell(row []string, idx int) string {
 		return strings.TrimSpace(row[idx])
 	}
 	return ""
+}
+
+func findReferensiIdentitasHeaderIndex(headerMap map[string]int) int {
+	for _, key := range referensiIdentitasHeaderKeys() {
+		if idx, ok := headerMap[normalizeHeader(key)]; ok {
+			return idx
+		}
+	}
+	return -1
+}
+
+func referensiIdentitasHeaderKeys() []string {
+	return []string{
+		"nomer identitas",
+		"nomor identitas",
+		"no identitas",
+		"no. identitas",
+		"nomer induk",
+		"nomor induk",
+		"nip",
+		"nidn",
+		"nidk",
+		"nik ktp",
+		"nik",
+		"nik_ktp",
+		"id pegawai",
+		"kode pegawai",
+	}
+}
+
+func findReferensiIdentitasColumn(rows [][]string, headerRowIdx int, headerMap map[string]int) int {
+	for _, key := range referensiIdentitasHeaderKeys() {
+		idx, ok := headerMap[normalizeHeader(key)]
+		if !ok {
+			continue
+		}
+		if !isLikelyRowNumberColumn(rows, headerRowIdx, idx) {
+			return idx
+		}
+	}
+	return -1
+}
+
+func isLikelyRowNumberColumn(rows [][]string, headerRowIdx int, idx int) bool {
+	if idx < 0 {
+		return false
+	}
+
+	expected := 1
+	checked := 0
+	matches := 0
+	for _, row := range rows[headerRowIdx+1:] {
+		value := getCell(row, idx)
+		if value == "" {
+			continue
+		}
+		checked++
+		if parsed, err := strconv.Atoi(strings.TrimSpace(value)); err == nil && parsed == expected {
+			matches++
+		}
+		expected++
+		if checked >= 8 {
+			break
+		}
+	}
+
+	return checked >= 3 && matches == checked
+}
+
+func buildReferensiHeaderSampleMessage(rows [][]string, headerRowIdx int) string {
+	if headerRowIdx < 0 || headerRowIdx >= len(rows) {
+		return ""
+	}
+
+	var sampleRow []string
+	for _, row := range rows[headerRowIdx+1:] {
+		hasValue := false
+		for _, cell := range row {
+			if strings.TrimSpace(cell) != "" {
+				hasValue = true
+				break
+			}
+		}
+		if hasValue {
+			sampleRow = row
+			break
+		}
+	}
+
+	parts := []string{}
+	for i, header := range rows[headerRowIdx] {
+		header = strings.TrimSpace(header)
+		if header == "" {
+			continue
+		}
+
+		if sampleRow != nil {
+			if sample := getCell(sampleRow, i); sample != "" {
+				parts = append(parts, fmt.Sprintf("%s=%s", header, sample))
+			} else {
+				parts = append(parts, header)
+			}
+		} else {
+			parts = append(parts, header)
+		}
+
+		if len(parts) >= 6 {
+			break
+		}
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+	return " Header terdeteksi: " + strings.Join(parts, "; ")
 }
 
 func containsHeaderToken(cell string, tokens ...string) bool {
@@ -794,25 +909,24 @@ func AdminImportAnggotaExcel(c *gin.Context) {
 		lastNumber++
 		nomorUrut := fmt.Sprintf("%04d", lastNumber)
 		idAnggota := fmt.Sprintf("%s%s%s%s", unitKerja, fakultasCode, tahun, nomorUrut)
-		nikKTP := username
 
 		insertQuery := `
 			INSERT INTO anggota (
 				id_anggota, nama_anggota, username, password, tgl_lahir,
-				nik_ktp, no_telepon, tgl_gabung, alamat, jenis_kelamin,
+				no_telepon, tgl_gabung, alamat, jenis_kelamin,
 				status_anggota, fakultas, status, unit_kerja, fakultas_code,
 				bukti_transfer, gaji_bulanan, tahun, nomor_urut
 			) VALUES (
 				$1, $2, $3, $4, $5,
-				$6, $7, CURRENT_DATE, $8, $9,
-				$10, $11, 'aktif', $12, $13,
-				'', $14, $15, $16
+				$6, CURRENT_DATE, $7, $8,
+				$9, $10, 'aktif', $11, $12,
+				'', $13, $14, $15
 			)
 		`
 		_, err = db.Exec(
 			insertQuery,
 			idAnggota, nama, username, password, tglLahir,
-			nikKTP, noTelepon, alamat, jenisKelamin,
+			noTelepon, alamat, jenisKelamin,
 			statusAnggota, fakultas, unitKerja, fakultasCode,
 			gajiBulanan, tahun, nomorUrut,
 		)
@@ -888,7 +1002,7 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 		}
 
 		idxNamaTmp := findHeaderIndex(tmp, "nama lengkap", "nama anggota", "nama")
-		idxIdentitasTmp := findHeaderIndex(tmp, "identitas", "nomer identitas", "nomor identitas", "nik ktp", "nik", "nik_ktp")
+		idxIdentitasTmp := findReferensiIdentitasHeaderIndex(tmp)
 		if idxNamaTmp >= 0 && idxIdentitasTmp >= 0 {
 			headerRowIdx = r
 			headerMap = tmp
@@ -897,13 +1011,19 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 	}
 
 	if headerRowIdx < 0 {
-		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Baris header template tidak ditemukan. Pastikan file memiliki kolom Nama Lengkap dan Identitas/Nomer Identitas.")
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Baris header template tidak ditemukan. Pastikan file memiliki kolom Nama Lengkap dan Nomer Identitas. Jika ada kolom Identitas berisi Dosen/Tendik, kolom itu akan dibaca sebagai Jabatan, bukan Nomer Identitas.")
 		return
 	}
 
 	idxNama := findHeaderIndex(headerMap, "nama lengkap", "nama anggota", "nama")
-	idxIdentitas := findHeaderIndex(headerMap, "identitas", "nomer identitas", "nomor identitas", "nik ktp", "nik", "nik_ktp")
+	idxIdentitas := findReferensiIdentitasColumn(rows, headerRowIdx, headerMap)
 	idxJabatan := findHeaderIndex(headerMap, "jabatan", "status anggota", "status_anggota", "status calon anggota", "kategori pegawai")
+	if idxJabatan < 0 {
+		idxJabatan = findHeaderIndex(headerMap, "identitas", "jenis pegawai", "status pegawai", "status")
+		if idxJabatan == idxIdentitas {
+			idxJabatan = -1
+		}
+	}
 	idxGaji := findHeaderIndex(headerMap, "gajih bersih", "gaji bersih", "gaji bulanan", "gaji", "gajibulanan")
 	idxStatusKeanggotaan := findHeaderIndex(headerMap, "status keanggotaan", "status data", "keanggotaan")
 
@@ -913,12 +1033,45 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 	}
 
 	if idxIdentitas < 0 {
-		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Kolom Identitas wajib ada di file referensi")
+		message := "Kolom Nomer Identitas wajib ada di file referensi dan tidak boleh berisi nomor urut 1, 2, 3. Gunakan header Nomer Identitas/NIP/NIDN/NIK pada kolom nomor induk asli; kolom Identitas yang berisi Dosen/Tendik bukan nomor identitas."
+		message += buildReferensiHeaderSampleMessage(rows, headerRowIdx)
+		c.Redirect(http.StatusFound, "/admin/import-referensi?error="+url.QueryEscape(message))
 		return
 	}
 
 	successCount := 0
 	failedCount := 0
+	insertedCount := 0
+	updatedCount := 0
+	warningCount := 0
+	warnings := []string{}
+	seenIdentitas := map[string]int{}
+	addWarning := func(format string, args ...interface{}) {
+		warning := fmt.Sprintf(format, args...)
+		warningCount++
+		log.Printf("[IMPORT-REFERENSI] %s", warning)
+		if len(warnings) < 8 {
+			warnings = append(warnings, warning)
+		}
+	}
+	buildWarningMessage := func() string {
+		if warningCount == 0 {
+			return ""
+		}
+
+		msg := fmt.Sprintf("%d peringatan import: %s", warningCount, strings.Join(warnings, "; "))
+		if warningCount > len(warnings) {
+			msg += fmt.Sprintf("; dan %d peringatan lainnya. Cek log terminal untuk detail lengkap.", warningCount-len(warnings))
+		}
+		return msg
+	}
+	buildRedirectURL := func(key, message string) string {
+		redirectURL := "/admin/import-referensi?" + key + "=" + url.QueryEscape(message)
+		if warningMessage := buildWarningMessage(); warningMessage != "" {
+			redirectURL += "&warning=" + url.QueryEscape(warningMessage)
+		}
+		return redirectURL
+	}
 
 	for i, row := range rows[headerRowIdx+1:] {
 		rowNum := headerRowIdx + i + 2
@@ -934,6 +1087,26 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 			failedCount++
 			log.Printf("[IMPORT-REFERENSI] baris %d dilewati: identitas kosong", rowNum)
 			continue
+		}
+
+		if firstRow, exists := seenIdentitas[identitas]; exists {
+			addWarning("Baris %d: Nomer Identitas %s duplikat dengan baris %d di file upload; data baris ini tetap diproses dan akan memperbarui data dengan identitas tersebut.", rowNum, identitas, firstRow)
+		} else {
+			seenIdentitas[identitas] = rowNum
+		}
+
+		existingReferensi := false
+		var existingID int
+		checkErr := db.QueryRow(`
+			SELECT id
+			FROM referensi_pendaftaran
+			WHERE COALESCE(nomor_identitas, '') = $1
+			LIMIT 1
+		`, identitas).Scan(&existingID)
+		if checkErr == nil {
+			existingReferensi = true
+		} else if checkErr != sql.ErrNoRows {
+			log.Printf("[IMPORT-REFERENSI] baris %d gagal cek duplikat identitas %s: %v", rowNum, identitas, checkErr)
 		}
 
 		statusKeanggotaan := strings.ToLower(strings.TrimSpace(getCell(row, idxStatusKeanggotaan)))
@@ -952,7 +1125,7 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 			checkErr := db.QueryRow(`
 				SELECT COUNT(*)
 				FROM anggota
-				WHERE COALESCE(nik_ktp, '') = $1
+				WHERE COALESCE(username, '') = $1
 				   OR COALESCE(username, '') = $1
 				   OR COALESCE(no_telepon, '') = $1
 			`, identitas).Scan(&anggotaCount)
@@ -989,15 +1162,20 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 		}
 
 		successCount++
+		if existingReferensi {
+			updatedCount++
+		} else {
+			insertedCount++
+		}
 	}
 
 	if successCount == 0 {
-		c.Redirect(http.StatusFound, "/admin/import-referensi?error=Tidak ada data referensi yang berhasil diimport")
+		c.Redirect(http.StatusFound, buildRedirectURL("error", "Tidak ada data referensi yang berhasil diimport"))
 		return
 	}
 
-	msg := fmt.Sprintf("Import referensi pendaftaran berhasil: %d data masuk, %d data gagal", successCount, failedCount)
-	c.Redirect(http.StatusFound, "/admin/import-referensi?success="+url.QueryEscape(msg))
+	msg := fmt.Sprintf("Import referensi pendaftaran berhasil: %d data diproses (%d data baru, %d data diperbarui), %d data gagal", successCount, insertedCount, updatedCount, failedCount)
+	c.Redirect(http.StatusFound, buildRedirectURL("success", msg))
 }
 
 func AdminViewAnggota(c *gin.Context) {
