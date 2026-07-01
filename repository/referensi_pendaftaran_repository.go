@@ -8,6 +8,31 @@ import (
 	"koperasi-simpan-pinjam/models"
 )
 
+const syncReferensiStatusFromAnggotaSQL = `
+	UPDATE referensi_pendaftaran r
+	SET status_keanggotaan = 'anggota',
+	    updated_at = CURRENT_TIMESTAMP
+	WHERE LOWER(TRIM(COALESCE(r.status_keanggotaan, ''))) <> 'anggota'
+	  AND EXISTS (
+		SELECT 1
+		FROM anggota a
+		WHERE (
+			COALESCE(r.nomor_identitas, '') <> ''
+			AND COALESCE(a.username, '') = COALESCE(r.nomor_identitas, '')
+		)
+		OR (
+			LOWER(TRIM(COALESCE(a.nama_anggota, ''))) = LOWER(TRIM(COALESCE(r.nama_lengkap, '')))
+			AND COALESCE(a.gaji_bulanan, 0) = COALESCE(r.gaji_bulanan, 0)
+		)
+	  )
+`
+
+func SyncReferensiPendaftaranStatusFromAnggota() error {
+	db := config.GetDB()
+	_, err := db.Exec(syncReferensiStatusFromAnggotaSQL)
+	return err
+}
+
 func UpsertReferensiPendaftaran(item models.ReferensiPendaftaran) error {
 	db := config.GetDB()
 
@@ -51,7 +76,10 @@ func UpsertReferensiPendaftaran(item models.ReferensiPendaftaran) error {
 			strings.TrimSpace(item.SumberFile),
 			existingID,
 		)
-		return err
+		if err != nil {
+			return err
+		}
+		return SyncReferensiPendaftaranStatusFromAnggota()
 	}
 
 	_, err = db.Exec(`
@@ -66,7 +94,10 @@ func UpsertReferensiPendaftaran(item models.ReferensiPendaftaran) error {
 		strings.TrimSpace(item.StatusKeanggotaan),
 		strings.TrimSpace(item.SumberFile),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return SyncReferensiPendaftaranStatusFromAnggota()
 }
 
 func FindReferensiPendaftaranForRegister(nama, identitas string, gaji int) (*models.ReferensiPendaftaran, error) {

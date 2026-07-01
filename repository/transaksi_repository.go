@@ -1017,9 +1017,9 @@ func GetTotalPinjaman(db *sql.DB) (float64, error) {
 func GetTotalAngsuran(db *sql.DB) (float64, error) {
 	var total float64
 	query := `
-		SELECT COALESCE(SUM(sisa_pinjaman), 0)
+		SELECT COALESCE(SUM(jumlah_angsuran), 0)
 		FROM angsuran
-		WHERE COALESCE(LOWER(status), 'pending') IN ('confirmed', 'diterima', 'lunas')
+		WHERE COALESCE(LOWER(status), 'pending') IN ('diterima', 'lunas')
 	`
 	err := db.QueryRow(query).Scan(&total)
 	return total, err

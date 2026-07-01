@@ -884,6 +884,9 @@ func Register(c *gin.Context) {
 		renderRegisterError(http.StatusInternalServerError, "Gagal menyimpan data")
 		return
 	}
+	if err := repository.SyncReferensiPendaftaranStatusFromAnggota(); err != nil {
+		log.Printf("[WARN] gagal sinkron status referensi pendaftaran setelah register: %v", err)
+	}
 
 	// Notifikasi otomatis ke WhatsApp Ketua (jika gateway dikonfigurasi)
 	appBaseURL := resolveAppBaseURL(c, db)

@@ -157,7 +157,7 @@
                             <label class="form-label"><i class="fa-solid fa-hand-holding-dollar me-1"></i>Metode Pencairan</label>
                             <div class="border rounded p-3 bg-light">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_transfer" value="transfer" {{if eq .Pinjaman.MetodePencairan "transfer"}}checked{{end}} disabled>
+                                    <input class="form-check-input" type="radio" name="metode_pencairan" id="pencairan_transfer" value="transfer_bank" {{if eq .Pinjaman.MetodePencairan "transfer_bank"}}checked{{end}} disabled>
                                     <label class="form-check-label" for="pencairan_transfer">Transfer Bank</label>
                                 </div>
                                 <div class="form-check">
@@ -167,10 +167,39 @@
                             </div>
                         </div>
                         
-                        <!-- Nomor Rekening -->
-                        <div class="mb-3" id="nomor_rekening_container" {{if ne .Pinjaman.MetodePencairan "transfer"}}style="display:none;"{{end}}>
-                            <label for="nomor_rekening" class="form-label"><i class="fa-solid fa-building-columns me-1"></i>Nomor Rekening Bank</label>
-                            <input type="text" class="form-control" id="nomor_rekening" name="nomor_rekening" value="{{ .Pinjaman.NomorRekening }}" disabled>
+                        <!-- Metode Angsuran -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="fa-solid fa-money-bill-transfer me-1"></i>Metode Angsuran</label>
+                            <div class="border rounded p-3 bg-light">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metode_angsuran" id="angsuran_transfer" value="transfer_bank" {{if eq .Pinjaman.MetodeAngsuran "transfer_bank"}}checked{{end}} disabled>
+                                    <label class="form-check-label" for="angsuran_transfer">Transfer Bank</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metode_angsuran" id="angsuran_potong_gaji" value="potong_gaji" {{if eq .Pinjaman.MetodeAngsuran "potong_gaji"}}checked{{end}} disabled>
+                                    <label class="form-check-label" for="angsuran_potong_gaji">Potong Gaji</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metode_angsuran" id="angsuran_tunai" value="tunai" {{if eq .Pinjaman.MetodeAngsuran "tunai"}}checked{{end}} disabled>
+                                    <label class="form-check-label" for="angsuran_tunai">Tunai</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detail Rekening -->
+                        <div id="nomor_rekening_container" {{if ne .Pinjaman.MetodePencairan "transfer_bank"}}style="display:none;"{{end}}>
+                            <div class="mb-3">
+                                <label for="nomor_rekening" class="form-label"><i class="fa-solid fa-building-columns me-1"></i>Nomor Rekening Bank</label>
+                                <input type="text" class="form-control" id="nomor_rekening" name="nomor_rekening" value="{{ .Pinjaman.NomorRekening }}" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="nama_bank" class="form-label"><i class="fa-solid fa-landmark me-1"></i>Nama Bank</label>
+                                <input type="text" class="form-control" id="nama_bank" name="nama_bank" value="{{ .Pinjaman.NamaBank }}" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="nama_pemilik" class="form-label"><i class="fa-solid fa-user-check me-1"></i>Nama Pemilik Rekening</label>
+                                <input type="text" class="form-control" id="nama_pemilik" name="nama_pemilik" value="{{ .Pinjaman.NamaPemilikRekening }}" disabled>
+                            </div>
                             <small class="form-text text-muted">Nomor rekening untuk penerimaan pencairan dana pinjaman</small>
                         </div>
                     </form>
@@ -197,7 +226,7 @@
                     <div class="list-group">
                         <div class="list-group-item">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="pernyataan_benar" disabled>
+                                <input class="form-check-input" type="checkbox" id="pernyataan_benar" checked disabled>
                                 <label class="form-check-label fw-bold" for="pernyataan_benar">
                                     <i class="fa-solid fa-check-circle text-success me-1"></i>
                                     Menyatakan bahwa data yang diberikan adalah benar
@@ -206,7 +235,7 @@
                         </div>
                         <div class="list-group-item">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="sanggup_bayar" disabled>
+                                <input class="form-check-input" type="checkbox" id="sanggup_bayar" checked disabled>
                                 <label class="form-check-label fw-bold" for="sanggup_bayar">
                                     <i class="fa-solid fa-check-circle text-success me-1"></i>
                                     Sanggup untuk membayar angsuran pinjaman setiap bulan sesuai jadwal
@@ -215,7 +244,7 @@
                         </div>
                         <div class="list-group-item">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="setuju_potong_gaji" disabled>
+                                <input class="form-check-input" type="checkbox" id="setuju_potong_gaji" checked disabled>
                                 <label class="form-check-label fw-bold" for="setuju_potong_gaji">
                                     <i class="fa-solid fa-check-circle text-success me-1"></i>
                                     Bersedia jika gaji dipotong langsung oleh bendahara gaji universitas untuk pembayaran angsuran
@@ -224,7 +253,7 @@
                         </div>
                         <div class="list-group-item">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="kuasa_potong_gaji" disabled>
+                                <input class="form-check-input" type="checkbox" id="kuasa_potong_gaji" checked disabled>
                                 <label class="form-check-label fw-bold" for="kuasa_potong_gaji">
                                     <i class="fa-solid fa-check-circle text-success me-1"></i>
                                     Memberikan kuasa kepada pengurus koperasi untuk melakukan pemotongan gaji melalui bendahara
@@ -233,7 +262,7 @@
                         </div>
                         <div class="list-group-item">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="kuasa_pakai_simpanan" disabled>
+                                <input class="form-check-input" type="checkbox" id="kuasa_pakai_simpanan" checked disabled>
                                 <label class="form-check-label fw-bold" for="kuasa_pakai_simpanan">
                                     <i class="fa-solid fa-check-circle text-success me-1"></i>
                                     Memberikan kuasa kepada koperasi untuk menggunakan simpanan (pokok dan wajib) untuk melunasi sisa pinjaman jika terjadi gagal bayar atau pemohon berhenti bekerja
@@ -247,9 +276,6 @@
             <!-- Action Buttons -->
             <div class="card shadow-sm mb-4">
                 <div class="card-body text-center">
-                    <button onclick="window.print()" class="btn btn-primary btn-lg me-2">
-                        <i class="fa-solid fa-print me-2"></i>Cetak Halaman
-                    </button>
                     <button onclick="window.close()" class="btn btn-secondary btn-lg">
                         <i class="fa-solid fa-times me-2"></i>Tutup
                     </button>

@@ -2188,12 +2188,17 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 	var pinjaman models.Pinjaman
 	var hasPinjaman bool
 	queryPinjaman := `
-		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, 
-		       COALESCE(metode_pencairan, '') as metode_pencairan, COALESCE(nomor_rekening, '') as nomor_rekening,
-		       COALESCE(gaji_bulanan, 0) as gaji_bulanan, COALESCE(tujuan_pinjaman, '') as tujuan_pinjaman
+		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status,
+		       COALESCE(metode_pencairan, '') AS metode_pencairan,
+		       COALESCE(metode_angsuran, '') AS metode_angsuran,
+		       COALESCE(nomor_rekening, '') AS nomor_rekening,
+		       COALESCE(nama_bank, '') AS nama_bank,
+		       COALESCE(nama_pemilik_rekening, '') AS nama_pemilik_rekening,
+		       COALESCE(gaji_bulanan, 0) AS gaji_bulanan,
+		       COALESCE(tujuan_pinjaman, '') AS tujuan_pinjaman
 		FROM pinjaman 
 		WHERE id_anggota = $1 AND status = 'proses'
-		ORDER BY tgl_pinjaman DESC 
+		ORDER BY tgl_pinjaman DESC, id_pinjaman DESC
 		LIMIT 1
 	`
 	err = db.QueryRow(queryPinjaman, id).Scan(
@@ -2205,9 +2210,12 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 		&pinjaman.Bunga,
 		&pinjaman.Status,
 		&pinjaman.MetodePencairan,
+		&pinjaman.MetodeAngsuran,
 		&pinjaman.NomorRekening,
 		&pinjaman.NamaBank,
-		&pinjaman.Status,
+		&pinjaman.NamaPemilikRekening,
+		&pinjaman.GajiBulanan,
+		&pinjaman.TujuanPinjaman,
 	)
 	if err == nil {
 		hasPinjaman = true

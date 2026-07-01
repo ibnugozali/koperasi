@@ -150,6 +150,13 @@ func ensureReferensiPendaftaranTable() error {
 		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 
+	ALTER TABLE referensi_pendaftaran ADD COLUMN IF NOT EXISTS status_keanggotaan VARCHAR(32) NOT NULL DEFAULT 'belum_anggota';
+	UPDATE referensi_pendaftaran
+	SET status_keanggotaan = 'belum_anggota'
+	WHERE TRIM(COALESCE(status_keanggotaan, '')) = '';
+	ALTER TABLE referensi_pendaftaran ALTER COLUMN status_keanggotaan SET DEFAULT 'belum_anggota';
+	ALTER TABLE referensi_pendaftaran ALTER COLUMN status_keanggotaan SET NOT NULL;
+
 	DO $$
 	BEGIN
 		IF NOT EXISTS (
@@ -172,6 +179,44 @@ func ensureReferensiPendaftaranTable() error {
 	CREATE INDEX IF NOT EXISTS idx_referensi_pendaftaran_nomor_identitas ON referensi_pendaftaran(nomor_identitas);
 	DROP INDEX IF EXISTS idx_referensi_pendaftaran_telepon;
 	CREATE INDEX IF NOT EXISTS idx_referensi_pendaftaran_nama ON referensi_pendaftaran(nama_lengkap);
+
+	CREATE OR REPLACE FUNCTION sync_referensi_pendaftaran_status_keanggotaan()
+	RETURNS void AS $sync$
+	BEGIN
+		UPDATE referensi_pendaftaran r
+		SET status_keanggotaan = 'anggota',
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE LOWER(TRIM(COALESCE(r.status_keanggotaan, ''))) <> 'anggota'
+		  AND EXISTS (
+			SELECT 1
+			FROM anggota a
+			WHERE (
+				COALESCE(r.nomor_identitas, '') <> ''
+				AND COALESCE(a.username, '') = COALESCE(r.nomor_identitas, '')
+			)
+			OR (
+				LOWER(TRIM(COALESCE(a.nama_anggota, ''))) = LOWER(TRIM(COALESCE(r.nama_lengkap, '')))
+				AND COALESCE(a.gaji_bulanan, 0) = COALESCE(r.gaji_bulanan, 0)
+			)
+		  );
+	END;
+	$sync$ LANGUAGE plpgsql;
+
+	CREATE OR REPLACE FUNCTION trigger_sync_referensi_pendaftaran_status_keanggotaan()
+	RETURNS trigger AS $trigger$
+	BEGIN
+		PERFORM sync_referensi_pendaftaran_status_keanggotaan();
+		RETURN NULL;
+	END;
+	$trigger$ LANGUAGE plpgsql;
+
+	DROP TRIGGER IF EXISTS trg_sync_referensi_status_after_anggota ON anggota;
+	CREATE TRIGGER trg_sync_referensi_status_after_anggota
+	AFTER INSERT OR UPDATE OR DELETE ON anggota
+	FOR EACH STATEMENT
+	EXECUTE FUNCTION trigger_sync_referensi_pendaftaran_status_keanggotaan();
+
+	SELECT sync_referensi_pendaftaran_status_keanggotaan();
 	`
 
 	_, err := db.Exec(referensiSQL)
