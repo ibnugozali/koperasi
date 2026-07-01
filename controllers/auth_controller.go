@@ -565,18 +565,32 @@ func validateReferensiStatusAnggota(selectedStatus, jabatan string) string {
 
 func normalizeRegisterPhone(value string) string {
 	value = strings.TrimSpace(value)
-	value = strings.ReplaceAll(value, " ", "")
-	value = strings.ReplaceAll(value, "-", "")
-	if strings.HasPrefix(value, "+62") {
-		value = "0" + strings.TrimPrefix(value, "+62")
+
+	var digits strings.Builder
+	for _, char := range value {
+		if char >= '0' && char <= '9' {
+			digits.WriteRune(char)
+		}
 	}
-	if strings.HasPrefix(value, "62") {
-		value = "0" + strings.TrimPrefix(value, "62")
+
+	phone := digits.String()
+	if strings.HasPrefix(phone, "62") {
+		phone = strings.TrimPrefix(phone, "62")
 	}
-	if !strings.HasPrefix(value, "0") && value != "" {
-		value = "0" + value
+	phone = strings.TrimLeft(phone, "0")
+	return phone
+}
+
+func isRegisterPhoneValid(value string) bool {
+	if len(value) < 10 || len(value) > 13 {
+		return false
 	}
-	return value
+	for _, char := range value {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func parseNominalPengaturan(value string, fallback int) int {
@@ -682,7 +696,7 @@ func Register(c *gin.Context) {
 	newAnggota.Username = c.PostForm("Username")
 	newAnggota.Password = c.PostForm("Password")
 	newAnggota.TglLahir = c.PostForm("TglLahir")
-	newAnggota.NoTelepon = c.PostForm("NoTelepon")
+	newAnggota.NoTelepon = normalizeRegisterPhone(c.PostForm("NoTelepon"))
 	newAnggota.Alamat = c.PostForm("Alamat")
 	newAnggota.JenisKelamin = c.PostForm("JenisKelamin")
 	newAnggota.StatusAnggota = c.PostForm("StatusAnggota")
@@ -694,6 +708,11 @@ func Register(c *gin.Context) {
 	}
 	if metodePembayaran == "transfer" {
 		metodePembayaran = "transfer_bank"
+	}
+
+	if !isRegisterPhoneValid(newAnggota.NoTelepon) {
+		renderRegisterError(http.StatusBadRequest, "No. Telepon harus berisi 10 hingga 13 digit angka.")
+		return
 	}
 
 	// Validasi: Username dan No. Telepon tidak boleh sama

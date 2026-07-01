@@ -41,7 +41,7 @@
                                 <div class="mb-3" id="wrapper_identitas_pegawai">
                                     <label for="register_identitas_pegawai" class="form-label fw-bold" id="label_identitas_pegawai">Nomer Identitas</label>
                                     <input type="text" class="form-control" id="register_identitas_pegawai" name="NoIdentitasPegawai" placeholder="Masukkan nomor induk">
-                                    <small class="text-muted">Gunakan NIDN/NIP untuk validasi sistem.</small>
+                                    <small class="text-muted" id="identitas_hint_text">Gunakan NIDN/NIP untuk validasi sistem.</small>
                                 </div>
 
                                 <div class="row">
@@ -85,7 +85,8 @@
                                         <label class="form-label fw-bold">No. Telepon</label>
                                         <div class="input-group">
                                             <span class="input-group-text">+62</span>
-                                            <input type="text" class="form-control" id="register_no_telepon" name="NoTelepon" required oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^0+/, '')">
+                                            <input type="text" class="form-control" id="register_no_telepon" name="NoTelepon" inputmode="numeric" minlength="10" maxlength="13" pattern="[0-9]{10,13}" required>
+                                            <div class="invalid-feedback">No. Telepon harus 10 hingga 13 digit angka.</div>
                                         </div>
                                     </div>
                                     <div class="col-md-4 mb-3">
@@ -181,16 +182,26 @@
         const transferFieldsWrapper = document.getElementById('transfer_fields_wrapper');
         const potongGajiInfo = document.getElementById('potong_gaji_info');
         const loginLinkTop = document.getElementById('login_link_top');
+        const identitasHintText = document.getElementById('identitas_hint_text');
 
         const namaHidden = document.getElementById('register_nama_anggota');
         const namaHintText = document.getElementById('nama_hint_text');
         const gajiDisplay = document.getElementById('gaji_display_text');
         const gajiHidden = document.getElementById('register_gaji_bulanan');
         const tglLahirInput = document.getElementById('register_tgl_lahir');
+        const noTeleponInput = document.getElementById('register_no_telepon');
+        const lockedUntilReferensiFoundFields = Array.from(formContainer.querySelectorAll('input, select, textarea'))
+            .filter((field) => ![
+                'register_identitas_pegawai',
+                'register_gaji_bulanan',
+                'register_fakultas_hidden'
+            ].includes(field.id));
 
         let latestRefStatus = '';
         let latestRefFound = false;
+        let lookupState = 'idle';
         let lookupTimer = null;
+        let lookupSequence = 0;
 
         // ── Validasi Tgl Lahir: minimal 18 tahun ──────────────────────────────
         (function setMaxTglLahir() {
@@ -229,6 +240,21 @@
         tglLahirInput.addEventListener('change', validateTglLahir);
         // ─────────────────────────────────────────────────────────────────────
 
+        function validateNoTelepon() {
+            noTeleponInput.value = noTeleponInput.value.replace(/[^0-9]/g, '').replace(/^0+/, '').slice(0, 13);
+
+            if (!noTeleponInput.value) {
+                noTeleponInput.classList.remove('is-invalid');
+                noTeleponInput.setCustomValidity('');
+                return true;
+            }
+
+            const valid = /^[0-9]{10,13}$/.test(noTeleponInput.value);
+            noTeleponInput.classList.toggle('is-invalid', !valid);
+            noTeleponInput.setCustomValidity(valid ? '' : 'No. Telepon harus 10 hingga 13 digit angka.');
+            return valid;
+        }
+
         function formatRupiah(angka) {
             return 'Rp ' + new Intl.NumberFormat('id-ID').format(angka);
         }
@@ -243,11 +269,32 @@
             }
         }
 
+        function shouldLockRegistrationFields() {
+            return Boolean(statusSelect.value && statusSelect.value !== 'mahasiswa' && !latestRefFound);
+        }
+
+        function updateRegistrationFieldsLock() {
+            const locked = shouldLockRegistrationFields();
+
+            lockedUntilReferensiFoundFields.forEach((field) => {
+                field.disabled = locked;
+            });
+
+            if (locked) {
+                buktiTransferInput.required = false;
+            }
+        }
+
         function updateReferensiWarning() {
             const selected = statusSelect.value;
             let errorMsg = '';
+            const identitasInvalid = selected && selected !== 'mahasiswa' && ['not_found', 'error'].includes(lookupState);
 
-            if (selected && selected !== 'mahasiswa' && latestRefFound && !latestRefStatus) {
+            if (selected && selected !== 'mahasiswa' && lookupState === 'not_found') {
+                errorMsg = 'Nomer Identitas tidak ditemukan di data referensi. Kolom pendaftaran lainnya dikunci sampai Nomer Identitas yang valid ditemukan.';
+            } else if (selected && selected !== 'mahasiswa' && lookupState === 'error') {
+                errorMsg = 'Gagal mengecek Nomer Identitas ke server. Kolom pendaftaran lainnya dikunci sampai data referensi berhasil divalidasi.';
+            } else if (selected && selected !== 'mahasiswa' && latestRefFound && !latestRefStatus) {
                 errorMsg = 'Data referensi ditemukan, tetapi jabatan pada Nomer Identitas ini belum tersedia atau belum dikenali sistem. Hubungi admin untuk memperbarui import referensi.';
             } else if (selected && latestRefStatus && selected !== latestRefStatus) {
                 const label = latestRefStatus === 'dosen' ? 'DOSEN' : 'TENAGA PENDIDIKAN';
@@ -257,13 +304,15 @@
             if (errorMsg) {
                 warningBox.innerHTML = errorMsg;
                 warningBox.classList.remove('d-none');
-                statusSelect.classList.add('is-invalid-custom');
+                statusSelect.classList.toggle('is-invalid-custom', !identitasInvalid);
+                identitasInput.classList.toggle('is-invalid-custom', identitasInvalid);
                 return false;
             }
 
             warningBox.innerHTML = '';
             warningBox.classList.add('d-none');
             statusSelect.classList.remove('is-invalid-custom');
+            identitasInput.classList.remove('is-invalid-custom');
             return true;
         }
 
@@ -281,10 +330,18 @@
                 namaHidden.placeholder = 'Masukkan nama lengkap';
                 namaHintText.textContent = 'Silakan isi nama lengkap.';
                 gajiHidden.value = 0;
+                latestRefFound = true;
+                latestRefStatus = 'mahasiswa';
+                lookupState = 'found';
             } else {
                 namaHidden.value = '';
                 namaHidden.placeholder = 'Nama akan terisi otomatis dari data referensi';
                 namaHintText.textContent = 'Masukkan Nomer Identitas untuk mengambil nama otomatis dari data referensi.';
+                if (!identitasInput.value.trim()) {
+                    latestRefFound = false;
+                    latestRefStatus = '';
+                    lookupState = 'idle';
+                }
             }
 
             optionRektorat.style.display = statusVal === 'dosen' ? 'none' : 'block';
@@ -292,25 +349,31 @@
                 fakultasSelect.value = '';
                 fakultasHidden.value = '';
             }
+
+            updateRegistrationFieldsLock();
         }
 
         function updateMetodePembayaranUI() {
             const metode = metodePembayaranSelect.value;
             const gajiValue = parseInt(gajiHidden.value || '0', 10) || 0;
             const isMahasiswa = statusSelect.value === 'mahasiswa';
+            const fieldsLocked = shouldLockRegistrationFields();
             const potongGajiTidakCukup = isMahasiswa || gajiValue < nominalSimpananPokok;
 
-            optionPotongGaji.disabled = potongGajiTidakCukup;
-            if (potongGajiTidakCukup && metode === 'potong_gaji') {
+            optionPotongGaji.disabled = fieldsLocked || potongGajiTidakCukup;
+            if ((fieldsLocked || potongGajiTidakCukup) && metode === 'potong_gaji') {
                 metodePembayaranSelect.value = 'transfer_bank';
             }
 
             const metodeAktif = metodePembayaranSelect.value;
             const isTransfer = metodeAktif === 'transfer_bank';
             transferFieldsWrapper.classList.toggle('d-none', !isTransfer);
-            buktiTransferInput.required = isTransfer;
+            buktiTransferInput.required = !fieldsLocked && isTransfer;
 
-            if (isMahasiswa) {
+            if (fieldsLocked) {
+                potongGajiInfo.textContent = 'Lengkapi Nomer Identitas yang terdaftar untuk membuka kolom pendaftaran dan pilihan pembayaran.';
+                potongGajiInfo.classList.remove('d-none');
+            } else if (isMahasiswa) {
                 potongGajiInfo.textContent = 'Mahasiswa menggunakan input manual dan tidak dapat memilih metode potong gaji.';
                 potongGajiInfo.classList.remove('d-none');
             } else if (potongGajiTidakCukup) {
@@ -326,9 +389,12 @@
                 potongGajiInfo.classList.add('d-none');
                 potongGajiInfo.textContent = '';
             }
+
+            updateRegistrationFieldsLock();
         }
 
         function updateSubmitState() {
+            updateRegistrationFieldsLock();
             if (!statusSelect.value) {
                 submitBtn.disabled = true;
                 return;
@@ -345,14 +411,17 @@
         }
 
         async function checkReferensi() {
+            const currentLookupSequence = ++lookupSequence;
             const identitas = identitasInput.value.trim();
             const statusVal = statusSelect.value;
 
             if (statusVal === 'mahasiswa') {
                 latestRefFound = true;
                 latestRefStatus = 'mahasiswa';
+                lookupState = 'found';
                 resetDisplays('Mahasiswa (Input Manual)', true);
                 namaHintText.textContent = 'Silakan isi nama lengkap.';
+                identitasHintText.textContent = 'Mahasiswa tidak memerlukan Nomer Identitas referensi.';
                 updateReferensiWarning();
                 updateMetodePembayaranUI();
                 updateSubmitState();
@@ -362,7 +431,9 @@
             if (!identitas) {
                 latestRefFound = false;
                 latestRefStatus = '';
+                lookupState = 'idle';
                 resetDisplays('Menunggu Nomer Identitas...', false);
+                identitasHintText.textContent = 'Masukkan Nomer Identitas untuk mengambil nama dan gaji otomatis dari data referensi.';
                 updateReferensiWarning();
                 updateMetodePembayaranUI();
                 updateSubmitState();
@@ -370,16 +441,32 @@
             }
 
             try {
+                latestRefFound = false;
+                latestRefStatus = '';
+                lookupState = 'loading';
+                updateRegistrationFieldsLock();
+                updateReferensiWarning();
                 namaHintText.textContent = 'Mencari data referensi...';
+                identitasHintText.textContent = 'Mencari data referensi...';
                 gajiDisplay.innerText = 'Mencari data...';
                 const res = await fetch(`/api/register/referensi?identitas=${encodeURIComponent(identitas)}`, { cache: 'no-store' });
                 const data = await res.json();
 
+                if (
+                    currentLookupSequence !== lookupSequence ||
+                    identitas !== identitasInput.value.trim() ||
+                    statusVal !== statusSelect.value
+                ) {
+                    return;
+                }
+
                 if (data.found) {
                     latestRefFound = true;
                     latestRefStatus = data.status_referensi || '';
+                    lookupState = 'found';
                     namaHidden.value = data.nama_lengkap || '';
                     namaHintText.textContent = data.nama_lengkap ? 'Nama otomatis terisi dari data referensi.' : 'Data referensi ditemukan.';
+                    identitasHintText.textContent = 'Data referensi ditemukan.';
 
                     gajiHidden.value = data.gaji_bulanan || 0;
                     gajiDisplay.innerText = formatRupiah(data.gaji_bulanan || 0);
@@ -387,12 +474,24 @@
                 } else {
                     latestRefFound = false;
                     latestRefStatus = '';
+                    lookupState = 'not_found';
                     resetDisplays('Data tidak ditemukan di database referensi', false, 'alert-warning');
+                    identitasHintText.textContent = 'Nomer Identitas tidak ada di data referensi. Periksa kembali atau hubungi admin.';
                 }
             } catch (e) {
+                if (
+                    currentLookupSequence !== lookupSequence ||
+                    identitas !== identitasInput.value.trim() ||
+                    statusVal !== statusSelect.value
+                ) {
+                    return;
+                }
+
                 latestRefFound = false;
                 latestRefStatus = '';
+                lookupState = 'error';
                 resetDisplays('Gagal menghubungi server', false, 'alert-danger');
+                identitasHintText.textContent = 'Gagal mengecek Nomer Identitas. Coba lagi atau hubungi admin.';
             }
 
             updateReferensiWarning();
@@ -401,6 +500,8 @@
         }
 
         statusSelect.addEventListener('change', () => {
+            lookupSequence += 1;
+            clearTimeout(lookupTimer);
             if (statusSelect.value) {
                 formContainer.classList.remove('d-none');
                 // Sembunyikan link login atas karena sudah ada di dalam form
@@ -415,9 +516,22 @@
         });
 
         identitasInput.addEventListener('input', () => {
+            lookupSequence += 1;
             clearTimeout(lookupTimer);
+            latestRefFound = false;
+            latestRefStatus = '';
+            lookupState = 'idle';
+            resetDisplays(identitasInput.value.trim() ? 'Menunggu pengecekan Nomer Identitas...' : 'Menunggu Nomer Identitas...', false);
+            identitasHintText.textContent = identitasInput.value.trim()
+                ? 'Pengecekan akan berjalan setelah Anda selesai mengetik.'
+                : 'Masukkan Nomer Identitas untuk mengambil nama dan gaji otomatis dari data referensi.';
+            updateReferensiWarning();
+            updateMetodePembayaranUI();
+            updateSubmitState();
             lookupTimer = setTimeout(checkReferensi, 400);
         });
+
+        noTeleponInput.addEventListener('input', validateNoTelepon);
 
         fakultasSelect.addEventListener('change', () => {
             fakultasHidden.value = fakultasSelect.value;
@@ -434,6 +548,12 @@
             if (!validateTglLahir()) {
                 e.preventDefault();
                 tglLahirInput.reportValidity();
+                return;
+            }
+
+            if (!validateNoTelepon()) {
+                e.preventDefault();
+                noTeleponInput.reportValidity();
                 return;
             }
 
