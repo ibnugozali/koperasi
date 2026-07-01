@@ -221,10 +221,6 @@
                                         <div class="info-value">{{ .Anggota.NamaAnggota }}</div>
                                     </div>
                                     <div class="info-row">
-                                        <div class="info-label"><i class="fas fa-address-card me-2"></i>Nomer Identitas</div>
-                                        <div class="info-value">{{ if .Anggota.NikKTP }}{{ .Anggota.NikKTP }}{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
-                                    </div>
-                                    <div class="info-row">
                                         <div class="info-label"><i class="fas fa-birthday-cake me-2"></i>Tanggal Lahir</div>
                                         <div class="info-value">{{ if .Anggota.TglLahir }}<span id="tanggalLahir">{{ .Anggota.TglLahir }}</span>{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
                                     </div>

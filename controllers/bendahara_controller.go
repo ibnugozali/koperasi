@@ -3205,20 +3205,19 @@ func BendaharaImportAnggota(c *gin.Context) {
 		}
 
 		// Ambil data dengan aman sesuai urutan template:
-		// Nama Anggota, Unit Kerja, Tanggal Lahir, NIK KTP, No Telepon, Jenis Kelamin, Fakultas, Gaji Bulanan, Alamat
+		// Nama Anggota, Unit Kerja, Tanggal Lahir, Nomer Identitas, No Telepon, Jenis Kelamin, Fakultas, Gaji Bulanan, Alamat
 		namaAnggota := getValue(row, 0)
 		unitKerja := getValue(row, 1)
 		tglLahir := getValue(row, 2)
-		nikKTP := getValue(row, 3)
+		nomorIdentitas := getValue(row, 3)
 		noTelepon := getValue(row, 4)
 		jenisKelamin := getValue(row, 5)
 		fakultas := getValue(row, 6)
 		gajiBulananStr := getValue(row, 7)
 		alamat := getValue(row, 8)
 
-		// Gunakan nomor identitas sebagai username jika tersedia; tanpa kolom nik_ktp,
-		// username menjadi kunci identitas anggota.
-		username := strings.TrimSpace(nikKTP)
+		// Import lama memakai nomor identitas sebagai username.
+		username := strings.TrimSpace(nomorIdentitas)
 		if username == "" {
 			username = strings.ToLower(strings.ReplaceAll(namaAnggota, " ", ""))
 		}
@@ -3240,13 +3239,18 @@ func BendaharaImportAnggota(c *gin.Context) {
 
 		// PENTING: C
 		// Jika sudah ada, SELALU gunakan sisa gaji dari database (Gaji Bulanan - Potongan Bulan Ini)
-		if nikKTP != "" {
+		if nomorIdentitas != "" {
 			var idAnggotaExisting string
 			var gajiBulananDB int
 
-			// Ambil ID anggota dan gaji bulanan dari database
-			checkAnggotaQuery := "SELECT id_anggota, COALESCE(gaji_bulanan, 0) FROM anggota WHERE username = $1 LIMIT 1"
-			err := config.GetDB().QueryRow(checkAnggotaQuery, username).Scan(&idAnggotaExisting, &gajiBulananDB)
+			// Ambil ID anggota dan gaji bulanan dari database berdasarkan username lama.
+			checkAnggotaQuery := `
+				SELECT id_anggota, COALESCE(gaji_bulanan, 0)
+				FROM anggota
+				WHERE username = $1
+				LIMIT 1
+			`
+			err := config.GetDB().QueryRow(checkAnggotaQuery, nomorIdentitas).Scan(&idAnggotaExisting, &gajiBulananDB)
 
 			if err == nil {
 				// Anggota sudah ada - hitung sisa gaji (Gaji Bulanan - Potongan Bulan Ini)
@@ -3260,8 +3264,8 @@ func BendaharaImportAnggota(c *gin.Context) {
 
 				// Gunakan sisa gaji sebagai gaji bulanan yang akan di-update
 				gajiBulanan = sisaGaji
-				fmt.Printf("  Baris %d: Anggota sudah ada (NIK: %s), Gaji DB: Rp %d, Potongan: Rp %d, Sisa Gaji: Rp %d (mengabaikan Excel: %s)\n",
-					i+1, nikKTP, gajiBulananDB, potongan, sisaGaji, gajiBulananStr)
+				fmt.Printf("  Baris %d: Anggota sudah ada (username: %s), Gaji DB: Rp %d, Potongan: Rp %d, Sisa Gaji: Rp %d (mengabaikan Excel: %s)\n",
+					i+1, nomorIdentitas, gajiBulananDB, potongan, sisaGaji, gajiBulananStr)
 			} else {
 				// Anggota baru - gunakan gaji dari Excel
 				fmt.Printf("  Baris %d: Anggota baru, menggunakan gaji dari Excel: Rp %d\n", i+1, gajiBulanan)
@@ -3284,20 +3288,11 @@ func BendaharaImportAnggota(c *gin.Context) {
 			}
 		}
 
-		// Validasi NIK jika ada (harus 16 digit)
-		if nikKTP != "" && len(nikKTP) != 16 {
-			errors = append(errors, fmt.Sprintf("Baris %d: NIK harus 16 digit (saat ini: %d digit)", i+1, len(nikKTP)))
-			continue
-		}
-
 		// Mapping fakultas_code ke format 2 digit (unit_kerja tetap gunakan nama lengkap)
 		fakultasCode := mapFakultasCode(fakultas)
 
 		// Hash password default
 		defaultPassword := "12345678" // Password default
-		if nikKTP != "" && len(nikKTP) == 16 {
-			defaultPassword = nikKTP // Gunakan NIK jika valid
-		}
 
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 		if err != nil {
@@ -3314,7 +3309,6 @@ func BendaharaImportAnggota(c *gin.Context) {
 			TglLahir:      tglLahir,
 			JenisKelamin:  jenisKelamin,
 			Alamat:        alamat,
-			NikKTP:        nikKTP,
 			NoTelepon:     noTelepon,
 			UnitKerja:     unitKerja,
 			Fakultas:      fakultas,
@@ -3336,7 +3330,7 @@ func BendaharaImportAnggota(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":           "Tidak ada data valid untuk diimport. Periksa format data Anda.",
 			"parseErrors":     errors,
-			"hint":            "Minimal harus ada kolom: Nama Anggota | Username. Kolom opsional: Tanggal Lahir | Jenis Kelamin | Alamat | NIK (16 digit) | No. Telepon | Unit Kerja | Fakultas | Status Anggota",
+			"hint":            "Minimal harus ada kolom: Nama Anggota | Username. Kolom opsional: Tanggal Lahir | Jenis Kelamin | Alamat | No. Telepon | Unit Kerja | Fakultas | Status Anggota",
 			"detectedHeaders": rows[0],
 		})
 		return
@@ -3351,9 +3345,14 @@ func BendaharaImportAnggota(c *gin.Context) {
 
 	// Simpan setiap anggota ke database
 	for _, anggota := range anggotaList {
-		// Cek apakah username/nomor identitas sudah ada (untuk update atau insert)
+		// Cek apakah username sudah ada (untuk update atau insert)
 		var existingID string
-		checkQuery := "SELECT id_anggota FROM anggota WHERE username = $1 LIMIT 1"
+		checkQuery := `
+			SELECT id_anggota
+			FROM anggota
+			WHERE username = $1
+			LIMIT 1
+		`
 		err := db.QueryRow(checkQuery, anggota.Username).Scan(&existingID)
 
 		if err == nil && existingID != "" {
@@ -3390,7 +3389,7 @@ func BendaharaImportAnggota(c *gin.Context) {
 			)
 
 			if err != nil {
-				allErrors = append(allErrors, fmt.Sprintf("Gagal update %s (NIK: %s): %v", anggota.NamaAnggota, anggota.NikKTP, err))
+				allErrors = append(allErrors, fmt.Sprintf("Gagal update %s (username: %s): %v", anggota.NamaAnggota, anggota.Username, err))
 				failedCount++
 			} else {
 				successCount++
@@ -3402,8 +3401,8 @@ func BendaharaImportAnggota(c *gin.Context) {
 		// Insert anggota baru ke database
 		insertQuery := `
 			INSERT INTO anggota (
-				id_anggota, nama_anggota, username, password, tgl_lahir, 
-				jenis_kelamin, alamat, no_telepon, unit_kerja, 
+				id_anggota, nama_anggota, username, password, tgl_lahir,
+				jenis_kelamin, alamat, no_telepon, unit_kerja,
 				fakultas, fakultas_code, gaji_bulanan, status_anggota, status, tgl_gabung
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		`
@@ -3447,7 +3446,6 @@ func BendaharaImportAnggota(c *gin.Context) {
 			"tgl_lahir":      anggota.TglLahir,
 			"jenis_kelamin":  anggota.JenisKelamin,
 			"alamat":         anggota.Alamat,
-			"nik_ktp":        anggota.NikKTP,
 			"no_telepon":     anggota.NoTelepon,
 			"fakultas":       anggota.Fakultas,
 			"gaji_bulanan":   anggota.GajiBulanan,
@@ -3653,11 +3651,11 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 				continue
 			}
 
-			// Urutan sesuai template: Nama Anggota, Unit Kerja, Tanggal Lahir, NIK KTP, No Telepon, Jenis Kelamin, Fakultas, Gaji Bulanan, Alamat
+			// Urutan sesuai template: Nama Anggota, Unit Kerja, Tanggal Lahir, Nomer Identitas, No Telepon, Jenis Kelamin, Fakultas, Gaji Bulanan, Alamat
 			namaAnggota := getValuePreview(row, 0)
 			_ = getValuePreview(row, 1) // unitKerja - tidak divalidasi di preview
 			tglLahir := getValuePreview(row, 2)
-			nikKTP := getValuePreview(row, 3)
+			_ = getValuePreview(row, 3) // nomor identitas - tidak divalidasi di preview
 			_ = getValuePreview(row, 4) // noTelepon - tidak divalidasi di preview
 			_ = getValuePreview(row, 5) // jenisKelamin - tidak divalidasi di preview
 			fakultas := getValuePreview(row, 6)
@@ -3679,12 +3677,6 @@ func BendaharaPreviewImportAnggota(c *gin.Context) {
 					previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: Format tanggal lahir harus YYYY-MM-DD atau DD/MM/YYYY (saat ini: %s)", rowNum, tglLahir))
 					continue
 				}
-			}
-
-			// Validasi NIK jika ada
-			if nikKTP != "" && len(nikKTP) != 16 {
-				previewErrors = append(previewErrors, fmt.Sprintf("Baris %d: NIK harus 16 digit (saat ini: %d digit) - NIK: %s", rowNum, len(nikKTP), nikKTP))
-				continue
 			}
 
 			// Mapping fakultas_code (unit_kerja tetap gunakan nama lengkap)
@@ -5229,7 +5221,7 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 		       COALESCE(p.nama_pemilik_rekening, '') as nama_pemilik_rekening,
 		       COALESCE(p.gaji_bulanan, 0) as gaji_bulanan,
 		       COALESCE(p.tujuan_pinjaman, '') as tujuan_pinjaman,
-		       a.nama_anggota, a.no_telepon, a.username, a.username, a.alamat, a.unit_kerja
+		       a.nama_anggota, a.no_telepon, a.username, a.alamat, a.unit_kerja
 		FROM pinjaman p
 		JOIN anggota a ON p.id_anggota = a.id_anggota
 		WHERE p.id_pinjaman = $1
@@ -5240,7 +5232,7 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 		&p.JangkaWaktu, &p.Bunga, &p.Status,
 		&p.MetodePencairan, &p.NomorRekening, &p.NamaBank, &p.NamaPemilikRekening,
 		&p.GajiBulanan, &p.TujuanPinjaman,
-		&a.NamaAnggota, &a.NoTelepon, &a.NikKTP, &a.Username, &a.Alamat, &a.UnitKerja,
+		&a.NamaAnggota, &a.NoTelepon, &a.Username, &a.Alamat, &a.UnitKerja,
 	)
 
 	if err != nil {

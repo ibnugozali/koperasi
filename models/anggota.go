@@ -11,7 +11,6 @@ type Anggota struct {
 	Username      string     `json:"username" form:"Username"`
 	Password      string     `json:"password" form:"Password"`
 	TglLahir      string     `json:"tgl_lahir" form:"TglLahir"`
-	NikKTP        string     `json:"nik_ktp" form:"NikKTP"`
 	NoTelepon     string     `json:"no_telepon" form:"NoTelepon"`
 	TglGabung     time.Time  `json:"tgl_gabung"`
 	TglKeluar     *time.Time `json:"tgl_keluar"`

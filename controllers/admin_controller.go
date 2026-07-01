@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"koperasi-simpan-pinjam/config"
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 	"log"
 	"net/http"
 	"net/url"
@@ -21,10 +24,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
-
-	"koperasi-simpan-pinjam/config"
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
 )
 
 func DeleteAllLoginHistory(c *gin.Context) {
@@ -525,28 +524,8 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 			nominalSimpananPokok = 100000
 		}
 
-		var sudahAda bool
-		err = db.QueryRow(`
-			SELECT EXISTS(
-				SELECT 1
-				FROM detail
-				WHERE id_anggota = $1 AND id_simpanan = 1 AND COALESCE(status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
-			)
-		`, idAnggota).Scan(&sudahAda)
-		if err != nil {
-			log.Printf("[WARN] gagal cek simpanan pokok potong gaji untuk anggota %s: %v", idAnggota, err)
-		}
-
-		if !sudahAda {
-			_, err = db.Exec(`
-				INSERT INTO detail (
-					id_anggota, id_simpanan, id_pengelola, tgl_transaksi,
-					jumlah_simpanan, total_simpanan, status, bukti_pembayaran, metode_pembayaran
-				) VALUES ($1, 1, NULL, CURRENT_TIMESTAMP, $2, $2, 'confirmed', 'POTONG_GAJI', 'potong_gaji')
-			`, idAnggota, nominalSimpananPokok)
-			if err != nil {
-				log.Printf("[ERROR] gagal mencatat simpanan pokok potong gaji untuk anggota %s: %v", idAnggota, err)
-			}
+		if err := repository.EnsureSimpananPokokPotongGaji(db, idAnggota, nominalSimpananPokok); err != nil {
+			log.Printf("[ERROR] gagal mencatat simpanan pokok potong gaji untuk anggota %s: %v", idAnggota, err)
 		}
 	}
 
@@ -595,9 +574,6 @@ func referensiIdentitasHeaderKeys() []string {
 		"nip",
 		"nidn",
 		"nidk",
-		"nik ktp",
-		"nik",
-		"nik_ktp",
 		"id pegawai",
 		"kode pegawai",
 	}
@@ -1033,7 +1009,7 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 	}
 
 	if idxIdentitas < 0 {
-		message := "Kolom Nomer Identitas wajib ada di file referensi dan tidak boleh berisi nomor urut 1, 2, 3. Gunakan header Nomer Identitas/NIP/NIDN/NIK pada kolom nomor induk asli; kolom Identitas yang berisi Dosen/Tendik bukan nomor identitas."
+		message := "Kolom Nomer Identitas wajib ada di file referensi dan tidak boleh berisi nomor urut 1, 2, 3. Gunakan header Nomer Identitas/NIP/NIDN pada kolom nomor induk asli; kolom Identitas yang berisi Dosen/Tendik bukan nomor identitas."
 		message += buildReferensiHeaderSampleMessage(rows, headerRowIdx)
 		c.Redirect(http.StatusFound, "/admin/import-referensi?error="+url.QueryEscape(message))
 		return
@@ -1126,7 +1102,6 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 				SELECT COUNT(*)
 				FROM anggota
 				WHERE COALESCE(username, '') = $1
-				   OR COALESCE(username, '') = $1
 				   OR COALESCE(no_telepon, '') = $1
 			`, identitas).Scan(&anggotaCount)
 			if checkErr == nil && anggotaCount > 0 {

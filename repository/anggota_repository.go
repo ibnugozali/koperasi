@@ -3,13 +3,157 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"koperasi-simpan-pinjam/config"
+	"koperasi-simpan-pinjam/models"
 	"log"
 	"strings"
 	"time"
-
-	"koperasi-simpan-pinjam/config"
-	"koperasi-simpan-pinjam/models"
 )
+
+type simpananStore interface {
+	QueryRow(query string, args ...interface{}) *sql.Row
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
+func getOrCreateSimpananIDByJenis(store simpananStore, jenis string) (int, error) {
+	jenis = strings.ToLower(strings.TrimSpace(jenis))
+	if jenis == "" {
+		return 0, fmt.Errorf("jenis simpanan kosong")
+	}
+
+	var idSimpanan int
+	err := store.QueryRow(`
+		SELECT id_simpanan
+		FROM simpanan
+		WHERE LOWER(TRIM(jenis_simpanan)) = $1
+		LIMIT 1
+	`, jenis).Scan(&idSimpanan)
+	if err == nil {
+		return idSimpanan, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, err
+	}
+
+	err = store.QueryRow(`
+		INSERT INTO simpanan (jenis_simpanan)
+		VALUES ($1)
+		RETURNING id_simpanan
+	`, jenis).Scan(&idSimpanan)
+	if err == nil {
+		return idSimpanan, nil
+	}
+
+	if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
+		err = store.QueryRow(`
+			SELECT id_simpanan
+			FROM simpanan
+			WHERE LOWER(TRIM(jenis_simpanan)) = $1
+			LIMIT 1
+		`, jenis).Scan(&idSimpanan)
+		if err == nil {
+			return idSimpanan, nil
+		}
+	}
+
+	return 0, err
+}
+
+func EnsureSimpananPokokPotongGaji(store simpananStore, idAnggota string, nominalSimpananPokok float64) error {
+	idAnggota = strings.TrimSpace(idAnggota)
+	if idAnggota == "" {
+		return fmt.Errorf("id anggota kosong")
+	}
+	if nominalSimpananPokok <= 0 {
+		nominalSimpananPokok = 100000
+	}
+
+	idSimpananPokok, err := getOrCreateSimpananIDByJenis(store, "pokok")
+	if err != nil {
+		return fmt.Errorf("gagal memastikan jenis simpanan pokok: %w", err)
+	}
+
+	var sudahAda bool
+	err = store.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1
+			FROM detail
+			WHERE id_anggota = $1
+			  AND id_simpanan = $2
+			  AND COALESCE(status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
+		)
+	`, idAnggota, idSimpananPokok).Scan(&sudahAda)
+	if err != nil {
+		return fmt.Errorf("gagal cek simpanan pokok: %w", err)
+	}
+	if sudahAda {
+		return nil
+	}
+
+	_, err = store.Exec(`
+		INSERT INTO detail (
+			id_anggota, id_simpanan, id_pengelola, tgl_transaksi,
+			jumlah_simpanan, total_simpanan, status, bukti_pembayaran, metode_pembayaran
+		) VALUES ($1, $2, NULL, CURRENT_TIMESTAMP, $3, $3, 'confirmed', 'POTONG_GAJI', 'potong_gaji')
+	`, idAnggota, idSimpananPokok, nominalSimpananPokok)
+	if err != nil {
+		return fmt.Errorf("gagal insert simpanan pokok: %w", err)
+	}
+
+	return nil
+}
+
+func RepairMissingSimpananPokokPotongGaji(db *sql.DB) (int, error) {
+	if db == nil {
+		return 0, fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+
+	var nominalSimpananPokok float64
+	err := db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok)
+	if err != nil {
+		nominalSimpananPokok = 100000
+	}
+
+	idSimpananPokok, err := getOrCreateSimpananIDByJenis(db, "pokok")
+	if err != nil {
+		return 0, err
+	}
+
+	rows, err := db.Query(`
+		SELECT a.id_anggota
+		FROM anggota a
+		WHERE a.status = 'aktif'
+		  AND UPPER(TRIM(COALESCE(a.bukti_transfer, ''))) = 'POTONG_GAJI'
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM detail d
+			WHERE d.id_anggota = a.id_anggota
+			  AND d.id_simpanan = $1
+			  AND COALESCE(d.status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
+		  )
+	`, idSimpananPokok)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	repaired := 0
+	for rows.Next() {
+		var idAnggota string
+		if err := rows.Scan(&idAnggota); err != nil {
+			return repaired, err
+		}
+		if err := EnsureSimpananPokokPotongGaji(db, idAnggota, nominalSimpananPokok); err != nil {
+			return repaired, err
+		}
+		repaired++
+	}
+	if err := rows.Err(); err != nil {
+		return repaired, err
+	}
+
+	return repaired, nil
+}
 
 // GetRiwayatTotalAnggotaPerHari mengambil jumlah anggota aktif per hari selama 30 hari terakhir
 func GetRiwayatTotalAnggotaPerHari(db *sql.DB) ([]map[string]interface{}, error) {
@@ -49,7 +193,6 @@ func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 		       username,
 		       password,
 		       tgl_lahir,
-		       username,
 		       no_telepon,
 		       tgl_gabung,
 		       tgl_keluar,
@@ -80,7 +223,6 @@ func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 			&a.Username,
 			&a.Password,
 			&a.TglLahir,
-			&a.NikKTP,
 			&a.NoTelepon,
 			&a.TglGabung,
 			&a.TglKeluar,
@@ -107,7 +249,7 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 	db := config.GetDB() // Fungsi untuk mendapatkan koneksi DB
 	var anggotas []models.Anggota
 
-	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, username, no_telepon, tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, '') FROM anggota WHERE status = 'pending' ORDER BY LPAD(nomor_urut, 4, '0') DESC")
+	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, no_telepon, tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, '') FROM anggota WHERE status = 'pending' ORDER BY LPAD(nomor_urut, 4, '0') DESC")
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +257,7 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 
 	for rows.Next() {
 		var a models.Anggota
-		if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.NikKTP, &a.NoTelepon, &a.TglGabung, &a.UnitKerja, &a.FakultasCode, &a.Fakultas); err != nil {
+		if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.NoTelepon, &a.TglGabung, &a.UnitKerja, &a.FakultasCode, &a.Fakultas); err != nil {
 			return nil, err
 		}
 		anggotas = append(anggotas, a)
@@ -129,7 +271,7 @@ func GetPendingAnggotaKeluar() ([]models.Anggota, error) {
 	db := config.GetDB()
 	var anggotas []models.Anggota
 
-	rows, err := db.Query(`SELECT id_anggota, nama_anggota, username, username, no_telepon, 
+	rows, err := db.Query(`SELECT id_anggota, nama_anggota, username, no_telepon,
 		tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, ''), status, status_anggota 
 		FROM anggota WHERE status_anggota = 'pending_keluar' ORDER BY tgl_gabung DESC`)
 	if err != nil {
@@ -139,7 +281,7 @@ func GetPendingAnggotaKeluar() ([]models.Anggota, error) {
 
 	for rows.Next() {
 		var a models.Anggota
-		if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.NikKTP, &a.NoTelepon,
+		if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.NoTelepon,
 			&a.TglGabung, &a.UnitKerja, &a.FakultasCode, &a.Fakultas, &a.Status, &a.StatusAnggota); err != nil {
 			return nil, err
 		}
@@ -215,9 +357,9 @@ func GetAnggotaByID(id string) (models.Anggota, error) {
 	var a models.Anggota
 	var encryptedPassword string
 	query := `
-		       SELECT
+			       SELECT
 			       id_anggota, nama_anggota, username, password,
-			       tgl_lahir, username, no_telepon, tgl_gabung,
+			       tgl_lahir, no_telepon, tgl_gabung,
 			       alamat, jenis_kelamin, status,
 			       unit_kerja, fakultas_code, COALESCE(tahun, ''), COALESCE(CAST(nomor_urut AS TEXT), '0'), COALESCE(bukti_transfer, ''), COALESCE(status_anggota, ''), COALESCE(fakultas, ''), COALESCE(gaji_bulanan, 0)
 		       FROM anggota
@@ -225,7 +367,7 @@ func GetAnggotaByID(id string) (models.Anggota, error) {
 
 	err := db.QueryRow(query, id).Scan(
 		&a.IDAnggota, &a.NamaAnggota, &a.Username, &encryptedPassword,
-		&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
+		&a.TglLahir, &a.NoTelepon, &a.TglGabung,
 		&a.Alamat, &a.JenisKelamin, &a.Status,
 		&a.UnitKerja, &a.FakultasCode, &a.Tahun, &a.NomorUrut, &a.BuktiTransfer, &a.StatusAnggota, &a.Fakultas, &a.GajiBulanan,
 	)
@@ -247,7 +389,7 @@ func GetAllAnggota() ([]models.Anggota, error) {
 	query := `
 		SELECT
 		 id_anggota, nama_anggota, username, password,
-		 tgl_lahir, username, no_telepon, tgl_gabung,
+		 tgl_lahir, no_telepon, tgl_gabung,
 		 alamat, jenis_kelamin, status, unit_kerja, fakultas, COALESCE(gaji_bulanan, 0)
 		FROM anggota
 		WHERE status = 'aktif'
@@ -263,7 +405,7 @@ func GetAllAnggota() ([]models.Anggota, error) {
 		var a models.Anggota
 		err := rows.Scan(
 			&a.IDAnggota, &a.NamaAnggota, &a.Username, &a.Password,
-			&a.TglLahir, &a.NikKTP, &a.NoTelepon, &a.TglGabung,
+			&a.TglLahir, &a.NoTelepon, &a.TglGabung,
 			&a.Alamat, &a.JenisKelamin, &a.Status, &a.UnitKerja, &a.Fakultas, &a.GajiBulanan,
 		)
 		if err != nil {
@@ -647,14 +789,15 @@ func GetPotonganRegisterPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 	tahun := now.Year()
 
 	query := `
-		SELECT id_anggota, COALESCE(SUM(jumlah_simpanan), 0)
-		FROM detail
-		WHERE id_simpanan = 1
-		  AND COALESCE(status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
-		  AND REPLACE(LOWER(COALESCE(metode_pembayaran, '')), ' ', '_') = 'potong_gaji'
-		  AND EXTRACT(MONTH FROM tgl_transaksi) = $1
-		  AND EXTRACT(YEAR FROM tgl_transaksi) = $2
-		GROUP BY id_anggota
+		SELECT d.id_anggota, COALESCE(SUM(d.jumlah_simpanan), 0)
+		FROM detail d
+		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
+		WHERE LOWER(TRIM(COALESCE(s.jenis_simpanan, ''))) = 'pokok'
+		  AND COALESCE(d.status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
+		  AND REPLACE(LOWER(COALESCE(d.metode_pembayaran, '')), ' ', '_') = 'potong_gaji'
+		  AND EXTRACT(MONTH FROM d.tgl_transaksi) = $1
+		  AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+		GROUP BY d.id_anggota
 	`
 
 	rows, err := db.Query(query, bulan, tahun)
@@ -1101,8 +1244,8 @@ func BatchInsertAnggota(db *sql.DB, anggotaList []models.Anggota) (successCount 
 
 		query := `
 			INSERT INTO anggota (
-				id_anggota, nama_anggota, username, password, tgl_lahir, 
-				no_telepon, alamat, jenis_kelamin, status_anggota, 
+				id_anggota, nama_anggota, username, password, tgl_lahir,
+				no_telepon, alamat, jenis_kelamin, status_anggota,
 				fakultas, tgl_gabung, unit_kerja, fakultas_code, status
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		`

@@ -6,6 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"koperasi-simpan-pinjam/config"
+	"koperasi-simpan-pinjam/models"
+	"koperasi-simpan-pinjam/repository"
 	"log"
 	"net"
 	"net/http"
@@ -18,10 +21,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
-
-	"koperasi-simpan-pinjam/config"
-	"koperasi-simpan-pinjam/models"
-	"koperasi-simpan-pinjam/repository"
 )
 
 func getPengaturanValue(db *sql.DB, keys ...string) string {
@@ -574,9 +573,7 @@ func normalizeRegisterPhone(value string) string {
 	}
 
 	phone := digits.String()
-	if strings.HasPrefix(phone, "62") {
-		phone = strings.TrimPrefix(phone, "62")
-	}
+	phone = strings.TrimPrefix(phone, "62")
 	phone = strings.TrimLeft(phone, "0")
 	return phone
 }
@@ -692,15 +689,15 @@ func Register(c *gin.Context) {
 	var newAnggota models.Anggota
 
 	// Bind form data manually for multipart/form-data
-	newAnggota.NamaAnggota = c.PostForm("NamaAnggota")
-	newAnggota.Username = c.PostForm("Username")
-	newAnggota.Password = c.PostForm("Password")
-	newAnggota.TglLahir = c.PostForm("TglLahir")
+	newAnggota.NamaAnggota = strings.TrimSpace(c.PostForm("NamaAnggota"))
+	newAnggota.Username = strings.TrimSpace(c.PostForm("Username"))
+	newAnggota.Password = strings.TrimSpace(c.PostForm("Password"))
+	newAnggota.TglLahir = strings.TrimSpace(c.PostForm("TglLahir"))
 	newAnggota.NoTelepon = normalizeRegisterPhone(c.PostForm("NoTelepon"))
-	newAnggota.Alamat = c.PostForm("Alamat")
-	newAnggota.JenisKelamin = c.PostForm("JenisKelamin")
-	newAnggota.StatusAnggota = c.PostForm("StatusAnggota")
-	newAnggota.Fakultas = c.PostForm("Fakultas")
+	newAnggota.Alamat = strings.TrimSpace(c.PostForm("Alamat"))
+	newAnggota.JenisKelamin = strings.TrimSpace(c.PostForm("JenisKelamin"))
+	newAnggota.StatusAnggota = strings.TrimSpace(c.PostForm("StatusAnggota"))
+	newAnggota.Fakultas = strings.TrimSpace(c.PostForm("Fakultas"))
 	noIdentitasPegawai := strings.TrimSpace(c.PostForm("NoIdentitasPegawai"))
 	metodePembayaran := c.PostForm("MetodePembayaran")
 	if metodePembayaran == "" {
@@ -739,7 +736,6 @@ func Register(c *gin.Context) {
 			renderRegisterError(http.StatusBadRequest, "Nomer identitas wajib diisi sesuai data master import referensi.")
 			return
 		}
-		newAnggota.Username = noIdentitasPegawai
 
 		referensiByIdentitas, err := repository.FindReferensiPendaftaranByIdentitas(noIdentitasPegawai)
 		if err == nil {
@@ -876,11 +872,6 @@ func Register(c *gin.Context) {
 
 	// Password disimpan dalam bentuk plain text sesuai permintaan
 	newAnggota.TglGabung, _ = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
-	if newAnggota.StatusAnggota != "mahasiswa" {
-		newAnggota.NikKTP = newAnggota.Username
-	} else {
-		newAnggota.NikKTP = ""
-	}
 
 	// Generate temporary id_anggota for registration (will be updated during confirmation)
 	// Use a temporary ID that will be replaced when admin confirms

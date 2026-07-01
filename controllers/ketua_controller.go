@@ -3591,6 +3591,17 @@ func KetuaKonfirmasiAnggota(c *gin.Context) {
 	// Ambil pesan error dari query string jika ada
 	errorMsg := c.Query("error")
 	successMsg := c.Query("success")
+	if errorMsg == "Anggota aktif, tetapi gagal mencatat simpanan pokok potong gaji" {
+		if repaired, err := repository.RepairMissingSimpananPokokPotongGaji(config.GetDB()); err != nil {
+			log.Printf("[WARN] gagal memperbaiki simpanan pokok potong gaji yang tertunda: %v", err)
+		} else if repaired > 0 {
+			errorMsg = ""
+			successMsg = fmt.Sprintf("Anggota aktif dan simpanan pokok potong gaji berhasil diperbaiki untuk %d anggota.", repaired)
+		} else {
+			errorMsg = ""
+			successMsg = "Anggota aktif dan simpanan pokok potong gaji sudah tercatat."
+		}
+	}
 	c.HTML(http.StatusOK, "ketua_anggota_konfirmasi.html", gin.H{
 		"PendingMembers": pendingMembers,
 		"PendingKeluar":  pendingKeluar,
@@ -3653,7 +3664,20 @@ func KetuaConfirmMembership(c *gin.Context) {
 	                SET id_anggota = $1, status = $2, tahun = $3, nomor_urut = $4 
 	                WHERE id_anggota = $5`
 
-	_, err = db.Exec(updateQuery, newIDAnggota, "aktif", tahunKonfirmasi, nomorUrut, tempID)
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("[ERROR] KetuaKonfirmasiAnggota mulai transaksi gagal (id=%s): %v", tempID, err)
+		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal mengkonfirmasi anggota")
+		return
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	_, err = tx.Exec(updateQuery, newIDAnggota, "aktif", tahunKonfirmasi, nomorUrut, tempID)
 	if err != nil {
 		// Log error detail ke terminal/server log
 		fmt.Printf("[CONFIRM ANGGOTA ERROR] update anggota: %v\n", err)
@@ -3661,41 +3685,28 @@ func KetuaConfirmMembership(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("✓ Anggota dengan ID %s berhasil dikonfirmasi dan aktif\n", newIDAnggota)
-
 	if strings.EqualFold(strings.TrimSpace(anggota.BuktiTransfer), "POTONG_GAJI") {
 		var nominalSimpananPokok float64
-		err = db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok)
+		err = tx.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok)
 		if err != nil {
 			nominalSimpananPokok = 100000
 		}
 
-		var sudahAda bool
-		err = db.QueryRow(`
-			SELECT EXISTS(
-				SELECT 1
-				FROM detail
-				WHERE id_anggota = $1 AND id_simpanan = 1 AND COALESCE(status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
-			)
-		`, newIDAnggota).Scan(&sudahAda)
-		if err != nil {
-			log.Printf("[WARN] gagal cek simpanan pokok potong gaji untuk anggota %s: %v", newIDAnggota, err)
-		}
-
-		if !sudahAda {
-			_, err = db.Exec(`
-				INSERT INTO detail (
-					id_anggota, id_simpanan, id_pengelola, tgl_transaksi,
-					jumlah_simpanan, total_simpanan, status, bukti_pembayaran, metode_pembayaran
-				) VALUES ($1, 1, NULL, CURRENT_TIMESTAMP, $2, $2, 'confirmed', 'POTONG_GAJI', 'potong_gaji')
-			`, newIDAnggota, nominalSimpananPokok)
-			if err != nil {
-				log.Printf("[ERROR] gagal mencatat simpanan pokok potong gaji untuk anggota %s: %v", newIDAnggota, err)
-				c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Anggota aktif, tetapi gagal mencatat simpanan pokok potong gaji")
-				return
-			}
+		if err := repository.EnsureSimpananPokokPotongGaji(tx, newIDAnggota, nominalSimpananPokok); err != nil {
+			log.Printf("[ERROR] gagal mencatat simpanan pokok potong gaji untuk anggota %s: %v", newIDAnggota, err)
+			c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal mencatat simpanan pokok potong gaji")
+			return
 		}
 	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("[ERROR] KetuaKonfirmasiAnggota commit gagal (id=%s): %v", tempID, err)
+		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal mengkonfirmasi anggota")
+		return
+	}
+	committed = true
+
+	fmt.Printf("✓ Anggota dengan ID %s berhasil dikonfirmasi dan aktif\n", newIDAnggota)
 
 	c.Redirect(http.StatusFound, "/ketua/konfirmasi?success=Anggota berhasil dikonfirmasi")
 }

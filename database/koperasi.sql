@@ -81,7 +81,7 @@ CREATE TABLE anggota (
   username VARCHAR(25) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
   tgl_lahir DATE,
-   no_telepon VARCHAR(20),
+  no_telepon VARCHAR(20),
   tgl_gabung TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   alamat VARCHAR(50),
   -- provinsi VARCHAR(50),

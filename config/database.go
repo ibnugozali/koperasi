@@ -160,17 +160,6 @@ func ensureReferensiPendaftaranTable() error {
 			ALTER TABLE referensi_pendaftaran ADD COLUMN jabatan VARCHAR(64) DEFAULT '';
 		END IF;
 
-		IF EXISTS (
-			SELECT 1
-			FROM information_schema.columns
-			WHERE table_name = 'referensi_pendaftaran' AND column_name = 'nik_ktp'
-		) AND NOT EXISTS (
-			SELECT 1
-			FROM information_schema.columns
-			WHERE table_name = 'referensi_pendaftaran' AND column_name = 'nomor_identitas'
-		) THEN
-			ALTER TABLE referensi_pendaftaran RENAME COLUMN nik_ktp TO nomor_identitas;
-		END IF;
 	END $$;
 
 	ALTER TABLE referensi_pendaftaran DROP COLUMN IF EXISTS no_telepon;
@@ -180,7 +169,6 @@ func ensureReferensiPendaftaranTable() error {
 	ALTER TABLE referensi_pendaftaran DROP COLUMN IF EXISTS fakultas;
 	ALTER TABLE referensi_pendaftaran DROP COLUMN IF EXISTS alamat;
 
-	DROP INDEX IF EXISTS idx_referensi_pendaftaran_nik;
 	CREATE INDEX IF NOT EXISTS idx_referensi_pendaftaran_nomor_identitas ON referensi_pendaftaran(nomor_identitas);
 	DROP INDEX IF EXISTS idx_referensi_pendaftaran_telepon;
 	CREATE INDEX IF NOT EXISTS idx_referensi_pendaftaran_nama ON referensi_pendaftaran(nama_lengkap);
