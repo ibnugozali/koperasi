@@ -254,7 +254,7 @@
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/simpanan/{{.Detail.IDDetail}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
                                                     <input type="hidden" name="id_anggota" value="{{.Detail.IDAnggota}}">
-                                                    <button type="submit" class="btn btn-success btn-sm" title="Teruskan ke Ketua"><i class="fa-solid fa-check"></i></button>
+                                                    <button type="submit" class="btn btn-success btn-sm" title="{{if and (eq .Detail.MetodePembayaran "potong_gaji") (not $.BuktiTransferApproved)}}Bukti transfer gaji belum di-approve oleh Bendahara{{else}}Teruskan ke Ketua{{end}}" {{if and (eq .Detail.MetodePembayaran "potong_gaji") (not $.BuktiTransferApproved)}}disabled{{end}}><i class="fa-solid fa-check"></i></button>
                                                 </form>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/simpanan/{{.Detail.IDDetail}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="reject">
@@ -356,7 +356,7 @@
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/angsuran/{{.Angsuran.IDAngsuran}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="confirm">
                                                     <input type="hidden" name="id_anggota" value="{{.Angsuran.IDAnggota}}">
-                                                    <button type="submit" class="btn btn-success btn-sm" title="Teruskan ke Ketua"><i class="fa-solid fa-check"></i></button>
+                                                    <button type="submit" class="btn btn-success btn-sm" title="{{if and (eq .Angsuran.MetodeAngsuran "potong_gaji") (not $.BuktiTransferApproved)}}Bukti transfer gaji belum di-approve oleh Bendahara{{else}}Teruskan ke Ketua{{end}}" {{if and (eq .Angsuran.MetodeAngsuran "potong_gaji") (not $.BuktiTransferApproved)}}disabled{{end}}><i class="fa-solid fa-check"></i></button>
                                                 </form>
                                                 <form method="POST" action="/bendahara/konfirmasi-transaksi/angsuran/{{.Angsuran.IDAngsuran}}" style="display:inline;">
                                                     <input type="hidden" name="action" value="reject">

@@ -695,14 +695,18 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 		simpananWajib = data
 	}
 
+	statusAktif, _ := config["StatusAktif"].(bool)
+	if !statusAktif {
+		return potonganBulanIni, nil
+	}
+
 	// Get current month and year
 	now := time.Now()
 	bulan := int(now.Month())
 	tahun := now.Year()
 	tanggalSekarang := now.Day()
 
-	// Ambil data dari log pemotongan bulan ini (jika sudah diproses sebelumnya)
-	// PENTING: Data yang sudah diproses tetap ditampilkan meskipun status dinonaktifkan
+	// Ambil data dari log pemotongan bulan ini jika setting simpanan wajib aktif.
 	logQuery := `SELECT id_anggota, jumlah_potong FROM log_pemotongan_simpanan 
 	             WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil' AND id_anggota != 'SYSTEM'`
 	rows, err := db.Query(logQuery, bulan, tahun)
@@ -721,14 +725,8 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 		}
 	}
 
-	// Jika sudah ada data dari log, return data tersebut (tidak peduli status aktif atau tidak)
+	// Jika sudah ada data dari log, gunakan nilai aktual yang sudah diproses.
 	if len(potonganBulanIni) > 0 {
-		return potonganBulanIni, nil
-	}
-
-	// Jika status tidak aktif, tidak perlu menghitung preview potongan
-	statusAktif, _ := config["StatusAktif"].(bool)
-	if !statusAktif {
 		return potonganBulanIni, nil
 	}
 
@@ -794,7 +792,7 @@ func GetPotonganRegisterPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 		JOIN simpanan s ON d.id_simpanan = s.id_simpanan
 		WHERE LOWER(TRIM(COALESCE(s.jenis_simpanan, ''))) = 'pokok'
 		  AND COALESCE(d.status, 'confirmed') IN ('confirmed', 'diterima', 'lunas')
-		  AND REPLACE(LOWER(COALESCE(d.metode_pembayaran, '')), ' ', '_') = 'potong_gaji'
+		  AND REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(d.metode_pembayaran, ''))), ' ', ''), '_', ''), '-', '') = 'potonggaji'
 		  AND EXTRACT(MONTH FROM d.tgl_transaksi) = $1
 		  AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
 		GROUP BY d.id_anggota
@@ -818,6 +816,86 @@ func GetPotonganRegisterPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 	return potonganRegister, nil
 }
 
+// GetPotonganSimpananPotongGajiBulanIniAllAnggota mengambil simpanan non-wajib
+// metode potong gaji pada bulan berjalan. Simpanan wajib tidak dihitung di sini
+// karena sudah ditangani oleh GetPotonganBulanIniAllAnggota agar tidak dobel.
+func GetPotonganSimpananPotongGajiBulanIniAllAnggota() (map[string]float64, error) {
+	db := config.GetDB()
+	potonganSimpanan := make(map[string]float64)
+
+	now := time.Now()
+	bulan := int(now.Month())
+	tahun := now.Year()
+
+	query := `
+		SELECT d.id_anggota, COALESCE(SUM(d.jumlah_simpanan), 0)
+		FROM detail d
+		WHERE d.id_simpanan <> 2
+		  AND COALESCE(LOWER(d.status), 'pending') IN ('pending', 'confirmed', 'diterima', 'lunas')
+		  AND REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(d.metode_pembayaran, ''))), ' ', ''), '_', ''), '-', '') = 'potonggaji'
+		  AND EXTRACT(MONTH FROM d.tgl_transaksi) = $1
+		  AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+		GROUP BY d.id_anggota
+	`
+
+	rows, err := db.Query(query, bulan, tahun)
+	if err != nil {
+		return potonganSimpanan, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var idAnggota string
+		var jumlahPotong float64
+		if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
+			continue
+		}
+		potonganSimpanan[idAnggota] += jumlahPotong
+	}
+
+	return potonganSimpanan, nil
+}
+
+// GetPotonganSimpananWajibPotongGajiBulanIniAllAnggota mengambil simpanan wajib
+// aktual metode potong gaji pada bulan berjalan. Nilai ini dipakai untuk
+// menggantikan estimasi wajib agar sisa gaji tidak dobel.
+func GetPotonganSimpananWajibPotongGajiBulanIniAllAnggota() (map[string]float64, error) {
+	db := config.GetDB()
+	potonganWajib := make(map[string]float64)
+
+	now := time.Now()
+	bulan := int(now.Month())
+	tahun := now.Year()
+
+	query := `
+		SELECT d.id_anggota, COALESCE(SUM(d.jumlah_simpanan), 0)
+		FROM detail d
+		WHERE d.id_simpanan = 2
+		  AND COALESCE(LOWER(d.status), 'pending') IN ('pending', 'confirmed', 'diterima', 'lunas')
+		  AND REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(d.metode_pembayaran, ''))), ' ', ''), '_', ''), '-', '') = 'potonggaji'
+		  AND EXTRACT(MONTH FROM d.tgl_transaksi) = $1
+		  AND EXTRACT(YEAR FROM d.tgl_transaksi) = $2
+		GROUP BY d.id_anggota
+	`
+
+	rows, err := db.Query(query, bulan, tahun)
+	if err != nil {
+		return potonganWajib, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var idAnggota string
+		var jumlahPotong float64
+		if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
+			continue
+		}
+		potonganWajib[idAnggota] += jumlahPotong
+	}
+
+	return potonganWajib, nil
+}
+
 // GetPotonganAngsuranPotongGajiBulanIniAllAnggota mengambil cicilan pinjaman
 // metode potong gaji pada bulan berjalan, termasuk yang masih pending setelah
 // pinjaman disetujui ketua.
@@ -833,7 +911,7 @@ func GetPotonganAngsuranPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 		SELECT p.id_anggota, COALESCE(SUM(a.jumlah_angsuran), 0)
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
-		WHERE REPLACE(LOWER(COALESCE(p.metode_angsuran, '')), ' ', '_') = 'potong_gaji'
+		WHERE REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(p.metode_angsuran, ''))), ' ', ''), '_', ''), '-', '') = 'potonggaji'
 		  AND COALESCE(LOWER(a.status), 'pending') IN ('pending', 'confirmed', 'diterima', 'lunas')
 		  AND EXTRACT(MONTH FROM a.tgl_bayar) = $1
 		  AND EXTRACT(YEAR FROM a.tgl_bayar) = $2
@@ -850,6 +928,38 @@ func GetPotonganAngsuranPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 		var idAnggota string
 		var jumlahPotong float64
 		if err := rows.Scan(&idAnggota, &jumlahPotong); err != nil {
+			continue
+		}
+		potonganAngsuran[idAnggota] += jumlahPotong
+	}
+
+	fallbackQuery := `
+		SELECT p.id_anggota,
+		       COALESCE(SUM(ROUND((p.jumlah_pinjaman + (p.jumlah_pinjaman * COALESCE(p.bunga, 0) / 100)) / NULLIF(p.jangka_waktu, 0))), 0)
+		FROM pinjaman p
+		WHERE REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(p.metode_angsuran, ''))), ' ', ''), '_', ''), '-', '') = 'potonggaji'
+		  AND COALESCE(LOWER(p.status), '') IN ('aktif', 'proses')
+		  AND COALESCE(p.jangka_waktu, 0) > 0
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM angsuran a
+		      WHERE a.id_pinjaman = p.id_pinjaman
+		        AND COALESCE(LOWER(a.status), 'pending') IN ('pending', 'confirmed', 'diterima', 'lunas')
+		        AND EXTRACT(MONTH FROM a.tgl_bayar) = $1
+		        AND EXTRACT(YEAR FROM a.tgl_bayar) = $2
+		  )
+		GROUP BY p.id_anggota
+	`
+	rowsFallback, err := db.Query(fallbackQuery, bulan, tahun)
+	if err != nil {
+		return potonganAngsuran, err
+	}
+	defer rowsFallback.Close()
+
+	for rowsFallback.Next() {
+		var idAnggota string
+		var jumlahPotong float64
+		if err := rowsFallback.Scan(&idAnggota, &jumlahPotong); err != nil {
 			continue
 		}
 		potonganAngsuran[idAnggota] += jumlahPotong

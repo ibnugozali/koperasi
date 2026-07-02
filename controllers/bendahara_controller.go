@@ -1077,9 +1077,17 @@ func BendaharaListAllAnggota(c *gin.Context) {
 	if err != nil {
 		potonganBulanIni = make(map[string]float64)
 	}
-	potonganRegister, err := repository.GetPotonganRegisterPotongGajiBulanIniAllAnggota()
+	potonganSimpananPotongGaji, err := repository.GetPotonganSimpananPotongGajiBulanIniAllAnggota()
 	if err != nil {
-		potonganRegister = make(map[string]float64)
+		potonganSimpananPotongGaji = make(map[string]float64)
+	}
+	potonganWajibPotongGaji, err := repository.GetPotonganSimpananWajibPotongGajiBulanIniAllAnggota()
+	if err != nil {
+		potonganWajibPotongGaji = make(map[string]float64)
+	}
+	potonganAngsuran, err := repository.GetPotonganAngsuranPotongGajiBulanIniAllAnggota()
+	if err != nil {
+		potonganAngsuran = make(map[string]float64)
 	}
 
 	nominalSimpananWajib := 0.0
@@ -1093,17 +1101,22 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		}
 	}
 
-	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
+	// Hitung sisa gaji seperti halaman ketua:
+	// simpanan wajib terjadwal + simpanan potong gaji + angsuran potong gaji.
 	sisaGaji := make(map[string]float64)
+	potonganSimpananWajibBulanIni := make(map[string]float64)
 	for _, anggota := range anggotas {
 		potonganWajib := potonganBulanIni[anggota.IDAnggota]
-		if potonganWajib <= 0 && nominalSimpananWajib > 0 && statusSimpananWajibAktif {
+		if potonganWajibPotongGaji[anggota.IDAnggota] > 0 {
+			potonganWajib = potonganWajibPotongGaji[anggota.IDAnggota]
+		} else if potonganWajib <= 0 && nominalSimpananWajib > 0 && statusSimpananWajibAktif {
 			potonganWajib = nominalSimpananWajib
 		}
-		potongan := potonganWajib + potonganRegister[anggota.IDAnggota]
-		// Sisa gaji = Gaji bulanan dikurangi potongan bulanan terjadwal
-		// ditambah potongan simpanan pokok dari pendaftaran potong gaji bulan berjalan.
+		potongan := potonganWajib + potonganSimpananPotongGaji[anggota.IDAnggota] + potonganAngsuran[anggota.IDAnggota]
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
+		if statusSimpananWajibAktif {
+			potonganSimpananWajibBulanIni[anggota.IDAnggota] = potonganWajib
+		}
 
 		// Fallback tampilan: jika total simpanan wajib belum tercatat,
 		// gunakan potongan bulan ini agar kolom "Simpanan Wajib" tidak kosong.
@@ -1118,7 +1131,7 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		"Anggotas":         anggotas,
 		"SimpananPokok":    simpananPokok,
 		"SimpananWajib":    simpananWajib,
-		"PotonganBulanIni": potonganBulanIni,
+		"PotonganBulanIni": potonganSimpananWajibBulanIni,
 		"SisaGaji":         sisaGaji,
 		"ActivePage":       "anggota",
 		"CurrentLogo":      latestLogo,
@@ -1773,6 +1786,7 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 
 	var numberedSimpanan []numberedDetail
 	for i, d := range pendingSimpanan {
+		d.MetodePembayaran = normalizeMetodeAngsuran(d.MetodePembayaran)
 		numberedSimpanan = append(numberedSimpanan, numberedDetail{No: i + 1, Detail: d})
 	}
 
@@ -2264,6 +2278,29 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 		return
 	}
 
+	if action == "confirm" {
+		isPotongGaji, checkErr := isKonfirmasiPotongGaji(transactionType, id)
+		if checkErr != nil {
+			log.Printf("[ERROR] Gagal memeriksa metode transaksi type=%s id=%d: %v", transactionType, id, checkErr)
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal memeriksa metode transaksi"})
+			return
+		}
+		if isPotongGaji {
+			now := time.Now()
+			buktiTransferApproved, errApproved := repository.CheckBuktiTransferGajiApproved(int(now.Month()), now.Year())
+			if errApproved != nil {
+				log.Printf("[ERROR] Gagal memeriksa bukti transfer gaji: %v", errApproved)
+			}
+			if !buktiTransferApproved {
+				c.JSON(http.StatusForbidden, gin.H{
+					"success": false,
+					"error":   "Bukti transfer gaji belum di-approve oleh Bendahara. Transaksi Potong Gaji belum bisa di-ACC.",
+				})
+				return
+			}
+		}
+	}
+
 	switch transactionType {
 	case "simpanan":
 		// Update status simpanan
@@ -2323,6 +2360,37 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Transaksi berhasil diproses"})
+}
+
+func isKonfirmasiPotongGaji(transactionType string, id int) (bool, error) {
+	db := config.GetDB()
+	var metode string
+
+	switch transactionType {
+	case "simpanan":
+		err := db.QueryRow(`
+			SELECT COALESCE(metode_pembayaran, '')
+			FROM detail
+			WHERE id_detail = $1
+		`, id).Scan(&metode)
+		if err != nil {
+			return false, err
+		}
+		return normalizeMetodeAngsuran(metode) == "potong_gaji", nil
+	case "angsuran":
+		err := db.QueryRow(`
+			SELECT COALESCE(p.metode_angsuran, '')
+			FROM angsuran a
+			JOIN pinjaman p ON p.id_pinjaman = a.id_pinjaman
+			WHERE a.id_angsuran = $1
+		`, id).Scan(&metode)
+		if err != nil {
+			return false, err
+		}
+		return normalizeMetodeAngsuran(metode) == "potong_gaji", nil
+	default:
+		return false, nil
+	}
 }
 
 func ensurePendingAngsuranTerjadwal() {

@@ -2987,9 +2987,13 @@ func KetuaDataAnggota(c *gin.Context) {
 	if err != nil {
 		potonganBulanIni = make(map[string]float64)
 	}
-	potonganRegister, err := repository.GetPotonganRegisterPotongGajiBulanIniAllAnggota()
+	potonganSimpananPotongGaji, err := repository.GetPotonganSimpananPotongGajiBulanIniAllAnggota()
 	if err != nil {
-		potonganRegister = make(map[string]float64)
+		potonganSimpananPotongGaji = make(map[string]float64)
+	}
+	potonganWajibPotongGaji, err := repository.GetPotonganSimpananWajibPotongGajiBulanIniAllAnggota()
+	if err != nil {
+		potonganWajibPotongGaji = make(map[string]float64)
 	}
 	potonganAngsuran, err := repository.GetPotonganAngsuranPotongGajiBulanIniAllAnggota()
 	if err != nil {
@@ -3009,13 +3013,19 @@ func KetuaDataAnggota(c *gin.Context) {
 
 	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
 	sisaGaji := make(map[string]float64)
+	potonganSimpananWajibBulanIni := make(map[string]float64)
 	for _, anggota := range anggotas {
 		potonganWajib := potonganBulanIni[anggota.IDAnggota]
-		if potonganWajib <= 0 && nominalSimpananWajib > 0 && statusSimpananWajibAktif {
+		if potonganWajibPotongGaji[anggota.IDAnggota] > 0 {
+			potonganWajib = potonganWajibPotongGaji[anggota.IDAnggota]
+		} else if potonganWajib <= 0 && nominalSimpananWajib > 0 && statusSimpananWajibAktif {
 			potonganWajib = nominalSimpananWajib
 		}
-		potongan := potonganWajib + potonganRegister[anggota.IDAnggota] + potonganAngsuran[anggota.IDAnggota]
+		potongan := potonganWajib + potonganSimpananPotongGaji[anggota.IDAnggota] + potonganAngsuran[anggota.IDAnggota]
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
+		if statusSimpananWajibAktif {
+			potonganSimpananWajibBulanIni[anggota.IDAnggota] = potonganWajib
+		}
 
 		// Fallback tampilan jika total simpanan wajib belum tercatat.
 		if simpananWajib[anggota.IDAnggota] <= 0 && potonganWajib > 0 {
@@ -3051,7 +3061,7 @@ func KetuaDataAnggota(c *gin.Context) {
 		"Anggotas":         anggotas,
 		"SimpananPokok":    simpananPokok,
 		"SimpananWajib":    simpananWajib,
-		"PotonganBulanIni": potonganBulanIni,
+		"PotonganBulanIni": potonganSimpananWajibBulanIni,
 		"SisaGaji":         sisaGaji,
 		"ActivePage":       "anggota",
 		"CurrentLogo":      latestLogo,
@@ -3376,9 +3386,13 @@ func KetuaLaporan(c *gin.Context) {
 	if err != nil {
 		potonganBulanIni = make(map[string]float64)
 	}
-	potonganRegister, err := repository.GetPotonganRegisterPotongGajiBulanIniAllAnggota()
+	potonganSimpananPotongGaji, err := repository.GetPotonganSimpananPotongGajiBulanIniAllAnggota()
 	if err != nil {
-		potonganRegister = make(map[string]float64)
+		potonganSimpananPotongGaji = make(map[string]float64)
+	}
+	potonganWajibPotongGaji, err := repository.GetPotonganSimpananWajibPotongGajiBulanIniAllAnggota()
+	if err != nil {
+		potonganWajibPotongGaji = make(map[string]float64)
 	}
 	potonganAngsuran, err := repository.GetPotonganAngsuranPotongGajiBulanIniAllAnggota()
 	if err != nil {
@@ -3388,7 +3402,11 @@ func KetuaLaporan(c *gin.Context) {
 	// Hitung sisa gaji untuk setiap anggota: Gaji Bulanan - Potongan Bulan Ini
 	sisaGaji := make(map[string]float64)
 	for _, anggota := range anggotas {
-		potongan := potonganBulanIni[anggota.IDAnggota] + potonganRegister[anggota.IDAnggota] + potonganAngsuran[anggota.IDAnggota]
+		potonganWajib := potonganBulanIni[anggota.IDAnggota]
+		if potonganWajibPotongGaji[anggota.IDAnggota] > 0 {
+			potonganWajib = potonganWajibPotongGaji[anggota.IDAnggota]
+		}
+		potongan := potonganWajib + potonganSimpananPotongGaji[anggota.IDAnggota] + potonganAngsuran[anggota.IDAnggota]
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
 	}
 
