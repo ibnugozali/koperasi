@@ -135,6 +135,10 @@
                 <i class="bi bi-info-circle me-1"></i>
                 Pilih jenis simpanan terlebih dahulu
               </div>
+              <div class="form-text text-warning fw-semibold d-none" id="jumlahWarning">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Jumlah penarikan melebihi maksimal
+              </div>
             </div>
           </div>
 
@@ -235,6 +239,28 @@
         };
         
         let currentMaxSaldo = 0;
+
+        function formatRupiah(value) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(value || 0);
+        }
+
+        function setJumlahWarning(jumlah) {
+            const isOverLimit = currentMaxSaldo > 0 && jumlah > currentMaxSaldo;
+            const warningText = `Jumlah penarikan melebihi maksimal ${formatRupiah(currentMaxSaldo)}`;
+
+            $('#jumlah')
+                .toggleClass('border-warning', isOverLimit)
+                .attr('aria-invalid', isOverLimit ? 'true' : 'false');
+            $('#jumlahWarning')
+                .toggleClass('d-none', !isOverLimit)
+                .html(`<i class="bi bi-exclamation-triangle me-1"></i>${warningText}`);
+
+            return isOverLimit;
+        }
         
         // Handle perubahan metode pengambilan
         $('#metodePengambilan').on('change', function() {
@@ -271,6 +297,7 @@
                 $('#jumlah').val('');
                 $('#jumlah').attr('placeholder', 'Pilih jenis simpanan terlebih dahulu');
                 $('#maxJumlahText').html('<i class="bi bi-info-circle me-1"></i>Pilih jenis simpanan terlebih dahulu');
+                setJumlahWarning(0);
                 currentMaxSaldo = 0;
                 return;
             }
@@ -283,13 +310,10 @@
             $('#jumlah').attr('max', currentMaxSaldo);
             $('#jumlah').val('');
             $('#jumlah').attr('placeholder', 'Masukkan jumlah yang akan diambil');
+            setJumlahWarning(0);
             
             // Update info maksimal
-            const formattedMax = new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0
-            }).format(currentMaxSaldo);
+            const formattedMax = formatRupiah(currentMaxSaldo);
             
             $('#maxJumlahText').html(`<i class="bi bi-info-circle me-1"></i>Maksimal: ${formattedMax}`);
             
@@ -305,10 +329,9 @@
             let val = parseFloat($(this).val());
             if (val < 0) {
                 $(this).val(0);
+                val = 0;
             }
-            if (val > currentMaxSaldo) {
-                $(this).val(currentMaxSaldo);
-            }
+            setJumlahWarning(val || 0);
         });
 
         // Form submission
@@ -351,7 +374,8 @@
             }
 
             if (jumlah > currentMaxSaldo) {
-                showAlert('danger', 'Jumlah penarikan melebihi saldo jenis simpanan yang dipilih!');
+                setJumlahWarning(jumlah);
+                showAlert('warning', 'Jumlah penarikan melebihi maksimal ' + formatRupiah(currentMaxSaldo) + '!');
                 return;
             }
             

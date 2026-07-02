@@ -12,7 +12,7 @@
 <body>
 {{ template "navbar.html" . }}
 <div style="padding: 20px;">
-{{if not .ResumeGabungan}}
+{{if or (not .ResumeGabungan) .ShowAjukanPinjamanForm}}
 <h1>{{ .Judul }}</h1>
 {{end}}
 
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function(){
 {{end}}
 
 <!-- Info Limit Pinjaman -->
-<div id="informasiKemampuanBayar" class="alert alert-info mb-3" role="alert" {{if .ResumeGabungan}}style="display:none;"{{end}}>
+<div id="informasiKemampuanBayar" class="alert alert-info mb-3" role="alert" {{if and .ResumeGabungan (not .ShowAjukanPinjamanForm)}}style="display:none;"{{end}}>
     <div class="d-flex justify-content-between align-items-start mb-2">
         <h5 class="mb-0">Informasi Kemampuan Bayar</h5>
     </div>
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </div>
 {{end}}
 
-<form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" class="{{if .ResumeGabungan}}d-none{{end}}">
+<form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" class="{{if and .ResumeGabungan (not .ShowAjukanPinjamanForm)}}d-none{{end}}">
     <!-- Bagian 1: Rincian Permohonan Pinjaman -->
     <fieldset class="border p-3 mb-4">
         <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <!-- ✅ FIXED: Tombol selalu di-render, cukup d-none jika ada ResumeGabungan -->
     <button type="submit"
         id="btnAjukanPinjaman"
-        class="btn btn-primary {{if .ResumeGabungan}}d-none{{end}}"
+        class="btn btn-primary {{if and .ResumeGabungan (not .ShowAjukanPinjamanForm)}}d-none{{end}}"
         {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} disabled {{end}}>
         Ajukan Pinjaman
     </button>

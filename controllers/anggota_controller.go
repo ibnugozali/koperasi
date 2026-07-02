@@ -10,6 +10,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -1647,6 +1648,7 @@ func AjukanPinjaman(c *gin.Context) {
 	templateData := getAjukanPinjamanTemplateData(userID, anggota)
 	templateData["CurrentLogo"] = latestLogo
 	templateData["Judul"] = "Ajukan Pinjaman"
+	applyAjukanPinjamanQueryMessages(c, templateData)
 	// Tambahkan histori pinjaman ke template
 	riwayatPinjaman, _ := repository.GetRiwayatPinjamanByAnggotaID(userID, "")
 	templateData["RiwayatPinjaman"] = riwayatPinjaman
@@ -1714,6 +1716,20 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 	}
 }
 
+func applyAjukanPinjamanQueryMessages(c *gin.Context, templateData gin.H) {
+	if successMsg := strings.TrimSpace(c.Query("success")); successMsg != "" {
+		templateData["Success"] = successMsg
+	}
+	if errorMsg := strings.TrimSpace(c.Query("error")); errorMsg != "" {
+		templateData["Error"] = errorMsg
+		templateData["ShowAjukanPinjamanForm"] = true
+	}
+}
+
+func redirectAjukanPinjamanError(c *gin.Context, message string) {
+	c.Redirect(http.StatusSeeOther, "/anggota/ajukan-pinjaman?error="+url.QueryEscape(message))
+}
+
 // AjukanPinjamanPost memproses pengajuan pinjaman
 func AjukanPinjamanPost(c *gin.Context) {
 	session := sessions.Default(c)
@@ -1743,23 +1759,17 @@ func AjukanPinjamanPost(c *gin.Context) {
 	}
 	// Validasi wajib pilih metode pencairan dan angsuran
 	if metodePencairanStr == "" {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Metode pencairan wajib dipilih."
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		redirectAjukanPinjamanError(c, "Metode pencairan wajib dipilih.")
 		return
 	}
 	if metodeAngsuranStr == "" {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Metode angsuran wajib dipilih."
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		redirectAjukanPinjamanError(c, "Metode angsuran wajib dipilih.")
 		return
 	}
 
 	if bindErr != nil {
-		errMsg := fmt.Sprintf("Data tidak valid. Pastikan semua field diisi dengan benar. Error: %v, Form Data: %v", bindErr, formDebug)
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = errMsg
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		log.Printf("[WARN] AjukanPinjamanPost bind gagal user=%s error=%v form=%v", userID, bindErr, formDebug)
+		redirectAjukanPinjamanError(c, "Data tidak valid. Pastikan semua field diisi dengan benar.")
 		return
 	}
 
@@ -1767,30 +1777,24 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	// Validasi jangka waktu
 	if pinjaman.JangkaWaktu < 6 || pinjaman.JangkaWaktu > 36 {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Jangka waktu harus antara 6-36 bulan."
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		redirectAjukanPinjamanError(c, "Jangka waktu harus antara 6-36 bulan.")
 		return
 	}
 
 	// Validasi bunga
 	if pinjaman.Bunga < 0 || pinjaman.Bunga > 20 {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Bunga harus antara 0-20%."
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		redirectAjukanPinjamanError(c, "Bunga harus antara 0-20%.")
 		return
 	}
 
 	// PATCH: Validasi pengajuan pinjaman baru menggunakan resumeGabungan
 	resumeGabungan := getResumePinjamanGabungan(userID, true)
 	if resumeGabungan != nil && !resumeGabungan.BisaAjukanLagi {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
 		errMsg := "Anda belum memenuhi syarat untuk mengajukan pinjaman baru."
 		if resumeGabungan.PersentaseTerbayar < 50 {
 			errMsg = fmt.Sprintf("Anda baru melunasi %.2f%% pinjaman. Minimal harus 50%% untuk mengajukan pinjaman baru.", resumeGabungan.PersentaseTerbayar)
 		}
-		templateData["Error"] = errMsg
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		redirectAjukanPinjamanError(c, errMsg)
 		return
 	}
 
@@ -1833,9 +1837,8 @@ func AjukanPinjamanPost(c *gin.Context) {
 	// Hitung total simpanan
 	totalSimpanan, _, _, err := repository.GetSaldoAnggota(userID)
 	if err != nil {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Gagal menghitung total simpanan."
-		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
+		log.Printf("[ERROR] AjukanPinjamanPost gagal menghitung total simpanan user=%s: %v", userID, err)
+		redirectAjukanPinjamanError(c, "Gagal menghitung total simpanan.")
 		return
 	}
 
@@ -1856,9 +1859,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 		jenisAnggota = "Mahasiswa"
 		// Mahasiswa hanya bisa pinjam jika memiliki simpanan
 		if totalSimpanan <= 0 {
-			templateData := getAjukanPinjamanTemplateData(userID, anggota)
-			templateData["Error"] = "Mahasiswa tidak dapat mengajukan pinjaman karena belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu."
-			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+			redirectAjukanPinjamanError(c, "Mahasiswa tidak dapat mengajukan pinjaman karena belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu.")
 			return
 		}
 		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
@@ -1867,17 +1868,13 @@ func AjukanPinjamanPost(c *gin.Context) {
 		// Ambil gaji dari form
 		gajiStr := c.PostForm("gaji_bulanan")
 		if gajiStr == "" {
-			templateData := getAjukanPinjamanTemplateData(userID, anggota)
-			templateData["Error"] = "Gaji bulanan wajib diisi untuk dosen/tenaga pendidikan."
-			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+			redirectAjukanPinjamanError(c, "Gaji bulanan wajib diisi untuk dosen/tenaga pendidikan.")
 			return
 		}
 		// Parse gaji (asumsi dalam ribuan atau jutaan, sesuaikan dengan input)
 		var gaji float64
 		if _, err := fmt.Sscanf(gajiStr, "%f", &gaji); err != nil {
-			templateData := getAjukanPinjamanTemplateData(userID, anggota)
-			templateData["Error"] = "Format gaji tidak valid."
-			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+			redirectAjukanPinjamanError(c, "Format gaji tidak valid.")
 			return
 		}
 		// Kemampuan bayar: 0.4 x gaji x tenor
@@ -1885,9 +1882,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 		limitPinjaman = kemampuanBayar
 
 	default:
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Jenis anggota tidak valid."
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		redirectAjukanPinjamanError(c, "Jenis anggota tidak valid.")
 		return
 	}
 
@@ -1904,9 +1899,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 	}
 
 	if pinjaman.JumlahPinjaman > maxLimit {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = fmt.Sprintf("Jumlah pinjaman melebihi limit maksimal Rp %.0f untuk %s (berdasarkan kemampuan bayar).", maxLimit, jenisAnggota)
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		redirectAjukanPinjamanError(c, fmt.Sprintf("Jumlah pinjaman melebihi limit maksimal Rp %.0f untuk %s (berdasarkan kemampuan bayar).", maxLimit, jenisAnggota))
 		return
 	}
 
@@ -1943,25 +1936,19 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	// Validasi metode pencairan
 	if pinjaman.MetodePencairan != "transfer_bank" && pinjaman.MetodePencairan != "tunai" {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Metode pencairan harus dipilih."
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		redirectAjukanPinjamanError(c, "Metode pencairan harus dipilih.")
 		return
 	}
 
 	if pinjaman.MetodeAngsuran != "transfer_bank" && pinjaman.MetodeAngsuran != "potong_gaji" && pinjaman.MetodeAngsuran != "tunai" {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Metode angsuran harus dipilih."
-		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		redirectAjukanPinjamanError(c, "Metode angsuran harus dipilih.")
 		return
 	}
 
 	// Validasi data rekening jika metode transfer bank
 	if pinjaman.MetodePencairan == "transfer_bank" {
 		if pinjaman.NomorRekening == "" || pinjaman.NamaBank == "" || pinjaman.NamaPemilikRekening == "" {
-			templateData := getAjukanPinjamanTemplateData(userID, anggota)
-			templateData["Error"] = "Data rekening bank harus dilengkapi jika memilih metode transfer bank."
-			c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+			redirectAjukanPinjamanError(c, "Data rekening bank harus dilengkapi jika memilih metode transfer bank.")
 			return
 		}
 	}
@@ -1971,9 +1958,8 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	_, err = repository.CreatePinjamanReturningID(pinjaman)
 	if err != nil {
-		templateData := getAjukanPinjamanTemplateData(userID, anggota)
-		templateData["Error"] = "Gagal mengajukan pinjaman. Silakan coba lagi."
-		c.HTML(http.StatusInternalServerError, "anggota_ajukan_pinjaman.html", templateData)
+		log.Printf("[ERROR] AjukanPinjamanPost gagal membuat pinjaman user=%s: %v", userID, err)
+		redirectAjukanPinjamanError(c, "Gagal mengajukan pinjaman. Silakan coba lagi.")
 		return
 	}
 
@@ -1994,7 +1980,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 	}
 
 	// Berhasil, redirect ke halaman pengajuan pinjaman agar Resume Pinjaman update otomatis
-	c.Redirect(http.StatusFound, "/anggota/ajukan-pinjaman")
+	c.Redirect(http.StatusSeeOther, "/anggota/ajukan-pinjaman")
 }
 
 // AnggotaSimpanan menampilkan halaman simpanan untuk anggota.
@@ -2954,6 +2940,7 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Jenis simpanan tidak valid"})
 		return
 	}
+	jenisNama = strings.TrimSpace(jenisNama)
 
 	// Cek saldo per jenis simpanan
 	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
@@ -2969,7 +2956,7 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 	}
 
 	if jumlah > saldoJenis {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Jumlah penarikan melebihi saldo jenis simpanan yang dipilih"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Jumlah penarikan melebihi maksimal Rp %.0f", saldoJenis)})
 		return
 	}
 
