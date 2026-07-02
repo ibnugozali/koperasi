@@ -156,6 +156,8 @@ document.addEventListener('DOMContentLoaded', function(){
                 <div class="d-flex gap-2 mt-3">
                     {{if $resume.BisaAjukanLagi}}
                         <a href="#ajukanPinjamanForm" class="btn btn-success btn-pinjam-lagi">Melakukan Pinjaman Lagi</a>
+                    {{else if eq $resume.Status "proses"}}
+                        <button type="button" class="btn btn-outline-secondary" disabled>Menunggu Persetujuan</button>
                     {{else}}
                         <a href="/anggota/angsuran" class="btn btn-outline-primary">Lanjut Bayar Angsuran</a>
                     {{end}}

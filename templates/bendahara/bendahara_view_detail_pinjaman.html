@@ -165,6 +165,25 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Metode Angsuran -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="fa-solid fa-money-bill-transfer me-1"></i>Metode Angsuran</label>
+                            <div class="border rounded p-3 bg-light">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metode_angsuran" id="angsuran_transfer" value="transfer_bank" {{if eq .Pinjaman.MetodeAngsuran "transfer_bank"}}checked{{end}} disabled>
+                                    <label class="form-check-label" for="angsuran_transfer">Transfer Bank</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metode_angsuran" id="angsuran_potong_gaji" value="potong_gaji" {{if eq .Pinjaman.MetodeAngsuran "potong_gaji"}}checked{{end}} disabled>
+                                    <label class="form-check-label" for="angsuran_potong_gaji">Potong Gaji</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metode_angsuran" id="angsuran_tunai" value="tunai" {{if eq .Pinjaman.MetodeAngsuran "tunai"}}checked{{end}} disabled>
+                                    <label class="form-check-label" for="angsuran_tunai">Tunai</label>
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- Nomor Rekening -->
                         <div class="mb-3" id="nomor_rekening_container" {{if ne .Pinjaman.MetodePencairan "transfer_bank"}}style="display:none;"{{end}}>

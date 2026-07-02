@@ -181,6 +181,38 @@ func hitungAngsuranPerBulan(jumlahPinjaman, bungaNominal float64, jangkaWaktu in
 	return (jumlahPinjaman + bungaNominal) / float64(jangkaWaktu)
 }
 
+func normalizeMetodeAngsuran(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.ReplaceAll(normalized, "-", "_")
+	normalized = strings.ReplaceAll(normalized, " ", "_")
+
+	switch normalized {
+	case "transfer", "transferbank", "transfer_bank", "bank_transfer", "trasfer", "trasferbank", "trasfer_bank":
+		return "transfer_bank"
+	case "potonggaji", "potong_gaji":
+		return "potong_gaji"
+	case "tunai", "cash":
+		return "tunai"
+	default:
+		return normalized
+	}
+}
+
+func normalizeMetodePencairan(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.ReplaceAll(normalized, "-", "_")
+	normalized = strings.ReplaceAll(normalized, " ", "_")
+
+	switch normalized {
+	case "transfer", "transferbank", "transfer_bank", "bank_transfer", "trasfer", "trasferbank", "trasfer_bank":
+		return "transfer_bank"
+	case "tunai", "cash":
+		return "tunai"
+	default:
+		return normalized
+	}
+}
+
 func getNomorRekeningKoperasi() string {
 	db := config.GetDB()
 	var nomorRekening string
@@ -222,10 +254,12 @@ func buildAnggotaAngsuranTemplateData(userID string, anggota models.Anggota, err
 	resumeGabungan := getResumePinjamanGabungan(userID, false)
 	var jumlahPinjaman, sisaPinjaman, totalTerbayar, bunga float64
 	var angsuranKe, sisaAngsuran, jangkaWaktu int
+	var idPinjaman int
 	var persentasePelunasan float64
 	var metodeAngsuran string
 
 	if resumeGabungan != nil {
+		idPinjaman = resumeGabungan.IDPinjaman
 		jumlahPinjaman = resumeGabungan.JumlahPinjaman
 		sisaPinjaman = resumeGabungan.SisaPokok
 		totalTerbayar = resumeGabungan.TotalTerbayar
@@ -234,7 +268,7 @@ func buildAnggotaAngsuranTemplateData(userID string, anggota models.Anggota, err
 		sisaAngsuran = resumeGabungan.SisaAngsuran
 		jangkaWaktu = resumeGabungan.JangkaWaktu
 		persentasePelunasan = resumeGabungan.PersentaseTerbayar
-		metodeAngsuran = resumeGabungan.MetodeAngsuran
+		metodeAngsuran = normalizeMetodeAngsuran(resumeGabungan.MetodeAngsuran)
 		if persentasePelunasan < 0 {
 			persentasePelunasan = 0
 		}
@@ -244,6 +278,7 @@ func buildAnggotaAngsuranTemplateData(userID string, anggota models.Anggota, err
 	data := gin.H{
 		"Judul":                  "Angsuran",
 		"Anggota":                anggota,
+		"IDPinjaman":             idPinjaman,
 		"JumlahPinjaman":         jumlahPinjaman,
 		"SisaPinjaman":           sisaPinjaman,
 		"AngsuranKe":             angsuranKe,
@@ -543,8 +578,8 @@ func isPinjamanSebelumnyaUntukResume(pinjaman *models.Pinjaman, resume *resumePi
 func buildResumePinjamanInfo(p *models.Pinjaman) *resumePinjamanInfo {
 	statusGabungan := strings.ToLower(strings.TrimSpace(p.Status))
 	tglPinjamanGabungan := p.TglPinjaman
-	metodePencairanGabungan := p.MetodePencairan
-	metodeAngsuranGabungan := p.MetodeAngsuran
+	metodePencairanGabungan := normalizeMetodePencairan(p.MetodePencairan)
+	metodeAngsuranGabungan := normalizeMetodeAngsuran(p.MetodeAngsuran)
 	totalPinjaman := p.JumlahPinjaman
 	totalJangkaWaktu := p.JangkaWaktu
 	bungaNominal := p.JumlahPinjaman * p.Bunga / 100
@@ -1700,8 +1735,8 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	// Debug print form values and error
 	// Ambil field penting dari form
-	metodePencairanStr := c.PostForm("metode_pencairan")
-	metodeAngsuranStr := c.PostForm("metode_angsuran")
+	metodePencairanStr := normalizeMetodePencairan(c.PostForm("metode_pencairan"))
+	metodeAngsuranStr := normalizeMetodeAngsuran(c.PostForm("metode_angsuran"))
 	formDebug := make(map[string][]string)
 	for k, v := range c.Request.Form {
 		formDebug[k] = v
@@ -1882,8 +1917,8 @@ func AjukanPinjamanPost(c *gin.Context) {
 	// Capture metode pencairan from the form (transfer_bank / tunai)
 	// pinjaman.MetodePencairan = c.PostForm("metode_pencairan")
 	// BARU
-	pinjaman.MetodePencairan = c.PostForm("metode_pencairan")
-	pinjaman.MetodeAngsuran = c.PostForm("metode_angsuran") // ← tambahan
+	pinjaman.MetodePencairan = metodePencairanStr
+	pinjaman.MetodeAngsuran = metodeAngsuranStr // ← tambahan
 	pinjaman.NomorRekening = c.PostForm("no_rekening")
 	pinjaman.NamaBank = c.PostForm("nama_bank")
 	pinjaman.NamaPemilikRekening = c.PostForm("nama_pemilik")
@@ -1910,6 +1945,13 @@ func AjukanPinjamanPost(c *gin.Context) {
 	if pinjaman.MetodePencairan != "transfer_bank" && pinjaman.MetodePencairan != "tunai" {
 		templateData := getAjukanPinjamanTemplateData(userID, anggota)
 		templateData["Error"] = "Metode pencairan harus dipilih."
+		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
+		return
+	}
+
+	if pinjaman.MetodeAngsuran != "transfer_bank" && pinjaman.MetodeAngsuran != "potong_gaji" && pinjaman.MetodeAngsuran != "tunai" {
+		templateData := getAjukanPinjamanTemplateData(userID, anggota)
+		templateData["Error"] = "Metode angsuran harus dipilih."
 		c.HTML(http.StatusBadRequest, "anggota_ajukan_pinjaman.html", templateData)
 		return
 	}
@@ -2404,7 +2446,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	// Ambil input dari form
 	jumlahAngsuranStr := c.PostForm("jumlah_angsuran")
 	tanggalPembayaranStr := c.PostForm("tanggal_pembayaran")
-	metodePembayaran := c.PostForm("metode_pembayaran")
+	metodePembayaran := normalizeMetodeAngsuran(c.PostForm("metode_pembayaran"))
 
 	// Fallback tanggal pembayaran ke hari ini jika tidak dikirim dari form
 	if tanggalPembayaranStr == "" {
@@ -2424,6 +2466,10 @@ func AnggotaAngsuranPost(c *gin.Context) {
 
 	if metodePembayaran == "" {
 		renderWithTotals(http.StatusBadRequest, "Metode pembayaran wajib dipilih.")
+		return
+	}
+	if metodePembayaran != "transfer_bank" {
+		renderWithTotals(http.StatusBadRequest, "Pembayaran angsuran melalui halaman anggota hanya tersedia untuk metode Transfer Bank.")
 		return
 	}
 
@@ -2491,11 +2537,17 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	}
 
 	sisaPinjamanSebelum := 0.0
+	metodeAngsuranPinjaman := ""
 	for _, info := range infosAngsuran {
 		if info.Pinjaman.IDPinjaman == idPinjaman {
 			sisaPinjamanSebelum = info.SisaPinjaman
+			metodeAngsuranPinjaman = normalizeMetodeAngsuran(info.Pinjaman.MetodeAngsuran)
 			break
 		}
+	}
+	if metodeAngsuranPinjaman != "transfer_bank" {
+		renderWithTotals(http.StatusBadRequest, "Pinjaman ini tidak menggunakan metode angsuran Transfer Bank.")
+		return
 	}
 	if sisaPinjamanSebelum <= 0 {
 		renderWithTotals(http.StatusBadRequest, "Tidak ada sisa pinjaman aktif yang dapat dibayar.")
@@ -2513,7 +2565,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 
 	// Handle file upload: only required for transfer method, after amount validation passes.
 	var filename string
-	if strings.ToLower(metodePembayaran) == "transfer" {
+	if metodePembayaran == "transfer_bank" {
 		file, err := c.FormFile("bukti")
 		if err != nil {
 			renderWithTotals(http.StatusBadRequest, "Bukti pembayaran wajib diupload.")

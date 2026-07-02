@@ -532,7 +532,7 @@
                 </div>
             </div>
 
-            <!-- Card 4: Entri Manual Tunai -->
+            <!-- Card 5: Entri Manual Tunai -->
             <div class="row card-row">
                 <div class="col-12">
                     <div class="content-card card-success">
@@ -673,6 +673,23 @@
         var warningText = document.getElementById('warningText');
         
         let selectedLoan = null;
+
+        function rupiahCeil(value) {
+            value = Number(value) || 0;
+            if (value <= 0) return 0;
+            var rounded = Math.round(value);
+            if (Math.abs(value - rounded) < 0.01) return rounded;
+            return Math.ceil(value);
+        }
+
+        function getSisaPinjamanRupiah(loan) {
+            if (!loan) return 0;
+            var sisa = loan.sisa_pinjaman;
+            if (sisa === undefined || sisa === null || sisa === '') {
+                sisa = loan.jumlah_pinjaman || 0;
+            }
+            return rupiahCeil(sisa);
+        }
         
         // Ketika ID Anggota berubah, fetch pinjaman aktif
         if (idAnggotaCicilanInput) {
@@ -697,11 +714,11 @@
                                     idPinjamanHidden.value = selectedLoan.key;
                                     
                                     // Tampilkan info pinjaman
-                                    var minCicilan = Math.ceil(selectedLoan.perkiraan_angsuran);
-                                    var sisaPinjaman = selectedLoan.sisa_pinjaman || selectedLoan.jumlah_pinjaman;
+                                    var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
+                                    var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
                                     
                                     minCicilanText.textContent = `Cicilan Minimum: Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
-                                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))}`;
+                                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
                                     infoPinjamanDisplay.style.display = 'block';
                                     pinjamanWarning.style.display = 'none';
                                     
@@ -715,11 +732,11 @@
                                     selectedLoan = data.jenis_angsuran[0];
                                     idPinjamanHidden.value = selectedLoan.key;
                                     
-                                    var minCicilan = Math.ceil(selectedLoan.perkiraan_angsuran);
-                                    var sisaPinjaman = selectedLoan.sisa_pinjaman || selectedLoan.jumlah_pinjaman;
+                                    var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
+                                    var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
                                     
                                     minCicilanText.textContent = `Cicilan Minimum: Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
-                                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))}`;
+                                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
                                     infoPinjamanDisplay.style.display = 'block';
                                     
                                     submitCicilanBtn.disabled = false;
@@ -760,14 +777,14 @@
                     validasiJumlahText.style.display = 'none';
                     submitCicilanBtn.disabled = false;
                     // Reset ke info awal jika kosong
-                    var minCicilan = Math.ceil(selectedLoan.perkiraan_angsuran);
-                    var sisaPinjaman = selectedLoan.sisa_pinjaman || selectedLoan.jumlah_pinjaman;
-                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))}`;
+                    var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
+                    var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
+                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
                     return;
                 }
                 
-                var minCicilan = Math.ceil(selectedLoan.perkiraan_angsuran);
-                var sisaPinjaman = selectedLoan.sisa_pinjaman || selectedLoan.jumlah_pinjaman;
+                var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
+                var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
                 var sisaSetelahBayar = sisaPinjaman - jumlah;
                 
                 if (jumlah < minCicilan) {
@@ -775,14 +792,14 @@
                     validasiJumlahText.style.display = 'block';
                     submitCicilanBtn.disabled = true;
                 } else if (jumlah > sisaPinjaman) {
-                    validasiJumlahText.textContent = `❌ Jumlah cicilan tidak boleh melebihi sisa pinjaman Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))}`;
+                    validasiJumlahText.textContent = `❌ Jumlah cicilan tidak boleh melebihi sisa pinjaman Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
                     validasiJumlahText.style.display = 'block';
                     submitCicilanBtn.disabled = true;
                 } else {
                     validasiJumlahText.style.display = 'none';
                     submitCicilanBtn.disabled = false;
                     // Tampilkan sisa pinjaman setelah pembayaran
-                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaPinjaman))} → setelah bayar Rp ${new Intl.NumberFormat('id-ID').format(Math.ceil(sisaSetelahBayar))}`;
+                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)} → setelah bayar Rp ${new Intl.NumberFormat('id-ID').format(Math.max(0, rupiahCeil(sisaSetelahBayar)))}`;
                 }
             });
         }

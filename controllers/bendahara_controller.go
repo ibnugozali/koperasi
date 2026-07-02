@@ -1728,7 +1728,7 @@ func UpdateBendaharaProfile(c *gin.Context) {
 
 // BendaharaKonfirmasiTransaksi menampilkan halaman konfirmasi transaksi
 func BendaharaKonfirmasiTransaksi(c *gin.Context) {
-	ensurePendingAngsuranPotongGaji()
+	ensurePendingAngsuranTerjadwal()
 
 	// Ambil pending simpanan
 	pendingSimpanan, err := repository.GetPendingSimpanan()
@@ -1752,10 +1752,6 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 	type numberedDetail struct {
 		No     int
 		Detail models.Detail
-	}
-	type numberedPinjaman struct {
-		No       int
-		Pinjaman models.Pinjaman
 	}
 	type numberedAngsuran struct {
 		No                         int
@@ -1781,7 +1777,12 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 	}
 
 	var numberedAngsurans []numberedAngsuran
-	for i, a := range pendingAngsuran {
+	for _, a := range pendingAngsuran {
+		a.MetodeAngsuran = normalizeMetodeAngsuran(a.MetodeAngsuran)
+		if isPinjamanSebelumnyaDalamPinjamanBaru(a.IDAnggota, a.IDPinjaman) {
+			continue
+		}
+
 		angsuranKe := 0
 		now := time.Now()
 		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -1824,7 +1825,7 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 			nomorResume = resumePinjaman.NomorResume
 		}
 		numberedAngsurans = append(numberedAngsurans, numberedAngsuran{
-			No:                         i + 1,
+			No:                         len(numberedAngsurans) + 1,
 			Angsuran:                   a,
 			AngsuranKe:                 angsuranKe,
 			PeriodeLabel:               periodeLabel,
@@ -2275,7 +2276,7 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 		if action == "confirm" {
 			err = repository.UpdatePinjamanStatus(id, "aktif")
 			if err == nil {
-				if createErr := createPendingAngsuranPotongGajiAwal(id); createErr != nil {
+				if createErr := createPendingAngsuranAwal(id); createErr != nil {
 					log.Printf("[ERROR] Gagal membuat cicilan pending otomatis untuk pinjaman %d: %v", id, createErr)
 					c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Pinjaman dikonfirmasi, tetapi gagal membuat cicilan pending otomatis"})
 					return
@@ -2324,14 +2325,14 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Transaksi berhasil diproses"})
 }
 
-func ensurePendingAngsuranPotongGaji() {
+func ensurePendingAngsuranTerjadwal() {
 	db := config.GetDB()
 
 	rows, err := db.Query(`
-		SELECT p.id_pinjaman
+		SELECT p.id_pinjaman, p.id_anggota
 		FROM pinjaman p
 		WHERE p.status = 'aktif'
-		  AND LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) = 'potong_gaji'
+		  AND LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) IN ('potong_gaji', 'transfer_bank', 'tunai')
 	`)
 	if err != nil {
 		log.Printf("[WARN] Gagal sinkronisasi cicilan pending: %v", err)
@@ -2341,18 +2342,47 @@ func ensurePendingAngsuranPotongGaji() {
 
 	for rows.Next() {
 		var idPinjaman int
-		if err := rows.Scan(&idPinjaman); err != nil {
+		var idAnggota string
+		if err := rows.Scan(&idPinjaman, &idAnggota); err != nil {
 			log.Printf("[WARN] Gagal membaca pinjaman untuk sinkronisasi cicilan pending: %v", err)
 			continue
 		}
-		if err := ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman); err != nil {
+		if isPinjamanSebelumnyaDalamPinjamanBaru(idAnggota, idPinjaman) {
+			continue
+		}
+		if err := ensureScheduledAngsuranForPinjaman(idPinjaman); err != nil {
 			log.Printf("[WARN] Gagal membuat cicilan pending sinkronisasi untuk pinjaman %d: %v", idPinjaman, err)
 		}
 	}
 }
 
-func createPendingAngsuranPotongGajiAwal(idPinjaman int) error {
-	return ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman)
+func isPinjamanSebelumnyaDalamPinjamanBaru(idAnggota string, idPinjaman int) bool {
+	resumeBaru := getResumePinjamanGabungan(idAnggota, false)
+	if resumeBaru == nil || resumeBaru.IDPinjaman == idPinjaman {
+		return false
+	}
+
+	var tglPinjaman time.Time
+	var status string
+	err := config.GetDB().QueryRow(`
+		SELECT tgl_pinjaman, COALESCE(status, '')
+		FROM pinjaman
+		WHERE id_pinjaman = $1 AND id_anggota = $2
+	`, idPinjaman, idAnggota).Scan(&tglPinjaman, &status)
+	if err != nil {
+		return false
+	}
+
+	if strings.ToLower(strings.TrimSpace(status)) != "aktif" {
+		return true
+	}
+
+	return tglPinjaman.Before(resumeBaru.TglPinjaman) ||
+		(tglPinjaman.Equal(resumeBaru.TglPinjaman) && idPinjaman < resumeBaru.IDPinjaman)
+}
+
+func createPendingAngsuranAwal(idPinjaman int) error {
+	return ensureScheduledAngsuranForPinjaman(idPinjaman)
 }
 
 func countJatuhTempoAngsuran(tglPinjaman, now time.Time, jangkaWaktu int) int {
@@ -2371,7 +2401,7 @@ func countJatuhTempoAngsuran(tglPinjaman, now time.Time, jangkaWaktu int) int {
 	return dueCount
 }
 
-func ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman int) error {
+func ensureScheduledAngsuranForPinjaman(idPinjaman int) error {
 	db := config.GetDB()
 
 	var pinjaman models.Pinjaman
@@ -2402,8 +2432,8 @@ func ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman int) error {
 		return nil
 	}
 
-	metode := strings.TrimSpace(strings.ToLower(strings.ReplaceAll(pinjaman.MetodeAngsuran, " ", "_")))
-	if metode != "potong_gaji" {
+	metode := normalizeMetodeAngsuran(pinjaman.MetodeAngsuran)
+	if metode != "potong_gaji" && metode != "transfer_bank" && metode != "tunai" {
 		return nil
 	}
 
@@ -2477,6 +2507,7 @@ func ensureScheduledAngsuranPotongGajiForPinjaman(idPinjaman int) error {
 		JumlahAngsuran: jumlahAngsuran,
 		SisaPinjaman:   sisaSetelah,
 		BuktiAngsuran:  buktiAuto,
+		MetodeAngsuran: metode,
 		Status:         "pending",
 	})
 	if err != nil {
@@ -5224,6 +5255,7 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 		SELECT p.id_pinjaman, p.id_anggota, p.tgl_pinjaman, p.jumlah_pinjaman, 
 		       p.jangka_waktu, p.bunga, p.status,
 		       COALESCE(p.metode_pencairan, '') as metode_pencairan,
+		       COALESCE(p.metode_angsuran, '') as metode_angsuran,
 		       COALESCE(p.nomor_rekening, '') as nomor_rekening,
 		       COALESCE(p.nama_bank, '') as nama_bank,
 		       COALESCE(p.nama_pemilik_rekening, '') as nama_pemilik_rekening,
@@ -5238,7 +5270,7 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 	err := db.QueryRow(query, idPinjaman).Scan(
 		&p.IDPinjaman, &p.IDAnggota, &p.TglPinjaman, &p.JumlahPinjaman,
 		&p.JangkaWaktu, &p.Bunga, &p.Status,
-		&p.MetodePencairan, &p.NomorRekening, &p.NamaBank, &p.NamaPemilikRekening,
+		&p.MetodePencairan, &p.MetodeAngsuran, &p.NomorRekening, &p.NamaBank, &p.NamaPemilikRekening,
 		&p.GajiBulanan, &p.TujuanPinjaman,
 		&a.NamaAnggota, &a.NoTelepon, &a.Username, &a.Alamat, &a.UnitKerja,
 	)
@@ -5250,6 +5282,8 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 
 	a.IDAnggota = p.IDAnggota
 	p.NamaAnggota = a.NamaAnggota
+	p.MetodePencairan = normalizeMetodePencairan(p.MetodePencairan)
+	p.MetodeAngsuran = normalizeMetodeAngsuran(p.MetodeAngsuran)
 
 	// Hitung total simpanan untuk menampilkan limit
 	totalSimpanan, _, _, err := repository.GetSaldoAnggota(p.IDAnggota)
@@ -5507,6 +5541,7 @@ func ApiJenisAngsuran(c *gin.Context) {
 				}
 			}
 		}
+		sisaPinjaman = rupiahCeil(sisaPinjaman)
 
 		label := fmt.Sprintf("Pinjaman #%d - %d bulan - Rp %.0f", p.IDPinjaman, p.JangkaWaktu, p.JumlahPinjaman)
 		result = append(result, map[string]interface{}{
@@ -5524,6 +5559,17 @@ func ApiJenisAngsuran(c *gin.Context) {
 		})
 	}
 	c.JSON(200, gin.H{"jenis_angsuran": result})
+}
+
+func rupiahCeil(value float64) float64 {
+	if value <= 0 {
+		return 0
+	}
+	rounded := math.Round(value)
+	if math.Abs(value-rounded) < 0.01 {
+		return rounded
+	}
+	return math.Ceil(value)
 }
 
 func recalculatePendingAngsuranSisa(idAnggota string, idPinjaman int, currentRemaining float64) {
@@ -5630,6 +5676,7 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	if pinjaman.JangkaWaktu > 0 {
 		minCicilan = math.Round(totalKewajiban / float64(pinjaman.JangkaWaktu))
 	}
+	maxCicilan := rupiahCeil(sisaSebelum)
 	sisaSetelah := sisaSebelum - jumlahAngsuran
 	if sisaSetelah < 0 {
 		sisaSetelah = 0
@@ -5667,7 +5714,7 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	createdDirect := false
 	if len(pendingAngsuranList) == 0 {
 		// Jika tidak ada pending angsuran yang cocok, bolehkan entri tunai langsung jika nominal valid
-		if angsuran.JumlahAngsuran >= minCicilan && angsuran.JumlahAngsuran <= sisaSebelum {
+		if angsuran.JumlahAngsuran >= minCicilan && angsuran.JumlahAngsuran <= maxCicilan {
 			if len(fallbackPendings) > 0 {
 				matchedPending = &fallbackPendings[0]
 				if err := repository.UpdateAngsuranAmountAndSisa(matchedPending.IDAngsuran, angsuran.JumlahAngsuran, angsuran.SisaPinjaman); err != nil {

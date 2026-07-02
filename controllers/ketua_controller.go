@@ -60,7 +60,7 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 		if action == "confirm" {
 			err = repository.UpdatePinjamanStatus(id, "aktif")
 			if err == nil {
-				if createErr := createPendingAngsuranPotongGajiAwal(id); createErr != nil {
+				if createErr := createPendingAngsuranAwal(id); createErr != nil {
 					log.Printf("[ERROR] KetuaKonfirmasiTransaksiPost: gagal membuat cicilan pending otomatis untuk pinjaman %d: %v", id, createErr)
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Pinjaman dikonfirmasi, tetapi gagal membuat cicilan pending otomatis"})
 					return

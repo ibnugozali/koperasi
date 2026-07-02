@@ -44,12 +44,13 @@
               </div>
             </div>
 
-            {{if or (eq .MetodeAngsuran "transfer_bank") (eq .MetodeAngsuran "Transfer")}}
+            {{if eq .MetodeAngsuran "transfer_bank"}}
               <div class="alert alert-info" role="alert">
                 <strong>Pembayaran via Transfer Bank</strong><br>
                 Silakan lakukan pembayaran angsuran melalui transfer bank dan upload bukti pembayaran pada form di bawah.
               </div>
               <form action="/anggota/angsuran" method="POST" enctype="multipart/form-data" style="max-width: 600px; margin: auto;">
+                <input type="hidden" name="id_pinjaman" value="{{.IDPinjaman}}">
                 <div style="margin-bottom: 10px;">
                   <label>Jumlah Angsuran (Rp) <small class="text-muted">(Maksimal: Rp {{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}})</small></label><br>
                   <input type="number" name="jumlah_angsuran" min="1" max="{{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}}" step="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
@@ -60,7 +61,7 @@
                 <div style="margin-bottom: 10px;">
                   <label>Metode Pembayaran</label><br>
                   <select name="metode_pembayaran" id="metode_pembayaran" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" readonly>
-                    <option value="Transfer" selected>Transfer Bank</option>
+                    <option value="transfer_bank" selected>Transfer Bank</option>
                   </select>
                 </div>
                 <div id="instruksi_transfer" style="margin-bottom:10px;">
