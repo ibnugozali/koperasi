@@ -332,14 +332,14 @@ func ensureSimpananWajibTables() error {
 	return nil
 }
 
-// updateAnggotaStatusConstraint memperbarui constraint status anggota agar mengizinkan 'keluar'
+// updateAnggotaStatusConstraint memperbarui constraint status anggota agar mengizinkan alur konfirmasi.
 func updateAnggotaStatusConstraint() error {
 	if db == nil {
 		return fmt.Errorf("koneksi database belum diinisialisasi")
 	}
 	alterSQL := `
 	ALTER TABLE anggota DROP CONSTRAINT IF EXISTS anggota_status_check;
-	ALTER TABLE anggota ADD CONSTRAINT anggota_status_check CHECK (status IN ('aktif', 'nonaktif', 'pending', 'keluar'));
+	ALTER TABLE anggota ADD CONSTRAINT anggota_status_check CHECK (status IN ('aktif', 'nonaktif', 'pending', 'pending_bendahara', 'keluar'));
 	`
 	_, err := db.Exec(alterSQL)
 	return err

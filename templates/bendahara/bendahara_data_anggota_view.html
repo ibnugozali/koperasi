@@ -201,6 +201,10 @@
                                         <span class="badge-status badge-pending">
                                             <i class="fas fa-clock me-1"></i>Pending
                                         </span>
+                                    {{ else if eq .Anggota.Status "pending_bendahara" }}
+                                        <span class="badge-status badge-pending">
+                                            <i class="fas fa-clock me-1"></i>Menunggu Bendahara
+                                        </span>
                                     {{ else }}
                                         <span class="badge-status badge-inactive">
                                             <i class="fas fa-times-circle me-1"></i>Tidak Aktif
@@ -286,7 +290,17 @@
                                 {{ end }}
                             {{ end }}
                             <div class="text-center mt-4 pt-3 border-top">
-                                {{ if hasPrefix .Anggota.IDAnggota "TEMP" }}
+                                {{ if eq .Anggota.Status "pending_bendahara" }}
+                                    <a href="/bendahara/konfirmasi-transaksi" class="btn btn-action btn-back"><i class="fas fa-arrow-left me-2"></i>Kembali</a>
+                                    <form action="/bendahara/konfirmasi-transaksi/registrasi-pokok/{{ .Anggota.IDAnggota }}" method="POST" style="display: inline;" onsubmit="return confirm('Teruskan pendaftaran {{ .Anggota.NamaAnggota }} ke ketua?')">
+                                        <input type="hidden" name="action" value="confirm">
+                                        <button type="submit" class="btn btn-action btn-edit"><i class="fas fa-check me-2"></i>Terima</button>
+                                    </form>
+                                    <form action="/bendahara/konfirmasi-transaksi/registrasi-pokok/{{ .Anggota.IDAnggota }}" method="POST" style="display: inline;" onsubmit="return confirm('Tolak pendaftaran {{ .Anggota.NamaAnggota }}?')">
+                                        <input type="hidden" name="action" value="reject">
+                                        <button type="submit" class="btn btn-action btn-delete"><i class="fas fa-times me-2"></i>Tolak</button>
+                                    </form>
+                                {{ else if hasPrefix .Anggota.IDAnggota "TEMP" }}
                                     <a href="/bendahara/konfirmasi" class="btn btn-action btn-back"><i class="fas fa-arrow-left me-2"></i>Kembali</a>
                                     <form action="/bendahara/confirm/{{ .Anggota.IDAnggota }}" method="POST" style="display: inline;" onsubmit="return confirm('Konfirmasi anggota {{ .Anggota.NamaAnggota }}?')">
                                         <button type="submit" class="btn btn-action btn-edit"><i class="fas fa-check me-2"></i>Terima</button>

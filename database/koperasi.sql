@@ -86,7 +86,7 @@ CREATE TABLE anggota (
   alamat VARCHAR(50),
   -- provinsi VARCHAR(50),
   jenis_kelamin VARCHAR(12),
-  status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('aktif', 'nonaktif', 'pending')),
+  status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('aktif', 'nonaktif', 'pending', 'pending_bendahara', 'keluar')),
   status_anggota VARCHAR(50),
   data_keluar JSONB,
   fakultas VARCHAR(100),
@@ -408,6 +408,8 @@ ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS gaji_bulanan NUMERIC(15,2) DEFAULT
 ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS tujuan_pinjaman TEXT;
 ALTER TABLE detail ADD COLUMN IF NOT EXISTS status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected'));
 ALTER TABLE detail ADD COLUMN IF NOT EXISTS bukti_pembayaran VARCHAR(255);
+ALTER TABLE anggota DROP CONSTRAINT IF EXISTS anggota_status_check;
+ALTER TABLE anggota ADD CONSTRAINT anggota_status_check CHECK (status IN ('aktif', 'nonaktif', 'pending', 'pending_bendahara', 'keluar'));
 
 -- Update angsuran status constraint to support pending workflow
 ALTER TABLE angsuran DROP CONSTRAINT IF EXISTS angsuran_status_check;

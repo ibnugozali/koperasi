@@ -1748,6 +1748,11 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 	if err != nil {
 		pendingSimpanan = []models.Detail{}
 	}
+	pendingRegistrasiSimpananPokok, err := repository.GetPendingRegistrasiSimpananPokok()
+	if err != nil {
+		log.Printf("[WARN] BendaharaKonfirmasiTransaksi: gagal mengambil simpanan pokok registrasi: %v", err)
+		pendingRegistrasiSimpananPokok = []models.Detail{}
+	}
 
 	// Ambil pending angsuran
 	pendingAngsuran, err := repository.GetPendingAngsuran()
@@ -1763,8 +1768,12 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 
 	// Tambahkan nomor urut (No) mulai dari 1 untuk setiap daftar
 	type numberedDetail struct {
-		No     int
-		Detail models.Detail
+		No           int
+		Detail       models.Detail
+		ActionType   string
+		ActionID     string
+		DetailURL    string
+		IsRegistrasi bool
 	}
 	type numberedAngsuran struct {
 		No                         int
@@ -1785,9 +1794,27 @@ func BendaharaKonfirmasiTransaksi(c *gin.Context) {
 	}
 
 	var numberedSimpanan []numberedDetail
-	for i, d := range pendingSimpanan {
+	for _, d := range pendingRegistrasiSimpananPokok {
 		d.MetodePembayaran = normalizeMetodeAngsuran(d.MetodePembayaran)
-		numberedSimpanan = append(numberedSimpanan, numberedDetail{No: i + 1, Detail: d})
+		numberedSimpanan = append(numberedSimpanan, numberedDetail{
+			No:           len(numberedSimpanan) + 1,
+			Detail:       d,
+			ActionType:   "registrasi-pokok",
+			ActionID:     d.IDAnggota,
+			DetailURL:    "/bendahara/anggota/" + d.IDAnggota,
+			IsRegistrasi: true,
+		})
+	}
+	for _, d := range pendingSimpanan {
+		d.MetodePembayaran = normalizeMetodeAngsuran(d.MetodePembayaran)
+		numberedSimpanan = append(numberedSimpanan, numberedDetail{
+			No:           len(numberedSimpanan) + 1,
+			Detail:       d,
+			ActionType:   "simpanan",
+			ActionID:     strconv.Itoa(d.IDDetail),
+			DetailURL:    fmt.Sprintf("/bendahara/view-detail-simpanan/%d", d.IDDetail),
+			IsRegistrasi: false,
+		})
 	}
 
 	var numberedAngsurans []numberedAngsuran
@@ -2271,6 +2298,11 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 	idStr := c.Param("id")
 	action := c.PostForm("action")
 
+	if transactionType == "registrasi-pokok" {
+		handleBendaharaRegistrasiSimpananPokok(c, idStr, action)
+		return
+	}
+
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		log.Printf("[ERROR] ID tidak valid: %v", err)
@@ -2360,6 +2392,72 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Transaksi berhasil diproses"})
+}
+
+func handleBendaharaRegistrasiSimpananPokok(c *gin.Context, idAnggota, action string) {
+	idAnggota = strings.TrimSpace(idAnggota)
+	if idAnggota == "" {
+		respondBendaharaRegistrasiSimpananPokok(c, http.StatusBadRequest, false, "ID anggota tidak valid")
+		return
+	}
+
+	switch action {
+	case "confirm":
+		anggota, err := repository.GetAnggotaByID(idAnggota)
+		if err != nil {
+			log.Printf("[ERROR] Gagal mengambil registrasi simpanan pokok id=%s: %v", idAnggota, err)
+			respondBendaharaRegistrasiSimpananPokok(c, http.StatusNotFound, false, "Data pendaftaran tidak ditemukan")
+			return
+		}
+		if strings.ToLower(strings.TrimSpace(anggota.Status)) != repository.StatusAnggotaPendingBendahara {
+			respondBendaharaRegistrasiSimpananPokok(c, http.StatusBadRequest, false, "Pendaftaran ini tidak sedang menunggu konfirmasi bendahara")
+			return
+		}
+
+		if err := repository.ForwardRegistrasiSimpananPokokToKetua(idAnggota); err != nil {
+			log.Printf("[ERROR] Gagal meneruskan registrasi simpanan pokok id=%s ke ketua: %v", idAnggota, err)
+			respondBendaharaRegistrasiSimpananPokok(c, http.StatusInternalServerError, false, "Gagal meneruskan pendaftaran ke ketua")
+			return
+		}
+
+		metodePembayaran := "transfer_bank"
+		if strings.EqualFold(strings.TrimSpace(anggota.BuktiTransfer), "TUNAI") {
+			metodePembayaran = "tunai"
+		}
+		appBaseURL := resolveAppBaseURL(c, config.GetDB())
+		if err := sendKetuaWhatsAppNotification("", anggota, metodePembayaran, appBaseURL); err != nil {
+			log.Printf("[WA NOTIF] gagal kirim notifikasi ketua setelah ACC bendahara: %v", err)
+		}
+
+		respondBendaharaRegistrasiSimpananPokok(c, http.StatusOK, true, "Simpanan pokok registrasi diterima dan diteruskan ke ketua")
+	case "reject":
+		if err := repository.RejectRegistrasiSimpananPokokBendahara(idAnggota); err != nil {
+			log.Printf("[ERROR] Gagal menolak registrasi simpanan pokok id=%s: %v", idAnggota, err)
+			respondBendaharaRegistrasiSimpananPokok(c, http.StatusInternalServerError, false, "Gagal menolak pendaftaran")
+			return
+		}
+		respondBendaharaRegistrasiSimpananPokok(c, http.StatusOK, true, "Pendaftaran berhasil ditolak")
+	default:
+		respondBendaharaRegistrasiSimpananPokok(c, http.StatusBadRequest, false, "Aksi tidak valid")
+	}
+}
+
+func respondBendaharaRegistrasiSimpananPokok(c *gin.Context, statusCode int, success bool, message string) {
+	accept := strings.ToLower(c.GetHeader("Accept"))
+	if strings.Contains(accept, "text/html") && !strings.Contains(accept, "application/json") {
+		param := "success"
+		if !success {
+			param = "error"
+		}
+		c.Redirect(http.StatusFound, "/bendahara/konfirmasi-transaksi?"+param+"="+url.QueryEscape(message))
+		return
+	}
+
+	if success {
+		c.JSON(statusCode, gin.H{"success": true, "message": message})
+		return
+	}
+	c.JSON(statusCode, gin.H{"success": false, "error": message})
 }
 
 func isKonfirmasiPotongGaji(transactionType string, id int) (bool, error) {

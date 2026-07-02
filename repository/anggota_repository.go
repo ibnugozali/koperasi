@@ -15,6 +15,27 @@ type simpananStore interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 }
 
+const (
+	StatusAnggotaPending          = "pending"
+	StatusAnggotaPendingBendahara = "pending_bendahara"
+	StatusAnggotaAktif            = "aktif"
+	StatusAnggotaNonaktif         = "nonaktif"
+	StatusAnggotaKeluar           = "keluar"
+)
+
+func EnsureAnggotaStatusWorkflowConstraint(db *sql.DB) error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+
+	_, err := db.Exec(`
+		ALTER TABLE anggota DROP CONSTRAINT IF EXISTS anggota_status_check;
+		ALTER TABLE anggota ADD CONSTRAINT anggota_status_check
+		CHECK (status IN ('aktif', 'nonaktif', 'pending', 'pending_bendahara', 'keluar'));
+	`)
+	return err
+}
+
 func getOrCreateSimpananIDByJenis(store simpananStore, jenis string) (int, error) {
 	jenis = strings.ToLower(strings.TrimSpace(jenis))
 	if jenis == "" {
@@ -266,6 +287,68 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 	return anggotas, nil
 }
 
+// GetPendingRegistrasiSimpananPokok mengambil pendaftar transfer/tunai yang
+// masih menunggu verifikasi simpanan pokok oleh bendahara.
+func GetPendingRegistrasiSimpananPokok() ([]models.Detail, error) {
+	db := config.GetDB()
+	var details []models.Detail
+
+	var nominalSimpananPokok float64
+	if err := db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&nominalSimpananPokok); err != nil {
+		nominalSimpananPokok = 100000
+	}
+
+	idSimpananPokok := 1
+	_ = db.QueryRow(`
+		SELECT id_simpanan
+		FROM simpanan
+		WHERE LOWER(TRIM(jenis_simpanan)) = 'pokok'
+		LIMIT 1
+	`).Scan(&idSimpananPokok)
+
+	rows, err := db.Query(`
+		SELECT id_anggota, nama_anggota, tgl_gabung, COALESCE(bukti_transfer, '')
+		FROM anggota
+		WHERE status = $1
+		  AND UPPER(TRIM(COALESCE(bukti_transfer, ''))) <> 'POTONG_GAJI'
+		ORDER BY tgl_gabung DESC
+	`, StatusAnggotaPendingBendahara)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var d models.Detail
+		var buktiTransfer string
+		if err := rows.Scan(&d.IDAnggota, &d.NamaAnggota, &d.TglTransaksi, &buktiTransfer); err != nil {
+			return nil, err
+		}
+
+		d.IDSimpanan = idSimpananPokok
+		d.Simpanan = models.Simpanan{
+			IDSimpanan:    idSimpananPokok,
+			JenisSimpanan: "pokok",
+		}
+		d.JumlahSimpanan = nominalSimpananPokok
+		d.TotalSimpanan = nominalSimpananPokok
+		d.Status = StatusAnggotaPendingBendahara
+		d.BuktiPembayaran = buktiTransfer
+		if strings.EqualFold(strings.TrimSpace(buktiTransfer), "TUNAI") {
+			d.MetodePembayaran = "tunai"
+		} else {
+			d.MetodePembayaran = "transfer_bank"
+		}
+
+		details = append(details, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return details, nil
+}
+
 // GetPendingAnggotaKeluar mengambil anggota yang mengajukan keluar (status_anggota = 'pending_keluar')
 func GetPendingAnggotaKeluar() ([]models.Anggota, error) {
 	db := config.GetDB()
@@ -298,10 +381,65 @@ func UpdateAnggotaStatusWithCode(id string, newStatus string, memberCode string)
 	return err
 }
 
+func ForwardRegistrasiSimpananPokokToKetua(idAnggota string) error {
+	db := config.GetDB()
+	result, err := db.Exec(`
+		UPDATE anggota
+		SET status = $1
+		WHERE id_anggota = $2
+		  AND status = $3
+	`, StatusAnggotaPending, idAnggota, StatusAnggotaPendingBendahara)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func RejectRegistrasiSimpananPokokBendahara(idAnggota string) error {
+	db := config.GetDB()
+	result, err := db.Exec(`
+		DELETE FROM anggota
+		WHERE id_anggota = $1
+		  AND status = $2
+	`, idAnggota, StatusAnggotaPendingBendahara)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
 // ... (fungsi lainnya)
 // Membuat anggota baru (registrasi)
 func CreateAnggota(anggota models.Anggota) error {
 	db := config.GetDB()
+	status := strings.ToLower(strings.TrimSpace(anggota.Status))
+	if status == "" {
+		status = StatusAnggotaPending
+	}
+	if status == StatusAnggotaPendingBendahara {
+		if err := EnsureAnggotaStatusWorkflowConstraint(db); err != nil {
+			return err
+		}
+	}
+
 	// Ambil tahun konfirmasi (tahun sekarang, 2 digit)
 	tahun := time.Now().Format("06")
 	anggota.Tahun = tahun
@@ -334,7 +472,7 @@ func CreateAnggota(anggota models.Anggota) error {
 		anggota.NoTelepon,
 		anggota.Alamat,
 		anggota.JenisKelamin,
-		"pending",
+		status,
 		anggota.StatusAnggota,
 		anggota.Fakultas,
 		anggota.TglGabung,

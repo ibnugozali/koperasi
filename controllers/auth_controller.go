@@ -453,7 +453,7 @@ func ShowLoginPage(c *gin.Context) {
 
 	if status == "success_register" {
 		c.HTML(http.StatusOK, "login.html", gin.H{
-			"success":     "Pendaftaran berhasil! Silakan tunggu konfirmasi dari ketua sebelum login.",
+			"success":     "Pendaftaran berhasil! Silakan tunggu konfirmasi dari pengurus sebelum login.",
 			"LogoPath":    logoPath,
 			"CurrentLogo": latestLogo,
 			"Konten":      kontak,
@@ -820,6 +820,11 @@ func Register(c *gin.Context) {
 		renderRegisterError(http.StatusBadRequest, "Metode pembayaran tidak valid.")
 		return
 	}
+	if metodePembayaran == "transfer_bank" || metodePembayaran == "tunai" {
+		newAnggota.Status = repository.StatusAnggotaPendingBendahara
+	} else {
+		newAnggota.Status = repository.StatusAnggotaPending
+	}
 
 	// Validate required fields
 	if newAnggota.NamaAnggota == "" || newAnggota.Username == "" || newAnggota.Password == "" ||
@@ -888,12 +893,19 @@ func Register(c *gin.Context) {
 		log.Printf("[WARN] gagal sinkron status referensi pendaftaran setelah register: %v", err)
 	}
 
-	// Notifikasi otomatis ke WhatsApp Ketua (jika gateway dikonfigurasi)
+	// Notifikasi otomatis ke WhatsApp pengurus sesuai tahap konfirmasi awal.
 	appBaseURL := resolveAppBaseURL(c, db)
-	// Kirim dengan nomor kosong agar helper selalu memakai prioritas konfigurasi resmi:
-	// wa_ketua_phone -> halaman hubungi_kami -> profil pengelola ketua aktif.
-	if err := sendKetuaWhatsAppNotification("", newAnggota, metodePembayaran, appBaseURL); err != nil {
-		log.Printf("[WA NOTIF] gagal kirim notifikasi ketua: %v", err)
+	if newAnggota.Status == repository.StatusAnggotaPendingBendahara {
+		nominalLabel := fmt.Sprintf("Rp %d", nominalSimpananPokok)
+		if err := sendBendaharaWhatsAppNotification("", newAnggota.NamaAnggota, "Simpanan Pokok Registrasi", nominalLabel, appBaseURL); err != nil {
+			log.Printf("[WA NOTIF] gagal kirim notifikasi bendahara: %v", err)
+		}
+	} else {
+		// Kirim dengan nomor kosong agar helper selalu memakai prioritas konfigurasi resmi:
+		// wa_ketua_phone -> halaman hubungi_kami -> profil pengelola ketua aktif.
+		if err := sendKetuaWhatsAppNotification("", newAnggota, metodePembayaran, appBaseURL); err != nil {
+			log.Printf("[WA NOTIF] gagal kirim notifikasi ketua: %v", err)
+		}
 	}
 
 	c.Redirect(http.StatusFound, "/login?status=success_register")
