@@ -1741,6 +1741,9 @@ func UpdateBendaharaProfile(c *gin.Context) {
 
 // BendaharaKonfirmasiTransaksi menampilkan halaman konfirmasi transaksi
 func BendaharaKonfirmasiTransaksi(c *gin.Context) {
+	if err := repository.DeleteAutoTransferBankPendingAngsuran(); err != nil {
+		log.Printf("[WARN] Gagal membersihkan cicilan pending transfer bank otomatis: %v", err)
+	}
 	ensurePendingAngsuranTerjadwal()
 
 	// Ambil pending simpanan
@@ -2498,7 +2501,7 @@ func ensurePendingAngsuranTerjadwal() {
 		SELECT p.id_pinjaman, p.id_anggota
 		FROM pinjaman p
 		WHERE p.status = 'aktif'
-		  AND LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) IN ('potong_gaji', 'transfer_bank', 'tunai')
+		  AND LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) IN ('potong_gaji', 'tunai')
 	`)
 	if err != nil {
 		log.Printf("[WARN] Gagal sinkronisasi cicilan pending: %v", err)
@@ -2551,6 +2554,15 @@ func createPendingAngsuranAwal(idPinjaman int) error {
 	return ensureScheduledAngsuranForPinjaman(idPinjaman)
 }
 
+func isMetodeAngsuranTerjadwalOtomatis(metode string) bool {
+	switch normalizeMetodeAngsuran(metode) {
+	case "potong_gaji", "tunai":
+		return true
+	default:
+		return false
+	}
+}
+
 func countJatuhTempoAngsuran(tglPinjaman, now time.Time, jangkaWaktu int) int {
 	if jangkaWaktu <= 0 {
 		return 0
@@ -2599,7 +2611,7 @@ func ensureScheduledAngsuranForPinjaman(idPinjaman int) error {
 	}
 
 	metode := normalizeMetodeAngsuran(pinjaman.MetodeAngsuran)
-	if metode != "potong_gaji" && metode != "transfer_bank" && metode != "tunai" {
+	if !isMetodeAngsuranTerjadwalOtomatis(metode) {
 		return nil
 	}
 
@@ -2630,8 +2642,6 @@ func ensureScheduledAngsuranForPinjaman(idPinjaman int) error {
 		buktiAuto = fmt.Sprintf("POTONG_GAJI_AUTO_%02d", angsuranKe)
 	case "tunai":
 		buktiAuto = fmt.Sprintf("TUNAI_AUTO_%02d", angsuranKe)
-	case "transfer_bank":
-		buktiAuto = fmt.Sprintf("TRANSFER_AUTO_%02d", angsuranKe)
 	default:
 		buktiAuto = fmt.Sprintf("AUTO_%02d", angsuranKe)
 	}

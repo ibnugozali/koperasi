@@ -393,6 +393,23 @@ func DeletePendingAngsuranByPinjaman(idPinjaman int) error {
 	return err
 }
 
+// DeleteAutoTransferBankPendingAngsuran menghapus cicilan pending transfer bank
+// yang pernah dibuat otomatis oleh jadwal lama. Pengajuan transfer bank yang
+// valid tetap berasal dari upload anggota dan memiliki nama bukti asli.
+func DeleteAutoTransferBankPendingAngsuran() error {
+	db := config.GetDB()
+	query := `
+		DELETE FROM angsuran a
+		USING pinjaman p
+		WHERE a.id_pinjaman = p.id_pinjaman
+		  AND a.status = 'pending'
+		  AND LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) = 'transfer_bank'
+		  AND COALESCE(a.bukti_angsuran, '') LIKE 'TRANSFER\_AUTO\_%' ESCAPE '\'
+	`
+	_, err := db.Exec(query)
+	return err
+}
+
 // UpdatePengambilanSimpananStatus memperbarui status pengambilan simpanan
 func UpdatePengambilanSimpananStatus(id int, status string) error {
 	db := config.GetDB()
@@ -516,6 +533,10 @@ func GetPendingAngsuran() ([]models.Angsuran, error) {
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
 		WHERE a.status = 'pending'
+		  AND NOT (
+		      LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) = 'transfer_bank'
+		      AND COALESCE(a.bukti_angsuran, '') LIKE 'TRANSFER\_AUTO\_%' ESCAPE '\'
+		  )
 		ORDER BY a.tgl_bayar DESC
 	`
 
@@ -1260,6 +1281,10 @@ func GetPendingAngsuranByCriteria(idAnggota string, idPinjaman int, jumlah float
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
 		WHERE a.status = 'pending' AND p.id_anggota = $1 AND a.id_pinjaman = $2 AND a.jumlah_angsuran = $3
+		  AND NOT (
+		      LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) = 'transfer_bank'
+		      AND COALESCE(a.bukti_angsuran, '') LIKE 'TRANSFER\_AUTO\_%' ESCAPE '\'
+		  )
 		ORDER BY a.tgl_bayar ASC
 	`
 	rows, err := db.Query(query, idAnggota, idPinjaman, jumlah)
@@ -1288,6 +1313,10 @@ func GetPendingAngsuranByPinjamanAndAnggota(idAnggota string, idPinjaman int) ([
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
 		JOIN anggota ang ON p.id_anggota = ang.id_anggota
 		WHERE a.status = 'pending' AND p.id_anggota = $1 AND a.id_pinjaman = $2
+		  AND NOT (
+		      LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) = 'transfer_bank'
+		      AND COALESCE(a.bukti_angsuran, '') LIKE 'TRANSFER\_AUTO\_%' ESCAPE '\'
+		  )
 		ORDER BY a.tgl_bayar ASC
 	`
 	rows, err := db.Query(query, idAnggota, idPinjaman)

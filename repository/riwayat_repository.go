@@ -83,6 +83,10 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
         JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
         JOIN anggota ang ON p.id_anggota = ang.id_anggota
         WHERE p.id_anggota = $1
+        AND NOT (
+            LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) = 'transfer_bank'
+            AND COALESCE(a.bukti_angsuran, '') LIKE 'TRANSFER\_AUTO\_%' ESCAPE '\'
+        )
     `
 	args := []interface{}{id}
 	if search != "" {
@@ -130,6 +134,10 @@ func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 		JOIN pinjaman p ON ag.id_pinjaman = p.id_pinjaman
 		JOIN anggota a ON p.id_anggota = a.id_anggota
 		WHERE p.id_anggota = $1
+		  AND NOT (
+		      LOWER(REPLACE(TRIM(COALESCE(p.metode_angsuran, '')), ' ', '_')) = 'transfer_bank'
+		      AND COALESCE(ag.bukti_angsuran, '') LIKE 'TRANSFER\_AUTO\_%' ESCAPE '\'
+		  )
 		ORDER BY tanggal DESC, id DESC
 	`
 	rows, err := db.Query(query, id)
