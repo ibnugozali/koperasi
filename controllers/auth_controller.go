@@ -91,6 +91,26 @@ func formatWhatsAppPhone(rawPhone string) string {
 	return phone
 }
 
+func buildWhatsAppChatURL(rawPhone, message string) string {
+	phone := formatWhatsAppPhone(rawPhone)
+	if phone == "" {
+		return ""
+	}
+	for _, r := range phone {
+		if r < '0' || r > '9' {
+			return ""
+		}
+	}
+
+	chatURL := "https://wa.me/" + phone
+	if trimmedMessage := strings.TrimSpace(message); trimmedMessage != "" {
+		params := url.Values{}
+		params.Set("text", trimmedMessage)
+		chatURL += "?" + params.Encode()
+	}
+	return chatURL
+}
+
 func describeWAGatewayError(waURL string, err error) error {
 	var urlErr *url.Error
 	if errors.As(err, &urlErr) {

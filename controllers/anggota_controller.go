@@ -1323,13 +1323,22 @@ func AnggotaPesan(c *gin.Context) {
 		latestLogo = "/static/images/placeholder.png"
 	}
 
+	bendaharaPhone := getPengaturanValue(config.GetDB(), "wa_bendahara_phone")
+	bendaharaWhatsAppURL := buildWhatsAppChatURL(bendaharaPhone, "Halo Bendahara Koperasi, saya ingin menanyakan pesan di aplikasi koperasi.")
+	bendaharaWhatsAppPhone := ""
+	if bendaharaWhatsAppURL != "" {
+		bendaharaWhatsAppPhone = "+" + formatWhatsAppPhone(bendaharaPhone)
+	}
+
 	// Render halaman pesan dengan daftar pesan dan logo dinamis
 	c.HTML(http.StatusOK, "anggota_pesan.html", gin.H{
-		"Title":         "Pesan Saya",
-		"Anggota":       anggota,
-		"Pesans":        pesans,
-		"LatestPesanID": latestPesanID,
-		"CurrentLogo":   latestLogo,
+		"Title":                "Pesan Saya",
+		"Anggota":              anggota,
+		"Pesans":               pesans,
+		"LatestPesanID":        latestPesanID,
+		"CurrentLogo":          latestLogo,
+		"WhatsAppContactURL":   bendaharaWhatsAppURL,
+		"WhatsAppContactPhone": bendaharaWhatsAppPhone,
 	})
 }
 

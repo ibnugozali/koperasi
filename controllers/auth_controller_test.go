@@ -31,3 +31,18 @@ func TestIsRegisterPhoneValidRequiresTenToThirteenDigits(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildWhatsAppChatURLFormatsPhoneAndMessage(t *testing.T) {
+	got := buildWhatsAppChatURL("0812-3456-7890", "Halo Bendahara")
+	want := "https://wa.me/6281234567890?text=Halo+Bendahara"
+
+	if got != want {
+		t.Fatalf("buildWhatsAppChatURL() = %q, want %q", got, want)
+	}
+}
+
+func TestBuildWhatsAppChatURLRejectsInvalidPhone(t *testing.T) {
+	if got := buildWhatsAppChatURL("08abc", "Halo"); got != "" {
+		t.Fatalf("expected invalid phone to produce empty URL, got %q", got)
+	}
+}

@@ -25,7 +25,17 @@
 <main class="container py-4">
     <div class="card">
         <div class="card-body">
-            <h1>{{ .Title }}</h1>
+            <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-3">
+                <h1 class="mb-0">{{ .Title }}</h1>
+                {{ if .WhatsAppContactURL }}
+                <div class="d-flex flex-column align-items-sm-end gap-1">
+                    <a href="{{ .WhatsAppContactURL }}" target="_blank" rel="noopener noreferrer" class="btn btn-success">
+                        <i class="bi bi-whatsapp me-1"></i>Hubungi Bendahara
+                    </a>
+                    <a href="{{ .WhatsAppContactURL }}" target="_blank" rel="noopener noreferrer" class="small text-success text-decoration-none">{{ .WhatsAppContactPhone }}</a>
+                </div>
+                {{ end }}
+            </div>
             {{ if .Pesans }}
             <div class="list-group">
                 {{ range .Pesans }}
