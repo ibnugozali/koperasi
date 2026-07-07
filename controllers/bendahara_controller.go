@@ -846,6 +846,9 @@ func BendaharaRejectMembership(c *gin.Context) {
 
 	// Hapus anggota dari database
 	db := config.GetDB()
+	if err := repository.MarkReferensiPendaftaranBelumAnggotaByAnggotaID(tempID); err != nil {
+		log.Printf("[WARN] gagal mengembalikan status referensi pendaftaran untuk anggota ditolak %s: %v", tempID, err)
+	}
 	deleteQuery := `DELETE FROM anggota WHERE id_anggota = $1`
 
 	_, err := db.Exec(deleteQuery, tempID)

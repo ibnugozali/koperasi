@@ -16,20 +16,132 @@ const syncReferensiStatusFromAnggotaSQL = `
 	  AND EXISTS (
 		SELECT 1
 		FROM anggota a
-		WHERE (
-			COALESCE(r.nomor_identitas, '') <> ''
-			AND COALESCE(a.username, '') = COALESCE(r.nomor_identitas, '')
-		)
-		OR (
-			LOWER(TRIM(COALESCE(a.nama_anggota, ''))) = LOWER(TRIM(COALESCE(r.nama_lengkap, '')))
-			AND COALESCE(a.gaji_bulanan, 0) = COALESCE(r.gaji_bulanan, 0)
-		)
+		WHERE LOWER(TRIM(COALESCE(a.status, ''))) <> 'keluar'
+		  AND (
+			(
+				COALESCE(r.nomor_identitas, '') <> ''
+				AND COALESCE(a.username, '') = COALESCE(r.nomor_identitas, '')
+			)
+			OR (
+				LOWER(TRIM(COALESCE(a.nama_anggota, ''))) = LOWER(TRIM(COALESCE(r.nama_lengkap, '')))
+				AND COALESCE(a.gaji_bulanan, 0) = COALESCE(r.gaji_bulanan, 0)
+			)
+		  )
 	  )
 `
 
 func SyncReferensiPendaftaranStatusFromAnggota() error {
 	db := config.GetDB()
 	_, err := db.Exec(syncReferensiStatusFromAnggotaSQL)
+	return err
+}
+
+func HasCurrentAnggotaForReferensi(nama, identitas string, gaji int) (bool, error) {
+	db := config.GetDB()
+
+	nama = strings.TrimSpace(nama)
+	identitas = strings.TrimSpace(identitas)
+
+	var exists bool
+	err := db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM anggota
+			WHERE LOWER(TRIM(COALESCE(status, ''))) <> 'keluar'
+			  AND (
+				(
+					$2 <> ''
+					AND COALESCE(username, '') = $2
+				)
+				OR (
+					LOWER(TRIM(COALESCE(nama_anggota, ''))) = LOWER(TRIM($1))
+					AND COALESCE(gaji_bulanan, 0) = $3
+				)
+			  )
+		)
+	`, nama, identitas, gaji).Scan(&exists)
+	return exists, err
+}
+
+func HasCurrentAnggotaUsername(username string) (bool, error) {
+	db := config.GetDB()
+
+	username = strings.TrimSpace(username)
+	var exists bool
+	err := db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM anggota
+			WHERE COALESCE(username, '') = $1
+			  AND LOWER(TRIM(COALESCE(status, ''))) <> 'keluar'
+		)
+	`, username).Scan(&exists)
+	return exists, err
+}
+
+func ReleaseUsernameFromAnggotaKeluar(username string) error {
+	db := config.GetDB()
+
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return nil
+	}
+
+	_, err := db.Exec(`
+		UPDATE anggota
+		SET username = LEFT('keluar_' || SUBSTRING(MD5(id_anggota || username), 1, 18), 25)
+		WHERE COALESCE(username, '') = $1
+		  AND LOWER(TRIM(COALESCE(status, ''))) = 'keluar'
+	`, username)
+	return err
+}
+
+func MarkReferensiPendaftaranBelumAnggotaByAnggotaID(idAnggota string) error {
+	db := config.GetDB()
+
+	idAnggota = strings.TrimSpace(idAnggota)
+	if idAnggota == "" {
+		return nil
+	}
+
+	_, err := db.Exec(`
+		WITH target_anggota AS (
+			SELECT id_anggota, nama_anggota, username, gaji_bulanan
+			FROM anggota
+			WHERE id_anggota = $1
+		)
+		UPDATE referensi_pendaftaran r
+		SET status_keanggotaan = 'belum_anggota',
+		    updated_at = CURRENT_TIMESTAMP
+		FROM target_anggota target
+		WHERE LOWER(TRIM(COALESCE(r.status_keanggotaan, ''))) = 'anggota'
+		  AND (
+			(
+				COALESCE(r.nomor_identitas, '') <> ''
+				AND COALESCE(target.username, '') = COALESCE(r.nomor_identitas, '')
+			)
+			OR (
+				LOWER(TRIM(COALESCE(target.nama_anggota, ''))) = LOWER(TRIM(COALESCE(r.nama_lengkap, '')))
+				AND COALESCE(target.gaji_bulanan, 0) = COALESCE(r.gaji_bulanan, 0)
+			)
+		  )
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM anggota a
+			WHERE a.id_anggota <> target.id_anggota
+			  AND LOWER(TRIM(COALESCE(a.status, ''))) <> 'keluar'
+			  AND (
+				(
+					COALESCE(r.nomor_identitas, '') <> ''
+					AND COALESCE(a.username, '') = COALESCE(r.nomor_identitas, '')
+				)
+				OR (
+					LOWER(TRIM(COALESCE(a.nama_anggota, ''))) = LOWER(TRIM(COALESCE(r.nama_lengkap, '')))
+					AND COALESCE(a.gaji_bulanan, 0) = COALESCE(r.gaji_bulanan, 0)
+				)
+			  )
+		  )
+	`, idAnggota)
 	return err
 }
 

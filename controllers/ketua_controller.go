@@ -3795,6 +3795,9 @@ func KetuaRejectMembership(c *gin.Context) {
 
 	// Hapus anggota dari database
 	db := config.GetDB()
+	if err := repository.MarkReferensiPendaftaranBelumAnggotaByAnggotaID(tempID); err != nil {
+		log.Printf("[WARN] gagal mengembalikan status referensi pendaftaran untuk anggota ditolak %s: %v", tempID, err)
+	}
 	deleteQuery := `DELETE FROM anggota WHERE id_anggota = $1`
 
 	_, err := db.Exec(deleteQuery, tempID)
@@ -3817,6 +3820,9 @@ func KetuaApproveAnggotaKeluar(c *gin.Context) {
 	if err != nil {
 		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Gagal menyetujui permohonan keluar")
 		return
+	}
+	if err := repository.MarkReferensiPendaftaranBelumAnggotaByAnggotaID(idAnggota); err != nil {
+		log.Printf("[WARN] gagal mengembalikan status referensi pendaftaran untuk anggota keluar %s: %v", idAnggota, err)
 	}
 
 	c.Redirect(http.StatusFound, "/ketua/konfirmasi?success=Permohonan keluar berhasil disetujui")

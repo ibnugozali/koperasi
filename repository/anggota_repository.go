@@ -471,6 +471,10 @@ func ForwardRegistrasiSimpananPokokToKetua(idAnggota string) error {
 
 func RejectRegistrasiSimpananPokokBendahara(idAnggota string) error {
 	db := config.GetDB()
+	if err := MarkReferensiPendaftaranBelumAnggotaByAnggotaID(idAnggota); err != nil {
+		log.Printf("[WARN] gagal mengembalikan status referensi pendaftaran untuk anggota ditolak %s: %v", idAnggota, err)
+	}
+
 	result, err := db.Exec(`
 		DELETE FROM anggota
 		WHERE id_anggota = $1

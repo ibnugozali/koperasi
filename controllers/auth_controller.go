@@ -760,8 +760,19 @@ func Register(c *gin.Context) {
 		referensiByIdentitas, err := repository.FindReferensiPendaftaranByIdentitas(noIdentitasPegawai)
 		if err == nil {
 			if normalizeRegisterCompare(referensiByIdentitas.StatusKeanggotaan) == "anggota" {
-				renderRegisterError(http.StatusBadRequest, "Data Anda di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses.")
-				return
+				hasCurrentAnggota, err := repository.HasCurrentAnggotaForReferensi(
+					referensiByIdentitas.NamaLengkap,
+					referensiByIdentitas.NomorIdentitas,
+					referensiByIdentitas.GajiBulanan,
+				)
+				if err != nil {
+					renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi data referensi pendaftaran.")
+					return
+				}
+				if hasCurrentAnggota {
+					renderRegisterError(http.StatusBadRequest, "Data Anda di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses.")
+					return
+				}
 			}
 
 			if statusWarning := validateReferensiStatusAnggota(newAnggota.StatusAnggota, referensiByIdentitas.Jabatan); statusWarning != "" {
@@ -794,6 +805,7 @@ func Register(c *gin.Context) {
 			WHERE LOWER(TRIM(COALESCE(nama_anggota, ''))) = LOWER(TRIM($1))
 			  AND COALESCE(username, '') = $2
 			  AND COALESCE(gaji_bulanan, 0) = $3
+			  AND LOWER(TRIM(COALESCE(status, ''))) <> 'keluar'
 		`, newAnggota.NamaAnggota, noIdentitasPegawai, newAnggota.GajiBulanan).Scan(&count)
 		if err == nil && count > 0 {
 			renderRegisterError(http.StatusBadRequest, "Data dengan Nama Lengkap, Nomer Identitas, dan Gajih Bersih tersebut sudah terdaftar.")
@@ -801,10 +813,18 @@ func Register(c *gin.Context) {
 		}
 	}
 
-	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1", newAnggota.Username).Scan(&count)
-	if err == nil && count > 0 {
+	usernameDipakaiAnggotaAktif, err := repository.HasCurrentAnggotaUsername(newAnggota.Username)
+	if err != nil {
+		renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi nama pengguna.")
+		return
+	}
+	if usernameDipakaiAnggotaAktif {
 		renderRegisterError(http.StatusBadRequest, "Nama Pengguna sudah terdaftar. Silakan gunakan nama pengguna lain.")
+		return
+	}
+	if err := repository.ReleaseUsernameFromAnggotaKeluar(newAnggota.Username); err != nil {
+		log.Printf("[WARN] gagal melepas username anggota keluar sebelum register ulang: %v", err)
+		renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi nama pengguna.")
 		return
 	}
 

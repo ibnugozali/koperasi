@@ -370,9 +370,21 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 		referensiByIdentitas, err := repository.FindReferensiPendaftaranByIdentitas(noIdentitasPegawai)
 		if err == nil {
 			if strings.ToLower(strings.TrimSpace(referensiByIdentitas.StatusKeanggotaan)) == "anggota" {
-				formData["Error"] = "Data ini di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses."
-				renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
-				return
+				hasCurrentAnggota, err := repository.HasCurrentAnggotaForReferensi(
+					referensiByIdentitas.NamaLengkap,
+					referensiByIdentitas.NomorIdentitas,
+					referensiByIdentitas.GajiBulanan,
+				)
+				if err != nil {
+					formData["Error"] = "Gagal memvalidasi data referensi pendaftaran."
+					renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
+					return
+				}
+				if hasCurrentAnggota {
+					formData["Error"] = "Data ini di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses."
+					renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+					return
+				}
 			}
 		} else if err != sql.ErrNoRows {
 			formData["Error"] = "Gagal memvalidasi data referensi pendaftaran."
@@ -455,6 +467,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 			WHERE LOWER(TRIM(COALESCE(nama_anggota, ''))) = LOWER(TRIM($1))
 			  AND COALESCE(username, '') = $2
 			  AND COALESCE(gaji_bulanan, 0) = $3
+			  AND LOWER(TRIM(COALESCE(status, ''))) <> 'keluar'
 		`, namaAnggota, noIdentitasPegawai, gajiBulanan).Scan(&duplicateCount)
 		if err == nil && duplicateCount > 0 {
 			formData["Error"] = "Data dengan Nama Lengkap, Nomer Identitas, dan Gaji Bersih tersebut sudah terdaftar."
@@ -465,14 +478,36 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 
 	// Validasi unik username / telepon agar tidak bentrok akun.
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM anggota WHERE username = $1 OR no_telepon = $2", username, noTelepon).Scan(&count)
+	usernameDipakaiAnggotaAktif, err := repository.HasCurrentAnggotaUsername(username)
+	if err != nil {
+		formData["Error"] = "Gagal memvalidasi data anggota."
+		renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
+		return
+	}
+	if usernameDipakaiAnggotaAktif {
+		formData["Error"] = "Nama Pengguna sudah terdaftar."
+		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
+		return
+	}
+	if err := repository.ReleaseUsernameFromAnggotaKeluar(username); err != nil {
+		formData["Error"] = "Gagal memvalidasi data anggota."
+		renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
+		return
+	}
+
+	err = db.QueryRow(`
+		SELECT COUNT(*)
+		FROM anggota
+		WHERE COALESCE(no_telepon, '') = $1
+		  AND LOWER(TRIM(COALESCE(status, ''))) <> 'keluar'
+	`, noTelepon).Scan(&count)
 	if err != nil {
 		formData["Error"] = "Gagal memvalidasi data anggota."
 		renderAdminTambahAnggota(c, http.StatusInternalServerError, formData)
 		return
 	}
 	if count > 0 {
-		formData["Error"] = "Nama Pengguna atau No. Telepon sudah terdaftar."
+		formData["Error"] = "No. Telepon sudah terdaftar."
 		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
 		return
 	}
@@ -1101,8 +1136,11 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 			checkErr := db.QueryRow(`
 				SELECT COUNT(*)
 				FROM anggota
-				WHERE COALESCE(username, '') = $1
-				   OR COALESCE(no_telepon, '') = $1
+				WHERE LOWER(TRIM(COALESCE(status, ''))) <> 'keluar'
+				  AND (
+					COALESCE(username, '') = $1
+					OR COALESCE(no_telepon, '') = $1
+				  )
 			`, identitas).Scan(&anggotaCount)
 			if checkErr == nil && anggotaCount > 0 {
 				statusKeanggotaan = "anggota"
