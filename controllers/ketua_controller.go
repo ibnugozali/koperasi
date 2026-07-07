@@ -3160,6 +3160,57 @@ func KetuaViewAnggotaKeluar(c *gin.Context) {
 	})
 }
 
+// KetuaViewPengajuanAnggotaKeluar menampilkan detail pengajuan keluar yang masih menunggu persetujuan.
+func KetuaViewPengajuanAnggotaKeluar(c *gin.Context) {
+	idAnggota := c.Param("id")
+	anggota, pengajuanKeluar, err := repository.GetPendingAnggotaKeluarByID(idAnggota)
+	if err != nil {
+		log.Printf("[ERROR] KetuaViewPengajuanAnggotaKeluar ambil pengajuan keluar gagal (id=%s): %v", idAnggota, err)
+		c.Redirect(http.StatusFound, "/ketua/konfirmasi?error=Pengajuan keluar tidak ditemukan")
+		return
+	}
+
+	// Cari logo terbaru di static/images
+	dirFiles, errLogo := os.ReadDir("static/images")
+	var latestLogo string
+	var latestTime int64
+	if errLogo == nil {
+		for _, file := range dirFiles {
+			name := file.Name()
+			if (len(name) > 5 && name[:5] == "logo_" && (name[len(name)-4:] == ".png" || name[len(name)-4:] == ".jpg")) || name == "logo.png" {
+				info, err := file.Info()
+				if err == nil {
+					modTime := info.ModTime().Unix()
+					if modTime > latestTime {
+						latestTime = modTime
+						latestLogo = "/static/images/" + name
+					}
+				}
+			}
+		}
+	}
+	if latestLogo == "" {
+		latestLogo = "/static/images/placeholder.png"
+	}
+
+	tanggalPengajuan := pengajuanKeluar.TanggalPengajuan
+	if parsed, err := time.Parse(time.RFC3339, pengajuanKeluar.TanggalPengajuan); err == nil {
+		tanggalPengajuan = parsed.Format("02 January 2006 15:04:05")
+	}
+
+	totalPengembalian := pengajuanKeluar.SimpananWajib + pengajuanKeluar.SimpananLainnya - pengajuanKeluar.BiayaAdmin
+
+	c.HTML(http.StatusOK, "ketua_pengajuan_anggota_keluar_detail.html", gin.H{
+		"Anggota":           anggota,
+		"PengajuanKeluar":   pengajuanKeluar,
+		"TanggalPengajuan":  tanggalPengajuan,
+		"TotalPengembalian": totalPengembalian,
+		"ActivePage":        "konfirmasi_anggota",
+		"CurrentLogo":       latestLogo,
+		"Title":             "Detail Pengajuan Keluar",
+	})
+}
+
 // KetuaViewAnggota menampilkan detail anggota untuk ketua
 func KetuaViewAnggota(c *gin.Context) {
 	idStr := c.Param("id")

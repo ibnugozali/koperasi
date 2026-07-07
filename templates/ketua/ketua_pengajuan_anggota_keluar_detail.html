@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{.CurrentLogo}}" />
+    <title>KOPMA - Detail Pengajuan Keluar</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/ketua_navbar.css" rel="stylesheet">
+    <link href="/static/css/admin_dashboard.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .page-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 18px 22px;
+        }
+
+        .card-body {
+            padding: 26px;
+        }
+
+        .info-row {
+            display: flex;
+            gap: 16px;
+            padding: 14px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #4a5568;
+            flex: 0 0 185px;
+            font-weight: 600;
+        }
+
+        .info-value {
+            color: #2d3748;
+            flex: 1;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .profile-icon {
+            align-items: center;
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            font-size: 3rem;
+            height: 100px;
+            justify-content: center;
+            margin: 0 auto 20px;
+            width: 100px;
+        }
+
+        .badge-pending-keluar {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            border-radius: 20px;
+            color: white;
+            display: inline-block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 6px 15px;
+        }
+
+        .summary-total {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .btn-action {
+            border-radius: 8px;
+            font-weight: 500;
+            margin: 5px;
+            padding: 10px 22px;
+        }
+
+        .btn-back {
+            background: #6c757d;
+            border: none;
+            color: white;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+            color: white;
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            border: none;
+            color: white;
+        }
+
+        .btn-approve:hover {
+            color: white;
+            opacity: 0.9;
+        }
+
+        .btn-reject {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border: none;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            color: white;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    {{ template "ketua_navbar.html" . }}
+
+    <div class="main-content">
+        <div class="container-fluid">
+            <br><br><br>
+            <div class="page-header">
+                <h1><i class="fas fa-user-times me-3"></i>Detail Pengajuan Keluar</h1>
+                <p>Data permohonan keluar yang menunggu persetujuan Ketua</p>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-7 col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Informasi Anggota</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-4">
+                                <div class="profile-icon">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <h3 class="mb-2">{{ .Anggota.NamaAnggota }}</h3>
+                                <span class="badge-pending-keluar">
+                                    <i class="fas fa-clock me-1"></i>Menunggu Persetujuan Keluar
+                                </span>
+                            </div>
+
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-id-badge me-2"></i>ID Anggota</div>
+                                <div class="info-value"><strong>{{ .Anggota.IDAnggota }}</strong></div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-user me-2"></i>Nama Lengkap</div>
+                                <div class="info-value">{{ .Anggota.NamaAnggota }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-phone me-2"></i>No. Telepon</div>
+                                <div class="info-value">{{ if .Anggota.NoTelepon }}+62{{ .Anggota.NoTelepon }}{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-map-marker-alt me-2"></i>Alamat</div>
+                                <div class="info-value">{{ if .Anggota.Alamat }}{{ .Anggota.Alamat }}{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-building me-2"></i>Unit Kerja</div>
+                                <div class="info-value">{{ if or (eq .Anggota.Fakultas "Rektorat / Yayasan / Staff") (eq .Anggota.Fakultas "Rektorat / Yayasan") }}Rektoriat{{ else }}{{ .Anggota.Fakultas }}{{ end }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-briefcase me-2"></i>Jabatan</div>
+                                <div class="info-value">{{ if eq .Anggota.UnitKerja "01" }}Dosen{{ else if eq .Anggota.UnitKerja "02" }}Tenaga Pendidikan{{ else if eq .Anggota.UnitKerja "03" }}Mahasiswa{{ else }}{{ .Anggota.UnitKerja }}{{ end }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-calendar-plus me-2"></i>Tanggal Gabung</div>
+                                <div class="info-value">{{ if .Anggota.TglGabung.IsZero }}<span class="text-muted">Tidak ada data</span>{{ else }}{{ .Anggota.TglGabung.Format "02 January 2006" }}{{ end }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5 col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-door-open me-2"></i>Data Pengajuan Keluar</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-calendar-alt me-2"></i>Tanggal Pengajuan</div>
+                                <div class="info-value">{{ if .TanggalPengajuan }}{{ .TanggalPengajuan }}{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-wallet me-2"></i>Simpanan Wajib</div>
+                                <div class="info-value">Rp {{ formatRupiah .PengajuanKeluar.SimpananWajib }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-piggy-bank me-2"></i>Simpanan Lainnya</div>
+                                <div class="info-value">Rp {{ formatRupiah .PengajuanKeluar.SimpananLainnya }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label"><i class="fas fa-receipt me-2"></i>Biaya Admin</div>
+                                <div class="info-value">Rp {{ formatRupiah .PengajuanKeluar.BiayaAdmin }}</div>
+                            </div>
+
+                            <div class="summary-total mt-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>Total Pengembalian</strong>
+                                    <strong class="text-success">Rp {{ formatRupiah .TotalPengembalian }}</strong>
+                                </div>
+                            </div>
+
+                            <h6 class="mt-4 mb-2"><i class="fas fa-comment-dots me-2"></i>Alasan Keluar</h6>
+                            <div class="p-3 bg-light rounded">
+                                {{ if .PengajuanKeluar.Alasan }}{{ .PengajuanKeluar.Alasan }}{{ else }}<span class="text-muted">Tidak ada alasan</span>{{ end }}
+                            </div>
+
+                            <div class="text-center mt-4 pt-3 border-top">
+                                <a href="/ketua/konfirmasi" class="btn btn-action btn-back">
+                                    <i class="fas fa-arrow-left me-2"></i>Kembali
+                                </a>
+                                <form action="/ketua/approve-keluar/{{ .Anggota.IDAnggota }}" method="POST" style="display: inline;"
+                                      onsubmit="return confirm('Setujui permohonan keluar dari {{ .Anggota.NamaAnggota }}?')">
+                                    <button type="submit" class="btn btn-action btn-approve">
+                                        <i class="fas fa-check me-2"></i>Setujui
+                                    </button>
+                                </form>
+                                <form action="/ketua/reject-keluar/{{ .Anggota.IDAnggota }}" method="POST" style="display: inline;"
+                                      onsubmit="return confirm('Tolak permohonan keluar dari {{ .Anggota.NamaAnggota }}?')">
+                                    <button type="submit" class="btn btn-action btn-reject">
+                                        <i class="fas fa-times me-2"></i>Tolak
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{ template "ketua_footer" . }}
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

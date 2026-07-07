@@ -406,6 +406,7 @@ func SetupRouter() *gin.Engine {
 		ketuaRoutes.GET("/dashboard", controllers.KetuaDashboard)
 		ketuaRoutes.GET("/ketua-dashboard", controllers.KetuaDashboard)
 		ketuaRoutes.GET("/konfirmasi", controllers.KetuaKonfirmasiAnggota)
+		ketuaRoutes.GET("/konfirmasi/keluar/view/:id", controllers.KetuaViewPengajuanAnggotaKeluar)
 		ketuaRoutes.POST("/confirm/:id", controllers.KetuaConfirmMembership)
 		ketuaRoutes.POST("/reject/:id", controllers.KetuaRejectMembership)
 		ketuaRoutes.POST("/approve-keluar/:id", controllers.KetuaApproveAnggotaKeluar)

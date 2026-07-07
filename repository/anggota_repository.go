@@ -374,6 +374,71 @@ func GetPendingAnggotaKeluar() ([]models.Anggota, error) {
 	return anggotas, nil
 }
 
+// GetPendingAnggotaKeluarByID mengambil detail anggota dan data pengajuan keluar yang masih menunggu persetujuan.
+func GetPendingAnggotaKeluarByID(id string) (models.Anggota, models.PengajuanKeluarData, error) {
+	db := config.GetDB()
+	var a models.Anggota
+	var p models.PengajuanKeluarData
+
+	query := `
+		SELECT
+			id_anggota,
+			nama_anggota,
+			username,
+			COALESCE(tgl_lahir::text, ''),
+			COALESCE(no_telepon, ''),
+			tgl_gabung,
+			COALESCE(alamat, ''),
+			COALESCE(jenis_kelamin, ''),
+			status,
+			COALESCE(unit_kerja, ''),
+			COALESCE(fakultas_code, ''),
+			COALESCE(tahun, ''),
+			COALESCE(CAST(nomor_urut AS TEXT), '0'),
+			COALESCE(bukti_transfer, ''),
+			COALESCE(status_anggota, ''),
+			COALESCE(fakultas, ''),
+			COALESCE(gaji_bulanan, 0),
+			COALESCE(NULLIF(data_keluar->>'simpanan_wajib', '')::numeric, 0),
+			COALESCE(NULLIF(data_keluar->>'simpanan_lainnya', '')::numeric, 0),
+			COALESCE(NULLIF(data_keluar->>'biaya_admin', '')::numeric, 0),
+			COALESCE(data_keluar->>'alasan', ''),
+			COALESCE(data_keluar->>'tanggal_pengajuan', '')
+		FROM anggota
+		WHERE id_anggota = $1
+		  AND status_anggota = 'pending_keluar'`
+
+	err := db.QueryRow(query, id).Scan(
+		&a.IDAnggota,
+		&a.NamaAnggota,
+		&a.Username,
+		&a.TglLahir,
+		&a.NoTelepon,
+		&a.TglGabung,
+		&a.Alamat,
+		&a.JenisKelamin,
+		&a.Status,
+		&a.UnitKerja,
+		&a.FakultasCode,
+		&a.Tahun,
+		&a.NomorUrut,
+		&a.BuktiTransfer,
+		&a.StatusAnggota,
+		&a.Fakultas,
+		&a.GajiBulanan,
+		&p.SimpananWajib,
+		&p.SimpananLainnya,
+		&p.BiayaAdmin,
+		&p.Alasan,
+		&p.TanggalPengajuan,
+	)
+	if err != nil {
+		return a, p, err
+	}
+
+	return a, p, nil
+}
+
 // Update status anggota dan tambahkan kode anggota
 func UpdateAnggotaStatusWithCode(id string, newStatus string, memberCode string) error {
 	db := config.GetDB()

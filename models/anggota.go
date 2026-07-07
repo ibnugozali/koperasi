@@ -27,3 +27,12 @@ type Anggota struct {
 	BuktiTransfer string     `json:"bukti_transfer"`
 	GajiBulanan   int        `json:"gaji_bulanan" form:"GajiBulanan"`
 }
+
+// PengajuanKeluarData berisi detail JSON data_keluar dari pengajuan keluar anggota.
+type PengajuanKeluarData struct {
+	SimpananWajib    float64 `json:"simpanan_wajib"`
+	SimpananLainnya  float64 `json:"simpanan_lainnya"`
+	BiayaAdmin       float64 `json:"biaya_admin"`
+	Alasan           string  `json:"alasan"`
+	TanggalPengajuan string  `json:"tanggal_pengajuan"`
+}
