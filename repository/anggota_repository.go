@@ -213,20 +213,24 @@ func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 		       nama_anggota,
 		       username,
 		       password,
-		       tgl_lahir,
-		       no_telepon,
-		       tgl_gabung,
+		       COALESCE(tgl_lahir::text, ''),
+		       COALESCE(no_telepon, ''),
+		       COALESCE(tgl_gabung, CURRENT_TIMESTAMP),
 		       tgl_keluar,
-		       alamat,
-		       jenis_kelamin,
-		       status,
-		       status_anggota,
-		       unit_kerja,
-		       fakultas,
+		       COALESCE(alamat, ''),
+		       COALESCE(jenis_kelamin, ''),
+		       COALESCE(status, ''),
+		       COALESCE(status_anggota, ''),
+		       COALESCE(unit_kerja, ''),
+		       COALESCE(fakultas, ''),
 		       COALESCE(gaji_bulanan, 0)
 	       FROM anggota
-	       WHERE LOWER(TRIM(status)) LIKE '%' || $1 || '%'
-	       ORDER BY CAST(nomor_urut AS INTEGER) DESC
+	       WHERE LOWER(TRIM(COALESCE(status, ''))) = $1
+	       ORDER BY
+		       CASE
+			       WHEN TRIM(COALESCE(nomor_urut, '')) ~ '^[0-9]+$' THEN TRIM(nomor_urut)::INTEGER
+		       END DESC NULLS LAST,
+		       tgl_gabung DESC
 	   `
 
 	rows, err := db.Query(query, status)
@@ -261,6 +265,9 @@ func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 		}
 
 		anggotas = append(anggotas, a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return anggotas, nil
 }
