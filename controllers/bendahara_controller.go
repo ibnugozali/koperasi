@@ -1117,7 +1117,7 @@ func BendaharaListAllAnggota(c *gin.Context) {
 		}
 		potongan := potonganWajib + potonganSimpananPotongGaji[anggota.IDAnggota] + potonganAngsuran[anggota.IDAnggota]
 		sisaGaji[anggota.IDAnggota] = float64(anggota.GajiBulanan) - potongan
-		if statusSimpananWajibAktif {
+		if potonganWajib > 0 {
 			potonganSimpananWajibBulanIni[anggota.IDAnggota] = potonganWajib
 		}
 

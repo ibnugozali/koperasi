@@ -764,10 +764,21 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 	// 2. Tambahkan dari detail (konfirmasi manual) - id_simpanan = 2 adalah simpanan wajib
 	// Menggunakan SUM dari jumlah_simpanan, bukan total_simpanan terbaru
 	var totalSimpananWajibDetail float64
-	detailWajibQuery := `SELECT COALESCE(SUM(jumlah_simpanan), 0) 
-	                     FROM detail 
-	                     WHERE id_anggota = $1 AND id_simpanan = 2
-	                       AND COALESCE(LOWER(status), '') IN ('diterima', 'lunas')`
+	detailWajibQuery := `SELECT COALESCE(SUM(d.jumlah_simpanan), 0) 
+	                     FROM detail d
+	                     WHERE d.id_anggota = $1
+	                       AND d.id_simpanan = 2
+	                       AND COALESCE(LOWER(d.status), 'confirmed') IN ('confirmed', 'diterima', 'lunas')
+	                       AND NOT EXISTS (
+	                         SELECT 1
+	                         FROM log_pemotongan_simpanan l
+	                         WHERE l.id_anggota = d.id_anggota
+	                           AND l.status = 'berhasil'
+	                           AND l.id_anggota != 'SYSTEM'
+	                           AND l.bulan = EXTRACT(MONTH FROM d.tgl_transaksi)
+	                           AND l.tahun = EXTRACT(YEAR FROM d.tgl_transaksi)
+	                           AND ABS(COALESCE(l.jumlah_potong, 0) - COALESCE(d.jumlah_simpanan, 0)) < 0.01
+	                       )`
 	err = db.QueryRow(detailWajibQuery, id).Scan(&totalSimpananWajibDetail)
 	if err != nil {
 		totalSimpananWajibDetail = 0
@@ -870,11 +881,21 @@ func GetSimpananWajibAllAnggota() (map[string]float64, error) {
 	// id_simpanan = 2 adalah simpanan wajib
 	// Menggunakan SUM dari jumlah_simpanan, bukan total_simpanan terbaru
 	// Status yang valid: 'confirmed' (bendahara), 'diterima' (ketua), 'lunas', atau NULL (default confirmed)
-	queryDetail := `SELECT id_anggota, COALESCE(SUM(jumlah_simpanan), 0) as total_simpanan_wajib
-	                FROM detail
-	                WHERE id_simpanan = 2
-	                  AND COALESCE(LOWER(status), 'confirmed') IN ('confirmed', 'diterima', 'lunas')
-	                GROUP BY id_anggota`
+	queryDetail := `SELECT d.id_anggota, COALESCE(SUM(d.jumlah_simpanan), 0) as total_simpanan_wajib
+	                FROM detail d
+	                WHERE d.id_simpanan = 2
+	                  AND COALESCE(LOWER(d.status), 'confirmed') IN ('confirmed', 'diterima', 'lunas')
+	                  AND NOT EXISTS (
+	                    SELECT 1
+	                    FROM log_pemotongan_simpanan l
+	                    WHERE l.id_anggota = d.id_anggota
+	                      AND l.status = 'berhasil'
+	                      AND l.id_anggota != 'SYSTEM'
+	                      AND l.bulan = EXTRACT(MONTH FROM d.tgl_transaksi)
+	                      AND l.tahun = EXTRACT(YEAR FROM d.tgl_transaksi)
+	                      AND ABS(COALESCE(l.jumlah_potong, 0) - COALESCE(d.jumlah_simpanan, 0)) < 0.01
+	                  )
+	                GROUP BY d.id_anggota`
 
 	rows2, err := db.Query(queryDetail)
 	if err == nil {
@@ -899,28 +920,14 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 	potonganBulanIni := make(map[string]float64)
 	simpananWajib := make(map[string]float64)
 
-	// Ambil konfigurasi simpanan wajib
-	config, err := GetKonfigurasiSimpananWajib()
-	if err != nil {
-		return potonganBulanIni, nil // Return map kosong jika error
-	}
-
-	if data, err := GetSimpananWajibAllAnggota(); err == nil {
-		simpananWajib = data
-	}
-
-	statusAktif, _ := config["StatusAktif"].(bool)
-	if !statusAktif {
-		return potonganBulanIni, nil
-	}
-
 	// Get current month and year
 	now := time.Now()
 	bulan := int(now.Month())
 	tahun := now.Year()
 	tanggalSekarang := now.Day()
 
-	// Ambil data dari log pemotongan bulan ini jika setting simpanan wajib aktif.
+	// Data yang sudah benar-benar diproses tetap ditampilkan meskipun
+	// status pemotongan otomatis sedang nonaktif.
 	logQuery := `SELECT id_anggota, jumlah_potong FROM log_pemotongan_simpanan 
 	             WHERE bulan = $1 AND tahun = $2 AND status = 'berhasil' AND id_anggota != 'SYSTEM'`
 	rows, err := db.Query(logQuery, bulan, tahun)
@@ -942,6 +949,20 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 	// Jika sudah ada data dari log, gunakan nilai aktual yang sudah diproses.
 	if len(potonganBulanIni) > 0 {
 		return potonganBulanIni, nil
+	}
+
+	// Ambil konfigurasi hanya untuk membuat preview potongan yang belum diproses.
+	config, err := GetKonfigurasiSimpananWajib()
+	if err != nil {
+		return potonganBulanIni, nil
+	}
+	statusAktif, _ := config["StatusAktif"].(bool)
+	if !statusAktif {
+		return potonganBulanIni, nil
+	}
+
+	if data, err := GetSimpananWajibAllAnggota(); err == nil {
+		simpananWajib = data
 	}
 
 	nominalSimpananWajib, ok := config["PersentasePotong"].(float64)
@@ -1290,11 +1311,6 @@ func ProsesPemotonganSimpananWajib() (successCount, failedCount int, errors []st
 	configData, err := GetKonfigurasiSimpananWajib()
 	if err != nil {
 		errors = append(errors, "Gagal mengambil konfigurasi: "+err.Error())
-		return
-	}
-
-	if !configData["StatusAktif"].(bool) {
-		errors = append(errors, "Fitur pemotongan otomatis tidak aktif")
 		return
 	}
 
