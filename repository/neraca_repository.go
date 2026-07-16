@@ -91,11 +91,22 @@ func (r *NeracaRepository) SaveNeraca(req *models.NeracaRequest, userID int) err
 
 // GetNeraca retrieves neraca data for a specific user
 func (r *NeracaRepository) GetNeraca(userID int) (*models.Neraca, error) {
-	query := `SELECT id, user_id, data_2024, data_2023, labels, no_perkiraan, custom_items, item_counter, deleted_items, header_data,
-		created_by, last_modified_by, created_at, last_modified_at 
+	query := `SELECT id, COALESCE(user_id, 0),
+		COALESCE(data_2024, '{}'),
+		COALESCE(data_2023, '{}'),
+		COALESCE(labels, '{}'),
+		COALESCE(no_perkiraan, '{}'),
+		COALESCE(custom_items, '{}'),
+		COALESCE(item_counter, '{}'),
+		COALESCE(deleted_items, '[]'),
+		COALESCE(header_data, '{}'),
+		COALESCE(created_by, 0),
+		COALESCE(last_modified_by, 0),
+		COALESCE(created_at, CURRENT_TIMESTAMP),
+		COALESCE(last_modified_at, CURRENT_TIMESTAMP)
 		FROM neraca 
 		WHERE user_id = $1
-		ORDER BY last_modified_at DESC 
+		ORDER BY COALESCE(last_modified_at, created_at, CURRENT_TIMESTAMP) DESC 
 		LIMIT 1`
 
 	neraca := &models.Neraca{}
@@ -118,6 +129,50 @@ func (r *NeracaRepository) GetNeraca(userID int) (*models.Neraca, error) {
 
 	if err == sql.ErrNoRows {
 		return nil, nil // No data found
+	}
+
+	return neraca, err
+}
+
+// GetLatestNeraca retrieves the newest neraca data regardless of owner.
+func (r *NeracaRepository) GetLatestNeraca() (*models.Neraca, error) {
+	query := `SELECT id, COALESCE(user_id, 0),
+		COALESCE(data_2024, '{}'),
+		COALESCE(data_2023, '{}'),
+		COALESCE(labels, '{}'),
+		COALESCE(no_perkiraan, '{}'),
+		COALESCE(custom_items, '{}'),
+		COALESCE(item_counter, '{}'),
+		COALESCE(deleted_items, '[]'),
+		COALESCE(header_data, '{}'),
+		COALESCE(created_by, 0),
+		COALESCE(last_modified_by, 0),
+		COALESCE(created_at, CURRENT_TIMESTAMP),
+		COALESCE(last_modified_at, CURRENT_TIMESTAMP)
+		FROM neraca
+		ORDER BY COALESCE(last_modified_at, created_at, CURRENT_TIMESTAMP) DESC
+		LIMIT 1`
+
+	neraca := &models.Neraca{}
+	err := r.DB.QueryRow(query).Scan(
+		&neraca.ID,
+		&neraca.UserID,
+		&neraca.Data2024,
+		&neraca.Data2023,
+		&neraca.Labels,
+		&neraca.NoPerkiraan,
+		&neraca.CustomItems,
+		&neraca.ItemCounter,
+		&neraca.DeletedItems,
+		&neraca.HeaderData,
+		&neraca.CreatedBy,
+		&neraca.LastModifiedBy,
+		&neraca.CreatedAt,
+		&neraca.LastModifiedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
 	}
 
 	return neraca, err

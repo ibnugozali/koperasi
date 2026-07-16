@@ -57,7 +57,7 @@
                                     <option value="tahunan" {{if eq .TipeLaporan "tahunan"}}selected{{end}}>Tahunan</option>
                                 </select>
                             </div>
-                            <div class="col-md-2" id="bulanField" style="display: {{if eq .TipeLaporan "tahunan"}}none{{else}}block{{end}};">
+                            <div class="col-md-2" id="bulanField" {{if eq .TipeLaporan "tahunan"}}data-report-initial-hidden="true"{{end}}>
                                 <label for="bulan" class="form-label">Bulan</label>
                                 <select class="form-control" id="bulan" name="bulan" {{if eq .TipeLaporan "tahunan"}}disabled{{end}}>
                                     <option value="1" {{if eq .Bulan 1}}selected{{end}}>Januari</option>
@@ -133,13 +133,16 @@
                             max-width: 300px !important;
                             max-height: 300px !important;
                         }
+                        [data-report-initial-hidden="true"] {
+                            display: none;
+                        }
                     </style>
 
                     <!-- Diagram Pi Ringkasan -->
                     <div class="row">
                         <div class="col-12 mb-4">
                             <div class="stat-card">
-                                <h6 class="mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Diagram Pi Ringkasan Laporan</h6>
+                                <h6 class="mb-3"></i>{{if eq .TipeLaporan "tahunan"}}Laporan Posisi Keuangan Tahunan{{else}}Laporan Posisi Keuangan Bulanan{{end}}</h6>
                                 <div class="laporan-pie-wrap">
                                     <div id="laporanSummaryLegend" class="laporan-pie-legend"></div>
                                     <div class="laporan-pie-canvas">
@@ -167,7 +170,7 @@
             </div>
 
             <!-- Tabel Rincian Laporan Keuangan - Bulanan -->
-            <div class="row mt-4" id="rincianBulanan" style="display: {{if eq .TipeLaporan "tahunan"}}none{{else}}block{{end}};">
+            <div class="row mt-4" id="rincianBulanan" {{if eq .TipeLaporan "tahunan"}}data-report-initial-hidden="true"{{end}}>
                 <div class="col-12">
                     <div class="mb-2">
                         <h5 class="mb-0 text-info"><i class="fa-solid fa-list"></i> Rincian Laporan Bulanan</h5>
@@ -321,7 +324,7 @@
                 </div>
             </div>
             <!-- Tabel Rincian Laporan Keuangan - Tahunan (5 Tabel) -->
-            <div id="rincianTahunan" style="display: {{if eq .TipeLaporan "tahunan"}}block{{else}}none{{end}};">
+            <div id="rincianTahunan" {{if ne .TipeLaporan "tahunan"}}data-report-initial-hidden="true"{{end}}>
                 <!-- Tabel 1:Daftar Simpanan Anggota -->
                 <div class="row mt-4">
                     <div class="col-12">
@@ -562,7 +565,7 @@
                     <div class="col-12">
                         <div class="card shadow-sm">
                             <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center" id="neracaCardHeader">
-                                <span><i class="fa-solid fa-money-bill-transfer"></i> Neraca Koprasi Simpan Pinjam</span>
+                                <span><i class="fa-solid fa-money-bill-transfer"></i> Neraca Koperasi Simpan Pinjam</span>
                                 <div class="btn-group" id="neracaButtonGroup">
                                 {{ if not .ReadOnlyMode }}
                                 <button class="btn btn-sm btn-primary" id="btnEditNeraca" type="button" onclick="editNeraca()">

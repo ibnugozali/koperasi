@@ -1901,11 +1901,9 @@ func AdminLaporan(c *gin.Context) {
 	}
 
 	// Ambil data neraca dari repository untuk ditampilkan read-only
-	userIDInt := resolveNeracaOwnerID(c)
-
 	db := config.GetDB()
 	neracaRepo := repository.NewNeracaRepository(db)
-	neraca, _ := neracaRepo.GetNeraca(userIDInt)
+	neraca, _ := getNeracaForRequest(c, neracaRepo)
 	var data2024, data2023 map[string]interface{}
 	if neraca != nil {
 		_ = json.Unmarshal([]byte(neraca.Data2024), &data2024)

@@ -630,6 +630,29 @@ func resolveNeracaOwnerID(c *gin.Context) int {
 	return 1
 }
 
+func getNeracaForRequest(c *gin.Context, neracaRepo *repository.NeracaRepository) (*models.Neraca, error) {
+	ownerID := resolveNeracaOwnerID(c)
+	neraca, err := neracaRepo.GetNeraca(ownerID)
+	if err == nil && neraca != nil {
+		return neraca, nil
+	}
+	if err != nil {
+		log.Printf("WARN: gagal ambil neraca owner_id=%d: %v", ownerID, err)
+	}
+
+	latest, latestErr := neracaRepo.GetLatestNeraca()
+	if latestErr != nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, latestErr
+	}
+	if latest != nil && latest.UserID != ownerID {
+		log.Printf("INFO: neraca owner_id=%d tidak ditemukan, pakai neraca terbaru user_id=%d", ownerID, latest.UserID)
+	}
+	return latest, nil
+}
+
 // KetuaDetailAngsuran menampilkan detail angsuran berdasarkan IDAngsuran
 func KetuaDetailAngsuran(c *gin.Context) {
 	idStr := c.Param("id")
@@ -942,12 +965,63 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		}
 	}
 
-	if tipeLaporan == "tahunan" {
-		userIDInt := resolveNeracaOwnerID(c)
+	defaultNeracaFields := map[string][]string{
+		"asetLancar":      {"kas", "bank", "piutangAnggota", "perlengkapan"},
+		"asetTetap":       {"tanah", "bangunan", "kendaraan", "peralatan"},
+		"kewajibanLancar": {"hutangUsaha", "hutangBunga", "simpananAnggota"},
+		"ekuitas":         {"simpananPokok", "simpananWajib", "cadangan", "shuTahunBerjalan"},
+	}
+	defaultNeracaLabels := map[string]string{
+		"kas":              "Kas",
+		"bank":             "Bank",
+		"piutangAnggota":   "Piutang Anggota",
+		"perlengkapan":     "Perlengkapan",
+		"tanah":            "Tanah",
+		"bangunan":         "Bangunan",
+		"kendaraan":        "Kendaraan",
+		"peralatan":        "Peralatan",
+		"hutangUsaha":      "Hutang Usaha",
+		"hutangBunga":      "Hutang Bunga",
+		"simpananAnggota":  "Simpanan Anggota",
+		"simpananPokok":    "Simpanan Pokok",
+		"simpananWajib":    "Simpanan Wajib",
+		"cadangan":         "Cadangan",
+		"shuTahunBerjalan": "SHU Tahun Berjalan",
+	}
+	defaultNeracaNoPerkiraan := map[string]string{
+		"kas":              "1.1.01",
+		"bank":             "1.1.02",
+		"piutangAnggota":   "1.1.03",
+		"perlengkapan":     "1.1.04",
+		"tanah":            "1.2.01",
+		"bangunan":         "1.2.02",
+		"kendaraan":        "1.2.03",
+		"peralatan":        "1.2.04",
+		"hutangUsaha":      "2.1.01",
+		"hutangBunga":      "2.1.02",
+		"simpananAnggota":  "2.1.03",
+		"simpananPokok":    "3.1.01",
+		"simpananWajib":    "3.1.02",
+		"cadangan":         "3.1.03",
+		"shuTahunBerjalan": "3.1.04",
+	}
+	defaultNeracaItems := func(kategori string) []neracaItem {
+		items := []neracaItem{}
+		for _, field := range defaultNeracaFields[kategori] {
+			items = append(items, neracaItem{
+				No:    defaultNeracaNoPerkiraan[field],
+				Label: defaultNeracaLabels[field],
+				V2024: 0,
+				V2023: 0,
+			})
+		}
+		return items
+	}
 
+	if tipeLaporan == "tahunan" {
 		db := config.GetDB()
 		neracaRepo := repository.NewNeracaRepository(db)
-		neraca, err := neracaRepo.GetNeraca(userIDInt)
+		neraca, err := getNeracaForRequest(c, neracaRepo)
 		if err != nil {
 			log.Printf("WARN: gagal ambil neraca untuk download tahunan: %v", err)
 		}
@@ -986,7 +1060,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			defaultLabelMap := map[string]string{
 				"kas":              "Kas",
 				"bank":             "Bank",
-				"piutangAnggota":   "Piutang Anggota USP",
+				"piutangAnggota":   "Piutang Anggota",
 				"perlengkapan":     "Perlengkapan",
 				"tanah":            "Tanah",
 				"bangunan":         "Bangunan",
@@ -1015,10 +1089,18 @@ func KetuaDownloadLaporan(c *gin.Context) {
 						lbl = field
 					}
 					no := strings.TrimSpace(noPerkiraan[field])
+					if no == "" {
+						no = defaultNeracaNoPerkiraan[field]
+					}
 					v24 := toFloat(data2024[field])
 					v23 := toFloat(data2023[field])
+					_, hasData24 := data2024[field]
+					_, hasData23 := data2023[field]
+					_, hasSavedLabel := labels[field]
+					_, hasSavedNo := noPerkiraan[field]
 					hasMeta := strings.TrimSpace(no) != "" || (strings.TrimSpace(labels[field]) != "" && strings.TrimSpace(labels[field]) != defaultLabelMap[field])
-					if v24 == 0 && v23 == 0 && !hasMeta {
+					hasSavedField := hasData24 || hasData23 || hasSavedLabel || hasSavedNo
+					if v24 == 0 && v23 == 0 && !hasMeta && !hasSavedField {
 						continue
 					}
 					items = append(items, neracaItem{
@@ -1095,6 +1177,17 @@ func KetuaDownloadLaporan(c *gin.Context) {
 			// Tetap gunakan format laporan tahunan klasik (ringkasan + rincian anggota)
 			// agar output download sesuai format yang diharapkan.
 			useNeracaSummary = false
+			log.Printf("INFO: neraca download tahunan user_id=%d items asetLancar=%d asetTetap=%d kewajibanLancar=%d ekuitas=%d",
+				neraca.UserID, len(neracaAsetLancar), len(neracaAsetTetap), len(neracaKewajibanLancar), len(neracaEkuitas))
+		} else {
+			log.Printf("INFO: neraca download tahunan tidak menemukan data tersimpan; memakai tabel default")
+		}
+
+		if len(neracaAsetLancar)+len(neracaAsetTetap)+len(neracaKewajibanLancar)+len(neracaEkuitas) == 0 {
+			neracaAsetLancar = defaultNeracaItems("asetLancar")
+			neracaAsetTetap = defaultNeracaItems("asetTetap")
+			neracaKewajibanLancar = defaultNeracaItems("kewajibanLancar")
+			neracaEkuitas = defaultNeracaItems("ekuitas")
 		}
 	}
 
@@ -3415,10 +3508,9 @@ func KetuaLaporan(c *gin.Context) {
 	}
 
 	// Ambil data neraca dari repository
-	userIDInt := resolveNeracaOwnerID(c)
 	db := config.GetDB()
 	neracaRepo := repository.NewNeracaRepository(db)
-	neraca, _ := neracaRepo.GetNeraca(userIDInt)
+	neraca, _ := getNeracaForRequest(c, neracaRepo)
 	var data2024, data2023 map[string]interface{}
 	if neraca != nil {
 		json.Unmarshal([]byte(neraca.Data2024), &data2024)
@@ -3889,9 +3981,7 @@ func KetuaGetNeraca(c *gin.Context) {
 	db := config.GetDB()
 	neracaRepo := repository.NewNeracaRepository(db)
 
-	userIDInt := resolveNeracaOwnerID(c)
-
-	neraca, err := neracaRepo.GetNeraca(userIDInt)
+	neraca, err := getNeracaForRequest(c, neracaRepo)
 	if err != nil {
 		log.Printf("Error getting neraca: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get neraca"})
