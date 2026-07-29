@@ -3,7 +3,6 @@ package main
 import (
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/routes"
-
 )
 
 func main() {
@@ -12,5 +11,5 @@ func main() {
 
 	// Menjalankan router
 	router := routes.SetupRouter()
-	router.Run(":8081")
+	router.Run(":8080")
 }
