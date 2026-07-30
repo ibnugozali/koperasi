@@ -25,7 +25,7 @@ func InitDB() {
 	if err != nil {
 		log.Fatalf("Gagal membuka koneksi ke database: %v", err)
 	}
-	00
+
 	err = db.Ping()
 	if err != nil {
 		log.Fatalf("Gagal terhubung ke database: %v", err)
