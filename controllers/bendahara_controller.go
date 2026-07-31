@@ -80,10 +80,8 @@ func BendaharaViewAnggotaKeluar(c *gin.Context) {
 		}
 	}
 
-	// Samakan dengan halaman profil anggota dan detail ketua:
-	// total simpanan tidak memasukkan simpanan pokok dari pendaftaran.
-	totalSimpanan := simpananByJenis["wajib"] +
-		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"]
+	// Total simpanan detail anggota tidak memasukkan simpanan pokok dan simpanan wajib.
+	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Ambil total pinjaman
@@ -788,6 +786,9 @@ func BendaharaPesan(c *gin.Context) {
 			}
 			anggotaList = append(anggotaList, struct{ ID, Nama string }{id, nama})
 		}
+		if rowsErr := anggotaRows.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca daftar anggota aktif: %v", rowsErr)
+		}
 	} else {
 		log.Printf("[WARN] gagal memuat daftar anggota aktif: %v", err)
 	}
@@ -812,6 +813,9 @@ func BendaharaPesan(c *gin.Context) {
 			pesanList = append(pesanList, struct {
 				Judul, Isi, NamaAnggota, Tanggal string
 			}{judul, isi, nama, tanggal})
+		}
+		if rowsErr := pesanRows.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca daftar pesan bendahara: %v", rowsErr)
 		}
 	} else {
 		log.Printf("[WARN] gagal memuat daftar pesan bendahara: %v", err)
@@ -1163,9 +1167,8 @@ func BendaharaViewAnggota(c *gin.Context) {
 		}
 	}
 
-	// Hitung Total Simpanan dari semua simpanan yang ada
-	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
-		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"]
+	// Total simpanan detail anggota tidak memasukkan simpanan pokok dan simpanan wajib.
+	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Ambil total pinjaman
@@ -1483,6 +1486,9 @@ func BendaharaRiwayat(c *gin.Context) {
 			if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota); err == nil {
 				anggotas = append(anggotas, a)
 			}
+		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca daftar anggota riwayat bendahara: %v", rowsErr)
 		}
 	}
 
@@ -2048,6 +2054,9 @@ func BendaharaLihatDetailSimpanan(c *gin.Context) {
 			}
 			grandTotal += d.JumlahSimpanan
 		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca detail simpanan anggota %s: %v", id, rowsErr)
+		}
 	}
 
 	// Ambil nomor rekening koperasi
@@ -2176,6 +2185,9 @@ func BendaharaViewDetailSimpanan(c *gin.Context) {
 				}
 				grandTotal += jumlah
 			}
+		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca total simpanan anggota %s: %v", d.IDAnggota, rowsErr)
 		}
 	}
 
@@ -2525,6 +2537,9 @@ func ensurePendingAngsuranTerjadwal() {
 		if err := ensureScheduledAngsuranForPinjaman(idPinjaman); err != nil {
 			log.Printf("[WARN] Gagal membuat cicilan pending sinkronisasi untuk pinjaman %d: %v", idPinjaman, err)
 		}
+	}
+	if rowsErr := rows.Err(); rowsErr != nil {
+		log.Printf("[WARN] Gagal membaca daftar pinjaman untuk sinkronisasi cicilan pending: %v", rowsErr)
 	}
 }
 
@@ -4065,6 +4080,9 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 				anggotas = append(anggotas, anggota)
 			}
 		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca daftar anggota transaksi bendahara: %v", rowsErr)
+		}
 	}
 
 	// Ambil data simpanan wajib untuk semua anggota
@@ -4147,6 +4165,9 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 				simpanans = append(simpanans, detail)
 			}
 		}
+		if rowsErr := rowsSimpanan.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca data simpanan transaksi bendahara: %v", rowsErr)
+		}
 	}
 
 	// Reset query params for pinjaman
@@ -4201,6 +4222,9 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 				pinjamans = append(pinjamans, pinjaman)
 			}
 		}
+		if rowsErr := rowsPinjaman.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca data pinjaman transaksi bendahara: %v", rowsErr)
+		}
 	}
 
 	// Reset query params for angsuran
@@ -4252,6 +4276,9 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 			if err == nil {
 				angsurans = append(angsurans, angsuran)
 			}
+		}
+		if rowsErr := rowsAngsuran.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca data angsuran transaksi bendahara: %v", rowsErr)
 		}
 	}
 
@@ -4305,6 +4332,9 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 			if err == nil {
 				pengambilans = append(pengambilans, pengambilan)
 			}
+		}
+		if rowsErr := rowsPengambilan.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca data pengambilan simpanan transaksi bendahara: %v", rowsErr)
 		}
 	}
 
@@ -4766,6 +4796,9 @@ func BendaharaImportPotongGajiExcel(c *gin.Context) {
 			if err := rowsSimpanan.Scan(&id, &jenis); err == nil {
 				idSimpananCache[jenis] = id
 			}
+		}
+		if rowsErr := rowsSimpanan.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca master jenis simpanan: %v", rowsErr)
 		}
 	} else if err != nil {
 		log.Printf("[WARN] gagal memuat master jenis simpanan: %v", err)
@@ -5577,6 +5610,9 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 			}
 			idx++
 		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca urutan angsuran pinjaman %d: %v", angsuran.IDPinjaman, rowsErr)
+		}
 	}
 
 	// Ambil semua angsuran untuk riwayat
@@ -5590,6 +5626,9 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 				continue
 			}
 			angsurans = append(angsurans, a)
+		}
+		if rowsErr := rows2.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca riwayat angsuran pinjaman %d: %v", angsuran.IDPinjaman, rowsErr)
 		}
 
 		// Pastikan riwayat pending tidak menampilkan sisa pinjaman yang sudah kadaluarsa dari jadwal lama.

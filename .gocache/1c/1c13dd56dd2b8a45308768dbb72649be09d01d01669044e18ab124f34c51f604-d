@@ -1,0 +1,11 @@
+./anggota_repository.go
+./bukti_transfer_gaji_repository.go
+./halaman_repository.go
+./import_history_repository.go
+./login_history_repository.go
+./neraca_repository.go
+./pengelola_repository.go
+./pesan_repository.go
+./referensi_pendaftaran_repository.go
+./riwayat_repository.go
+./transaksi_repository.go

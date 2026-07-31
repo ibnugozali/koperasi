@@ -1212,9 +1212,7 @@ func AdminViewAnggota(c *gin.Context) {
 		}
 	}
 
-	totalSimpanan := simpananByJenis["pokok"] + simpananByJenis["wajib"] +
-		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
-		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)

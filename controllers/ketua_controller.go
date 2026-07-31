@@ -712,6 +712,9 @@ func KetuaDetailAngsuran(c *gin.Context) {
 			}
 			idx++
 		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca urutan angsuran pinjaman %d: %v", angsuran.IDPinjaman, rowsErr)
+		}
 	}
 
 	// Ambil semua angsuran untuk riwayat
@@ -725,6 +728,9 @@ func KetuaDetailAngsuran(c *gin.Context) {
 				continue
 			}
 			angsurans = append(angsurans, a)
+		}
+		if rowsErr := rows2.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca riwayat angsuran pinjaman %d: %v", angsuran.IDPinjaman, rowsErr)
 		}
 	}
 
@@ -3327,11 +3333,8 @@ func KetuaViewAnggota(c *gin.Context) {
 		}
 	}
 
-	// Samakan dengan halaman profil anggota:
-	// total simpanan tidak memasukkan simpanan pokok dari pendaftaran.
-	totalSimpanan := simpananByJenis["wajib"] +
-		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
-		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+	// Total simpanan detail anggota tidak memasukkan simpanan pokok dan simpanan wajib.
+	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Ambil total pinjaman
@@ -3405,6 +3408,9 @@ func KetuaRiwayat(c *gin.Context) {
 			if err := rows.Scan(&a.IDAnggota, &a.NamaAnggota); err == nil {
 				anggotas = append(anggotas, a)
 			}
+		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			log.Printf("[WARN] gagal membaca daftar anggota riwayat ketua: %v", rowsErr)
 		}
 	}
 
@@ -4096,6 +4102,10 @@ func KetuaLihatDetailSimpanan(c *gin.Context) {
 			totalQurban += d.JumlahSimpanan
 		}
 		grandTotal += d.JumlahSimpanan
+	}
+	if err := rows.Err(); err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal membaca data simpanan"})
+		return
 	}
 
 	// Ambil nomor rekening koperasi

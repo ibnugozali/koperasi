@@ -31,7 +31,7 @@ func PublicJenisSimpananJSON(c *gin.Context) {
 				})
 			}
 		}
-		if len(jenisList) > 0 {
+		if rows.Err() == nil && len(jenisList) > 0 {
 			c.JSON(200, gin.H{"jenis_simpanan": jenisList})
 			return
 		}

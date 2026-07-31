@@ -272,12 +272,12 @@ func GetAnggotaByStatus(status string) ([]models.Anggota, error) {
 	return anggotas, nil
 }
 
-// Mengambil semua anggota dengan status pending
+// Mengambil semua anggota dengan status pending yang sudah masuk tahap ketua.
 func GetPendingAnggota() ([]models.Anggota, error) {
 	db := config.GetDB() // Fungsi untuk mendapatkan koneksi DB
 	var anggotas []models.Anggota
 
-	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, no_telepon, tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, '') FROM anggota WHERE status IN ('pending', 'pending_bendahara') ORDER BY LPAD(nomor_urut, 4, '0') DESC")
+	rows, err := db.Query("SELECT id_anggota, nama_anggota, username, no_telepon, tgl_gabung, unit_kerja, fakultas_code, COALESCE(fakultas, '') FROM anggota WHERE status = 'pending' ORDER BY LPAD(nomor_urut, 4, '0') DESC")
 	if err != nil {
 		return nil, err
 	}

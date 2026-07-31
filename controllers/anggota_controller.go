@@ -478,6 +478,22 @@ func buildProfilSimpananRows(simpananByJenis map[string]float64) []profilSimpana
 	return rows
 }
 
+func totalSimpananTanpaPokokWajib(simpananByJenis map[string]float64) float64 {
+	total := 0.0
+	for jenis, jumlah := range simpananByJenis {
+		normalized := strings.ToLower(strings.TrimSpace(jenis))
+		normalized = strings.ReplaceAll(normalized, " ", "_")
+		normalized = strings.ReplaceAll(normalized, "-", "_")
+		switch normalized {
+		case "pokok", "simpanan_pokok", "wajib", "simpanan_wajib":
+			continue
+		default:
+			total += jumlah
+		}
+	}
+	return total
+}
+
 // Fungsi untuk menggabungkan seluruh pinjaman aktif/proses menjadi satu resume gabungan
 func getResumePinjamanGabungan(userID string, includeProses bool) *resumePinjamanInfo {
 	// Prioritaskan pinjaman proses jika ada
@@ -809,6 +825,9 @@ func hydrateCustomSimpananValuesToLaporanDetail(laporanDetail []map[string]inter
 			byAnggotaJenis[idAnggota] = map[string]nilai{}
 		}
 		byAnggotaJenis[idAnggota][jenis] = nilai{Bulanan: bulanan, Total: total}
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("[WARN] gagal membaca total simpanan custom: %v", err)
 	}
 
 	for i := range laporanDetail {
@@ -1214,10 +1233,8 @@ func AnggotaProfil(c *gin.Context) {
 		}
 	}
 
-	// Hitung Total Simpanan (tidak termasuk Simpanan Pokok karena dibayar saat pendaftaran)
-	totalSimpanan := simpananByJenis["wajib"] +
-		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
-		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+	// Total simpanan profil tidak memasukkan simpanan pokok dan simpanan wajib.
+	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
 
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
@@ -2861,6 +2878,10 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 			js.Label = formatJenisLabel(js.Jenis)
 			jenisSimpananList = append(jenisSimpananList, js)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal membaca data jenis simpanan"})
+		return
 	}
 
 	// Cari logo terbaru di static/images
