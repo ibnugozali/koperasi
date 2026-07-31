@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"koperasi-simpan-pinjam/controllers"
+	"koperasi-simpan-pinjam/middleware"
 	"net/http"
 	"strings"
 	"time"
@@ -11,9 +13,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-
-	"koperasi-simpan-pinjam/controllers"
-	"koperasi-simpan-pinjam/middleware"
 )
 
 func SetupRouter() *gin.Engine {
@@ -30,7 +29,19 @@ func SetupRouter() *gin.Engine {
 	router.SetTrustedProxies([]string{"127.0.0.1", "::1"})
 
 	// 1. Setup session middleware
+
+	//store := cookie.NewStore([]byte("kuncirahasia-anda-yang-aman"))
+	//router.Use(sessions.Sessions("koperasisession", store))
 	store := cookie.NewStore([]byte("kuncirahasia-anda-yang-aman"))
+
+	store.Options(sessions.Options{
+		MaxAge:   86400 * 7, // 7 hari
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
 	router.Use(sessions.Sessions("koperasisession", store))
 
 	// 2. Middleware untuk disable cache pada static files
