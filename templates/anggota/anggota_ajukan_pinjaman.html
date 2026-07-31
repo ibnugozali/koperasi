@@ -567,7 +567,7 @@ function calculateAngsuran() {
         if (jenisAnggota === 'Dosen/Tenaga Pendidikan' && gajiBulanan > 0 && jangkaWaktu > 0) {
             const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
             if (jumlahPinjaman > kemampuanBayar) {
-                limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor).';
+                limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal';
                 limitWarning.style.color = 'red';
             } else if (jumlahPinjaman > 0) {
                 limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';
@@ -577,7 +577,7 @@ function calculateAngsuran() {
             }
         } else if (jenisAnggota === 'Mahasiswa' && limitPinjaman > 0) {
             if (jumlahPinjaman > limitPinjaman) {
-                limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan).';
+                limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal';
                 limitWarning.style.color = 'red';
             } else if (jumlahPinjaman > 0) {
                 limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';

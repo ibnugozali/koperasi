@@ -36,6 +36,9 @@ func GetConfirmedSimpanan() ([]models.Detail, error) {
 		}
 		details = append(details, d)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return details, nil
 }
 
@@ -64,6 +67,9 @@ func GetConfirmedAngsuran() ([]models.Angsuran, error) {
 		}
 		angsurans = append(angsurans, a)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return angsurans, nil
 }
 
@@ -89,6 +95,9 @@ func GetPinjamanAktifByAnggota(idAnggota string) ([]models.Pinjaman, error) {
 		}
 		pinjamans = append(pinjamans, p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return pinjamans, nil
 }
 
@@ -112,6 +121,9 @@ func GetRiwayatTotalSimpananPerHari(db *sql.DB) ([]map[string]interface{}, error
 			"Jumlah":  total,
 		})
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return riwayat, nil
 }
 
@@ -134,6 +146,9 @@ func GetRiwayatTotalPinjamanPerHari(db *sql.DB) ([]map[string]interface{}, error
 			"Tanggal": tanggal,
 			"Jumlah":  total,
 		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return riwayat, nil
 }
@@ -299,6 +314,9 @@ func GetAllSimpanan() ([]models.Simpanan, error) {
 		}
 		simpanans = append(simpanans, s)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return simpanans, nil
 }
 
@@ -455,6 +473,9 @@ func GetPendingPinjaman() ([]models.Pinjaman, error) {
 		p.Bunga = currentBunga
 		pinjamans = append(pinjamans, p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return pinjamans, nil
 }
 
@@ -491,6 +512,9 @@ func GetPendingPinjamanForBendahara() ([]models.Pinjaman, error) {
 		p.Bunga = currentBunga
 		pinjamans = append(pinjamans, p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return pinjamans, nil
 }
 
@@ -518,6 +542,9 @@ func GetPendingSimpanan() ([]models.Detail, error) {
 			return nil, err
 		}
 		details = append(details, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return details, nil
 }
@@ -552,6 +579,9 @@ func GetPendingAngsuran() ([]models.Angsuran, error) {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return angsurans, nil
 }
@@ -663,6 +693,9 @@ func GetAngsuranTerlambat() ([]map[string]interface{}, error) {
 		}
 		terlambats = append(terlambats, terlambat)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return terlambats, nil
 }
 
@@ -690,6 +723,9 @@ func GetAllDetails() ([]models.Detail, error) {
 		}
 		details = append(details, d)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return details, nil
 }
 
@@ -715,6 +751,9 @@ func GetAllPinjamans() ([]models.Pinjaman, error) {
 			return nil, err
 		}
 		pinjamans = append(pinjamans, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return pinjamans, nil
 }
@@ -742,6 +781,9 @@ func GetAllAngsurans() ([]models.Angsuran, error) {
 			return nil, err
 		}
 		angsurans = append(angsurans, ang)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return angsurans, nil
 }
@@ -796,6 +838,9 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 		r.SisaGaji = r.GajiBulanan - potongan
 		riwayats = append(riwayats, r)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	// Pinjaman
 	queryPinjaman := `
@@ -821,6 +866,9 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 		r.SisaGaji = r.GajiBulanan - potongan
 		riwayats = append(riwayats, r)
 	}
+	if err := rows2.Err(); err != nil {
+		return nil, err
+	}
 
 	// Angsuran
 	queryAngsuran := `
@@ -844,6 +892,9 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 		potongan := int(potonganBulanIni[r.IDAnggota])
 		r.SisaGaji = r.GajiBulanan - potongan
 		riwayats = append(riwayats, r)
+	}
+	if err := rows3.Err(); err != nil {
+		return nil, err
 	}
 
 	// Pengambilan Simpanan
@@ -869,6 +920,9 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 		potongan := int(potonganBulanIni[r.IDAnggota])
 		r.SisaGaji = r.GajiBulanan - potongan
 		riwayats = append(riwayats, r)
+	}
+	if err := rows4.Err(); err != nil {
+		return nil, err
 	}
 
 	// Anggota aktif (untuk menampilkan semua anggota di laporan)
@@ -925,6 +979,9 @@ func GetAllRiwayat() ([]models.Riwayat, error) {
 			GajiBulanan: gajiBulanan,
 			SisaGaji:    sisaGaji,
 		})
+	}
+	if err := rows5.Err(); err != nil {
+		return nil, err
 	}
 	// Filter: untuk setiap anggota, jika ada lebih dari satu transaksi Pendaftaran, ambil yang nominalnya paling besar
 	filtered := make([]models.Riwayat, 0, len(riwayats))
@@ -1000,6 +1057,9 @@ func GetTotalSimpanan(db *sql.DB) (float64, error) {
 				wajib = nominalSimpananWajib
 			}
 			totalWajib += wajib
+		}
+		if err := rows.Err(); err != nil {
+			return 0, err
 		}
 	} else {
 		for _, wajib := range simpananWajibMap {
@@ -1089,6 +1149,9 @@ func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
 			"Jumlah":  jumlah,
 		})
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	// Pinjaman terbaru
 	queryPinjaman := `
@@ -1117,6 +1180,9 @@ func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
 			"Jumlah":  jumlah,
 		})
 	}
+	if err := rows2.Err(); err != nil {
+		return nil, err
+	}
 
 	// Angsuran terbaru
 	queryAngsuran := `
@@ -1144,6 +1210,9 @@ func GetAktivitasTerbaru(db *sql.DB) ([]map[string]interface{}, error) {
 			"Jenis":   jenis,
 			"Jumlah":  jumlah,
 		})
+	}
+	if err := rows3.Err(); err != nil {
+		return nil, err
 	}
 
 	return aktivitas, nil
@@ -1191,6 +1260,9 @@ func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 			return nil, err
 		}
 		pinjamans = append(pinjamans, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return pinjamans, nil
 }
@@ -1240,6 +1312,9 @@ func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
 		}
 		angsurans = append(angsurans, a)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return angsurans, nil
 }
 
@@ -1266,6 +1341,9 @@ func GetPendingSimpananByCriteria(idAnggota string, idSimpanan int, jumlah float
 			return nil, err
 		}
 		details = append(details, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return details, nil
 }
@@ -1299,6 +1377,9 @@ func GetPendingAngsuranByCriteria(idAnggota string, idPinjaman int, jumlah float
 		}
 		angsurans = append(angsurans, a)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return angsurans, nil
 }
 
@@ -1331,6 +1412,9 @@ func GetPendingAngsuranByPinjamanAndAnggota(idAnggota string, idPinjaman int) ([
 		}
 		angsurans = append(angsurans, a)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return angsurans, nil
 }
 
@@ -1362,6 +1446,9 @@ func GetPendingPengambilanSimpanan() ([]models.PengambilanSimpanan, error) {
 			return nil, err
 		}
 		pengambilans = append(pengambilans, ps)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return pengambilans, nil
 }
@@ -1396,6 +1483,9 @@ func GetRiwayatPengambilanSimpananByAnggotaID(idAnggota string, search string) (
 			return nil, err
 		}
 		pengambilans = append(pengambilans, ps)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return pengambilans, nil
 }
@@ -1663,6 +1753,9 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 		report["kontribusi_simpanan_shu"] = simpananPokok + totalSimpananWajib + totalSimpananHariRaya + totalSimpananSukarela + totalSimpananLainnya
 
 		reports = append(reports, report)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	// Hitung distribusi SHU:

@@ -101,6 +101,9 @@ func GetAllImportHistory(db *sql.DB, idPengelola int, limit int) ([]models.Impor
 		}
 		histories = append(histories, history)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return histories, nil
 }

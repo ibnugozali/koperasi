@@ -138,7 +138,7 @@ import (
 
 func isAngsuranTerbayar(status string) bool {
 	s := strings.ToLower(strings.TrimSpace(status))
-	return s == "confirmed" || s == "lunas" || s == "diterima"
+	return s == "lunas" || s == "diterima" || s == "valid"
 }
 
 type pinjamanAngsuranInfo struct {
@@ -151,6 +151,17 @@ type profilSimpananRow struct {
 	Key    string
 	Label  string
 	Amount float64
+}
+
+type pinjamanProfilRow struct {
+	ID          int
+	Label       string
+	Tanggal     time.Time
+	Status      string
+	StatusLabel string
+	BadgeClass  string
+	Jumlah      float64
+	Sisa        float64
 }
 
 type resumePinjamanInfo struct {
@@ -933,43 +944,81 @@ func getTotalAngsuranAktif(pinjamans []models.Pinjaman) (float64, float64, error
 	return totalPinjaman, totalSisaPinjaman, nil
 }
 
+func isPinjamanProfilRelevant(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "aktif", "proses", "diterima", "confirmed", "pending":
+		return true
+	default:
+		return false
+	}
+}
+
+func isAngsuranProfilTerbayar(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "diterima", "lunas", "valid":
+		return true
+	default:
+		return false
+	}
+}
+
+func getPinjamanProfileStatusLabel(status string) (string, string) {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "aktif":
+		return "Aktif", "success"
+	case "proses", "pending":
+		return "Proses", "warning"
+	case "diterima", "confirmed", "valid":
+		return "Diterima", "info"
+	case "lunas":
+		return "Lunas", "primary"
+	case "rejected", "gagal", "invalid":
+		return "Ditolak", "danger"
+	default:
+		return strings.ToUpper(strings.TrimSpace(status)), "secondary"
+	}
+}
+
+func hitungSisaPinjamanProfil(p models.Pinjaman) float64 {
+	if p.JumlahPinjaman <= 0 {
+		return 0
+	}
+
+	angsuranList, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+	if err != nil || len(angsuranList) == 0 {
+		return p.JumlahPinjaman
+	}
+
+	for _, a := range angsuranList {
+		if isAngsuranProfilTerbayar(a.Status) {
+			if a.SisaPinjaman < 0 {
+				return 0
+			}
+			return a.SisaPinjaman
+		}
+	}
+
+	return p.JumlahPinjaman
+}
+
 func getRingkasanPinjamanAktifByAnggotaID(idAnggota string) (float64, float64, error) {
-	db := config.GetDB()
+	pinjamans, err := repository.GetRiwayatPinjamanByAnggotaID(idAnggota, "")
+	if err != nil {
+		return 0, 0, err
+	}
 
 	var totalPinjamanAktif float64
-	queryTotal := `
-		SELECT COALESCE(SUM(jumlah_pinjaman), 0)
-		FROM pinjaman
-		WHERE id_anggota = $1 AND status = 'aktif'
-	`
-	if err := db.QueryRow(queryTotal, idAnggota).Scan(&totalPinjamanAktif); err != nil {
-		return 0, 0, err
-	}
-
-	// Ambil sisa pokok berdasarkan angsuran (sisa_pinjaman) terbaru per pinjaman.
-	// Ini memastikan nilai "Sisa Pinjaman (Pokok)" tidak terpengaruh bunga/total angsuran,
-	// dan hanya berkurang saat sisa_pinjaman pada angsuran benar-benar sudah terealisasi/terkonfirmasi.
 	var totalSisa float64
-	querySisaPokok := `
-		SELECT COALESCE(SUM(latest.sisa_pinjaman), 0)
-		FROM (
-			SELECT DISTINCT ON (a.id_pinjaman)
-			       a.id_pinjaman,
-			       COALESCE(a.sisa_pinjaman, 0) AS sisa_pinjaman
-			FROM angsuran a
-			JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
-			WHERE p.id_anggota = $1
-			  AND p.status = 'aktif'
-			  AND COALESCE(LOWER(a.status), '') IN ('confirmed', 'lunas', 'diterima')
-			ORDER BY a.id_pinjaman, a.tgl_bayar DESC, a.id_angsuran DESC
-		) AS latest
-	`
-	if err := db.QueryRow(querySisaPokok, idAnggota).Scan(&totalSisa); err != nil {
-		return 0, 0, err
-	}
-
-	if totalSisa < 0 {
-		totalSisa = 0
+	for _, p := range pinjamans {
+		if !isPinjamanProfilRelevant(p.Status) {
+			continue
+		}
+		totalPinjamanAktif += p.JumlahPinjaman
+		sisa := hitungSisaPinjamanProfil(p)
+		if sisa < 0 {
+			sisa = 0
+		}
+		totalSisa += sisa
 	}
 
 	return totalPinjamanAktif, totalSisa, nil
@@ -1239,10 +1288,33 @@ func AnggotaProfil(c *gin.Context) {
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Tampilkan sisa pinjaman aktif yang sudah dikurangi angsuran terbayar.
-	// Pengajuan yang masih status "proses" belum boleh muncul di ringkasan ini.
+	// Pengajuan yang masih status "proses" ikut dimasukkan agar profil anggota
+	// menampilkan data pinjaman yang sedang berjalan.
 	_, totalPinjaman, err := getRingkasanPinjamanAktifByAnggotaID(userID)
 	if err != nil {
 		totalPinjaman = 0
+	}
+
+	pinjamans, err := repository.GetRiwayatPinjamanByAnggotaID(userID, "")
+	if err != nil {
+		pinjamans = []models.Pinjaman{}
+	}
+	pinjamanRows := make([]pinjamanProfilRow, 0, len(pinjamans))
+	for _, p := range pinjamans {
+		if !isPinjamanProfilRelevant(p.Status) {
+			continue
+		}
+		statusLabel, badgeClass := getPinjamanProfileStatusLabel(p.Status)
+		pinjamanRows = append(pinjamanRows, pinjamanProfilRow{
+			ID:          p.IDPinjaman,
+			Label:       fmt.Sprintf("Pinjaman #%d", p.IDPinjaman),
+			Tanggal:     p.TglPinjaman,
+			Status:      p.Status,
+			StatusLabel: statusLabel,
+			BadgeClass:  badgeClass,
+			Jumlah:      p.JumlahPinjaman,
+			Sisa:        hitungSisaPinjamanProfil(p),
+		})
 	}
 
 	// Cari logo terbaru di static/images
@@ -1274,6 +1346,7 @@ func AnggotaProfil(c *gin.Context) {
 		"TotalSimpanan":      totalSimpanan,
 		"TotalPinjaman":      totalPinjaman,
 		"ProfilSimpananRows": profilSimpananRows,
+		"PinjamanRows":       pinjamanRows,
 		"SimpananPokok":      simpananByJenis["pokok"],
 		"SimpananWajib":      simpananByJenis["wajib"],
 		"SimpananSukarela":   simpananByJenis["sukarela"],
@@ -1878,11 +1951,8 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	// Hitung limit pinjaman berdasarkan jenis anggota
 	var limitPinjaman float64
-	var jenisAnggota string
-
 	switch anggota.UnitKerja {
 	case "03": // Mahasiswa
-		jenisAnggota = "Mahasiswa"
 		// Mahasiswa hanya bisa pinjam jika memiliki simpanan
 		if totalSimpanan <= 0 {
 			redirectAjukanPinjamanError(c, "Mahasiswa tidak dapat mengajukan pinjaman karena belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu.")
@@ -1890,7 +1960,6 @@ func AjukanPinjamanPost(c *gin.Context) {
 		}
 		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
 	case "01", "02": // Dosen (01) atau Tenaga Pendidikan (02)
-		jenisAnggota = "Dosen/Tenaga Pendidikan"
 		// Ambil gaji dari form
 		gajiStr := c.PostForm("gaji_bulanan")
 		if gajiStr == "" {
@@ -1925,7 +1994,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 	}
 
 	if pinjaman.JumlahPinjaman > maxLimit {
-		redirectAjukanPinjamanError(c, fmt.Sprintf("Jumlah pinjaman melebihi limit maksimal Rp %.0f untuk %s (berdasarkan kemampuan bayar).", maxLimit, jenisAnggota))
+		redirectAjukanPinjamanError(c, "Jumlah pinjaman melebihi limit maksimal")
 		return
 	}
 

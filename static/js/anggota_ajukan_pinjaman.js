@@ -149,7 +149,7 @@ function calculateAngsuran() {
     const limitWarning = document.getElementById('limit_warning');
     if (limitWarning) {
         if (jumlahPinjaman > kemampuanBayar && kemampuanBayar > 0) {
-            limitWarning.textContent = '⚠️ Jumlah pinjaman melebihi limit maksimal Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (berdasarkan kemampuan bayar)';
+            limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal';
             limitWarning.style.color = 'red';
         } else if (kemampuanBayar > 0) {
             limitWarning.textContent = '✓ Jumlah pinjaman dalam batas limit';

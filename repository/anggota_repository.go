@@ -196,6 +196,9 @@ func GetRiwayatTotalAnggotaPerHari(db *sql.DB) ([]map[string]interface{}, error)
 			"Jumlah":  total,
 		})
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return riwayat, nil
 }
 
@@ -290,6 +293,9 @@ func GetPendingAnggota() ([]models.Anggota, error) {
 		}
 		anggotas = append(anggotas, a)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return anggotas, nil
 }
@@ -376,6 +382,9 @@ func GetPendingAnggotaKeluar() ([]models.Anggota, error) {
 			return nil, err
 		}
 		anggotas = append(anggotas, a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return anggotas, nil
@@ -627,6 +636,9 @@ func GetAllAnggota() ([]models.Anggota, error) {
 		}
 		anggotas = append(anggotas, a)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return anggotas, nil
 }
@@ -719,6 +731,9 @@ func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float
 		}
 		totalSisaPinjaman += sisaPinjaman
 	}
+	if err := rows.Err(); err != nil {
+		return totalSimpanan, totalSisaPinjaman, totalSimpanan - totalSisaPinjaman, err
+	}
 	saldoBersih = totalSimpanan - totalSisaPinjaman
 
 	return totalSimpanan, totalSisaPinjaman, saldoBersih, nil
@@ -810,6 +825,9 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 			}
 			simpananByJenis[jenis] = total
 		}
+		if err := rows.Err(); err != nil {
+			return simpananByJenis, err
+		}
 	}
 
 	// Kurangi dengan pengambilan simpanan yang disetujui
@@ -839,6 +857,9 @@ func GetDetailSimpananByJenis(id string) (map[string]float64, error) {
 					simpananByJenis[jenis] = 0
 				}
 			}
+		}
+		if err := rowsPengambilan.Err(); err != nil {
+			return simpananByJenis, err
 		}
 	}
 
@@ -875,6 +896,9 @@ func GetSimpananWajibAllAnggota() (map[string]float64, error) {
 			}
 			simpananWajib[idAnggota] = totalSimpanan
 		}
+		if err := rows.Err(); err != nil {
+			return simpananWajib, err
+		}
 	}
 
 	// Tambahkan simpanan wajib dari detail (konfirmasi manual oleh bendahara/ketua)
@@ -908,6 +932,9 @@ func GetSimpananWajibAllAnggota() (map[string]float64, error) {
 			}
 			// Tambahkan ke total yang sudah ada dari log
 			simpananWajib[idAnggota] += totalSimpananDetail
+		}
+		if err := rows2.Err(); err != nil {
+			return simpananWajib, err
 		}
 	}
 
@@ -943,6 +970,9 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 				continue
 			}
 			potonganBulanIni[idAnggota] += jumlahPotong
+		}
+		if err := rows.Err(); err != nil {
+			return potonganBulanIni, err
 		}
 	}
 
@@ -1005,6 +1035,9 @@ func GetPotonganBulanIniAllAnggota() (map[string]float64, error) {
 			}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return potonganBulanIni, err
+	}
 
 	return potonganBulanIni, nil
 }
@@ -1047,6 +1080,9 @@ func GetPotonganRegisterPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 		}
 		potonganRegister[idAnggota] += jumlahPotong
 	}
+	if err := rows.Err(); err != nil {
+		return potonganRegister, err
+	}
 
 	return potonganRegister, nil
 }
@@ -1086,6 +1122,9 @@ func GetPotonganSimpananPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 			continue
 		}
 		potonganSimpanan[idAnggota] += jumlahPotong
+	}
+	if err := rows.Err(); err != nil {
+		return potonganSimpanan, err
 	}
 
 	return potonganSimpanan, nil
@@ -1127,6 +1166,9 @@ func GetPotonganSimpananWajibPotongGajiBulanIniAllAnggota() (map[string]float64,
 		}
 		potonganWajib[idAnggota] += jumlahPotong
 	}
+	if err := rows.Err(); err != nil {
+		return potonganWajib, err
+	}
 
 	return potonganWajib, nil
 }
@@ -1167,6 +1209,9 @@ func GetPotonganAngsuranPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 		}
 		potonganAngsuran[idAnggota] += jumlahPotong
 	}
+	if err := rows.Err(); err != nil {
+		return potonganAngsuran, err
+	}
 
 	fallbackQuery := `
 		SELECT p.id_anggota,
@@ -1198,6 +1243,9 @@ func GetPotonganAngsuranPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 			continue
 		}
 		potonganAngsuran[idAnggota] += jumlahPotong
+	}
+	if err := rowsFallback.Err(); err != nil {
+		return potonganAngsuran, err
 	}
 
 	return potonganAngsuran, nil

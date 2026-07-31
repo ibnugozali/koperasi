@@ -41,6 +41,9 @@ func GetRiwayatSimpananByAnggotaID(id string, search string) ([]models.Detail, e
 		d.Simpanan = s
 		details = append(details, d)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return details, nil
 }
 
@@ -70,6 +73,9 @@ func GetRiwayatPinjamanByAnggotaID(id string, search string) ([]models.Pinjaman,
 			return nil, err
 		}
 		pinjamans = append(pinjamans, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return pinjamans, nil
 }
@@ -106,6 +112,9 @@ func GetRiwayatAngsuranByAnggotaID(id string, search string) ([]models.Angsuran,
 			return nil, err
 		}
 		angsurans = append(angsurans, a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return angsurans, nil
 }
@@ -151,6 +160,9 @@ func GetRiwayatTransaksiByAnggotaID(id string) ([]models.Riwayat, error) {
 			return nil, err
 		}
 		riwayats = append(riwayats, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return riwayats, nil
 }

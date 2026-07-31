@@ -30,6 +30,9 @@ func GetAllHalaman() ([]models.Halaman, error) {
 		}
 		allHalaman = append(allHalaman, h)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return allHalaman, nil
 }
 

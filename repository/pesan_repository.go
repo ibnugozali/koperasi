@@ -30,6 +30,9 @@ func GetPesanByAnggotaID(idAnggota string) ([]models.Pesan, error) {
 		}
 		pesans = append(pesans, p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return pesans, nil
 }

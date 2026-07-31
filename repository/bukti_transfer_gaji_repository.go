@@ -98,5 +98,8 @@ func GetAllBuktiTransferGaji() ([]models.BuktiTransferGaji, error) {
 		}
 		buktiList = append(buktiList, bukti)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return buktiList, nil
 }

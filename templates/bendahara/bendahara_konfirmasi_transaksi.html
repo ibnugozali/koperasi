@@ -605,8 +605,11 @@
                                     <input type="text" class="form-control" id="idAnggotaCicilan" name="id_anggota" required>
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label">Jenis Cicilan</label>
-                                    <input type="text" class="form-control" value="Tunai" readonly>
+                                    <label class="form-label">Pilih Pinjaman</label>
+                                    <select class="form-select" id="jenisCicilanSelect" required>
+                                        <option value="">Pilih pinjaman...</option>
+                                    </select>
+                                    <small class="text-muted">Pilih pinjaman yang benar jika anggota memiliki lebih dari satu pinjaman aktif.</small>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Info Pinjaman</label>
@@ -669,6 +672,7 @@
         var idAnggotaCicilanInput = document.getElementById('idAnggotaCicilan');
         var jumlahCicilanInput = document.getElementById('jumlahCicilanInput');
         var idPinjamanHidden = document.getElementById('idPinjamanHidden');
+        var jenisCicilanSelect = document.getElementById('jenisCicilanSelect');
         var infoPinjamanDisplay = document.getElementById('infoPinjamanDisplay');
         var pinjamanWarning = document.getElementById('pinjamanWarning');
         var submitCicilanBtn = document.getElementById('submitCicilanBtn');
@@ -678,6 +682,7 @@
         var warningText = document.getElementById('warningText');
         
         let selectedLoan = null;
+        let loanOptions = [];
 
         function rupiahCeil(value) {
             value = Number(value) || 0;
@@ -705,6 +710,10 @@
                 validasiJumlahText.style.display = 'none';
                 idPinjamanHidden.value = '';
                 selectedLoan = null;
+                loanOptions = [];
+                if (jenisCicilanSelect) {
+                    jenisCicilanSelect.innerHTML = '<option value="">Pilih pinjaman...</option>';
+                }
                 jumlahCicilanInput.value = '';
                 submitCicilanBtn.disabled = true;
                 
@@ -712,13 +721,25 @@
                     fetch('/api/jenis-angsuran?id_anggota=' + encodeURIComponent(idAnggota))
                         .then(res => res.json())
                         .then(data => {
-                            if (data && Array.isArray(data.jenis_angsuran) && data.jenis_angsuran.length > 0) {
-                                // Jika ada 1 pinjaman aktif, auto-select
-                                if (data.jenis_angsuran.length === 1) {
-                                    selectedLoan = data.jenis_angsuran[0];
+                            loanOptions = data && Array.isArray(data.jenis_angsuran) ? data.jenis_angsuran : [];
+                            if (loanOptions.length > 0) {
+                                if (jenisCicilanSelect) {
+                                    jenisCicilanSelect.innerHTML = '<option value="">Pilih pinjaman...</option>';
+                                    loanOptions.forEach(function(loan) {
+                                        var option = document.createElement('option');
+                                        option.value = loan.key;
+                                        option.textContent = loan.nama + ' • Sisa: Rp ' + new Intl.NumberFormat('id-ID').format(getSisaPinjamanRupiah(loan));
+                                        jenisCicilanSelect.appendChild(option);
+                                    });
+                                }
+                                
+                                if (loanOptions.length === 1) {
+                                    selectedLoan = loanOptions[0];
                                     idPinjamanHidden.value = selectedLoan.key;
+                                    if (jenisCicilanSelect) {
+                                        jenisCicilanSelect.value = selectedLoan.key;
+                                    }
                                     
-                                    // Tampilkan info pinjaman
                                     var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
                                     var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
                                     
@@ -729,22 +750,10 @@
                                     
                                     submitCicilanBtn.disabled = false;
                                 } else {
-                                    // Jika ada lebih dari 1 pinjaman aktif, tampilkan warning
-                                    warningText.textContent = `⚠️ Anggota ini memiliki ${data.jenis_angsuran.length} pinjaman aktif. Sistem menggunakan pinjaman pertama. Hubungi admin jika perlu detail spesifik.`;
+                                    warningText.textContent = `⚠️ Anggota ini memiliki ${loanOptions.length} pinjaman aktif. Pilih pinjaman yang benar sebelum menyimpan cicilan.`;
                                     pinjamanWarning.style.display = 'block';
-                                    
-                                    // Gunakan pinjaman pertama
-                                    selectedLoan = data.jenis_angsuran[0];
-                                    idPinjamanHidden.value = selectedLoan.key;
-                                    
-                                    var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
-                                    var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
-                                    
-                                    minCicilanText.textContent = `Cicilan Minimum: Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
-                                    sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
-                                    infoPinjamanDisplay.style.display = 'block';
-                                    
-                                    submitCicilanBtn.disabled = false;
+                                    infoPinjamanDisplay.style.display = 'none';
+                                    submitCicilanBtn.disabled = true;
                                 }
                             } else {
                                 warningText.textContent = `⚠️ Anggota ${idAnggota} tidak memiliki pinjaman aktif.`;
@@ -761,6 +770,41 @@
                 } else {
                     submitCicilanBtn.disabled = true;
                 }
+            });
+        }
+        
+        if (jenisCicilanSelect) {
+            jenisCicilanSelect.addEventListener('change', function() {
+                var selectedKey = jenisCicilanSelect.value;
+                selectedLoan = null;
+                idPinjamanHidden.value = '';
+                validasiJumlahText.style.display = 'none';
+                submitCicilanBtn.disabled = true;
+                infoPinjamanDisplay.style.display = 'none';
+                pinjamanWarning.style.display = 'none';
+
+                if (!selectedKey) {
+                    return;
+                }
+
+                for (var i = 0; i < loanOptions.length; i++) {
+                    if (String(loanOptions[i].key) === String(selectedKey)) {
+                        selectedLoan = loanOptions[i];
+                        break;
+                    }
+                }
+
+                if (!selectedLoan) {
+                    return;
+                }
+
+                idPinjamanHidden.value = selectedLoan.key;
+                var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
+                var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
+                minCicilanText.textContent = `Cicilan Minimum: Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
+                sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
+                infoPinjamanDisplay.style.display = 'block';
+                submitCicilanBtn.disabled = false;
             });
         }
         
