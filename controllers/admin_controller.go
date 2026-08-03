@@ -2094,11 +2094,16 @@ func AdminSaveWAGatewayConfig(c *gin.Context) {
 		`, key, value)
 		return err
 	}
-
 	if err := upsert("wa_gateway_token", token); err != nil {
+		log.Println("ERROR SIMPAN TOKEN WA:", err)
 		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan token WA")
 		return
 	}
+
+	// if err := upsert("wa_gateway_token", token); err != nil {
+	// 	c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan token WA")
+	// 	return
+	// }
 	if err := upsert("wa_gateway_url", waURLInput); err != nil {
 		c.Redirect(http.StatusFound, "/admin/pengaturan?wa_error=Gagal menyimpan URL gateway WA")
 		return
