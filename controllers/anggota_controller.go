@@ -1851,6 +1851,28 @@ func isNaturalNumberInput(value string) bool {
 	return true
 }
 
+func calculatePinjamanLimit(unitKerja string, totalSimpanan float64, gajiBulanan float64, tenor int) float64 {
+	switch unitKerja {
+	case "03":
+		return 5 * totalSimpanan
+	case "01", "02":
+		if gajiBulanan <= 0 || tenor <= 0 {
+			return 0
+		}
+		return 0.4 * gajiBulanan * float64(tenor)
+	default:
+		return 0
+	}
+}
+
+func isJumlahPinjamanWithinLimit(jumlahPinjaman float64, unitKerja string, totalSimpanan float64, gajiBulanan float64, tenor int) bool {
+	limit := calculatePinjamanLimit(unitKerja, totalSimpanan, gajiBulanan, tenor)
+	if limit <= 0 {
+		return false
+	}
+	return jumlahPinjaman <= limit
+}
+
 // AjukanPinjamanPost memproses pengajuan pinjaman
 func AjukanPinjamanPost(c *gin.Context) {
 	session := sessions.Default(c)
@@ -1987,50 +2009,34 @@ func AjukanPinjamanPost(c *gin.Context) {
 	}
 
 	// Hitung limit pinjaman berdasarkan jenis anggota
-	var limitPinjaman float64
+	gajiStr := strings.TrimSpace(c.PostForm("gaji_bulanan"))
+	var gajiBulanan float64
+	if gajiStr != "" {
+		if _, err := fmt.Sscanf(gajiStr, "%f", &gajiBulanan); err != nil {
+			redirectAjukanPinjamanError(c, "Format gaji tidak valid.")
+			return
+		}
+	}
+
 	switch anggota.UnitKerja {
 	case "03": // Mahasiswa
-		// Mahasiswa hanya bisa pinjam jika memiliki simpanan
 		if totalSimpanan <= 0 {
 			redirectAjukanPinjamanError(c, "Mahasiswa tidak dapat mengajukan pinjaman karena belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu.")
 			return
 		}
-		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
+		_ = calculatePinjamanLimit(anggota.UnitKerja, totalSimpanan, gajiBulanan, pinjaman.JangkaWaktu)
 	case "01", "02": // Dosen (01) atau Tenaga Pendidikan (02)
-		// Ambil gaji dari form
-		gajiStr := c.PostForm("gaji_bulanan")
 		if gajiStr == "" {
 			redirectAjukanPinjamanError(c, "Gaji bulanan wajib diisi untuk dosen/tenaga pendidikan.")
 			return
 		}
-		// Parse gaji (asumsi dalam ribuan atau jutaan, sesuaikan dengan input)
-		var gaji float64
-		if _, err := fmt.Sscanf(gajiStr, "%f", &gaji); err != nil {
-			redirectAjukanPinjamanError(c, "Format gaji tidak valid.")
-			return
-		}
-		// Kemampuan bayar: 0.4 x gaji x tenor
-		kemampuanBayar := 0.4 * gaji * float64(pinjaman.JangkaWaktu)
-		limitPinjaman = kemampuanBayar
-
+		_ = calculatePinjamanLimit(anggota.UnitKerja, totalSimpanan, gajiBulanan, pinjaman.JangkaWaktu)
 	default:
 		redirectAjukanPinjamanError(c, "Jenis anggota tidak valid.")
 		return
 	}
 
-	// Validasi menggunakan kemampuan bayar (Langkah 1), bukan limit pinjaman (Langkah 3)
-	var maxLimit float64
-	if anggota.UnitKerja == "03" { // Mahasiswa
-		maxLimit = limitPinjaman
-	} else { // Dosen/Staff - gunakan kemampuan bayar
-		// Hitung kemampuan bayar untuk Dosen/Staff
-		gajiStr := c.PostForm("gaji_bulanan")
-		var gaji float64
-		fmt.Sscanf(gajiStr, "%f", &gaji)
-		maxLimit = 0.4 * gaji * float64(pinjaman.JangkaWaktu)
-	}
-
-	if pinjaman.JumlahPinjaman > maxLimit {
+	if !isJumlahPinjamanWithinLimit(pinjaman.JumlahPinjaman, anggota.UnitKerja, totalSimpanan, gajiBulanan, pinjaman.JangkaWaktu) {
 		redirectAjukanPinjamanError(c, "Jumlah pinjaman melebihi limit maksimal")
 		return
 	}
@@ -2049,7 +2055,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 	pinjaman.NamaPemilikRekening = c.PostForm("nama_pemilik")
 
 	// Capture gaji bulanan dari form
-	gajiStr := c.PostForm("gaji_bulanan")
+	gajiStr = c.PostForm("gaji_bulanan")
 	if gajiStr != "" {
 		var gaji float64
 		if _, err := fmt.Sscanf(gajiStr, "%f", &gaji); err == nil {

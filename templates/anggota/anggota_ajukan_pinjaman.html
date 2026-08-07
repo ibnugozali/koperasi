@@ -205,11 +205,11 @@ document.addEventListener('DOMContentLoaded', function(){
                     <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
                     <input type="text" inputmode="numeric" pattern="[1-9][0-9]{3,}" title="Masukkan bilangan asli minimal 4 digit, contoh: 1000" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required
                         {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} readonly {{end}}>
-                    <small class="form-text text-muted" id="limit_warning">
+                    <div class="form-text mt-2" id="limit_warning" role="alert">
                         {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}}
                             ⚠️ Anda belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu untuk dapat mengajukan pinjaman.
                         {{end}}
-                    </small>
+                    </div>
                     <div class="mt-2">
                         <strong>Total Pinjaman (Pokok + Bunga):</strong>
                         <span id="total_pinjaman_rp" class="text-primary">Rp 0</span>
@@ -512,6 +512,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    var form = document.getElementById('ajukanPinjamanForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            var jumlahPinjaman = parseFloat(document.getElementById('jumlah_pinjaman')?.value) || 0;
+            var jangkaWaktu = parseInt(document.getElementById('jangka_waktu')?.value) || 0;
+            var gajiBulanan = parseFloat(document.getElementById('gaji_bulanan')?.value) || 0;
+            var unitKerjaValue = '{{.Anggota.UnitKerja}}';
+            var totalSimpanan = parseFloat('{{.TotalSimpanan | printf "%.0f"}}') || 0;
+            var limitPinjaman = unitKerjaValue === '03' ? 5 * totalSimpanan : (gajiBulanan > 0 && jangkaWaktu > 0 ? 0.4 * gajiBulanan * jangkaWaktu : 0);
+
+            if (jumlahPinjaman > 0 && limitPinjaman > 0 && jumlahPinjaman > limitPinjaman) {
+                e.preventDefault();
+                var warning = document.getElementById('limit_warning');
+                if (warning) {
+                    warning.textContent = 'Jumlah pinjaman melebihi limit maksimal';
+                    warning.style.color = 'red';
+                }
+                document.getElementById('jumlah_pinjaman')?.focus();
+            }
+        });
+    }
 });
 
 // Fungsi kalkulasi angsuran
@@ -561,33 +583,46 @@ function calculateAngsuran() {
         if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Bunga:</strong> -';
     }
 
-    // Validasi limit dan tampilkan warning
     const limitWarning = document.getElementById('limit_warning');
-    if (limitWarning) {
-        if (jenisAnggota === 'Dosen/Tenaga Pendidikan' && gajiBulanan > 0 && jangkaWaktu > 0) {
-            const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
-            if (jumlahPinjaman > kemampuanBayar) {
-                limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal';
-                limitWarning.style.color = 'red';
-            } else if (jumlahPinjaman > 0) {
-                limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';
-                limitWarning.style.color = 'green';
-            } else {
-                limitWarning.textContent = '';
-            }
-        } else if (jenisAnggota === 'Mahasiswa' && limitPinjaman > 0) {
-            if (jumlahPinjaman > limitPinjaman) {
-                limitWarning.textContent = 'Jumlah pinjaman melebihi limit maksimal';
-                limitWarning.style.color = 'red';
-            } else if (jumlahPinjaman > 0) {
-                limitWarning.textContent = 'Jumlah pinjaman dalam batas limit.';
-                limitWarning.style.color = 'green';
-            } else {
-                limitWarning.textContent = '';
-            }
-        } else {
-            limitWarning.textContent = '';
+    const btnSubmit = document.getElementById('btnAjukanPinjaman');
+    const jumlahPinjamanInput = document.getElementById('jumlah_pinjaman');
+    let isWithinLimit = true;
+    let maxLimitMessage = '';
+
+    if (jenisAnggota === 'Dosen/Tenaga Pendidikan' && gajiBulanan > 0 && jangkaWaktu > 0) {
+        const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
+        isWithinLimit = jumlahPinjaman <= kemampuanBayar;
+        if (jumlahPinjaman > kemampuanBayar) {
+            maxLimitMessage = '⚠️ Jumlah pinjaman melebihi batas kemampuan bayar. Maksimum: Rp ' + kemampuanBayar.toLocaleString('id-ID');
+        } else if (jumlahPinjaman > 0) {
+            maxLimitMessage = '✓ Jumlah pinjaman masih dalam batas kemampuan bayar.';
         }
+    } else if (jenisAnggota === 'Mahasiswa' && limitPinjaman > 0) {
+        isWithinLimit = jumlahPinjaman <= limitPinjaman;
+        if (jumlahPinjaman > limitPinjaman) {
+            maxLimitMessage = '⚠️ Jumlah pinjaman melebihi batas kemampuan bayar. Maksimum: Rp ' + limitPinjaman.toLocaleString('id-ID');
+        } else if (jumlahPinjaman > 0) {
+            maxLimitMessage = '✓ Jumlah pinjaman masih dalam batas kemampuan bayar.';
+        }
+    }
+
+    if (limitWarning) {
+        if (maxLimitMessage) {
+            limitWarning.innerHTML = maxLimitMessage;
+            limitWarning.className = 'form-text mt-2 ' + (isWithinLimit ? 'text-success fw-bold' : 'text-danger fw-bold');
+        } else {
+            limitWarning.innerHTML = '';
+            limitWarning.className = 'form-text mt-2 text-muted';
+        }
+    }
+
+    if (jumlahPinjamanInput) {
+        jumlahPinjamanInput.classList.toggle('is-invalid', jumlahPinjaman > 0 && !isWithinLimit);
+        jumlahPinjamanInput.classList.toggle('is-valid', jumlahPinjaman > 0 && isWithinLimit);
+    }
+
+    if (btnSubmit) {
+        btnSubmit.disabled = !isWithinLimit && jumlahPinjaman > 0;
     }
 
     // Hitung total pinjaman (pokok + bunga) dan angsuran per bulan

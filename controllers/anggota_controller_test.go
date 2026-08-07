@@ -1,9 +1,8 @@
 package controllers
 
 import (
-	"testing"
-
 	"koperasi-simpan-pinjam/models"
+	"testing"
 )
 
 func TestIsNaturalNumberInput(t *testing.T) {
@@ -89,5 +88,30 @@ func TestIsAngsuranProfilTerbayarRequiresKetuaApproval(t *testing.T) {
 	}
 	if !isAngsuranProfilTerbayar("diterima") {
 		t.Fatalf("expected diterima to be treated as paid")
+	}
+}
+
+func TestCalculatePinjamanLimit(t *testing.T) {
+	if got := calculatePinjamanLimit("03", 1000000, 0, 12); got != 5000000 {
+		t.Fatalf("expected mahasiswa limit to be 5x total simpanan, got %.0f", got)
+	}
+
+	if got := calculatePinjamanLimit("01", 0, 5000000, 12); got != 24000000 {
+		t.Fatalf("expected dosen limit to be 0.4 x gaji x tenor, got %.0f", got)
+	}
+}
+
+func TestIsJumlahPinjamanWithinLimit(t *testing.T) {
+	if !isJumlahPinjamanWithinLimit(5000000, "03", 1000000, 0, 12) {
+		t.Fatalf("expected amount at the limit to be accepted")
+	}
+	if isJumlahPinjamanWithinLimit(5000001, "03", 1000000, 0, 12) {
+		t.Fatalf("expected amount above the limit to be rejected")
+	}
+	if !isJumlahPinjamanWithinLimit(24000000, "01", 0, 5000000, 12) {
+		t.Fatalf("expected amount at the limit to be accepted")
+	}
+	if isJumlahPinjamanWithinLimit(24000001, "01", 0, 5000000, 12) {
+		t.Fatalf("expected amount above the limit to be rejected")
 	}
 }
