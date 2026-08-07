@@ -1829,6 +1829,28 @@ func redirectAjukanPinjamanError(c *gin.Context, message string) {
 	c.Redirect(http.StatusSeeOther, "/anggota/ajukan-pinjaman?error="+url.QueryEscape(message))
 }
 
+func isNaturalNumberInput(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false
+	}
+	if value[0] == '-' || value[0] == '+' {
+		return false
+	}
+	if len(value) > 1 && value[0] == '0' {
+		return false
+	}
+	if value == "0" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // AjukanPinjamanPost memproses pengajuan pinjaman
 func AjukanPinjamanPost(c *gin.Context) {
 	session := sessions.Default(c)
@@ -1873,6 +1895,21 @@ func AjukanPinjamanPost(c *gin.Context) {
 	}
 
 	// Validasi minimal pinjaman dihapus
+	jumlahPinjamanStr := strings.TrimSpace(c.PostForm("jumlah_pinjaman"))
+	if !isNaturalNumberInput(jumlahPinjamanStr) {
+		redirectAjukanPinjamanError(c, "Jumlah pinjaman harus diisi dengan angka asli tanpa tanda atau huruf.")
+		return
+	}
+	if len(jumlahPinjamanStr) < 4 {
+		redirectAjukanPinjamanError(c, "Jumlah pinjaman minimal 4 digit angka.")
+		return
+	}
+
+	gajiBulananStr := strings.TrimSpace(c.PostForm("gaji_bulanan"))
+	if anggota.UnitKerja != "03" && !isNaturalNumberInput(gajiBulananStr) {
+		redirectAjukanPinjamanError(c, "Jumlah gaji bulanan harus diisi dengan angka asli tanpa tanda atau huruf.")
+		return
+	}
 
 	// Validasi jangka waktu
 	if pinjaman.JangkaWaktu < 6 || pinjaman.JangkaWaktu > 36 {

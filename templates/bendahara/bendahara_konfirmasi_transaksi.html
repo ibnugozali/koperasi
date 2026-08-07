@@ -740,11 +740,15 @@
                                         jenisCicilanSelect.value = selectedLoan.key;
                                     }
                                     
-                                    var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
+                                    var jumlahCicilan = rupiahCeil(Number(selectedLoan.perkiraan_angsuran || 0));
                                     var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
+                                    var minimumYangBisaDiterima = Math.min(jumlahCicilan, sisaPinjaman);
                                     
-                                    minCicilanText.textContent = `Cicilan Minimum: Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
+                                    minCicilanText.textContent = `Jumlah Cicilan: Rp ${new Intl.NumberFormat('id-ID').format(jumlahCicilan)}`;
                                     sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
+                                    jumlahCicilanInput.value = String(minimumYangBisaDiterima);
+                                    jumlahCicilanInput.setAttribute('min', String(minimumYangBisaDiterima));
+                                    jumlahCicilanInput.setAttribute('max', String(sisaPinjaman));
                                     infoPinjamanDisplay.style.display = 'block';
                                     pinjamanWarning.style.display = 'none';
                                     
@@ -799,10 +803,14 @@
                 }
 
                 idPinjamanHidden.value = selectedLoan.key;
-                var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
+                var jumlahCicilan = rupiahCeil(Number(selectedLoan.perkiraan_angsuran || 0));
                 var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
-                minCicilanText.textContent = `Cicilan Minimum: Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
+                var minimumYangBisaDiterima = Math.min(jumlahCicilan, sisaPinjaman);
+                minCicilanText.textContent = `Jumlah Cicilan: Rp ${new Intl.NumberFormat('id-ID').format(jumlahCicilan)}`;
                 sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
+                jumlahCicilanInput.value = String(minimumYangBisaDiterima);
+                jumlahCicilanInput.setAttribute('min', String(minimumYangBisaDiterima));
+                jumlahCicilanInput.setAttribute('max', String(sisaPinjaman));
                 infoPinjamanDisplay.style.display = 'block';
                 submitCicilanBtn.disabled = false;
             });
@@ -832,22 +840,22 @@
                     return;
                 }
                 
-                var minCicilan = rupiahCeil(selectedLoan.perkiraan_angsuran);
+                var jumlahCicilan = rupiahCeil(Number(selectedLoan.perkiraan_angsuran || 0));
                 var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
+                var minimumYangBisaDiterima = Math.min(jumlahCicilan, sisaPinjaman);
                 var sisaSetelahBayar = sisaPinjaman - jumlah;
                 
-                if (jumlah < minCicilan) {
-                    validasiJumlahText.textContent = `❌ Jumlah cicilan minimal Rp ${new Intl.NumberFormat('id-ID').format(minCicilan)}`;
+                if (jumlah < minimumYangBisaDiterima) {
+                    validasiJumlahText.textContent = `❌ Jumlah cicilan minimal Rp ${new Intl.NumberFormat('id-ID').format(minimumYangBisaDiterima)}`;
                     validasiJumlahText.style.display = 'block';
                     submitCicilanBtn.disabled = true;
                 } else if (jumlah > sisaPinjaman) {
-                    validasiJumlahText.textContent = `❌ Jumlah cicilan tidak boleh melebihi sisa pinjaman Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
+                    validasiJumlahText.textContent = `❌ Jumlah cicilan maksimal Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
                     validasiJumlahText.style.display = 'block';
                     submitCicilanBtn.disabled = true;
                 } else {
                     validasiJumlahText.style.display = 'none';
                     submitCicilanBtn.disabled = false;
-                    // Tampilkan sisa pinjaman setelah pembayaran
                     sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)} → setelah bayar Rp ${new Intl.NumberFormat('id-ID').format(Math.max(0, rupiahCeil(sisaSetelahBayar)))}`;
                 }
             });

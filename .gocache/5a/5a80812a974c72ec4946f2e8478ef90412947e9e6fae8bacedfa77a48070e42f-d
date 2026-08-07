@@ -1,9 +1,0 @@
-./admin_controller.go
-./anggota_controller.go
-./auth_controller.go
-./bendahara_controller.go
-./halaman_controller.go
-./ketua_controller.go
-./public_controller.go
-./admin_controller_test.go
-./auth_controller_test.go

@@ -85,17 +85,46 @@ document.addEventListener('DOMContentLoaded', function() {
     const jumlahPinjamanInput = document.getElementById('jumlah_pinjaman');
     const terbilangInput = document.getElementById('jumlah_pinjaman_terbilang');
 
+    function normalizePositiveIntegerInput(value) {
+        const digitsOnly = value.replace(/[^0-9]/g, '');
+        if (digitsOnly === '') {
+            return '';
+        }
+        const withoutLeadingZeros = digitsOnly.replace(/^0+/, '');
+        return withoutLeadingZeros === '' ? '0' : withoutLeadingZeros;
+    }
+
+    function validateLoanAmount(value) {
+        const normalized = normalizePositiveIntegerInput(value);
+        if (normalized === '' || normalized === '0') {
+            return false;
+        }
+        return normalized.length >= 4;
+    }
+
     if (jumlahPinjamanInput && terbilangInput) {
         jumlahPinjamanInput.addEventListener('input', function() {
-            const value = parseInt(this.value) || 0;
-            terbilangInput.value = numberToWords(value);
+            this.value = normalizePositiveIntegerInput(this.value);
+            if (!validateLoanAmount(this.value)) {
+                terbilangInput.value = 'minimal 4 digit angka';
+            } else {
+                const value = parseInt(this.value, 10) || 0;
+                terbilangInput.value = numberToWords(value);
+            }
         });
 
         // Set initial value if there's already a value
-        const initialValue = parseInt(jumlahPinjamanInput.value) || 0;
+        const initialValue = parseInt(jumlahPinjamanInput.value, 10) || 0;
         if (initialValue > 0) {
             terbilangInput.value = numberToWords(initialValue);
         }
+    }
+
+    const gajiBulananInput = document.getElementById('gaji_bulanan');
+    if (gajiBulananInput) {
+        gajiBulananInput.addEventListener('input', function() {
+            this.value = normalizePositiveIntegerInput(this.value);
+        });
     }
 
     // Removed AJAX form submit handler to allow normal form submission and redirect

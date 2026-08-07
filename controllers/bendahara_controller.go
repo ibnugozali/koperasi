@@ -5790,6 +5790,34 @@ func rupiahCeil(value float64) float64 {
 	return math.Ceil(value)
 }
 
+func isValidManualTunaiCicilanAmount(amount, minAmount, maxAmount float64) bool {
+	if maxAmount <= 0 || minAmount <= 0 {
+		return false
+	}
+	if amount <= 0 {
+		return false
+	}
+	return amount >= minAmount && amount <= maxAmount
+}
+
+func selectPendingAngsuranForManualTunai(pendingList []models.Angsuran, paymentAmount float64) *models.Angsuran {
+	if len(pendingList) == 0 {
+		return nil
+	}
+
+	for i := range pendingList {
+		pending := pendingList[i]
+		if math.Abs((pending.JumlahAngsuran+pending.SisaPinjaman)-paymentAmount) < 0.01 {
+			return &pendingList[i]
+		}
+	}
+
+	if paymentAmount > 0 {
+		return &pendingList[0]
+	}
+	return nil
+}
+
 func recalculatePendingAngsuranSisa(idAnggota string, idPinjaman int, currentRemaining float64) {
 	pendingAngsurans, err := repository.GetPendingAngsuranByPinjamanAndAnggota(idAnggota, idPinjaman)
 	if err != nil {
@@ -5888,13 +5916,12 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 		}
 	}
 
-	bungaNominal := pinjaman.JumlahPinjaman * pinjaman.Bunga / 100
-	totalKewajiban := pinjaman.JumlahPinjaman + bungaNominal
-	minCicilan := 0.0
+	jumlahCicilanYangDiharapkan := rupiahCeil(sisaSebelum)
 	if pinjaman.JangkaWaktu > 0 {
-		minCicilan = math.Round(totalKewajiban / float64(pinjaman.JangkaWaktu))
+		bungaNominal := pinjaman.JumlahPinjaman * pinjaman.Bunga / 100
+		totalKewajiban := pinjaman.JumlahPinjaman + bungaNominal
+		jumlahCicilanYangDiharapkan = rupiahCeil(totalKewajiban / float64(pinjaman.JangkaWaktu))
 	}
-	maxCicilan := rupiahCeil(sisaSebelum)
 	sisaSetelah := sisaSebelum - jumlahAngsuran
 	if sisaSetelah < 0 {
 		sisaSetelah = 0
@@ -5902,6 +5929,13 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	angsuran.SisaPinjaman = sisaSetelah
 	// Entri oleh bendahara dianggap validasi tahap bendahara selesai.
 	angsuran.Status = "confirmed"
+	minimumYangBisaDiterima := math.Min(jumlahCicilanYangDiharapkan, sisaSebelum)
+	if !isValidManualTunaiCicilanAmount(jumlahAngsuran, minimumYangBisaDiterima, sisaSebelum) {
+		log.Printf("[DEBUG] entri cicilan tunai ditolak: jumlah=%.2f minimum=%.2f maksimum=%.2f sisaSebelum=%.2f jumlahCicilan=%.2f", jumlahAngsuran, minimumYangBisaDiterima, sisaSebelum, sisaSebelum, jumlahCicilanYangDiharapkan)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Jumlah cicilan untuk entri tunai harus berada di rentang antara jumlah cicilan dan sisa pinjaman."})
+		return
+	}
+
 	// Entri manual Tunai langsung confirmed (tidak perlu konfirmasi lagi)
 	// Cari pending angsuran yang cocok, lalu konfirmasi tanpa membuat record baru
 	pendingAngsuranList, err := repository.GetPendingAngsuranByCriteria(angsuran.IDAnggota, angsuran.IDPinjaman, angsuran.JumlahAngsuran)
@@ -5913,18 +5947,14 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	var matchedPending *models.Angsuran
 	var fallbackPendings []models.Angsuran
 	if len(pendingAngsuranList) == 0 {
-		// Fallback 1: cari pending angsuran berdasar pinjaman + anggota, lalu cocokkan total due (jumlah angsuran + sisa pinjaman)
+		// Fallback 1: cari pending angsuran berdasar pinjaman + anggota, lalu pilih record pending yang paling relevan untuk diselesaikan.
 		fallbackPendings, err = repository.GetPendingAngsuranByPinjamanAndAnggota(angsuran.IDAnggota, angsuran.IDPinjaman)
 		if err != nil {
 			log.Printf("[WARN] Gagal cari fallback pending angsuran: %v", err)
-		} else {
-			for i := range fallbackPendings {
-				pending := fallbackPendings[i]
-				if math.Abs((pending.JumlahAngsuran+pending.SisaPinjaman)-angsuran.JumlahAngsuran) < 0.01 {
-					pendingAngsuranList = append(pendingAngsuranList, pending)
-					matchedPending = &fallbackPendings[i]
-					break
-				}
+		} else if len(fallbackPendings) > 0 {
+			matchedPending = selectPendingAngsuranForManualTunai(fallbackPendings, angsuran.JumlahAngsuran)
+			if matchedPending != nil {
+				pendingAngsuranList = append(pendingAngsuranList, *matchedPending)
 			}
 		}
 	}
@@ -5932,7 +5962,8 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	createdDirect := false
 	if len(pendingAngsuranList) == 0 {
 		// Jika tidak ada pending angsuran yang cocok, bolehkan entri tunai langsung jika nominal valid
-		if angsuran.JumlahAngsuran >= minCicilan && angsuran.JumlahAngsuran <= maxCicilan {
+		minimumYangBisaDiterima := math.Min(jumlahCicilanYangDiharapkan, sisaSebelum)
+		if isValidManualTunaiCicilanAmount(angsuran.JumlahAngsuran, minimumYangBisaDiterima, sisaSebelum) {
 			if len(fallbackPendings) > 0 {
 				matchedPending = &fallbackPendings[0]
 				if err := repository.UpdateAngsuranAmountAndSisa(matchedPending.IDAngsuran, angsuran.JumlahAngsuran, angsuran.SisaPinjaman); err != nil {
@@ -5956,7 +5987,7 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 				createdDirect = true
 			}
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak sesuai dengan angsuran pending. Entri manual tunai hanya diperbolehkan untuk jumlah yang valid sesuai cicilan minimal dan sisa pinjaman."})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak sesuai dengan angsuran pending. Entri manual tunai hanya diperbolehkan untuk jumlah yang sama dengan jumlah cicilan yang ditetapkan."})
 			return
 		}
 	}

@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function(){
             <div class="col-md-6" id="gaji_bulanan_container">
                 <div class="mb-3">
                     <label for="gaji_bulanan" class="form-label">Jumlah Gaji Bulanan (Rp)</label>
-                    <input type="number" class="form-control" id="gaji_bulanan" name="gaji_bulanan" value="{{ .GajiBulanan }}" readonly required>
+                    <input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 2000000" class="form-control" id="gaji_bulanan" name="gaji_bulanan" value="{{ .GajiBulanan }}" readonly required>
                     <small class="form-text text-muted">
                         <i class="bi bi-info-circle me-1"></i>
                         Gaji bulanan otomatis diambil dari data yang terdaftar
@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function(){
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
-                    <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required
+                    <input type="text" inputmode="numeric" pattern="[1-9][0-9]{3,}" title="Masukkan bilangan asli minimal 4 digit, contoh: 1000" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required
                         {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} readonly {{end}}>
                     <small class="form-text text-muted" id="limit_warning">
                         {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}}

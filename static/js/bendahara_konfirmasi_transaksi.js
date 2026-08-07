@@ -158,8 +158,8 @@ document.addEventListener('DOMContentLoaded', function() {
         function syncJumlahAngsuranFromPinjaman() {
             if (!selectPinjamanAngsuran || !inputJumlahAngsuran) return;
             var selected = pinjamanAngsuranByID[String(selectPinjamanAngsuran.value)];
-            var perkiraan = selected ? Number(selected.perkiraan_angsuran || 0) : 0;
-            inputJumlahAngsuran.value = perkiraan > 0 ? String(Math.round(perkiraan)) : '';
+            var requiredAmount = selected ? Number(selected.sisa_pinjaman || selected.jumlah_pinjaman || 0) : 0;
+            inputJumlahAngsuran.value = requiredAmount > 0 ? String(Math.round(requiredAmount)) : '';
         }
 
         if (inputAnggotaAngsuran) {
