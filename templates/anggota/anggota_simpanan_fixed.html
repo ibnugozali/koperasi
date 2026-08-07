@@ -166,7 +166,7 @@
                   <div class="col-sm-8">
                     <div class="input-group">
                       <span class="input-group-text">Rp</span>
-                      <input type="number" step="1000" min="0" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}" data-target="{{ printf "%.0f" $.NominalSimpananWajib }}" {{ if $.IsLocked }}readonly disabled{{ end }}>
+                      <input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}" data-target="{{ printf "%.0f" $.NominalSimpananWajib }}" {{ if $.IsLocked }}readonly disabled{{ end }}>
                     </div>
                     {{ if $.IsLocked }}<div class="form-text text-muted"><i class="bi bi-lock"></i> Dikunci - sudah sesuai target</div>{{ end }}
                     {{ if gt $.NominalSimpananWajib 0.0 }}<div class="form-text"><i class="bi bi-info-circle"></i> Target: Rp{{ printf "%.0f" $.NominalSimpananWajib }}</div>{{ end }}
@@ -179,7 +179,7 @@
                   <div class="col-sm-8">
                     <div class="input-group">
                       <span class="input-group-text">Rp</span>
-                      <input type="number" step="1000" min="0" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="0" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}">
+                      <input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}">
                     </div>
                   </div>
                 </div>
@@ -190,16 +190,16 @@
             <div class="row mb-3 align-items-center">
               <label class="col-sm-4 col-form-label">Simpanan Wajib</label>
               <div class="col-sm-8">
-                <div class="input-group"><span class="input-group-text">Rp</span><input type="number" step="1000" min="0" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" value="0" placeholder="0" data-target="{{ printf "%.0f" .NominalSimpananWajib }}" {{ if .IsLocked }}readonly disabled{{ end }}></div>
+                <div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" value="" placeholder="0" data-target="{{ printf "%.0f" .NominalSimpananWajib }}" {{ if .IsLocked }}readonly disabled{{ end }}></div>
                 {{ if .IsLocked }}<div class="form-text text-muted"><i class="bi bi-lock"></i> Dikunci</div>{{ end }}
                 {{ if gt .NominalSimpananWajib 0.0 }}<div class="form-text"><i class="bi bi-info-circle"></i> Target: Rp{{ printf "%.0f" .NominalSimpananWajib }}</div>{{ end }}
                 <div class="form-text text-danger d-none" id="simpananWajibFeedback">Nominal Simpanan Wajib harus sama dengan target atau kelipatannya.</div>
               </div>
             </div>
-            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Sukarela</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="number" step="1000" min="0" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" value="0" placeholder="0"></div></div></div>
-            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Hari Raya</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="number" step="1000" min="0" class="form-control simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" value="0" placeholder="0"></div></div></div>
-            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Umroh/Haji</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="number" step="1000" min="0" class="form-control simpanan-input" id="simpanan_umroh_haji" name="simpanan_umroh_haji" value="0" placeholder="0"></div></div></div>
-            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Qurban</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="number" step="1000" min="0" class="form-control simpanan-input" id="simpanan_qurban" name="simpanan_qurban" value="0" placeholder="0"></div></div></div>
+            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Sukarela</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" value="" placeholder="0"></div></div></div>
+            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Hari Raya</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" value="" placeholder="0"></div></div></div>
+            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Umroh/Haji</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_umroh_haji" name="simpanan_umroh_haji" value="" placeholder="0"></div></div></div>
+            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Qurban</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_qurban" name="simpanan_qurban" value="" placeholder="0"></div></div></div>
           {{ end }}
           
           <!-- TOTAL -->
@@ -241,9 +241,63 @@
     // 1. Ambil data Gaji dari Go Template
     const GAJI_USER = {{ printf "%.0f" .SisaGajiPotong }} || 0;
     const TARGET_SIMPANAN_WAJIB = {{ printf "%.0f" .NominalSimpananWajib }} || 0;
+    const NATURAL_NUMBER_PATTERN = /^[1-9][0-9]*$/;
+
+    function isNaturalNumberText(value) {
+        return NATURAL_NUMBER_PATTERN.test((value || '').trim());
+    }
+
+    function getNaturalNumberFeedback(input) {
+        const container = input.closest('.col-sm-8') || input.parentElement;
+        if (!container) return null;
+
+        let feedback = container.querySelector('[data-natural-feedback-for="' + input.id + '"]');
+        if (!feedback) {
+            feedback = document.createElement('div');
+            feedback.className = 'form-text text-danger d-none natural-number-feedback';
+            feedback.dataset.naturalFeedbackFor = input.id;
+            feedback.textContent = 'Nominal harus bilangan asli lebih dari 0, diawali angka 1-9, tanpa huruf, tanda, desimal, atau angka nol di depan.';
+            const group = input.closest('.input-group');
+            if (group) {
+                group.insertAdjacentElement('afterend', feedback);
+            } else {
+                container.appendChild(feedback);
+            }
+        }
+        return feedback;
+    }
+
+    function updateNaturalNumberValidity(input) {
+        if (!input || input.disabled || input.readOnly) return true;
+        const raw = input.value.trim();
+        const valid = raw === '' || isNaturalNumberText(raw);
+        input.classList.toggle('is-invalid', !valid);
+        const feedback = getNaturalNumberFeedback(input);
+        if (feedback) feedback.classList.toggle('d-none', valid);
+        return valid;
+    }
+
+    function getSimpananInputValue(input) {
+        const raw = input.value.trim();
+        return isNaturalNumberText(raw) ? parseFloat(raw) : 0;
+    }
+
+    function getProposedInputValue(input, insertedText) {
+        const currentValue = input.value || '';
+        const start = input.selectionStart ?? currentValue.length;
+        const end = input.selectionEnd ?? currentValue.length;
+        return currentValue.slice(0, start) + insertedText + currentValue.slice(end);
+    }
+
+    function canInsertNaturalNumberText(input, insertedText) {
+        if (insertedText === null || insertedText === undefined || insertedText === '') return true;
+        if (!/^[0-9]+$/.test(insertedText)) return false;
+        const proposedValue = getProposedInputValue(input, insertedText);
+        return proposedValue === '' || isNaturalNumberText(proposedValue);
+    }
 
     function isValidSimpananWajibNominal(value) {
-        if (TARGET_SIMPANAN_WAJIB <= 0 || value === 0) return true;
+        if (TARGET_SIMPANAN_WAJIB <= 0) return true;
         return value >= TARGET_SIMPANAN_WAJIB && value % TARGET_SIMPANAN_WAJIB === 0;
     }
 
@@ -253,9 +307,12 @@
         let total = 0;
         
         // Hitung total dari semua input yang tidak disabled
+        let naturalInputsValid = true;
         inputs.forEach(input => {
-            if (!input.disabled && !input.readOnly && input.value) {
-                total += parseFloat(input.value) || 0;
+            if (!input.disabled && !input.readOnly) {
+                const inputValid = updateNaturalNumberValidity(input);
+                naturalInputsValid = naturalInputsValid && inputValid;
+                total += getSimpananInputValue(input);
             }
         });
 
@@ -272,8 +329,17 @@
         const wajibFeedback = document.getElementById('simpananWajibFeedback');
         let wajibNominalValid = true;
 
-        if (wajibInput && !wajibInput.disabled && !wajibInput.readOnly && TARGET_SIMPANAN_WAJIB > 0) {
-            const wajibVal = parseFloat(wajibInput.value) || 0;
+        if (!naturalInputsValid) {
+            if (infoSisa) infoSisa.style.display = 'none';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="bi bi-exclamation-octagon me-2"></i><strong>Nominal Harus Bilangan Asli!</strong>';
+            }
+            return;
+        }
+
+        if (wajibInput && !wajibInput.disabled && !wajibInput.readOnly && TARGET_SIMPANAN_WAJIB > 0 && wajibInput.value.trim() !== '') {
+            const wajibVal = getSimpananInputValue(wajibInput);
             wajibNominalValid = isValidSimpananWajibNominal(wajibVal);
             wajibInput.classList.toggle('is-invalid', !wajibNominalValid);
             if (wajibFeedback) {
@@ -367,11 +433,24 @@
         // Listeners untuk semua input nominal simpanan
         document.querySelectorAll('.simpanan-input').forEach(input => {
             if (input.disabled || input.readOnly) return;
+            input.addEventListener('beforeinput', event => {
+                if (event.inputType && event.inputType.startsWith('delete')) return;
+                if (!canInsertNaturalNumberText(input, event.data)) {
+                    event.preventDefault();
+                    updateNaturalNumberValidity(input);
+                }
+            });
+            input.addEventListener('paste', event => {
+                const pastedText = event.clipboardData?.getData('text') || '';
+                if (!canInsertNaturalNumberText(input, pastedText.trim())) {
+                    event.preventDefault();
+                    updateNaturalNumberValidity(input);
+                }
+            });
             ['focus', 'blur', 'input'].forEach(evt => {
                 input.addEventListener(evt, () => {
-                    if (evt === 'focus' && input.value === '0') input.value = '';
-                    if (evt === 'blur' && !input.value) input.value = '0';
-                    if (evt === 'input') calculateTotal();
+                    updateNaturalNumberValidity(input);
+                    calculateTotal();
                 });
             });
         });
@@ -401,6 +480,15 @@
         simpananForm.addEventListener('submit', function(e) {
             const totalVal = parseFloat(document.getElementById('total_simpanan')?.value) || 0;
             const metodeSelect = document.getElementById('metode_pembayaran');
+            const invalidInput = Array.from(document.querySelectorAll('.simpanan-input'))
+                .find(input => !updateNaturalNumberValidity(input));
+
+            if (invalidInput) {
+                e.preventDefault();
+                invalidInput.focus();
+                alert('Nominal simpanan harus bilangan asli lebih dari 0, diawali angka 1-9, tanpa huruf, tanda, desimal, atau angka nol di depan.');
+                return;
+            }
 
             // 1. Cek jika nominal menghabiskan/melebihi sisa gaji pada potong gaji
             if (metodeSelect.value === 'potong_gaji' && totalVal >= GAJI_USER) {
@@ -410,12 +498,10 @@
             }
 
             const wajibInput = document.getElementById('simpanan_wajib');
-            const wajibVal = parseFloat(wajibInput?.value) || 0;
-            if (TARGET_SIMPANAN_WAJIB > 0 && wajibVal > 0 && !isValidSimpananWajibNominal(wajibVal)) {
+            const wajibVal = wajibInput ? getSimpananInputValue(wajibInput) : 0;
+            if (TARGET_SIMPANAN_WAJIB > 0 && wajibInput?.value.trim() !== '' && !isValidSimpananWajibNominal(wajibVal)) {
                 e.preventDefault();
                 alert('❌ Gagal: Nominal Simpanan Wajib harus Rp' + TARGET_SIMPANAN_WAJIB.toLocaleString('id-ID') + ' atau kelipatannya, misalnya Rp' + (TARGET_SIMPANAN_WAJIB * 2).toLocaleString('id-ID') + '.');
-                return;
-                alert('❌ Gagal: Nominal Simpanan Wajib harus sama dengan target: Rp' + TARGET_SIMPANAN_WAJIB.toLocaleString('id-ID') + '.');
                 return;
             }
 

@@ -1851,6 +1851,21 @@ func isNaturalNumberInput(value string) bool {
 	return true
 }
 
+func parseOptionalNaturalAmount(label, value string) (float64, bool, string) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, false, ""
+	}
+	if !isNaturalNumberInput(value) {
+		return 0, false, fmt.Sprintf("%s harus diisi dengan bilangan asli lebih dari 0, diawali angka 1-9, tanpa huruf, tanda, desimal, atau angka nol di depan.", label)
+	}
+	amount, err := strconv.ParseFloat(value, 64)
+	if err != nil || amount <= 0 || math.IsInf(amount, 0) || math.IsNaN(amount) {
+		return 0, false, fmt.Sprintf("%s tidak valid.", label)
+	}
+	return amount, true, ""
+}
+
 func calculatePinjamanLimit(unitKerja string, totalSimpanan float64, gajiBulanan float64, tenor int) float64 {
 	switch unitKerja {
 	case "03":
@@ -2282,28 +2297,31 @@ func AnggotaSimpananPost(c *gin.Context) {
 		return
 	}
 
-	// Parse fields SAFELY - handle empty/missing
-	wajibStr := strings.TrimSpace(c.PostForm("simpanan_wajib"))
-	sukarelaStr := strings.TrimSpace(c.PostForm("simpanan_sukarela"))
-	hariRayaStr := strings.TrimSpace(c.PostForm("simpanan_hari_raya"))
-	umrohHajiStr := strings.TrimSpace(c.PostForm("simpanan_umroh_haji"))
-	qurbanStr := strings.TrimSpace(c.PostForm("simpanan_qurban"))
-
 	var wajib, sukarela, hariRaya, umrohHaji, qurban float64 = 0, 0, 0, 0, 0
-	if wajibStr != "" {
-		fmt.Sscanf(wajibStr, "%f", &wajib)
+	simpananFields := []struct {
+		name   string
+		label  string
+		assign func(float64)
+	}{
+		{name: "simpanan_wajib", label: "Simpanan Wajib", assign: func(v float64) { wajib = v }},
+		{name: "simpanan_sukarela", label: "Simpanan Sukarela", assign: func(v float64) { sukarela = v }},
+		{name: "simpanan_hari_raya", label: "Simpanan Hari Raya", assign: func(v float64) { hariRaya = v }},
+		{name: "simpanan_umroh_haji", label: "Simpanan Umroh/Haji", assign: func(v float64) { umrohHaji = v }},
+		{name: "simpanan_qurban", label: "Simpanan Qurban", assign: func(v float64) { qurban = v }},
 	}
-	if sukarelaStr != "" {
-		fmt.Sscanf(sukarelaStr, "%f", &sukarela)
-	}
-	if hariRayaStr != "" {
-		fmt.Sscanf(hariRayaStr, "%f", &hariRaya)
-	}
-	if umrohHajiStr != "" {
-		fmt.Sscanf(umrohHajiStr, "%f", &umrohHaji)
-	}
-	if qurbanStr != "" {
-		fmt.Sscanf(qurbanStr, "%f", &qurban)
+	for _, field := range simpananFields {
+		amount, filled, message := parseOptionalNaturalAmount(field.label, c.Request.Form.Get(field.name))
+		if message != "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"field":   field.name,
+				"message": message,
+			})
+			return
+		}
+		if filled {
+			field.assign(amount)
+		}
 	}
 
 	log.Printf("[SIMPANAN-POST] user=%s ✓ METHOD OK parsed: wajib=%.0f sukarela=%.0f hariRaya=%.0f umroh=%.0f qurban=%.0f total=%.0f metode='%s'",

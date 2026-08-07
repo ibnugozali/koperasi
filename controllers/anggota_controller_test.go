@@ -27,6 +27,30 @@ func TestIsNaturalNumberInput(t *testing.T) {
 	if isNaturalNumberInput("") {
 		t.Fatalf("expected empty input to be rejected")
 	}
+	if isNaturalNumberInput("123abc") {
+		t.Fatalf("expected trailing letters to be rejected")
+	}
+	if isNaturalNumberInput("+123") {
+		t.Fatalf("expected plus sign to be rejected")
+	}
+}
+
+func TestParseOptionalNaturalAmount(t *testing.T) {
+	amount, filled, message := parseOptionalNaturalAmount("Simpanan Sukarela", "")
+	if amount != 0 || filled || message != "" {
+		t.Fatalf("expected empty amount to be treated as not filled, got amount=%.0f filled=%v message=%q", amount, filled, message)
+	}
+
+	amount, filled, message = parseOptionalNaturalAmount("Simpanan Sukarela", "1000")
+	if amount != 1000 || !filled || message != "" {
+		t.Fatalf("expected valid natural amount, got amount=%.0f filled=%v message=%q", amount, filled, message)
+	}
+
+	for _, value := range []string{"0", "0123", "abc123", "123abc", "-100", "+100", "123.45"} {
+		if _, _, message := parseOptionalNaturalAmount("Simpanan Sukarela", value); message == "" {
+			t.Fatalf("expected %q to be rejected", value)
+		}
+	}
 }
 
 func TestIsValidManualTunaiCicilanAmount(t *testing.T) {
