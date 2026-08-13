@@ -77,13 +77,13 @@ DROP TABLE IF EXISTS neraca CASCADE;
 -- Nomor urut: 4 digit, auto-increment global seluruh anggota
 CREATE TABLE anggota (
   id_anggota VARCHAR(50) PRIMARY KEY,
-  nama_anggota VARCHAR(50) NOT NULL,
+  nama_anggota VARCHAR(255) NOT NULL,
   username VARCHAR(25) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
   tgl_lahir DATE,
   no_telepon VARCHAR(20),
   tgl_gabung TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  alamat VARCHAR(50),
+  alamat TEXT,
   -- provinsi VARCHAR(50),
   jenis_kelamin VARCHAR(12),
   status VARCHAR(25) DEFAULT 'pending' CHECK (status IN ('aktif', 'nonaktif', 'pending', 'pending_bendahara', 'keluar')),
@@ -94,7 +94,7 @@ CREATE TABLE anggota (
   fakultas_code VARCHAR(2),  -- 01=FAI, 02=FE, 03=FH, 04=FISIP, 05=FKIP, 06=FKM, 07=FAPERTA, 08=FT, 09=Rektorat/Yayasan/Staff
   tahun VARCHAR(4),  -- Tahun konfirmasi
   nomor_urut VARCHAR(4),  -- Nomor urut auto-increment, NULLABLE
-  bukti_transfer VARCHAR(255),
+  bukti_transfer TEXT,
   gaji_bulanan INTEGER DEFAULT 0,  -- Gaji bulanan anggota dalam Rupiah
   tgl_keluar TIMESTAMP NULL  -- Tanggal keluar anggota
 );
@@ -326,6 +326,10 @@ CREATE INDEX IF NOT EXISTS idx_halaman_slug ON halaman(slug);
 -- Add new columns for status_anggota and fakultas
 ALTER TABLE anggota ADD COLUMN IF NOT EXISTS status_anggota VARCHAR(50);
 ALTER TABLE anggota ADD COLUMN IF NOT EXISTS fakultas VARCHAR(100);
+ALTER TABLE anggota ALTER COLUMN nama_anggota TYPE VARCHAR(255);
+ALTER TABLE anggota ALTER COLUMN alamat TYPE TEXT;
+ALTER TABLE anggota ALTER COLUMN fakultas TYPE VARCHAR(100);
+ALTER TABLE anggota ALTER COLUMN bukti_transfer TYPE TEXT;
 -- Note: provinsi column already exists in the CREATE TABLE statement above
 
 INSERT INTO halaman (slug, judul, kategori, konten) VALUES

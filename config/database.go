@@ -59,6 +59,11 @@ func InitDB() {
 		log.Printf("Peringatan: gagal memperbarui constraint status anggota: %v", err)
 	}
 
+	// Pastikan kolom pendaftaran anggota cukup panjang untuk nama, alamat, dan file upload.
+	if err := ensureAnggotaRegistrationColumnLengths(); err != nil {
+		log.Printf("Peringatan: gagal memperbarui panjang kolom registrasi anggota: %v", err)
+	}
+
 	// Pastikan kolom metode_pembayaran ada di tabel detail
 	if err := ensureDetailMetodePembayaranColumn(); err != nil {
 		log.Printf("Peringatan: gagal memastikan kolom metode_pembayaran: %v", err)
@@ -340,6 +345,22 @@ func updateAnggotaStatusConstraint() error {
 	alterSQL := `
 	ALTER TABLE anggota DROP CONSTRAINT IF EXISTS anggota_status_check;
 	ALTER TABLE anggota ADD CONSTRAINT anggota_status_check CHECK (status IN ('aktif', 'nonaktif', 'pending', 'pending_bendahara', 'keluar'));
+	`
+	_, err := db.Exec(alterSQL)
+	return err
+}
+
+// ensureAnggotaRegistrationColumnLengths melonggarkan kolom yang menerima input registrasi.
+func ensureAnggotaRegistrationColumnLengths() error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+
+	alterSQL := `
+	ALTER TABLE anggota ALTER COLUMN nama_anggota TYPE VARCHAR(255);
+	ALTER TABLE anggota ALTER COLUMN alamat TYPE TEXT;
+	ALTER TABLE anggota ALTER COLUMN fakultas TYPE VARCHAR(100);
+	ALTER TABLE anggota ALTER COLUMN bukti_transfer TYPE TEXT;
 	`
 	_, err := db.Exec(alterSQL)
 	return err
