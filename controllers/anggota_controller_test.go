@@ -35,6 +35,20 @@ func TestIsNaturalNumberInput(t *testing.T) {
 	}
 }
 
+func TestIsDigitsOnlyInputAllowsBankAccountNumbers(t *testing.T) {
+	for _, value := range []string{"0", "0123456789", "000123", "1234567890"} {
+		if !isDigitsOnlyInput(value) {
+			t.Fatalf("expected %q to be accepted as a digits-only bank account number", value)
+		}
+	}
+
+	for _, value := range []string{"", "   ", "123 456", "123-456", "ABC123", "+123", "123.45"} {
+		if isDigitsOnlyInput(value) {
+			t.Fatalf("expected %q to be rejected as a bank account number", value)
+		}
+	}
+}
+
 func TestParseOptionalNaturalAmount(t *testing.T) {
 	amount, filled, message := parseOptionalNaturalAmount("Simpanan Sukarela", "")
 	if amount != 0 || filled || message != "" {

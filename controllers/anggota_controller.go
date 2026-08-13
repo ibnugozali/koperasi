@@ -1851,6 +1851,19 @@ func isNaturalNumberInput(value string) bool {
 	return true
 }
 
+func isDigitsOnlyInput(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func parseOptionalNaturalAmount(label, value string) (float64, bool, string) {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -2065,9 +2078,9 @@ func AjukanPinjamanPost(c *gin.Context) {
 	// BARU
 	pinjaman.MetodePencairan = metodePencairanStr
 	pinjaman.MetodeAngsuran = metodeAngsuranStr // ← tambahan
-	pinjaman.NomorRekening = c.PostForm("no_rekening")
-	pinjaman.NamaBank = c.PostForm("nama_bank")
-	pinjaman.NamaPemilikRekening = c.PostForm("nama_pemilik")
+	pinjaman.NomorRekening = strings.TrimSpace(c.PostForm("no_rekening"))
+	pinjaman.NamaBank = strings.TrimSpace(c.PostForm("nama_bank"))
+	pinjaman.NamaPemilikRekening = strings.TrimSpace(c.PostForm("nama_pemilik"))
 
 	// Capture gaji bulanan dari form
 	gajiStr = c.PostForm("gaji_bulanan")
@@ -2104,6 +2117,14 @@ func AjukanPinjamanPost(c *gin.Context) {
 			redirectAjukanPinjamanError(c, "Data rekening bank harus dilengkapi jika memilih metode transfer bank.")
 			return
 		}
+		if !isDigitsOnlyInput(pinjaman.NomorRekening) {
+			redirectAjukanPinjamanError(c, "Nomor rekening hanya boleh berisi angka.")
+			return
+		}
+	} else {
+		pinjaman.NomorRekening = ""
+		pinjaman.NamaBank = ""
+		pinjaman.NamaPemilikRekening = ""
 	}
 
 	pinjaman.TglPinjaman = time.Now() // Set tanggal pengajuan otomatis

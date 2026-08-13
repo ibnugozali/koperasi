@@ -85,6 +85,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const jumlahPinjamanInput = document.getElementById('jumlah_pinjaman');
     const terbilangInput = document.getElementById('jumlah_pinjaman_terbilang');
 
+    if (terbilangInput) {
+        terbilangInput.readOnly = true;
+        terbilangInput.disabled = true;
+        terbilangInput.setAttribute('aria-readonly', 'true');
+        terbilangInput.setAttribute('aria-disabled', 'true');
+        terbilangInput.tabIndex = -1;
+    }
+
     function normalizePositiveIntegerInput(value) {
         const digitsOnly = value.replace(/[^0-9]/g, '');
         if (digitsOnly === '') {
@@ -100,6 +108,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return false;
         }
         return normalized.length >= 4;
+    }
+
+    function normalizeDigitsOnlyInput(value) {
+        return value.replace(/[^0-9]/g, '');
     }
 
     if (jumlahPinjamanInput && terbilangInput) {
@@ -124,6 +136,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (gajiBulananInput) {
         gajiBulananInput.addEventListener('input', function() {
             this.value = normalizePositiveIntegerInput(this.value);
+        });
+    }
+
+    const noRekeningInput = document.getElementById('noRekening');
+    if (noRekeningInput) {
+        noRekeningInput.addEventListener('beforeinput', function(e) {
+            if (e.data && /[^0-9]/.test(e.data)) {
+                e.preventDefault();
+            }
+        });
+        noRekeningInput.addEventListener('input', function() {
+            this.value = normalizeDigitsOnlyInput(this.value);
+            this.setCustomValidity('');
         });
     }
 

@@ -100,6 +100,118 @@ document.addEventListener('DOMContentLoaded', function(){
             margin: 16px auto;
         }
     }
+
+    .loan-section {
+        border-color: #cbd5e1 !important;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .loan-section-legend {
+        padding: 0 10px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .loan-field-panel {
+        padding: 16px;
+        border: 1px solid #d7dee8;
+        border-radius: 8px;
+        background: #f8fafc;
+    }
+
+    .loan-field-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+
+    .loan-field-heading .form-label {
+        color: #0f172a;
+        font-size: 1rem;
+    }
+
+    .loan-choice-grid,
+    .agreement-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .loan-choice-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .loan-check-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        min-height: 56px;
+        margin: 0;
+        padding: 13px 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+        color: #111827;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .loan-check-card:hover {
+        border-color: #2563eb;
+        background: #f8fbff;
+    }
+
+    .loan-check-card:has(.form-check-input:checked) {
+        border-color: #198754;
+        background: #f0fdf4;
+        box-shadow: inset 0 0 0 1px rgba(25, 135, 84, 0.22);
+    }
+
+    .loan-check-card .form-check-input {
+        float: none;
+        width: 1.25rem;
+        height: 1.25rem;
+        margin: 0.1rem 0 0;
+        flex: 0 0 auto;
+    }
+
+    .loan-check-card .form-check-label,
+    .loan-check-text {
+        line-height: 1.45;
+    }
+
+    .loan-check-title {
+        display: block;
+        font-weight: 650;
+    }
+
+    .loan-check-desc {
+        display: block;
+        margin-top: 2px;
+        color: #475569;
+        font-size: 0.92rem;
+    }
+
+    .loan-master-check {
+        border-color: #93c5fd;
+        background: #eff6ff;
+    }
+
+    .loan-agreement-note {
+        border-left: 4px solid #f59e0b;
+        background: #fffbeb;
+        color: #78350f;
+    }
+
+    @media (max-width: 768px) {
+        .loan-choice-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 {{if .ResumeGabungan}}
@@ -171,8 +283,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <form id="ajukanPinjamanForm" method="POST" action="/anggota/ajukan-pinjaman" class="{{if and .ResumeGabungan (not .ShowAjukanPinjamanForm)}}d-none{{end}}">
     <!-- Bagian 1: Rincian Permohonan Pinjaman -->
-    <fieldset class="border p-3 mb-4">
-        <legend class="w-auto">Bagian 1: Rincian Permohonan Pinjaman</legend>
+    <fieldset class="border p-3 mb-4 loan-section">
+        <legend class="w-auto loan-section-legend">Bagian 1: Rincian Permohonan Pinjaman</legend>
 
         <div class="row">
             <div class="col-md-6" id="gaji_bulanan_container">
@@ -219,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function(){
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="jumlah_pinjaman_terbilang" class="form-label">Jumlah Pinjaman Terbilang</label>
-                    <input type="text" class="form-control" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" required>
+                    <input type="text" class="form-control bg-light" id="jumlah_pinjaman_terbilang" name="jumlah_pinjaman_terbilang" readonly disabled aria-readonly="true" aria-disabled="true" tabindex="-1">
                 </div>
             </div>
         </div>
@@ -265,8 +377,8 @@ document.addEventListener('DOMContentLoaded', function(){
         <!-- Detail Rekening (muncul jika Metode Pencairan = Transfer Bank) -->
         <div class="mb-3" id="rekeningSection" style="display: none;">
             <label for="noRekening" class="form-label">Nomor Rekening <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="noRekening" name="no_rekening"
-                   placeholder="Masukkan nomor rekening bank">
+            <input type="text" inputmode="numeric" pattern="[0-9]+" title="Nomor rekening hanya boleh berisi angka" class="form-control" id="noRekening" name="no_rekening"
+                   placeholder="Masukkan nomor rekening bank" autocomplete="off">
             <small class="form-text text-muted">
                 <i class="bi bi-info-circle me-1"></i>
                 Nomor rekening untuk transfer dana pinjaman
@@ -294,74 +406,100 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
 
         <!-- Tujuan Penggunaan Pinjaman -->
-        <div class="mb-3">
-            <label class="form-label">Tujuan Penggunaan Pinjaman</label><br>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Biaya Pendidikan Anak" id="tujuan1">
-                <label class="form-check-label" for="tujuan1">Biaya Pendidikan Anak</label>
+        <div class="mb-3 loan-field-panel">
+            <div class="loan-field-heading">
+                <div id="tujuanPinjamanLabel" class="form-label fw-bold mb-0">Tujuan Penggunaan Pinjaman</div>
+                <span class="badge text-bg-light border text-dark">Dapat memilih lebih dari satu</span>
             </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Renovasi Rumah" id="tujuan2">
-                <label class="form-check-label" for="tujuan2">Renovasi Rumah</label>
+            <div class="loan-choice-grid" role="group" aria-labelledby="tujuanPinjamanLabel">
+                <label class="form-check loan-check-card" for="tujuan1">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Biaya Pendidikan Anak" id="tujuan1">
+                    <span class="loan-check-text">
+                        <span class="loan-check-title">Biaya Pendidikan Anak</span>
+                    </span>
+                </label>
+                <label class="form-check loan-check-card" for="tujuan2">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Renovasi Rumah" id="tujuan2">
+                    <span class="loan-check-text">
+                        <span class="loan-check-title">Renovasi Rumah</span>
+                    </span>
+                </label>
+                <label class="form-check loan-check-card" for="tujuan3">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Pembelian Kendaraan" id="tujuan3">
+                    <span class="loan-check-text">
+                        <span class="loan-check-title">Pembelian Kendaraan</span>
+                    </span>
+                </label>
+                <label class="form-check loan-check-card" for="tujuan4">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Keperluan Konsumtif" id="tujuan4">
+                    <span class="loan-check-text">
+                        <span class="loan-check-title">Keperluan Konsumtif</span>
+                    </span>
+                </label>
+                <label class="form-check loan-check-card" for="tujuan5">
+                    <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Modal Usaha" id="tujuan5">
+                    <span class="loan-check-text">
+                        <span class="loan-check-title">Modal Usaha</span>
+                    </span>
+                </label>
             </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Pembelian Kendaraan" id="tujuan3">
-                <label class="form-check-label" for="tujuan3">Pembelian Kendaraan</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Keperluan Konsumtif" id="tujuan4">
-                <label class="form-check-label" for="tujuan4">Keperluan Konsumtif</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="tujuan_pinjaman" value="Modal Usaha" id="tujuan5">
-                <label class="form-check-label" for="tujuan5">Modal Usaha</label>
-            </div>
-            <div class="mb-3 mt-2">
-                <label for="tujuan_lain" class="form-label">Lain-lain</label>
-                <input type="text" class="form-control" id="tujuan_lain" name="tujuan_lain">
+            <div class="mt-3">
+                <label for="tujuan_lain" class="form-label fw-semibold">Tujuan lainnya</label>
+                <textarea class="form-control" id="tujuan_lain" name="tujuan_lain" rows="2" placeholder="Tuliskan tujuan lain bila tidak ada pada pilihan di atas"></textarea>
             </div>
         </div>
     </fieldset>
 
     <!-- Bagian 2: Pernyataan dan Kuasa -->
-    <fieldset class="border p-3 mb-4">
-        <legend class="w-auto">Bagian 2: Pernyataan dan Kuasa</legend>
-        <div class="form-check mb-3">
+    <fieldset class="border p-3 mb-4 loan-section">
+        <legend class="w-auto loan-section-legend">Bagian 2: Pernyataan dan Kuasa</legend>
+        <div class="loan-agreement-note rounded-2 py-2 px-3 mb-3">
+            Semua pernyataan di bawah wajib disetujui sebelum pengajuan pinjaman dikirim.
+        </div>
+        <label class="form-check loan-check-card loan-master-check mb-3" for="cek_semua">
             <input class="form-check-input" type="checkbox" id="cek_semua" name="cek_semua">
-            <label class="form-check-label fw-bold" for="cek_semua">
-                Centang Semua Pernyataan
-            </label>
-        </div>
+            <span class="loan-check-text">
+                <span class="loan-check-title">Centang Semua Pernyataan</span>
+                <span class="loan-check-desc">Memilih ini akan mencentang seluruh pernyataan dan kuasa.</span>
+            </span>
+        </label>
         <hr class="my-3">
-        <div class="form-check mb-2">
+        <div class="agreement-list">
+        <label class="form-check loan-check-card" for="pernyataan_benar">
             <input class="form-check-input pernyataan-checkbox" type="checkbox" id="pernyataan_benar" name="pernyataan_benar" required>
-            <label class="form-check-label" for="pernyataan_benar">
-                Menyatakan bahwa data yang diberikan adalah benar.
-            </label>
-        </div>
-        <div class="form-check mb-2">
+            <span class="loan-check-text">
+                <span class="loan-check-title">Data yang diberikan benar</span>
+                <span class="loan-check-desc">Saya menyatakan seluruh data pada formulir ini benar dan dapat dipertanggungjawabkan.</span>
+            </span>
+        </label>
+        <label class="form-check loan-check-card" for="sanggup_bayar">
             <input class="form-check-input pernyataan-checkbox" type="checkbox" id="sanggup_bayar" name="sanggup_bayar" required>
-            <label class="form-check-label" for="sanggup_bayar">
-                Sanggup untuk membayar angsuran pinjaman setiap bulan sesuai jadwal.
-            </label>
-        </div>
-        <div class="form-check mb-2">
+            <span class="loan-check-text">
+                <span class="loan-check-title">Sanggup membayar angsuran</span>
+                <span class="loan-check-desc">Saya sanggup membayar angsuran pinjaman setiap bulan sesuai jadwal.</span>
+            </span>
+        </label>
+        <label class="form-check loan-check-card" for="setuju_potong_gaji">
             <input class="form-check-input pernyataan-checkbox" type="checkbox" id="setuju_potong_gaji" name="setuju_potong_gaji" required>
-            <label class="form-check-label" for="setuju_potong_gaji">
-                Bersedia jika gaji dipotong langsung oleh bendahara gaji universitas untuk pembayaran angsuran.
-            </label>
-        </div>
-        <div class="form-check mb-2">
+            <span class="loan-check-text">
+                <span class="loan-check-title">Setuju pemotongan gaji</span>
+                <span class="loan-check-desc">Saya bersedia jika gaji dipotong langsung oleh bendahara gaji universitas untuk pembayaran angsuran.</span>
+            </span>
+        </label>
+        <label class="form-check loan-check-card" for="kuasa_potong_gaji">
             <input class="form-check-input pernyataan-checkbox" type="checkbox" id="kuasa_potong_gaji" name="kuasa_potong_gaji" required>
-            <label class="form-check-label" for="kuasa_potong_gaji">
-                Memberikan kuasa kepada pengurus koperasi untuk melakukan pemotongan gaji melalui bendahara.
-            </label>
-        </div>
-        <div class="form-check mb-2">
+            <span class="loan-check-text">
+                <span class="loan-check-title">Kuasa pemotongan gaji</span>
+                <span class="loan-check-desc">Saya memberikan kuasa kepada pengurus koperasi untuk melakukan pemotongan gaji melalui bendahara.</span>
+            </span>
+        </label>
+        <label class="form-check loan-check-card" for="kuasa_pakai_simpanan">
             <input class="form-check-input pernyataan-checkbox" type="checkbox" id="kuasa_pakai_simpanan" name="kuasa_pakai_simpanan" required>
-            <label class="form-check-label" for="kuasa_pakai_simpanan">
-                Memberikan kuasa kepada koperasi untuk menggunakan simpanan (pokok dan wajib) untuk melunasi sisa pinjaman jika terjadi gagal bayar atau pemohon berhenti bekerja.
-            </label>
+            <span class="loan-check-text">
+                <span class="loan-check-title">Kuasa penggunaan simpanan</span>
+                <span class="loan-check-desc">Saya memberikan kuasa kepada koperasi untuk menggunakan simpanan pokok dan wajib untuk melunasi sisa pinjaman jika terjadi gagal bayar atau pemohon berhenti bekerja.</span>
+            </span>
+        </label>
         </div>
     </fieldset>
 
@@ -440,6 +578,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle perubahan metode pencairan
     const metodePencairan = document.getElementById('metodePencairan');
+    const noRekeningInput = document.getElementById('noRekening');
+
+    function normalizeDigitsOnly(value) {
+        return String(value || '').replace(/[^0-9]/g, '');
+    }
+
+    if (noRekeningInput) {
+        noRekeningInput.addEventListener('beforeinput', function(e) {
+            if (e.data && /[^0-9]/.test(e.data)) {
+                e.preventDefault();
+            }
+        });
+        noRekeningInput.addEventListener('input', function() {
+            this.value = normalizeDigitsOnly(this.value);
+            this.setCustomValidity('');
+        });
+    }
+
     if (metodePencairan) {
         metodePencairan.addEventListener('change', function() {
             const metode = this.value;
@@ -455,6 +611,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 namaBankSection.style.display = 'block';
                 namaPemilikSection.style.display = 'block';
                 noRekening.required = true;
+                noRekening.value = normalizeDigitsOnly(noRekening.value);
+                noRekening.setCustomValidity('');
                 namaBank.required = true;
                 namaPemilik.required = true;
             } else {
@@ -465,6 +623,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 namaBank.required = false;
                 namaPemilik.required = false;
                 noRekening.value = '';
+                noRekening.setCustomValidity('');
                 namaBank.value = '';
                 namaPemilik.value = '';
             }
@@ -522,6 +681,16 @@ document.addEventListener('DOMContentLoaded', function() {
             var unitKerjaValue = '{{.Anggota.UnitKerja}}';
             var totalSimpanan = parseFloat('{{.TotalSimpanan | printf "%.0f"}}') || 0;
             var limitPinjaman = unitKerjaValue === '03' ? 5 * totalSimpanan : (gajiBulanan > 0 && jangkaWaktu > 0 ? 0.4 * gajiBulanan * jangkaWaktu : 0);
+            var metodePencairanValue = document.getElementById('metodePencairan')?.value || '';
+            var noRekening = document.getElementById('noRekening');
+
+            if (metodePencairanValue === 'transfer_bank' && noRekening && !/^[0-9]+$/.test(noRekening.value)) {
+                e.preventDefault();
+                noRekening.setCustomValidity('Nomor rekening hanya boleh berisi angka.');
+                noRekening.reportValidity();
+                noRekening.focus();
+                return;
+            }
 
             if (jumlahPinjaman > 0 && limitPinjaman > 0 && jumlahPinjaman > limitPinjaman) {
                 e.preventDefault();
