@@ -505,6 +505,22 @@ func totalSimpananTanpaPokokWajib(simpananByJenis map[string]float64) float64 {
 	return total
 }
 
+func totalSimpananTanpaPokok(simpananByJenis map[string]float64) float64 {
+	total := 0.0
+	for jenis, jumlah := range simpananByJenis {
+		normalized := strings.ToLower(strings.TrimSpace(jenis))
+		normalized = strings.ReplaceAll(normalized, " ", "_")
+		normalized = strings.ReplaceAll(normalized, "-", "_")
+		switch normalized {
+		case "pokok", "simpanan_pokok":
+			continue
+		default:
+			total += jumlah
+		}
+	}
+	return total
+}
+
 // Fungsi untuk menggabungkan seluruh pinjaman aktif/proses menjadi satu resume gabungan
 func getResumePinjamanGabungan(userID string, includeProses bool) *resumePinjamanInfo {
 	// Prioritaskan pinjaman proses jika ada
@@ -1282,8 +1298,8 @@ func AnggotaProfil(c *gin.Context) {
 		}
 	}
 
-	// Total simpanan profil tidak memasukkan simpanan pokok dan simpanan wajib.
-	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
+	// Total simpanan profil tidak memasukkan simpanan pokok, tetapi tetap memasukkan simpanan wajib.
+	totalSimpanan := totalSimpananTanpaPokok(simpananByJenis)
 
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
@@ -1768,9 +1784,7 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 			"qurban":     0,
 		}
 	}
-	totalSimpanan := simpananByJenis["wajib"] +
-		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
-		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+	totalSimpanan := totalSimpananTanpaPokok(simpananByJenis)
 
 	// Hitung limit pinjaman berdasarkan jenis anggota
 	var limitPinjaman float64
@@ -2982,9 +2996,7 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 	if err != nil {
 		simpananByJenis = make(map[string]float64)
 	}
-	totalSimpanan := simpananByJenis["wajib"] +
-		simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
-		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
+	totalSimpanan := totalSimpananTanpaPokok(simpananByJenis)
 
 	// Ambil detail simpanan per jenis (already loaded above)
 

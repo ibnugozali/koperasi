@@ -139,6 +139,22 @@ func TestCalculatePinjamanLimit(t *testing.T) {
 	}
 }
 
+func TestTotalSimpananTanpaPokokIncludesWajib(t *testing.T) {
+	simpananByJenis := map[string]float64{
+		"pokok":      100000,
+		"wajib":      50000,
+		"sukarela":   20000,
+		"hari_raya":  30000,
+		"umroh_haji": 40000,
+		"qurban":     50000,
+	}
+
+	got := totalSimpananTanpaPokok(simpananByJenis)
+	if got != 190000 {
+		t.Fatalf("expected total to include wajib and exclude pokok, got %.0f", got)
+	}
+}
+
 func TestIsJumlahPinjamanWithinLimit(t *testing.T) {
 	if !isJumlahPinjamanWithinLimit(5000000, "03", 1000000, 0, 12) {
 		t.Fatalf("expected amount at the limit to be accepted")
