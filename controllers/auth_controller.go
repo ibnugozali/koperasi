@@ -539,6 +539,7 @@ func normalizeReferensiJabatan(value string) string {
 	case strings.Contains(value, "dosen"):
 		return "dosen"
 	case strings.Contains(value, "tenaga pendidikan"),
+		strings.Contains(value, "tenaga kependidikan"),
 		strings.Contains(value, "tendik"),
 		strings.Contains(value, "karyawan"),
 		strings.Contains(value, "pegawai"),
@@ -576,7 +577,7 @@ func validateReferensiStatusAnggota(selectedStatus, jabatan string) string {
 	}
 
 	if jabatan == "karyawan" {
-		return "Nomor Identitas ini terdaftar sebagai tenaga pendidikan di data referensi. Ubah Status Calon Anggota ke Tenaga Pendidikan."
+		return "Nomor Identitas ini terdaftar sebagai tenaga kependidikan di data referensi. Ubah Status Calon Anggota ke Tenaga Kependidikan."
 	}
 
 	return ""
@@ -945,7 +946,7 @@ func Register(c *gin.Context) {
 
 	// Validasi gaji hanya untuk non-mahasiswa
 	if newAnggota.StatusAnggota != "mahasiswa" && newAnggota.GajiBulanan <= 0 {
-		renderRegisterError(http.StatusBadRequest, "Gaji bulanan wajib diisi untuk dosen dan tenaga pendidikan")
+		renderRegisterError(http.StatusBadRequest, "Gaji bulanan wajib diisi untuk dosen dan tenaga kependidikan")
 		return
 	}
 

@@ -794,8 +794,8 @@ func KetuaLihatPersyaratanPinjaman(c *gin.Context) {
 	case "03": // Mahasiswa
 		jenisAnggota = "Mahasiswa"
 		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
-	case "01", "02": // Dosen/Tenaga Pendidikan
-		jenisAnggota = "Dosen/Tenaga Pendidikan"
+	case "01", "02": // Dosen/Tenaga Kependidikan
+		jenisAnggota = "Dosen/Tenaga Kependidikan"
 		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
 	default:
 		jenisAnggota = "Tidak Diketahui"
@@ -987,7 +987,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 		"kendaraan":        "Kendaraan",
 		"peralatan":        "Peralatan",
 		"hutangUsaha":      "Hutang Usaha",
-		"hutangBunga":      "Hutang Bunga",
+		"hutangBunga":      "Hutang Jasa",
 		"simpananAnggota":  "Simpanan Anggota",
 		"simpananPokok":    "Simpanan Pokok",
 		"simpananWajib":    "Simpanan Wajib",
@@ -1073,7 +1073,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 				"kendaraan":        "Kendaraan",
 				"peralatan":        "Peralatan",
 				"hutangUsaha":      "Hutang Usaha",
-				"hutangBunga":      "Hutang Bunga",
+				"hutangBunga":      "Hutang Jasa",
 				"simpananAnggota":  "Simpanan Anggota",
 				"simpananPokok":    "Simpanan Pokok",
 				"simpananWajib":    "Simpanan Wajib",
@@ -2748,7 +2748,7 @@ func KetuaDownloadLaporan(c *gin.Context) {
 					shortUnit := func(unit string) string {
 						u := strings.TrimSpace(strings.ToLower(unit))
 						switch u {
-						case "tenaga pendidikan":
+						case "tenaga pendidikan", "tenaga kependidikan":
 							return "Tendik"
 						case "mahasiswa":
 							return "Mhs"

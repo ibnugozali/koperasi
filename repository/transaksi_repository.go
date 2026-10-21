@@ -794,7 +794,7 @@ func GetUnitKerjaName(unitKerja string) string {
 	case "01":
 		return "Dosen"
 	case "02":
-		return "Tenaga Pendidikan"
+		return "Tenaga Kependidikan"
 	case "03":
 		return "Mahasiswa"
 	default:

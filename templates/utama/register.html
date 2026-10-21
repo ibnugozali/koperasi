@@ -29,7 +29,7 @@
                                 <select class="form-select form-select-lg border-primary" id="register_status_anggota" name="StatusAnggota" required>
                                     <option value="">-- Pilih Status Calon Anggota --</option>
                                     <option value="dosen">Dosen</option>
-                                    <option value="karyawan">Tenaga Pendidikan</option>
+                                    <option value="karyawan">Tenaga Kependidikan</option>
                                     <option value="mahasiswa">Mahasiswa</option>
                                 </select>
                                 <div id="referensi_status_warning" class="alert alert-danger mt-2 py-2 px-3 d-none mb-0"></div>
@@ -308,7 +308,7 @@
             } else if (selected && selected !== 'mahasiswa' && latestRefFound && !latestRefStatus) {
                 errorMsg = 'Data referensi ditemukan, tetapi jabatan pada Nomer Identitas ini belum tersedia atau belum dikenali sistem. Hubungi admin untuk memperbarui import referensi.';
             } else if (selected && latestRefStatus && selected !== latestRefStatus) {
-                const label = latestRefStatus === 'dosen' ? 'DOSEN' : 'TENAGA PENDIDIKAN';
+                const label = latestRefStatus === 'dosen' ? 'DOSEN' : 'TENAGA KEPENDIDIKAN';
                 errorMsg = `Data Nomer Identitas terdaftar sebagai <b>${label}</b>. Anda memilih status yang salah.`;
             }
 

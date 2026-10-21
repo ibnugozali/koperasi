@@ -2235,8 +2235,8 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 	case "03": // Mahasiswa
 		jenisAnggota = "Mahasiswa"
 		limitPinjaman = 5 * totalSimpanan // 5x total simpanan
-	case "01", "02": // Dosen/Tenaga Pendidikan
-		jenisAnggota = "Dosen/Tenaga Pendidikan"
+	case "01", "02": // Dosen/Tenaga Kependidikan
+		jenisAnggota = "Dosen/Tenaga Kependidikan"
 		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
 	default:
 		jenisAnggota = "Tidak Diketahui"
@@ -2775,7 +2775,7 @@ func BendaharaUpdateBunga(c *gin.Context) {
 	if bungaStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Nilai bunga harus diisi",
+			"message": "Nilai jasa harus diisi",
 		})
 		return
 	}
@@ -2784,7 +2784,7 @@ func BendaharaUpdateBunga(c *gin.Context) {
 	if err != nil || bungaVal < 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Nilai bunga tidak valid",
+			"message": "Nilai jasa tidak valid",
 		})
 		return
 	}
@@ -2801,14 +2801,14 @@ func BendaharaUpdateBunga(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Gagal menyimpan bunga ke database",
+			"message": "Gagal menyimpan jasa ke database",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Bunga berhasil disimpan",
+		"message": "Jasa berhasil disimpan",
 	})
 }
 
@@ -5508,8 +5508,8 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 	switch a.UnitKerja {
 	case "03": // Mahasiswa
 		jenisAnggota = "Mahasiswa"
-	case "01", "02": // Dosen/Tenaga Pendidikan
-		jenisAnggota = "Dosen/Tenaga Pendidikan"
+	case "01", "02": // Dosen/Tenaga Kependidikan
+		jenisAnggota = "Dosen/Tenaga Kependidikan"
 	default:
 		jenisAnggota = "Tidak Diketahui"
 	}

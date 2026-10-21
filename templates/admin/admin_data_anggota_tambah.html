@@ -57,7 +57,7 @@
                             <select class="form-select form-select-lg border-primary" id="statusAnggotaSelect" name="StatusAnggota" required>
                                 <option value="">-- Pilih Status Calon Anggota --</option>
                                 <option value="dosen"    {{ if eq .FormStatusAnggota "dosen"    }}selected{{ end }}>Dosen</option>
-                                <option value="karyawan" {{ if eq .FormStatusAnggota "karyawan" }}selected{{ end }}>Tenaga Pendidikan</option>
+                                <option value="karyawan" {{ if eq .FormStatusAnggota "karyawan" }}selected{{ end }}>Tenaga Kependidikan</option>
                                 <option value="mahasiswa"{{ if eq .FormStatusAnggota "mahasiswa"}}selected{{ end }}>Mahasiswa</option>
                             </select>
                             <div id="referensiWarningBox" class="alert alert-danger mt-2 py-2 px-3 d-none mb-0"></div>
@@ -313,7 +313,7 @@
             if (selected && selected !== 'mahasiswa' && latestRefFound && !latestRefStatus) {
                 errorMsg = 'Data referensi ditemukan, tetapi jabatan pada Nomer Identitas ini belum dikenali sistem. Perbarui import referensi.';
             } else if (selected && latestRefStatus && selected !== latestRefStatus) {
-                const label = latestRefStatus === 'dosen' ? 'DOSEN' : 'TENAGA PENDIDIKAN';
+                const label = latestRefStatus === 'dosen' ? 'DOSEN' : 'TENAGA KEPENDIDIKAN';
                 errorMsg = `Data Nomer Identitas terdaftar sebagai <b>${label}</b>. Anda memilih jabatan yang salah.`;
             }
 

@@ -204,7 +204,7 @@ func mapStatusToUnitKerja(statusAnggota string) string {
 	switch strings.ToLower(strings.TrimSpace(statusAnggota)) {
 	case "dosen":
 		return "01"
-	case "karyawan", "tenaga pendidikan":
+	case "karyawan", "tenaga pendidikan", "tenaga kependidikan":
 		return "02"
 	case "mahasiswa":
 		return "03"
@@ -350,7 +350,7 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 	}
 
 	if strings.ToLower(statusAnggota) != "mahasiswa" && gajiBulanan <= 0 {
-		formData["Error"] = "Gaji bulanan wajib diisi untuk dosen dan tenaga pendidikan."
+		formData["Error"] = "Gaji bulanan wajib diisi untuk dosen dan tenaga kependidikan."
 		renderAdminTambahAnggota(c, http.StatusBadRequest, formData)
 		return
 	}
@@ -861,7 +861,7 @@ func AdminImportAnggotaExcel(c *gin.Context) {
 				statusAnggota = "karyawan"
 			}
 		}
-		if statusAnggota == "tenaga pendidikan" {
+		if statusAnggota == "tenaga pendidikan" || statusAnggota == "tenaga kependidikan" {
 			statusAnggota = "karyawan"
 		}
 

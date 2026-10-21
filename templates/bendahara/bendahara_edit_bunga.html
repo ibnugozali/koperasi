@@ -22,12 +22,12 @@
     <div class="main-content">
         <div class="container-fluid">
             <br><br>
-            <h2 class="mb-4">Edit Bunga</h2>
+            <h2 class="mb-4">Edit Jasa Pinjaman</h2>
 
-            <!-- Form Edit Bunga -->
+            <!-- Form Edit Jasa -->
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <i class="fa-solid fa-edit"></i> Pengaturan Bunga
+                    <i class="fa-solid fa-edit"></i> Pengaturan Jasa
                 </div>
                 <div class="card-body">
                     {{ if .Error }}
@@ -37,7 +37,7 @@
                     {{ end }}
             <form id="formBunga" method="POST" action="/bendahara/edit-bunga">
                         <div class="mb-3">
-                            <label for="bunga" class="form-label">Nilai Bunga (%)</label>
+                            <label for="bunga" class="form-label">Nilai Jasa (%)</label>
                             <input type="number" step="0.01" min="0" max="100" id="bunga" name="bunga" class="form-control"
                                 value="{{ .CurrentBunga }}" required />
                         </div>

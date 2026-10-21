@@ -44,7 +44,7 @@
                             <p><strong>Nama:</strong> {{ .Anggota.NamaAnggota }}</p>
                             <p><strong>Jabatan:</strong> 
                                 {{if eq .Anggota.UnitKerja "01"}}Dosen
-                                {{else if eq .Anggota.UnitKerja "02"}}Tenaga Pendidikan
+                                {{else if eq .Anggota.UnitKerja "02"}}Tenaga Kependidikan
                                 {{else if eq .Anggota.UnitKerja "03"}}Mahasiswa
                                 {{else}}Tidak Diketahui
                                 {{end}}
@@ -112,7 +112,7 @@
                         <div class="mb-3">
                             <label for="perkiraan_angsuran" class="form-label"><i class="fa-solid fa-coins me-1"></i>Perkiraan Angsuran per Bulan (Rp)</label>
                             <input type="text" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran" value="" disabled>
-                            <small class="form-text text-muted">Bunga: {{ printf "%.2f" .Pinjaman.Bunga }}% (flat)</small>
+                            <small class="form-text text-muted">Jasa: {{ printf "%.2f" .Pinjaman.Bunga }}% (flat)</small>
                         </div>
                         
                         <!-- Tujuan Penggunaan Pinjaman -->

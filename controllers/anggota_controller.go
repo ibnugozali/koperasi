@@ -1797,8 +1797,8 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 	case "01": // Dosen
 		jenisAnggota = "Dosen"
 		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
-	case "02": // Tenaga Pendidikan
-		jenisAnggota = "Tenaga Pendidikan"
+	case "02": // Tenaga Kependidikan
+		jenisAnggota = "Tenaga Kependidikan"
 		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
 	default:
 		jenisAnggota = "Tidak Diketahui"
@@ -1986,7 +1986,7 @@ func AjukanPinjamanPost(c *gin.Context) {
 
 	// Validasi bunga
 	if pinjaman.Bunga < 0 || pinjaman.Bunga > 20 {
-		redirectAjukanPinjamanError(c, "Bunga harus antara 0-20%.")
+		redirectAjukanPinjamanError(c, "Persentase jasa harus antara 0-20%.")
 		return
 	}
 
@@ -2070,9 +2070,9 @@ func AjukanPinjamanPost(c *gin.Context) {
 			return
 		}
 		_ = calculatePinjamanLimit(anggota.UnitKerja, totalSimpanan, gajiBulanan, pinjaman.JangkaWaktu)
-	case "01", "02": // Dosen (01) atau Tenaga Pendidikan (02)
+	case "01", "02": // Dosen (01) atau Tenaga Kependidikan (02)
 		if gajiStr == "" {
-			redirectAjukanPinjamanError(c, "Gaji bulanan wajib diisi untuk dosen/tenaga pendidikan.")
+			redirectAjukanPinjamanError(c, "Gaji bulanan wajib diisi untuk dosen/tenaga kependidikan.")
 			return
 		}
 		_ = calculatePinjamanLimit(anggota.UnitKerja, totalSimpanan, gajiBulanan, pinjaman.JangkaWaktu)
