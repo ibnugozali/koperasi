@@ -1794,8 +1794,11 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 	case "03": // Mahasiswa
 		jenisAnggota = "Mahasiswa"
 		limitPinjaman = 5 * totalSimpanan
-	case "01", "02": // Dosen/Tenaga Pendidikan
-		jenisAnggota = "Dosen/Tenaga Pendidikan"
+	case "01": // Dosen
+		jenisAnggota = "Dosen"
+		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
+	case "02": // Tenaga Pendidikan
+		jenisAnggota = "Tenaga Pendidikan"
 		limitPinjaman = 0 // Akan dihitung berdasarkan gaji di frontend
 	default:
 		jenisAnggota = "Tidak Diketahui"

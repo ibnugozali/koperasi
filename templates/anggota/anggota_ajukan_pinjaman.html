@@ -34,11 +34,11 @@ document.addEventListener('DOMContentLoaded', function(){
         <h5 class="mb-0">Batas Maksimum Bayar</h5>
     </div>
     <p><strong>Jenis Anggota:</strong> {{ .JenisAnggota }}</p>
-    <p><strong>Total Simpanan:</strong> Rp {{ if .TotalSimpanan }}{{ printf "%.0f" .TotalSimpanan }}{{ else }}0{{ end }}</p>
+    <p><strong>Total Simpanan:</strong> Rp {{ .TotalSimpanan | formatRupiah }}</p>
         <p id="limit_info">
             {{if eq .JenisAnggota "Mahasiswa"}}
-                <strong>Kemampuan Bayar:</strong> Rp {{ printf "%.0f" .LimitPinjaman }} (5x total simpanan)
-            {{else if eq .JenisAnggota "Dosen/Tenaga Pendidikan"}}
+                <strong>Kemampuan Bayar:</strong> Rp {{ .LimitPinjaman | formatRupiah }} (5x total simpanan)
+            {{else if or (eq .JenisAnggota "Dosen") (eq .JenisAnggota "Tenaga Pendidikan")}}
                 <strong>Kemampuan Bayar:</strong> Dihitung berdasarkan gaji bulanan dan tenor
             {{else}}
                 <strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan
@@ -290,7 +290,8 @@ document.addEventListener('DOMContentLoaded', function(){
             <div class="col-md-6" id="gaji_bulanan_container">
                 <div class="mb-3">
                     <label for="gaji_bulanan" class="form-label">Jumlah Gaji Bulanan (Rp)</label>
-                    <input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 2000000" class="form-control" id="gaji_bulanan" name="gaji_bulanan" value="{{ .GajiBulanan }}" readonly required>
+                    <input type="text" inputmode="numeric" pattern="[1-9][0-9.]*" title="Masukkan bilangan asli lebih dari 0, contoh: 2.000.000" class="form-control" id="gaji_bulanan" value="{{ .GajiBulanan | formatRupiah }}" readonly required>
+                    <input type="hidden" id="gaji_bulanan_raw" name="gaji_bulanan" value="{{ .GajiBulanan }}">
                     <small class="form-text text-muted">
                         <i class="bi bi-info-circle me-1"></i>
                         Gaji bulanan otomatis diambil dari data yang terdaftar
@@ -315,8 +316,9 @@ document.addEventListener('DOMContentLoaded', function(){
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="jumlah_pinjaman" class="form-label">Jumlah Pinjaman yang Diajukan (Rp)</label>
-                    <input type="text" inputmode="numeric" pattern="[1-9][0-9]{3,}" title="Masukkan bilangan asli minimal 4 digit, contoh: 1000" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" required
+                    <input type="text" inputmode="numeric" pattern="[1-9][0-9.]*" title="Masukkan bilangan asli minimal 4 digit, contoh: 1.000" class="form-control" id="jumlah_pinjaman" required
                         {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}} readonly {{end}}>
+                    <input type="hidden" id="jumlah_pinjaman_raw" name="jumlah_pinjaman">
                     <div class="form-text mt-2" id="limit_warning" role="alert">
                         {{if and (eq .JenisAnggota "Mahasiswa") (le .TotalSimpanan 0.0)}}
                             ⚠️ Anda belum memiliki simpanan. Silakan lakukan simpanan terlebih dahulu untuk dapat mengajukan pinjaman.
@@ -338,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
         <div class="mb-3">
             <label for="perkiraan_angsuran" class="form-label">Perkiraan Angsuran per Bulan (Rp)</label>
-            <input type="number" class="form-control" id="perkiraan_angsuran" name="perkiraan_angsuran" readonly>
+            <input type="text" inputmode="numeric" class="form-control" id="perkiraan_angsuran" readonly>
         </div>
 
         <!-- Metode Pencairan & Metode Angsuran -->
@@ -675,9 +677,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('ajukanPinjamanForm');
     if (form) {
         form.addEventListener('submit', function(e) {
-            var jumlahPinjaman = parseFloat(document.getElementById('jumlah_pinjaman')?.value) || 0;
+            var jumlahPinjaman = parseInt((document.getElementById('jumlah_pinjaman')?.value || '').replace(/[^0-9]/g, ''), 10) || 0;
             var jangkaWaktu = parseInt(document.getElementById('jangka_waktu')?.value) || 0;
-            var gajiBulanan = parseFloat(document.getElementById('gaji_bulanan')?.value) || 0;
+            var gajiBulanan = parseInt((document.getElementById('gaji_bulanan')?.value || '').replace(/[^0-9]/g, ''), 10) || 0;
             var unitKerjaValue = '{{.Anggota.UnitKerja}}';
             var totalSimpanan = parseFloat('{{.TotalSimpanan | printf "%.0f"}}') || 0;
             var limitPinjaman = unitKerjaValue === '03' ? 5 * totalSimpanan : (gajiBulanan > 0 && jangkaWaktu > 0 ? 0.4 * gajiBulanan * jangkaWaktu : 0);
@@ -710,12 +712,17 @@ function calculateAngsuran() {
     var elJumlah = document.getElementById('jumlah_pinjaman');
     var elJangka = document.getElementById('jangka_waktu');
     var elGaji   = document.getElementById('gaji_bulanan');
+    var elJumlahRaw = document.getElementById('jumlah_pinjaman_raw');
+    var elGajiRaw = document.getElementById('gaji_bulanan_raw');
 
-    const jumlahPinjaman = parseFloat(elJumlah ? elJumlah.value : 0) || 0;
+    const jumlahPinjaman = parseInt((elJumlah ? elJumlah.value : '').replace(/[^0-9]/g, ''), 10) || 0;
     const jangkaWaktu    = parseInt(elJangka ? elJangka.value : 0) || 0;
-    const gajiBulanan    = parseFloat(elGaji ? elGaji.value : 0) || 0;
+    const gajiBulanan    = parseInt((elGaji ? elGaji.value : '').replace(/[^0-9]/g, ''), 10) || 0;
     const unitKerjaValue = '{{.Anggota.UnitKerja}}';
     const totalSimpanan  = parseFloat('{{.TotalSimpanan | printf "%.0f"}}') || 0;
+
+    if (elJumlahRaw) elJumlahRaw.value = String(jumlahPinjaman || '');
+    if (elGajiRaw) elGajiRaw.value = String(gajiBulanan || '');
 
     let limitPinjaman = 0;
     let jenisAnggota  = '';
@@ -810,7 +817,7 @@ function calculateAngsuran() {
         if (jangkaWaktu > 0 && perkiraanAngsuran) {
             const pokok         = jumlahPinjaman / jangkaWaktu;
             const bungaPerBulan = bungaTotal / jangkaWaktu;
-            perkiraanAngsuran.value = Math.round(pokok + bungaPerBulan);
+            perkiraanAngsuran.value = Math.round(pokok + bungaPerBulan).toLocaleString('id-ID');
         }
     } else {
         if (totalPinjamanRp) totalPinjamanRp.textContent = 'Rp 0';

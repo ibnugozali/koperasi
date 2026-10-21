@@ -73,6 +73,8 @@ document.addEventListener('DOMContentLoaded', function() {
             gajiInput.required = false;
             gajiInput.value = '';
         }
+        const rawSalary = document.getElementById('gaji_bulanan_raw');
+        if (rawSalary) rawSalary.value = '';
     } else { // Dosen atau Karyawan/Staff
         if (gajiContainer) gajiContainer.style.display = 'block';
         if (gajiInput) gajiInput.required = true;
@@ -102,6 +104,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return withoutLeadingZeros === '' ? '0' : withoutLeadingZeros;
     }
 
+    function formatIntegerWithDots(value) {
+        const normalized = normalizePositiveIntegerInput(value);
+        return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
     function validateLoanAmount(value) {
         const normalized = normalizePositiveIntegerInput(value);
         if (normalized === '' || normalized === '0') {
@@ -116,17 +123,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (jumlahPinjamanInput && terbilangInput) {
         jumlahPinjamanInput.addEventListener('input', function() {
-            this.value = normalizePositiveIntegerInput(this.value);
-            if (!validateLoanAmount(this.value)) {
+            const normalized = normalizePositiveIntegerInput(this.value);
+            this.value = formatIntegerWithDots(normalized);
+            const rawAmount = document.getElementById('jumlah_pinjaman_raw');
+            if (rawAmount) rawAmount.value = normalized;
+            if (!validateLoanAmount(normalized)) {
                 terbilangInput.value = 'minimal 4 digit angka';
             } else {
-                const value = parseInt(this.value, 10) || 0;
+                const value = parseInt(normalized, 10) || 0;
                 terbilangInput.value = numberToWords(value);
             }
         });
 
         // Set initial value if there's already a value
-        const initialValue = parseInt(jumlahPinjamanInput.value, 10) || 0;
+        const initialRawValue = normalizePositiveIntegerInput(jumlahPinjamanInput.value);
+        jumlahPinjamanInput.value = formatIntegerWithDots(initialRawValue);
+        const rawAmount = document.getElementById('jumlah_pinjaman_raw');
+        if (rawAmount) rawAmount.value = initialRawValue;
+        const initialValue = parseInt(initialRawValue, 10) || 0;
         if (initialValue > 0) {
             terbilangInput.value = numberToWords(initialValue);
         }
@@ -134,9 +148,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const gajiBulananInput = document.getElementById('gaji_bulanan');
     if (gajiBulananInput) {
-        gajiBulananInput.addEventListener('input', function() {
-            this.value = normalizePositiveIntegerInput(this.value);
-        });
+        const rawSalary = document.getElementById('gaji_bulanan_raw');
+        const salary = normalizePositiveIntegerInput(gajiBulananInput.value);
+        gajiBulananInput.value = formatIntegerWithDots(salary);
+        if (rawSalary) {
+            const isMahasiswa = unitKerjaValue === '03';
+            rawSalary.value = isMahasiswa ? '' : salary;
+        }
     }
 
     const noRekeningInput = document.getElementById('noRekening');
@@ -158,9 +176,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Function to calculate perkiraan angsuran
 function calculateAngsuran() {
-    const jumlahPinjaman = parseFloat(document.getElementById('jumlah_pinjaman')?.value) || 0;
+    const jumlahPinjaman = parseInt((document.getElementById('jumlah_pinjaman')?.value || '').replace(/[^0-9]/g, ''), 10) || 0;
     const jangkaWaktu = parseInt(document.getElementById('jangka_waktu')?.value) || 0;
-    const gajiBulanan = parseFloat(document.getElementById('gaji_bulanan')?.value) || 0;
+    const gajiBulanan = parseInt((document.getElementById('gaji_bulanan')?.value || '').replace(/[^0-9]/g, ''), 10) || 0;
 
     // Get values from template variables (fallback if not available)
     const unitKerjaValue = document.querySelector('script') ? document.querySelector('script').textContent.match(/unitKerjaValue = '([^']+)'/)?.[1] : '';
@@ -224,7 +242,7 @@ function calculateAngsuran() {
         const bungaTotal = bungaDecimal * jumlahPinjaman;
         const bungaPerBulan = bungaTotal / jangkaWaktu;
         const totalAngsuran = pokok + bungaPerBulan;
-        perkiraanAngsuran.value = Math.round(totalAngsuran);
+        perkiraanAngsuran.value = Math.round(totalAngsuran).toLocaleString('id-ID');
     }
 }
 

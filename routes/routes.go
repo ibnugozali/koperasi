@@ -15,6 +15,37 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func formatRupiah(value interface{}) (string, error) {
+	var amount float64
+	switch number := value.(type) {
+	case int:
+		amount = float64(number)
+	case int64:
+		amount = float64(number)
+	case float32:
+		amount = float64(number)
+	case float64:
+		amount = number
+	default:
+		return "", fmt.Errorf("formatRupiah: tipe angka tidak didukung %T", value)
+	}
+
+	s := fmt.Sprintf("%.0f", amount)
+	run := []rune(s)
+	var out []rune
+	count := 0
+	for i := len(run) - 1; i >= 0; i-- {
+		if count > 0 && count%3 == 0 && run[i] != '-' {
+			out = append([]rune{'.'}, out...)
+		}
+		out = append([]rune{run[i]}, out...)
+		if run[i] != '-' {
+			count++
+		}
+	}
+	return string(out), nil
+}
+
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
 
@@ -106,20 +137,7 @@ func SetupRouter() *gin.Engine {
 		"mul": func(a, b, c float64) float64 {
 			return a * b * c
 		},
-		"formatRupiah": func(n float64) string {
-			s := fmt.Sprintf("%.0f", n)
-			run := []rune(s)
-			var out []rune
-			count := 0
-			for i := len(run) - 1; i >= 0; i-- {
-				if count > 0 && count%3 == 0 {
-					out = append([]rune{'.'}, out...)
-				}
-				out = append([]rune{run[i]}, out...)
-				count++
-			}
-			return string(out)
-		},
+		"formatRupiah": formatRupiah,
 		"json": func(v interface{}) template.JS {
 			a, _ := json.Marshal(v)
 			return template.JS(a)
@@ -188,20 +206,7 @@ func SetupRouter() *gin.Engine {
 		"mul": func(a, b, c float64) float64 {
 			return a * b * c
 		},
-		"formatRupiah": func(n float64) string {
-			s := fmt.Sprintf("%.0f", n)
-			run := []rune(s)
-			var out []rune
-			count := 0
-			for i := len(run) - 1; i >= 0; i-- {
-				if count > 0 && count%3 == 0 {
-					out = append([]rune{'.'}, out...)
-				}
-				out = append([]rune{run[i]}, out...)
-				count++
-			}
-			return string(out)
-		},
+		"formatRupiah": formatRupiah,
 		"json": func(v interface{}) string {
 			a, _ := json.Marshal(v)
 			return string(a)
