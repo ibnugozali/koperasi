@@ -628,11 +628,56 @@ func parseNominalPengaturan(value string, fallback int) int {
 func RegisterReferensiLookup(c *gin.Context) {
 	nama := strings.TrimSpace(c.Query("nama"))
 	identitas := strings.TrimSpace(c.Query("identitas"))
+	status := strings.TrimSpace(c.Query("status"))
+
+	if status == "mahasiswa" {
+		if nama == "" {
+			c.JSON(http.StatusOK, gin.H{"found": false, "already_member": false})
+			return
+		}
+
+		namaTerdaftar, err := repository.FindCurrentAnggotaNameByFullName(nama)
+		if err == nil {
+			c.JSON(http.StatusOK, gin.H{
+				"found":          false,
+				"already_member": true,
+				"member_name":    namaTerdaftar,
+			})
+			return
+		}
+		if err != sql.ErrNoRows {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"found": false,
+				"error": "Gagal memeriksa status keanggotaan",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"found": false, "already_member": false})
+		return
+	}
 
 	if identitas == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"found": false,
 			"error": "Nomer Identitas wajib diisi",
+		})
+		return
+	}
+
+	namaTerdaftar, err := repository.FindCurrentAnggotaNameByIdentity(identitas)
+	if err == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"found":          false,
+			"already_member": true,
+			"member_name":    namaTerdaftar,
+		})
+		return
+	}
+	if err != sql.ErrNoRows {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"found": false,
+			"error": "Gagal memeriksa status keanggotaan",
 		})
 		return
 	}
@@ -648,6 +693,15 @@ func RegisterReferensiLookup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"found": false,
 			"error": "Gagal mengambil data referensi",
+		})
+		return
+	}
+
+	if normalizeRegisterCompare(referensi.StatusKeanggotaan) == "anggota" {
+		c.JSON(http.StatusOK, gin.H{
+			"found":          false,
+			"already_member": true,
+			"member_name":    referensi.NamaLengkap,
 		})
 		return
 	}
@@ -727,6 +781,18 @@ func Register(c *gin.Context) {
 		metodePembayaran = "transfer_bank"
 	}
 
+	if newAnggota.StatusAnggota == "mahasiswa" {
+		namaTerdaftar, err := repository.FindCurrentAnggotaNameByFullName(newAnggota.NamaAnggota)
+		if err == nil {
+			renderRegisterError(http.StatusBadRequest, fmt.Sprintf("%s sudah terdaftar menjadi anggota.", namaTerdaftar))
+			return
+		}
+		if err != sql.ErrNoRows {
+			renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi status keanggotaan.")
+			return
+		}
+	}
+
 	if !isRegisterPhoneValid(newAnggota.NoTelepon) {
 		renderRegisterError(http.StatusBadRequest, "No. Telepon harus berisi 10 hingga 13 digit angka.")
 		return
@@ -757,22 +823,24 @@ func Register(c *gin.Context) {
 			return
 		}
 
+		namaTerdaftar, err := repository.FindCurrentAnggotaNameByIdentity(noIdentitasPegawai)
+		if err == nil {
+			renderRegisterError(http.StatusBadRequest, fmt.Sprintf("%s sudah terdaftar menjadi anggota.", namaTerdaftar))
+			return
+		}
+		if err != sql.ErrNoRows {
+			renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi status keanggotaan.")
+			return
+		}
+
 		referensiByIdentitas, err := repository.FindReferensiPendaftaranByIdentitas(noIdentitasPegawai)
 		if err == nil {
 			if normalizeRegisterCompare(referensiByIdentitas.StatusKeanggotaan) == "anggota" {
-				hasCurrentAnggota, err := repository.HasCurrentAnggotaForReferensi(
-					referensiByIdentitas.NamaLengkap,
-					referensiByIdentitas.NomorIdentitas,
-					referensiByIdentitas.GajiBulanan,
+				renderRegisterError(
+					http.StatusBadRequest,
+					fmt.Sprintf("%s sudah terdaftar menjadi anggota.", referensiByIdentitas.NamaLengkap),
 				)
-				if err != nil {
-					renderRegisterError(http.StatusInternalServerError, "Gagal memvalidasi data referensi pendaftaran.")
-					return
-				}
-				if hasCurrentAnggota {
-					renderRegisterError(http.StatusBadRequest, "Data Anda di master sudah tercatat sebagai anggota. Pendaftaran baru tidak dapat diproses.")
-					return
-				}
+				return
 			}
 
 			if statusWarning := validateReferensiStatusAnggota(newAnggota.StatusAnggota, referensiByIdentitas.Jabatan); statusWarning != "" {

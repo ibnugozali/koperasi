@@ -199,6 +199,8 @@
 
         let latestRefStatus = '';
         let latestRefFound = false;
+        let alreadyMember = false;
+        let registeredMemberName = '';
         let lookupState = 'idle';
         let lookupTimer = null;
         let lookupSequence = 0;
@@ -270,13 +272,18 @@
         }
 
         function shouldLockRegistrationFields() {
-            return Boolean(statusSelect.value && statusSelect.value !== 'mahasiswa' && !latestRefFound);
+            return alreadyMember ||
+                Boolean(statusSelect.value && statusSelect.value !== 'mahasiswa' && !latestRefFound);
         }
 
         function updateRegistrationFieldsLock() {
             const locked = shouldLockRegistrationFields();
 
             lockedUntilReferensiFoundFields.forEach((field) => {
+                if (field.id === 'register_nama_anggota' && statusSelect.value === 'mahasiswa') {
+                    field.disabled = false;
+                    return;
+                }
                 field.disabled = locked;
             });
 
@@ -290,10 +297,14 @@
             let errorMsg = '';
             const identitasInvalid = selected && selected !== 'mahasiswa' && ['not_found', 'error'].includes(lookupState);
 
-            if (selected && selected !== 'mahasiswa' && lookupState === 'not_found') {
+            if (alreadyMember) {
+                errorMsg = `${registeredMemberName || namaHidden.value} sudah terdaftar menjadi anggota.`;
+            } else if (selected && selected !== 'mahasiswa' && lookupState === 'not_found') {
                 errorMsg = 'Nomer Identitas tidak ditemukan di data referensi. Kolom pendaftaran lainnya dikunci sampai Nomer Identitas yang valid ditemukan.';
             } else if (selected && selected !== 'mahasiswa' && lookupState === 'error') {
                 errorMsg = 'Gagal mengecek Nomer Identitas ke server. Kolom pendaftaran lainnya dikunci sampai data referensi berhasil divalidasi.';
+            } else if (selected === 'mahasiswa' && lookupState === 'error') {
+                errorMsg = 'Gagal memeriksa status keanggotaan. Silakan coba lagi sebelum melanjutkan pendaftaran.';
             } else if (selected && selected !== 'mahasiswa' && latestRefFound && !latestRefStatus) {
                 errorMsg = 'Data referensi ditemukan, tetapi jabatan pada Nomer Identitas ini belum tersedia atau belum dikenali sistem. Hubungi admin untuk memperbarui import referensi.';
             } else if (selected && latestRefStatus && selected !== latestRefStatus) {
@@ -302,14 +313,14 @@
             }
 
             if (errorMsg) {
-                warningBox.innerHTML = errorMsg;
+                warningBox.textContent = errorMsg;
                 warningBox.classList.remove('d-none');
                 statusSelect.classList.toggle('is-invalid-custom', !identitasInvalid);
                 identitasInput.classList.toggle('is-invalid-custom', identitasInvalid);
                 return false;
             }
 
-            warningBox.innerHTML = '';
+            warningBox.textContent = '';
             warningBox.classList.add('d-none');
             statusSelect.classList.remove('is-invalid-custom');
             identitasInput.classList.remove('is-invalid-custom');
@@ -324,6 +335,8 @@
             document.getElementById('wrapper_gaji_bulanan').classList.toggle('d-none', isMahasiswa);
             identitasInput.required = !isMahasiswa;
             namaHidden.readOnly = !isMahasiswa;
+            alreadyMember = false;
+            registeredMemberName = '';
             if (isMahasiswa) {
                 identitasInput.value = '';
                 namaHidden.value = '';
@@ -400,7 +413,9 @@
                 return;
             }
             if (statusSelect.value === 'mahasiswa') {
-                submitBtn.disabled = false;
+                submitBtn.disabled = alreadyMember ||
+                    lookupState === 'loading' ||
+                    (Boolean(namaHidden.value.trim()) && lookupState === 'error');
                 return;
             }
             if (!latestRefFound) {
@@ -413,21 +428,68 @@
         async function checkReferensi() {
             const currentLookupSequence = ++lookupSequence;
             const identitas = identitasInput.value.trim();
+            const nama = namaHidden.value.trim();
             const statusVal = statusSelect.value;
 
             if (statusVal === 'mahasiswa') {
                 latestRefFound = true;
                 latestRefStatus = 'mahasiswa';
-                lookupState = 'found';
-                resetDisplays('Mahasiswa (Input Manual)', true);
-                namaHintText.textContent = 'Silakan isi nama lengkap.';
+                alreadyMember = false;
+                registeredMemberName = '';
                 identitasHintText.textContent = 'Mahasiswa tidak memerlukan Nomer Identitas referensi.';
+                if (!nama) {
+                    lookupState = 'found';
+                    resetDisplays('Mahasiswa (Input Manual)', true);
+                    namaHintText.textContent = 'Silakan isi nama lengkap.';
+                    updateReferensiWarning();
+                    updateMetodePembayaranUI();
+                    updateSubmitState();
+                    return;
+                }
+
+                lookupState = 'loading';
+                updateRegistrationFieldsLock();
+                updateSubmitState();
+                namaHintText.textContent = 'Memeriksa status keanggotaan...';
+                try {
+                    const res = await fetch(`/api/register/referensi?status=mahasiswa&nama=${encodeURIComponent(nama)}`, { cache: 'no-store' });
+                    const data = await res.json();
+                    if (
+                        currentLookupSequence !== lookupSequence ||
+                        nama !== namaHidden.value.trim() ||
+                        statusVal !== statusSelect.value
+                    ) {
+                        return;
+                    }
+
+                    alreadyMember = Boolean(data.already_member);
+                    registeredMemberName = data.member_name || '';
+                    lookupState = data.error ? 'error' : 'found';
+                    if (alreadyMember) {
+                        namaHidden.value = registeredMemberName || nama;
+                        namaHintText.textContent = 'Nama ini sudah terdaftar menjadi anggota.';
+                    } else {
+                        namaHintText.textContent = 'Nama belum terdaftar sebagai anggota.';
+                    }
+                } catch (e) {
+                    if (
+                        currentLookupSequence !== lookupSequence ||
+                        nama !== namaHidden.value.trim() ||
+                        statusVal !== statusSelect.value
+                    ) {
+                        return;
+                    }
+                    lookupState = 'error';
+                    namaHintText.textContent = 'Gagal memeriksa status keanggotaan. Coba lagi atau hubungi admin.';
+                }
                 updateReferensiWarning();
                 updateMetodePembayaranUI();
                 updateSubmitState();
                 return;
             }
 
+            alreadyMember = false;
+            registeredMemberName = '';
             if (!identitas) {
                 latestRefFound = false;
                 latestRefStatus = '';
@@ -471,6 +533,16 @@
                     gajiHidden.value = data.gaji_bulanan || 0;
                     gajiDisplay.innerText = formatRupiah(data.gaji_bulanan || 0);
                     gajiDisplay.className = 'alert alert-success py-2 px-3 mb-1 fw-bold';
+                } else if (data.already_member) {
+                    latestRefFound = false;
+                    alreadyMember = true;
+                    registeredMemberName = data.member_name || '';
+                    latestRefStatus = '';
+                    lookupState = 'already_member';
+                    resetDisplays('Sudah terdaftar menjadi anggota', false, 'alert-danger');
+                    namaHidden.value = registeredMemberName;
+                    namaHintText.textContent = 'Nama ini sudah terdaftar menjadi anggota.';
+                    identitasHintText.textContent = 'Nomer Identitas ini sudah digunakan oleh anggota.';
                 } else {
                     latestRefFound = false;
                     latestRefStatus = '';
@@ -525,6 +597,21 @@
             identitasHintText.textContent = identitasInput.value.trim()
                 ? 'Pengecekan akan berjalan setelah Anda selesai mengetik.'
                 : 'Masukkan Nomer Identitas untuk mengambil nama dan gaji otomatis dari data referensi.';
+            updateReferensiWarning();
+            updateMetodePembayaranUI();
+            updateSubmitState();
+            lookupTimer = setTimeout(checkReferensi, 400);
+        });
+
+        namaHidden.addEventListener('input', () => {
+            if (statusSelect.value !== 'mahasiswa') {
+                return;
+            }
+            lookupSequence += 1;
+            clearTimeout(lookupTimer);
+            alreadyMember = false;
+            registeredMemberName = '';
+            lookupState = namaHidden.value.trim() ? 'loading' : 'found';
             updateReferensiWarning();
             updateMetodePembayaranUI();
             updateSubmitState();

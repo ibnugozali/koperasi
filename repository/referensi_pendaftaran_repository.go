@@ -79,6 +79,38 @@ func HasCurrentAnggotaUsername(username string) (bool, error) {
 	return exists, err
 }
 
+func FindCurrentAnggotaNameByIdentity(identitas string) (string, error) {
+	db := config.GetDB()
+
+	identitas = strings.TrimSpace(identitas)
+	var nama string
+	err := db.QueryRow(`
+		SELECT nama_anggota
+		FROM anggota
+		WHERE COALESCE(username, '') = $1
+		  AND LOWER(TRIM(COALESCE(status, ''))) <> 'keluar'
+		ORDER BY CASE WHEN LOWER(TRIM(COALESCE(status, ''))) = 'aktif' THEN 0 ELSE 1 END
+		LIMIT 1
+	`, identitas).Scan(&nama)
+	return nama, err
+}
+
+func FindCurrentAnggotaNameByFullName(nama string) (string, error) {
+	db := config.GetDB()
+
+	nama = strings.TrimSpace(nama)
+	var namaTerdaftar string
+	err := db.QueryRow(`
+		SELECT nama_anggota
+		FROM anggota
+		WHERE LOWER(TRIM(COALESCE(nama_anggota, ''))) = LOWER(TRIM($1))
+		  AND LOWER(TRIM(COALESCE(status, ''))) <> 'keluar'
+		ORDER BY CASE WHEN LOWER(TRIM(COALESCE(status, ''))) = 'aktif' THEN 0 ELSE 1 END
+		LIMIT 1
+	`, nama).Scan(&namaTerdaftar)
+	return namaTerdaftar, err
+}
+
 func ReleaseUsernameFromAnggotaKeluar(username string) error {
 	db := config.GetDB()
 
