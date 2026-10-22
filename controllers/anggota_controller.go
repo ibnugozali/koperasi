@@ -1184,19 +1184,6 @@ func AnggotaDashboard(c *gin.Context) {
 		return
 	}
 
-	// Cek angsuran terlambat dan kirim pesan jika ada
-	terlambats, err := repository.GetAngsuranTerlambat()
-	if err == nil && len(terlambats) > 0 {
-		for _, t := range terlambats {
-			if t["nama_anggota"] == anggota.NamaAnggota {
-				// Kirim pesan notifikasi (misal, tambahkan ke pesan)
-				// Untuk sementara, tambahkan ke session atau tampilkan di dashboard
-				c.Set("Notifikasi", "Anda memiliki angsuran yang terlambat. Silakan bayar segera.")
-				break
-			}
-		}
-	}
-
 	// Ambil konten dashboard dari halaman
 	halaman, err := repository.GetHalamanBySlug("dashboard_anggota")
 	if err != nil {

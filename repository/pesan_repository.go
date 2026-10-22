@@ -1,9 +1,36 @@
 package repository
 
 import (
+	"database/sql"
+	"errors"
+	"fmt"
+
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/models"
 )
+
+type overdueLoanNotification struct {
+	idPinjaman  int
+	idAnggota   string
+	jangkaWaktu int
+	jatuhTempo  string
+}
+
+type overdueInstallmentNotification struct {
+	idPinjaman int
+	idAnggota  string
+	angsuranKe int
+	jatuhTempo string
+}
+
+type OverdueInstallmentWhatsAppNotification struct {
+	IDPinjaman  int
+	AngsuranKe  int
+	IDAnggota   string
+	NamaAnggota string
+	NoTelepon   string
+	JatuhTempo  string
+}
 
 // GetPesanByAnggotaID mengambil semua pesan untuk anggota tertentu
 func GetPesanByAnggotaID(idAnggota string) ([]models.Pesan, error) {
@@ -45,6 +72,302 @@ func CreatePesan(pesan models.Pesan) error {
 		VALUES ($1, $2, $3, $4, NOW())`
 	_, err := db.Exec(query, pesan.IDAnggota, pesan.Judul, pesan.Isi, pesan.Status)
 	return err
+}
+
+// CreateOverdueLoanNotifications membuat satu pesan untuk setiap pinjaman aktif yang
+// sudah melewati akhir jangka waktu dan belum pernah diberi pengingat.
+func CreateOverdueLoanNotifications() (int, error) {
+	db := config.GetDB()
+	rows, err := db.Query(`
+		SELECT p.id_pinjaman, p.id_anggota, p.jangka_waktu,
+		       (p.tgl_pinjaman + INTERVAL '1 month' * p.jangka_waktu)::date
+		FROM pinjaman p
+		JOIN anggota a ON a.id_anggota = p.id_anggota
+		WHERE p.status = 'aktif'
+		  AND p.tgl_pinjaman + INTERVAL '1 month' * p.jangka_waktu < CURRENT_DATE
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("gagal mencari pinjaman terlambat: %w", err)
+	}
+
+	var loans []overdueLoanNotification
+	for rows.Next() {
+		var loan overdueLoanNotification
+		var jatuhTempo sql.NullTime
+		if err := rows.Scan(&loan.idPinjaman, &loan.idAnggota, &loan.jangkaWaktu, &jatuhTempo); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("gagal membaca data pinjaman terlambat: %w", err)
+		}
+		if !jatuhTempo.Valid {
+			rows.Close()
+			return 0, fmt.Errorf("tanggal jatuh tempo pinjaman %d tidak valid", loan.idPinjaman)
+		}
+		loan.jatuhTempo = jatuhTempo.Time.Format("02-01-2006")
+		loans = append(loans, loan)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0, fmt.Errorf("gagal membaca daftar pinjaman terlambat: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return 0, fmt.Errorf("gagal menutup hasil pencarian pinjaman terlambat: %w", err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("gagal memulai transaksi notifikasi pinjaman terlambat: %w", err)
+	}
+	defer tx.Rollback()
+
+	created := 0
+	for _, loan := range loans {
+		var insertedID int
+		err := tx.QueryRow(`
+			INSERT INTO notifikasi_pinjaman_terlambat (id_pinjaman, id_anggota)
+			VALUES ($1, $2)
+			ON CONFLICT (id_pinjaman) DO NOTHING
+			RETURNING id_pinjaman
+		`, loan.idPinjaman, loan.idAnggota).Scan(&insertedID)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return 0, fmt.Errorf("gagal mencatat pengingat pinjaman %d: %w", loan.idPinjaman, err)
+		}
+
+		_, err = tx.Exec(`
+			INSERT INTO pesan (id_anggota, judul, isi, status, tgl_kirim)
+			VALUES ($1, $2, $3, 'unread', NOW())
+		`,
+			loan.idAnggota,
+			"Pengingat Keterlambatan Pembayaran",
+			fmt.Sprintf(
+				"Pinjaman #%d Anda telah melewati tanggal jatuh tempo %s (jangka waktu %d bulan). Silakan hubungi bendahara untuk informasi pembayaran.",
+				loan.idPinjaman, loan.jatuhTempo, loan.jangkaWaktu,
+			),
+		)
+		if err != nil {
+			return 0, fmt.Errorf("gagal membuat pesan pengingat pinjaman %d: %w", loan.idPinjaman, err)
+		}
+		created++
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("gagal menyimpan pengingat pinjaman terlambat: %w", err)
+	}
+	return created, nil
+}
+
+// CreateOverdueInstallmentNotifications membuat satu pesan untuk setiap cicilan
+// bulanan yang sudah jatuh tempo dan belum dibayar atau diajukan untuk diverifikasi.
+func CreateOverdueInstallmentNotifications() (int, error) {
+	db := config.GetDB()
+	rows, err := db.Query(`
+		WITH pinjaman_aktif AS (
+			SELECT p.id_pinjaman,
+			       p.id_anggota,
+			       p.tgl_pinjaman::date AS tgl_pinjaman,
+			       p.jangka_waktu,
+			       (
+			           SELECT COUNT(*)
+			           FROM angsuran a
+			           WHERE a.id_pinjaman = p.id_pinjaman
+			             AND (
+			                 LOWER(COALESCE(a.status, '')) IN ('confirmed', 'diterima', 'lunas')
+			                 OR (
+			                     LOWER(COALESCE(a.status, '')) = 'pending'
+			                     AND NULLIF(TRIM(COALESCE(a.bukti_angsuran, '')), '') IS NOT NULL
+			                     AND UPPER(COALESCE(a.bukti_angsuran, '')) NOT LIKE '%AUTO_%'
+			                 )
+			             )
+			       ) AS cicilan_tercatat
+			FROM pinjaman p
+			WHERE LOWER(TRIM(COALESCE(p.status, ''))) = 'aktif'
+			  AND p.jangka_waktu > 0
+		),
+		cicilan_terlambat AS (
+			SELECT p.id_pinjaman,
+			       p.id_anggota,
+			       gs.angsuran_ke,
+			       (p.tgl_pinjaman + (gs.angsuran_ke * INTERVAL '1 month'))::date AS jatuh_tempo
+			FROM pinjaman_aktif p
+			CROSS JOIN LATERAL generate_series(1, p.jangka_waktu) AS gs(angsuran_ke)
+			WHERE gs.angsuran_ke > p.cicilan_tercatat
+			  AND (p.tgl_pinjaman + (gs.angsuran_ke * INTERVAL '1 month'))::date < CURRENT_DATE
+		)
+		SELECT id_pinjaman, id_anggota, angsuran_ke, jatuh_tempo
+		FROM cicilan_terlambat
+		ORDER BY id_pinjaman, angsuran_ke
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("gagal mencari cicilan bulanan terlambat: %w", err)
+	}
+
+	var installments []overdueInstallmentNotification
+	for rows.Next() {
+		var installment overdueInstallmentNotification
+		var jatuhTempo sql.NullTime
+		if err := rows.Scan(&installment.idPinjaman, &installment.idAnggota, &installment.angsuranKe, &jatuhTempo); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("gagal membaca cicilan bulanan terlambat: %w", err)
+		}
+		if !jatuhTempo.Valid {
+			rows.Close()
+			return 0, fmt.Errorf("tanggal jatuh tempo cicilan ke-%d pinjaman %d tidak valid", installment.angsuranKe, installment.idPinjaman)
+		}
+		installment.jatuhTempo = jatuhTempo.Time.Format("02-01-2006")
+		installments = append(installments, installment)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0, fmt.Errorf("gagal membaca daftar cicilan bulanan terlambat: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return 0, fmt.Errorf("gagal menutup hasil pencarian cicilan bulanan terlambat: %w", err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("gagal memulai transaksi pengingat cicilan terlambat: %w", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`
+		DELETE FROM pesan m
+		USING notifikasi_angsuran_terlambat n, pinjaman p
+		WHERE m.id_anggota = n.id_anggota
+		  AND m.judul = 'Pengingat Keterlambatan Cicilan'
+		  AND m.isi = 'Cicilan ke-' || n.angsuran_ke || ' pinjaman #' || n.id_pinjaman ||
+		      ' telah melewati tanggal jatuh tempo ' ||
+		      TO_CHAR((p.tgl_pinjaman + ((n.angsuran_ke - 1) * INTERVAL '1 month'))::date, 'DD-MM-YYYY') ||
+		      ' dan belum tercatat dibayar. Silakan segera lakukan pembayaran atau hubungi bendahara jika Anda sudah membayar.'
+		  AND p.id_pinjaman = n.id_pinjaman
+		  AND n.wa_sent_at IS NULL
+		  AND (p.tgl_pinjaman + (n.angsuran_ke * INTERVAL '1 month'))::date >= CURRENT_DATE
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("gagal membersihkan pesan pengingat cicilan yang belum jatuh tempo: %w", err)
+	}
+	_, err = tx.Exec(`
+		DELETE FROM notifikasi_angsuran_terlambat n
+		USING pinjaman p
+		WHERE p.id_pinjaman = n.id_pinjaman
+		  AND n.wa_sent_at IS NULL
+		  AND (p.tgl_pinjaman + (n.angsuran_ke * INTERVAL '1 month'))::date >= CURRENT_DATE
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("gagal membersihkan antrean cicilan yang belum jatuh tempo: %w", err)
+	}
+
+	created := 0
+	for _, installment := range installments {
+		var insertedID int
+		err := tx.QueryRow(`
+			INSERT INTO notifikasi_angsuran_terlambat (id_pinjaman, angsuran_ke, id_anggota)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (id_pinjaman, angsuran_ke) DO NOTHING
+			RETURNING angsuran_ke
+		`, installment.idPinjaman, installment.angsuranKe, installment.idAnggota).Scan(&insertedID)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return 0, fmt.Errorf(
+				"gagal mencatat pengingat cicilan ke-%d pinjaman %d: %w",
+				installment.angsuranKe, installment.idPinjaman, err,
+			)
+		}
+
+		_, err = tx.Exec(`
+			INSERT INTO pesan (id_anggota, judul, isi, status, tgl_kirim)
+			VALUES ($1, $2, $3, 'unread', NOW())
+		`,
+			installment.idAnggota,
+			"Pengingat Keterlambatan Cicilan",
+			fmt.Sprintf(
+				"Cicilan ke-%d pinjaman #%d telah melewati tanggal jatuh tempo %s dan belum tercatat dibayar. Silakan segera lakukan pembayaran atau hubungi bendahara jika Anda sudah membayar.",
+				installment.angsuranKe, installment.idPinjaman, installment.jatuhTempo,
+			),
+		)
+		if err != nil {
+			return 0, fmt.Errorf(
+				"gagal membuat pengingat cicilan ke-%d pinjaman %d: %w",
+				installment.angsuranKe, installment.idPinjaman, err,
+			)
+		}
+		created++
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("gagal menyimpan pengingat cicilan terlambat: %w", err)
+	}
+	return created, nil
+}
+
+// GetUnsentOverdueInstallmentWhatsAppNotifications mengambil pengingat cicilan
+// yang belum berhasil dikirim ke WhatsApp.
+func GetUnsentOverdueInstallmentWhatsAppNotifications() ([]OverdueInstallmentWhatsAppNotification, error) {
+	db := config.GetDB()
+	rows, err := db.Query(`
+		SELECT n.id_pinjaman, n.angsuran_ke, n.id_anggota,
+		       COALESCE(a.nama_anggota, ''), COALESCE(a.no_telepon, ''),
+		       (p.tgl_pinjaman + (n.angsuran_ke * INTERVAL '1 month'))::date
+		FROM notifikasi_angsuran_terlambat n
+		JOIN pinjaman p ON p.id_pinjaman = n.id_pinjaman
+		JOIN anggota a ON a.id_anggota = n.id_anggota
+		WHERE n.wa_sent_at IS NULL
+		  AND (p.tgl_pinjaman + (n.angsuran_ke * INTERVAL '1 month'))::date < CURRENT_DATE
+		ORDER BY n.dibuat_pada, n.id_pinjaman, n.angsuran_ke
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("gagal mengambil antrean notifikasi WhatsApp cicilan: %w", err)
+	}
+	defer rows.Close()
+
+	var notifications []OverdueInstallmentWhatsAppNotification
+	for rows.Next() {
+		var notification OverdueInstallmentWhatsAppNotification
+		var jatuhTempo sql.NullTime
+		if err := rows.Scan(
+			&notification.IDPinjaman,
+			&notification.AngsuranKe,
+			&notification.IDAnggota,
+			&notification.NamaAnggota,
+			&notification.NoTelepon,
+			&jatuhTempo,
+		); err != nil {
+			return nil, fmt.Errorf("gagal membaca antrean notifikasi WhatsApp cicilan: %w", err)
+		}
+		if !jatuhTempo.Valid {
+			return nil, fmt.Errorf(
+				"tanggal jatuh tempo cicilan ke-%d pinjaman %d tidak valid",
+				notification.AngsuranKe, notification.IDPinjaman,
+			)
+		}
+		notification.JatuhTempo = jatuhTempo.Time.Format("02-01-2006")
+		notifications = append(notifications, notification)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("gagal membaca antrean notifikasi WhatsApp cicilan: %w", err)
+	}
+	return notifications, nil
+}
+
+// MarkOverdueInstallmentWhatsAppNotificationSent menandai pengingat sebagai terkirim.
+func MarkOverdueInstallmentWhatsAppNotificationSent(idPinjaman, angsuranKe int) error {
+	db := config.GetDB()
+	_, err := db.Exec(`
+		UPDATE notifikasi_angsuran_terlambat
+		SET wa_sent_at = NOW()
+		WHERE id_pinjaman = $1 AND angsuran_ke = $2 AND wa_sent_at IS NULL
+	`, idPinjaman, angsuranKe)
+	if err != nil {
+		return fmt.Errorf(
+			"gagal menandai notifikasi WhatsApp cicilan ke-%d pinjaman %d terkirim: %w",
+			angsuranKe, idPinjaman, err,
+		)
+	}
+	return nil
 }
 
 // MarkPesanAsRead menandai pesan sebagai sudah dibaca

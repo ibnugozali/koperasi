@@ -2664,7 +2664,7 @@ func ensureScheduledAngsuranForPinjaman(idPinjaman int) error {
 		buktiAuto = fmt.Sprintf("AUTO_%02d", angsuranKe)
 	}
 
-	jatuhTempo := pinjaman.TglPinjaman.AddDate(0, angsuranKe-1, 0)
+	jatuhTempo := pinjaman.TglPinjaman.AddDate(0, angsuranKe, 0)
 	sisaSetelah := totalKewajiban - (jumlahAngsuran * float64(angsuranKe))
 	if sisaSetelah < 0 {
 		sisaSetelah = 0

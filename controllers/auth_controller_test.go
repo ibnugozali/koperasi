@@ -1,6 +1,9 @@
 package controllers
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNormalizeRegisterPhoneKeepsSubscriberDigits(t *testing.T) {
 	tests := map[string]string{
@@ -44,5 +47,27 @@ func TestBuildWhatsAppChatURLFormatsPhoneAndMessage(t *testing.T) {
 func TestBuildWhatsAppChatURLRejectsInvalidPhone(t *testing.T) {
 	if got := buildWhatsAppChatURL("08abc", "Halo"); got != "" {
 		t.Fatalf("expected invalid phone to produce empty URL, got %q", got)
+	}
+}
+
+func TestGatewayRejectionErrorExplainsDisconnectedDevice(t *testing.T) {
+	err := gatewayRejectionError(
+		`{"reason":"request invalid on disconnected device","status":false}`,
+		map[string]interface{}{"reason": "request invalid on disconnected device", "status": false},
+	)
+
+	if err == nil || !strings.Contains(err.Error(), "scan QR") {
+		t.Fatalf("expected actionable disconnected-device message, got %v", err)
+	}
+}
+
+func TestGatewayRejectionErrorExplainsInvalidToken(t *testing.T) {
+	err := gatewayRejectionError(
+		`{"reason":"invalid token","status":false}`,
+		map[string]interface{}{"reason": "invalid token", "status": false},
+	)
+
+	if err == nil || !strings.Contains(err.Error(), "token gateway WA ditolak") {
+		t.Fatalf("expected actionable invalid-token message, got %v", err)
 	}
 }

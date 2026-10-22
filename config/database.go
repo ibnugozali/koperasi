@@ -39,6 +39,15 @@ func InitDB() {
 		log.Printf("Peringatan: gagal memastikan tabel angsuran ada: %v", err)
 	}
 
+	// Pastikan tabel pencatatan pengingat keterlambatan pinjaman tersedia.
+	if err := ensureOverdueLoanNotificationTable(); err != nil {
+		log.Printf("Peringatan: gagal memastikan tabel notifikasi pinjaman terlambat: %v", err)
+	}
+
+	if err := ensureOverdueInstallmentNotificationTable(); err != nil {
+		log.Printf("Peringatan: gagal memastikan tabel notifikasi cicilan terlambat: %v", err)
+	}
+
 	// Pastikan tabel import_history ada untuk fitur import anggota
 	if err := ensureImportHistoryTable(); err != nil {
 		log.Printf("Peringatan: gagal memastikan tabel import_history ada: %v", err)
@@ -100,6 +109,47 @@ func ensureAngsuranTable() error {
 
 	_, err := db.Exec(angsuranSQL)
 	return err
+}
+
+func ensureOverdueLoanNotificationTable() error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS notifikasi_pinjaman_terlambat (
+			id_pinjaman INT PRIMARY KEY REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
+			id_anggota VARCHAR(50) NOT NULL REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+			dibuat_pada TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("gagal membuat tabel notifikasi_pinjaman_terlambat: %v", err)
+	}
+	return nil
+}
+
+func ensureOverdueInstallmentNotificationTable() error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS notifikasi_angsuran_terlambat (
+			id_pinjaman INT NOT NULL REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
+			angsuran_ke INT NOT NULL,
+			id_anggota VARCHAR(50) NOT NULL REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+			dibuat_pada TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			wa_sent_at TIMESTAMPTZ,
+			PRIMARY KEY (id_pinjaman, angsuran_ke)
+		);
+		ALTER TABLE notifikasi_angsuran_terlambat
+			ADD COLUMN IF NOT EXISTS wa_sent_at TIMESTAMPTZ
+	`)
+	if err != nil {
+		return fmt.Errorf("gagal membuat tabel notifikasi_angsuran_terlambat: %v", err)
+	}
+	return nil
 }
 
 // ensureImportHistoryTable membuat tabel import_history jika belum ada.

@@ -210,8 +210,7 @@ func sendWhatsAppMessage(waURL, token, phone, message, logPrefix string) error {
 		if json.Unmarshal(bodyBytes, &parsed) == nil {
 			if okVal, exists := parsed["status"]; exists {
 				if okBool, ok := okVal.(bool); ok && !okBool {
-					lastErr = fmt.Errorf("gateway WA menolak request: %s", bodyStr)
-					continue
+					return gatewayRejectionError(bodyStr, parsed)
 				}
 			}
 		}
@@ -223,6 +222,23 @@ func sendWhatsAppMessage(waURL, token, phone, message, logPrefix string) error {
 		return lastErr
 	}
 	return fmt.Errorf("semua percobaan kirim WA gagal")
+}
+
+func gatewayRejectionError(body string, response map[string]interface{}) error {
+	reason, _ := response["reason"].(string)
+	reason = strings.TrimSpace(reason)
+	reasonLower := strings.ToLower(reason)
+
+	switch {
+	case strings.Contains(reasonLower, "disconnected device"):
+		return fmt.Errorf("perangkat WhatsApp pada gateway sedang terputus. Sambungkan kembali perangkat atau scan QR dari dashboard gateway, lalu coba tes lagi")
+	case strings.Contains(reasonLower, "invalid token"):
+		return fmt.Errorf("token gateway WA ditolak. Periksa token yang tersimpan di pengaturan gateway, perbarui di sini, lalu coba tes lagi")
+	case reason != "":
+		return fmt.Errorf("gateway WA menolak pengiriman: %s", reason)
+	default:
+		return fmt.Errorf("gateway WA menolak request: %s", body)
+	}
 }
 
 func isSuspiciousWAGatewayURL(db *sql.DB, rawURL string) bool {
@@ -364,6 +380,89 @@ func sendAnggotaWhatsAppPesanNotification(rawAnggotaPhone, namaAnggota, judulPes
 	message += "Silakan cek detail pesan di:\n" + linkPesan
 
 	return sendWhatsAppMessage(waURL, token, anggotaPhone, message, "[WA PESAN ANGGOTA]")
+}
+
+// SendOverdueInstallmentWhatsAppNotifications mengirim pengingat cicilan yang
+// tersimpan dan belum berhasil dikirim ke nomor WhatsApp anggota.
+func SendOverdueInstallmentWhatsAppNotifications() error {
+	notifications, err := repository.GetUnsentOverdueInstallmentWhatsAppNotifications()
+	if err != nil {
+		return err
+	}
+
+	db := config.GetDB()
+	failed := 0
+	for _, notification := range notifications {
+		phone := strings.TrimSpace(notification.NoTelepon)
+		if phone == "" {
+			log.Printf(
+				"[WA PENGINGAT CICILAN] nomor anggota kosong id_anggota=%s pinjaman=%d cicilan=%d",
+				notification.IDAnggota, notification.IDPinjaman, notification.AngsuranKe,
+			)
+			failed++
+			continue
+		}
+
+		token := strings.TrimSpace(os.Getenv("WA_GATEWAY_TOKEN"))
+		if token == "" {
+			token = getPengaturanValue(db, "wa_gateway_token")
+		}
+		if token == "" {
+			log.Printf("[WA PENGINGAT CICILAN] token gateway WA belum diset")
+			return fmt.Errorf("token gateway WA belum diset")
+		}
+
+		message := fmt.Sprintf(
+			"Halo %s, pengingat pembayaran cicilan pinjaman.\n"+
+				"- Pinjaman: #%d\n"+
+				"- Cicilan ke: %d\n"+
+				"- Jatuh tempo: %s\n"+
+				"Silakan segera lakukan pembayaran atau hubungi Bendahara jika Anda sudah membayar.",
+			notification.NamaAnggota,
+			notification.IDPinjaman,
+			notification.AngsuranKe,
+			notification.JatuhTempo,
+		)
+		appBaseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("APP_BASE_URL")), "/")
+		if appBaseURL == "" {
+			appBaseURL = strings.TrimRight(getPengaturanValue(db, "app_base_url"), "/")
+		}
+		if appBaseURL != "" {
+			message += "\nCek detail notifikasi di: " + appBaseURL + "/anggota/pesan"
+		}
+
+		err := sendWhatsAppMessage(
+			resolveWAGatewayURL(db),
+			token,
+			formatWhatsAppPhone(phone),
+			message,
+			"[WA PENGINGAT CICILAN]",
+		)
+		if err != nil {
+			log.Printf(
+				"[WA PENGINGAT CICILAN] gagal mengirim id_anggota=%s pinjaman=%d cicilan=%d: %v",
+				notification.IDAnggota, notification.IDPinjaman, notification.AngsuranKe, err,
+			)
+			failed++
+			continue
+		}
+
+		if err := repository.MarkOverdueInstallmentWhatsAppNotificationSent(
+			notification.IDPinjaman,
+			notification.AngsuranKe,
+		); err != nil {
+			log.Printf(
+				"[WA PENGINGAT CICILAN] WA terkirim tetapi gagal mencatat status id_anggota=%s pinjaman=%d cicilan=%d: %v",
+				notification.IDAnggota, notification.IDPinjaman, notification.AngsuranKe, err,
+			)
+			failed++
+		}
+	}
+
+	if failed > 0 {
+		return fmt.Errorf("gagal mengirim atau mencatat %d dari %d notifikasi WhatsApp cicilan", failed, len(notifications))
+	}
+	return nil
 }
 
 // sendAnggotaWhatsAppTransactionApprovalNotification mengirim notifikasi transaksi ke anggota setelah ACC ketua.

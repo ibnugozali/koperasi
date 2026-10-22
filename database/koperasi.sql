@@ -185,6 +185,23 @@ CREATE TABLE pesan (
     status VARCHAR(25) DEFAULT 'unread' CHECK (status IN ('read', 'unread'))
 );
 
+-- Mencegah pengingat keterlambatan pinjaman yang sama dibuat lebih dari sekali.
+CREATE TABLE IF NOT EXISTS notifikasi_pinjaman_terlambat (
+    id_pinjaman INT PRIMARY KEY REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
+    id_anggota VARCHAR(50) NOT NULL REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    dibuat_pada TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Mencegah pengingat untuk cicilan terlambat yang sama dibuat lebih dari sekali.
+CREATE TABLE IF NOT EXISTS notifikasi_angsuran_terlambat (
+    id_pinjaman INT NOT NULL REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
+    angsuran_ke INT NOT NULL,
+    id_anggota VARCHAR(50) NOT NULL REFERENCES anggota(id_anggota) ON DELETE CASCADE,
+    dibuat_pada TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    wa_sent_at TIMESTAMPTZ,
+    PRIMARY KEY (id_pinjaman, angsuran_ke)
+);
+
 -- Tabel pengambilan simpanan untuk pengajuan penarikan simpanan oleh anggota
 DROP TABLE IF EXISTS pengambilan_simpanan CASCADE;
 CREATE TABLE pengambilan_simpanan (

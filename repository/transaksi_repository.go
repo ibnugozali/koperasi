@@ -659,46 +659,6 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 	return report, nil
 }
 
-// GetAngsuranTerlambat mengambil angsuran yang terlambat (belum lunas dan tgl_bayar > tgl_pinjaman + jangka_waktu)
-func GetAngsuranTerlambat() ([]map[string]interface{}, error) {
-	db := config.GetDB()
-	var terlambats []map[string]interface{}
-	query := `
-		SELECT a.nama_anggota, p.id_pinjaman, p.tgl_pinjaman, p.jangka_waktu, p.jumlah_pinjaman
-		FROM pinjaman p
-		JOIN anggota a ON p.id_anggota = a.id_anggota
-		WHERE p.status = 'aktif' AND p.tgl_pinjaman + INTERVAL '1 month' * p.jangka_waktu < CURRENT_DATE
-	`
-	rows, err := db.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var nama string
-		var idPinjaman int
-		var tglPinjaman time.Time
-		var jangkaWaktu int
-		var jumlahPinjaman float64
-		if err := rows.Scan(&nama, &idPinjaman, &tglPinjaman, &jangkaWaktu, &jumlahPinjaman); err != nil {
-			return nil, err
-		}
-		terlambat := map[string]interface{}{
-			"nama_anggota":    nama,
-			"id_pinjaman":     idPinjaman,
-			"tgl_pinjaman":    tglPinjaman,
-			"jangka_waktu":    jangkaWaktu,
-			"jumlah_pinjaman": jumlahPinjaman,
-		}
-		terlambats = append(terlambats, terlambat)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return terlambats, nil
-}
-
 // GetAllDetails mengambil semua detail transaksi simpanan dengan join anggota
 func GetAllDetails() ([]models.Detail, error) {
 	db := config.GetDB()
