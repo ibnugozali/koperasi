@@ -22,7 +22,7 @@
       <!-- Info Saldo -->
       <div class="alert alert-info">
         <h5 class="alert-heading"><i class="bi bi-piggy-bank me-2"></i>Total Saldo Simpanan Anda</h5>
-        <h2 class="mb-3">Rp {{ printf "%.0f" .TotalSimpanan }}</h2>
+        <h2 class="mb-3">Rp {{ formatRupiah .TotalSimpanan }}</h2>
         
         <!-- Breakdown per Jenis Simpanan -->
         <div class="mt-3">
@@ -32,11 +32,11 @@
               <ul class="list-unstyled mb-0">
                 <li class="mb-2">
                   <strong>Simpanan Sukarela:</strong> 
-                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "sukarela") }}</span>
+                  <span class="float-end">Rp {{ formatRupiah (index .SimpananByJenis "sukarela") }}</span>
                 </li>
                 <li class="mb-2">
                   <strong>Simpanan Hari Raya:</strong> 
-                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "hari_raya") }}</span>
+                  <span class="float-end">Rp {{ formatRupiah (index .SimpananByJenis "hari_raya") }}</span>
                 </li>
               </ul>
             </div>
@@ -44,11 +44,11 @@
               <ul class="list-unstyled mb-0">
                 <li class="mb-2">
                   <strong>Simpanan Umroh/Haji:</strong> 
-                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "umroh_haji") }}</span>
+                  <span class="float-end">Rp {{ formatRupiah (index .SimpananByJenis "umroh_haji") }}</span>
                 </li>
                 <li class="mb-2">
                   <strong>Simpanan Qurban:</strong> 
-                  <span class="float-end">Rp {{ printf "%.0f" (index .SimpananByJenis "qurban") }}</span>
+                  <span class="float-end">Rp {{ formatRupiah (index .SimpananByJenis "qurban") }}</span>
                 </li>
               </ul>
             </div>
@@ -127,7 +127,7 @@
             <div class="col-sm-8">
               <div class="input-group">
                 <span class="input-group-text">Rp</span>
-                <input type="number" class="form-control" id="jumlah" name="jumlah" 
+                <input type="text" inputmode="numeric" autocomplete="off" class="form-control" id="jumlah" name="jumlah"
                        placeholder="Pilih jenis simpanan terlebih dahulu" 
                        min="1" required disabled>
               </div>
@@ -248,6 +248,27 @@
             }).format(value || 0);
         }
 
+        function getAmountDigits(value) {
+            return (value || '').replace(/\D/g, '');
+        }
+
+        function formatAmountInput(input) {
+            const cursor = input.selectionStart ?? input.value.length;
+            const digitsBeforeCursor = getAmountDigits(input.value.slice(0, cursor)).length;
+            const digits = getAmountDigits(input.value);
+            const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            input.value = formatted;
+
+            let nextCursor = 0;
+            let digitsSeen = 0;
+            while (nextCursor < formatted.length && digitsSeen < digitsBeforeCursor) {
+                if (/\d/.test(formatted[nextCursor])) digitsSeen++;
+                nextCursor++;
+            }
+            input.setSelectionRange(nextCursor, nextCursor);
+            return digits;
+        }
+
         function setJumlahWarning(jumlah) {
             const isOverLimit = currentMaxSaldo > 0 && jumlah > currentMaxSaldo;
             const warningText = `Jumlah penarikan melebihi maksimal ${formatRupiah(currentMaxSaldo)}`;
@@ -326,19 +347,15 @@
         
         // Format currency input
         $('#jumlah').on('input', function() {
-            let val = parseFloat($(this).val());
-            if (val < 0) {
-                $(this).val(0);
-                val = 0;
-            }
-            setJumlahWarning(val || 0);
+            const digits = formatAmountInput(this);
+            setJumlahWarning(Number(digits) || 0);
         });
 
         // Form submission
         $('#pengambilanForm').on('submit', function(e) {
             e.preventDefault();
 
-            const jumlah = parseFloat($('#jumlah').val());
+            const jumlah = Number(getAmountDigits($('#jumlah').val()));
             const alasan = $('#alasan').val().trim();
             const jenisSimpanan = $('#jenisSimpanan').val();
             const metodePengambilan = $('#metodePengambilan').val();

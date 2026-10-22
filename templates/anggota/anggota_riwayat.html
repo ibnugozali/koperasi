@@ -118,7 +118,7 @@
                         <td data-order="{{ $item.Date.Format `20060102150405` }}">{{ $item.Date.Format "02-01-2006" }}</td>
                         <td data-order="{{ $item.Date.Format `20060102150405` }}">{{ $item.Time }}</td>
                         <td>{{ $item.Type }}</td>
-                        <td>{{ $item.Amount }}</td>
+                        <td>Rp {{ formatRupiah $item.Amount }}</td>
                         <td>{{ $item.Status }}</td>
                     </tr>
                     {{ end }}

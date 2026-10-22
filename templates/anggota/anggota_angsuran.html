@@ -23,10 +23,10 @@
 
         {{if ne .JumlahPinjaman 0.0}}
           <p class="text-muted">
-            Jumlah Pinjaman (Pokok): Rp {{if gt .JumlahPinjaman 0.0}}{{printf "%.0f" .JumlahPinjaman}}{{else}}0{{end}},
-            Jasa Pinjaman: Rp {{if .Bunga}}{{printf "%.0f" .Bunga}}{{else}}0{{end}},
-            Total Pinjaman (Pokok + Jasa): Rp {{printf "%.0f" (add .JumlahPinjaman .Bunga)}},
-            Sisa Pinjaman: Rp {{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}},
+            Jumlah Pinjaman (Pokok): Rp {{if gt .JumlahPinjaman 0.0}}{{formatRupiah .JumlahPinjaman}}{{else}}0{{end}},
+            Jasa Pinjaman: Rp {{if .Bunga}}{{formatRupiah .Bunga}}{{else}}0{{end}},
+            Total Pinjaman (Pokok + Jasa): Rp {{formatRupiah (add .JumlahPinjaman .Bunga)}},
+            Sisa Pinjaman: Rp {{if gt .SisaPinjaman 0.0}}{{formatRupiah .SisaPinjaman}}{{else}}0{{end}},
             Angsuran Ke: {{if gt .AngsuranKe 0}}{{.AngsuranKe}}{{else}}-{{end}},
             Jumlah Pelunasan: {{printf "%.2f" .PersentasePelunasan}}%
           </p>
@@ -52,10 +52,11 @@
               <form action="/anggota/angsuran" method="POST" enctype="multipart/form-data" style="max-width: 600px; margin: auto;">
                 <input type="hidden" name="id_pinjaman" value="{{.IDPinjaman}}">
                 <div style="margin-bottom: 10px;">
-                  <label>Jumlah Angsuran (Rp) <small class="text-muted">(Maksimal: Rp {{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}})</small></label><br>
-                  <input type="number" name="jumlah_angsuran" min="1" max="{{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}}" step="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                  <label>Jumlah Angsuran (Rp) <small class="text-muted">(Maksimal: Rp {{if gt .SisaPinjaman 0.0}}{{formatRupiah .SisaPinjaman}}{{else}}0{{end}})</small></label><br>
+                  <input type="text" id="jumlah_angsuran_display" inputmode="numeric" autocomplete="off" data-max="{{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}}" required aria-label="Jumlah angsuran" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                  <input type="hidden" id="jumlah_angsuran" name="jumlah_angsuran">
                   {{if gt .PerkiraanAngsuranBulan 0.0}}
-                    <small class="text-muted">Perkiraan angsuran per bulan: Rp {{printf "%.0f" .PerkiraanAngsuranBulan}}</small>
+                    <small class="text-muted">Perkiraan angsuran per bulan: Rp {{formatRupiah .PerkiraanAngsuranBulan}}</small>
                   {{end}}
                 </div>
                 <div style="margin-bottom: 10px;">
@@ -113,6 +114,43 @@ document.addEventListener('DOMContentLoaded', function() {
     hiddenTanggal.name = 'tanggal_pembayaran';
     hiddenTanggal.value = new Date().toISOString().split('T')[0];
     form.appendChild(hiddenTanggal);
+
+    const amountInput = document.getElementById('jumlah_angsuran_display');
+    const rawAmountInput = document.getElementById('jumlah_angsuran');
+    if (amountInput && rawAmountInput) {
+      amountInput.addEventListener('input', function() {
+        const cursor = amountInput.selectionStart ?? amountInput.value.length;
+        const digitsBeforeCursor = amountInput.value.slice(0, cursor).replace(/\D/g, '').length;
+        const digits = amountInput.value.replace(/\D/g, '');
+        const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        amountInput.value = formatted;
+        rawAmountInput.value = digits;
+        amountInput.setCustomValidity('');
+
+        let nextCursor = 0;
+        let digitsSeen = 0;
+        while (nextCursor < formatted.length && digitsSeen < digitsBeforeCursor) {
+          if (/\d/.test(formatted[nextCursor])) digitsSeen++;
+          nextCursor++;
+        }
+        amountInput.setSelectionRange(nextCursor, nextCursor);
+      });
+      form.addEventListener('submit', function(event) {
+        const digits = amountInput.value.replace(/\D/g, '');
+        const maximum = Number(amountInput.dataset.max || 0);
+        if (!digits || Number(digits) <= 0 || Number(digits) > maximum) {
+          event.preventDefault();
+          amountInput.setCustomValidity(
+            Number(digits) > maximum
+              ? 'Jumlah angsuran melebihi sisa pinjaman.'
+              : 'Jumlah angsuran harus lebih dari 0.'
+          );
+          amountInput.reportValidity();
+          return;
+        }
+        rawAmountInput.value = digits;
+      });
+    }
   }
 });
 </script>

@@ -76,11 +76,11 @@
         </div>
         {{ else if .IsLocked }}
         <div class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i><strong>Info:</strong> Simpanan Wajib Rp{{ printf "%.0f" .SimpananWajib }} sesuai konfigurasi (Rp{{ printf "%.0f" .NominalSimpananWajib }}). Input dikunci.
+          <i class="bi bi-info-circle me-2"></i><strong>Info:</strong> Simpanan Wajib Rp{{ formatRupiah .SimpananWajib }} sesuai konfigurasi (Rp{{ formatRupiah .NominalSimpananWajib }}). Input dikunci.
         </div>
         {{ else if .HasSimpananWajib }}
         <div class="alert alert-warning">
-          <i class="bi bi-exclamation-triangle me-2"></i><strong>Perhatian:</strong> Simpanan Wajib saat ini Rp{{ printf "%.0f" .SimpananWajib }}. Target: Rp{{ printf "%.0f" .NominalSimpananWajib }}.
+          <i class="bi bi-exclamation-triangle me-2"></i><strong>Perhatian:</strong> Simpanan Wajib saat ini Rp{{ formatRupiah .SimpananWajib }}. Target: Rp{{ formatRupiah .NominalSimpananWajib }}.
         </div>
         {{ end }}
 
@@ -130,7 +130,7 @@
               <div class="invalid-feedback d-block">Metode pembayaran wajib dipilih!</div>
             </div>
             <div class="form-text mb-2">
-              | Gaji Rp{{printf "%d" .Anggota.GajiBulanan}}, Potong Gaji otomatis.
+              | Gaji Rp{{formatRupiah .Anggota.GajiBulanan}}, Potong Gaji otomatis.
             </div>
             {{if le .Anggota.GajiBulanan 0}}
             <div class="form-text text-danger">
@@ -147,7 +147,7 @@
             <div class="form-text mb-1">
               <i class="bi bi-info-circle me-1"></i><strong>Wajib untuk Transfer Bank:</strong> JPG, PNG, PDF, HEIC | 
               Rekening: <strong>{{ .NomorRekening }}</strong>
- | Gaji Rp{{printf "%d" .Anggota.GajiBulanan}}.
+ | Gaji Rp{{formatRupiah .Anggota.GajiBulanan}}.
             </div>
             <input type="file" class="form-control" id="bukti" name="bukti" accept="image/*,.pdf,.heic" required>
             <div class="invalid-feedback d-block">📎 Transfer Bank → BUKTI WAJIB (.jpg/.png/.pdf)!</div>
@@ -166,10 +166,10 @@
                   <div class="col-sm-8">
                     <div class="input-group">
                       <span class="input-group-text">Rp</span>
-                      <input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}" data-target="{{ printf "%.0f" $.NominalSimpananWajib }}" {{ if $.IsLocked }}readonly disabled{{ end }}>
+                      <input type="text" inputmode="numeric" pattern="[1-9][0-9.]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1.000" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}" data-target="{{ printf "%.0f" $.NominalSimpananWajib }}" {{ if $.IsLocked }}readonly disabled{{ end }}>
                     </div>
                     {{ if $.IsLocked }}<div class="form-text text-muted"><i class="bi bi-lock"></i> Dikunci - sudah sesuai target</div>{{ end }}
-                    {{ if gt $.NominalSimpananWajib 0.0 }}<div class="form-text"><i class="bi bi-info-circle"></i> Target: Rp{{ printf "%.0f" $.NominalSimpananWajib }}</div>{{ end }}
+                    {{ if gt $.NominalSimpananWajib 0.0 }}<div class="form-text"><i class="bi bi-info-circle"></i> Target: Rp{{ formatRupiah $.NominalSimpananWajib }}</div>{{ end }}
                     <div class="form-text text-danger d-none" id="simpananWajibFeedback">Nominal Simpanan Wajib harus sama dengan target atau kelipatannya.</div>
                   </div>
                 </div>
@@ -179,7 +179,7 @@
                   <div class="col-sm-8">
                     <div class="input-group">
                       <span class="input-group-text">Rp</span>
-                      <input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}">
+                      <input type="text" inputmode="numeric" pattern="[1-9][0-9.]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1.000" class="form-control simpanan-input" id="{{ $key }}" name="{{ $key }}" value="" placeholder="{{ if $ph }}{{ $ph }}{{ else }}0{{ end }}">
                     </div>
                   </div>
                 </div>
@@ -190,16 +190,16 @@
             <div class="row mb-3 align-items-center">
               <label class="col-sm-4 col-form-label">Simpanan Wajib</label>
               <div class="col-sm-8">
-                <div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" value="" placeholder="0" data-target="{{ printf "%.0f" .NominalSimpananWajib }}" {{ if .IsLocked }}readonly disabled{{ end }}></div>
+                <div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9.]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1.000" class="form-control simpanan-input" id="simpanan_wajib" name="simpanan_wajib" value="" placeholder="0" data-target="{{ printf "%.0f" .NominalSimpananWajib }}" {{ if .IsLocked }}readonly disabled{{ end }}></div>
                 {{ if .IsLocked }}<div class="form-text text-muted"><i class="bi bi-lock"></i> Dikunci</div>{{ end }}
-                {{ if gt .NominalSimpananWajib 0.0 }}<div class="form-text"><i class="bi bi-info-circle"></i> Target: Rp{{ printf "%.0f" .NominalSimpananWajib }}</div>{{ end }}
+                {{ if gt .NominalSimpananWajib 0.0 }}<div class="form-text"><i class="bi bi-info-circle"></i> Target: Rp{{ formatRupiah .NominalSimpananWajib }}</div>{{ end }}
                 <div class="form-text text-danger d-none" id="simpananWajibFeedback">Nominal Simpanan Wajib harus sama dengan target atau kelipatannya.</div>
               </div>
             </div>
-            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Sukarela</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" value="" placeholder="0"></div></div></div>
-            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Hari Raya</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" value="" placeholder="0"></div></div></div>
-            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Umroh/Haji</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_umroh_haji" name="simpanan_umroh_haji" value="" placeholder="0"></div></div></div>
-            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Qurban</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1000" class="form-control simpanan-input" id="simpanan_qurban" name="simpanan_qurban" value="" placeholder="0"></div></div></div>
+            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Sukarela</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9.]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1.000" class="form-control simpanan-input" id="simpanan_sukarela" name="simpanan_sukarela" value="" placeholder="0"></div></div></div>
+            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Hari Raya</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9.]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1.000" class="form-control simpanan-input" id="simpanan_hari_raya" name="simpanan_hari_raya" value="" placeholder="0"></div></div></div>
+            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Umroh/Haji</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9.]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1.000" class="form-control simpanan-input" id="simpanan_umroh_haji" name="simpanan_umroh_haji" value="" placeholder="0"></div></div></div>
+            <div class="row mb-3 align-items-center"><label class="col-sm-4 col-form-label">Simpanan Qurban</label><div class="col-sm-8"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" inputmode="numeric" pattern="[1-9][0-9.]*" title="Masukkan bilangan asli lebih dari 0, contoh: 1.000" class="form-control simpanan-input" id="simpanan_qurban" name="simpanan_qurban" value="" placeholder="0"></div></div></div>
           {{ end }}
           
           <!-- TOTAL -->
@@ -243,8 +243,32 @@
     const TARGET_SIMPANAN_WAJIB = {{ printf "%.0f" .NominalSimpananWajib }} || 0;
     const NATURAL_NUMBER_PATTERN = /^[1-9][0-9]*$/;
 
+    function getDigits(value) {
+        return (value || '').replace(/\D/g, '');
+    }
+
+    function formatThousands(value) {
+        return getDigits(value).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function formatInputValue(input) {
+        const cursor = input.selectionStart ?? input.value.length;
+        const digitsBeforeCursor = getDigits(input.value.slice(0, cursor)).length;
+        const formatted = formatThousands(input.value);
+        if (formatted === input.value) return;
+
+        input.value = formatted;
+        let nextCursor = 0;
+        let digitsSeen = 0;
+        while (nextCursor < formatted.length && digitsSeen < digitsBeforeCursor) {
+            if (/\d/.test(formatted[nextCursor])) digitsSeen++;
+            nextCursor++;
+        }
+        input.setSelectionRange(nextCursor, nextCursor);
+    }
+
     function isNaturalNumberText(value) {
-        return NATURAL_NUMBER_PATTERN.test((value || '').trim());
+        return NATURAL_NUMBER_PATTERN.test(getDigits(value).trim());
     }
 
     function getNaturalNumberFeedback(input) {
@@ -278,22 +302,8 @@
     }
 
     function getSimpananInputValue(input) {
-        const raw = input.value.trim();
+        const raw = getDigits(input.value.trim());
         return isNaturalNumberText(raw) ? parseFloat(raw) : 0;
-    }
-
-    function getProposedInputValue(input, insertedText) {
-        const currentValue = input.value || '';
-        const start = input.selectionStart ?? currentValue.length;
-        const end = input.selectionEnd ?? currentValue.length;
-        return currentValue.slice(0, start) + insertedText + currentValue.slice(end);
-    }
-
-    function canInsertNaturalNumberText(input, insertedText) {
-        if (insertedText === null || insertedText === undefined || insertedText === '') return true;
-        if (!/^[0-9]+$/.test(insertedText)) return false;
-        const proposedValue = getProposedInputValue(input, insertedText);
-        return proposedValue === '' || isNaturalNumberText(proposedValue);
     }
 
     function isValidSimpananWajibNominal(value) {
@@ -433,25 +443,10 @@
         // Listeners untuk semua input nominal simpanan
         document.querySelectorAll('.simpanan-input').forEach(input => {
             if (input.disabled || input.readOnly) return;
-            input.addEventListener('beforeinput', event => {
-                if (event.inputType && event.inputType.startsWith('delete')) return;
-                if (!canInsertNaturalNumberText(input, event.data)) {
-                    event.preventDefault();
-                    updateNaturalNumberValidity(input);
-                }
-            });
-            input.addEventListener('paste', event => {
-                const pastedText = event.clipboardData?.getData('text') || '';
-                if (!canInsertNaturalNumberText(input, pastedText.trim())) {
-                    event.preventDefault();
-                    updateNaturalNumberValidity(input);
-                }
-            });
-            ['focus', 'blur', 'input'].forEach(evt => {
-                input.addEventListener(evt, () => {
-                    updateNaturalNumberValidity(input);
-                    calculateTotal();
-                });
+            input.addEventListener('input', () => {
+                formatInputValue(input);
+                updateNaturalNumberValidity(input);
+                calculateTotal();
             });
         });
 
@@ -511,6 +506,10 @@
                 alert('❌ Isi minimal satu jenis simpanan!');
                 return;
             }
+
+            document.querySelectorAll('.simpanan-input').forEach(input => {
+                input.value = getDigits(input.value);
+            });
 
             // 3. Efek Loading pada tombol
             const btn = document.getElementById('submitBtn');

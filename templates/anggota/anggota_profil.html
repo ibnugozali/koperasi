@@ -164,7 +164,7 @@
                             <strong>{{ .Label }}:</strong>
                         </div>
                         <div class="col-6 text-end">
-                            <span class="saldo-value" data-value="{{ .Amount }}">Rp {{ printf "%.0f" .Amount }}</span>
+                            <span class="saldo-value" data-value="{{ .Amount }}">Rp {{ formatRupiah .Amount }}</span>
                         </div>
                     </div>
                     <hr>
@@ -174,7 +174,7 @@
                             <strong>Total Simpanan:</strong>
                         </div>
                         <div class="col-6 text-end">
-                            <strong><span class="saldo-value text-success" data-value="{{ .TotalSimpanan }}">Rp {{ printf "%.0f" .TotalSimpanan }}</span></strong>
+                            <strong><span class="saldo-value text-success" data-value="{{ .TotalSimpanan }}">Rp {{ formatRupiah .TotalSimpanan }}</span></strong>
                         </div>
                     </div>
                     <hr>
@@ -183,7 +183,7 @@
                             <strong>Sisa Pinjaman (Pokok):</strong>
                         </div>
                         <div class="col-6 text-end">
-                            <span class="saldo-value text-danger" data-value="{{ .TotalPinjaman }}">Rp {{ printf "%.0f" .TotalPinjaman }}</span>
+                            <span class="saldo-value text-danger" data-value="{{ .TotalPinjaman }}">Rp {{ formatRupiah .TotalPinjaman }}</span>
                         </div>
                     </div>
                   
@@ -207,11 +207,11 @@
                             <div class="row mt-2">
                                 <div class="col-6">
                                     <small class="text-muted">Pokok</small><br>
-                                    <strong>Rp {{ printf "%.0f" .Jumlah }}</strong>
+                                    <strong>Rp {{ formatRupiah .Jumlah }}</strong>
                                 </div>
                                 <div class="col-6">
                                     <small class="text-muted">Sisa</small><br>
-                                    <strong>Rp {{ printf "%.0f" .Sisa }}</strong>
+                                    <strong>Rp {{ formatRupiah .Sisa }}</strong>
                                 </div>
                             </div>
                         </div>
@@ -336,13 +336,13 @@ document.addEventListener("DOMContentLoaded", function(){
                             {{ range .ProfilSimpananRows }}
                             <div class="row mb-2">
                                 <div class="col-6"><strong>{{ .Label }}:</strong></div>
-                                <div class="col-6 text-end">Rp {{ printf "%.0f" .Amount }}</div>
+                                <div class="col-6 text-end">Rp {{ formatRupiah .Amount }}</div>
                             </div>
                             {{ end }}
                             <hr>
                             <div class="row">
                                 <div class="col-6"><strong>Total Simpanan:</strong></div>
-                                <div class="col-6 text-end"><strong class="text-success">Rp {{ printf "%.0f" .TotalSimpanan }}</strong></div>
+                                <div class="col-6 text-end"><strong class="text-success">Rp {{ formatRupiah .TotalSimpanan }}</strong></div>
                             </div>
                         </div>
                     </div>
@@ -356,7 +356,7 @@ document.addEventListener("DOMContentLoaded", function(){
                             <div class="mb-3">
                                 <label for="simpanan_wajib" class="form-label">
                                     <i class="bi bi-cash-stack me-2"></i>Jumlah Simpanan Wajib yang Dikembalikan
-                                    <small class="text-muted">(maksimal Rp {{ printf "%.0f" .SimpananWajib }})</small>
+                                    <small class="text-muted">(maksimal Rp {{ formatRupiah .SimpananWajib }})</small>
                                 </label>
                                 <input type="number" class="form-control bg-light" id="simpanan_wajib" name="simpanan_wajib" 
                                        value="{{ printf "%.0f" .SimpananWajib }}" min="0" max="{{ printf "%.0f" .SimpananWajib }}" readonly required>
@@ -366,7 +366,7 @@ document.addEventListener("DOMContentLoaded", function(){
                             <div class="mb-3">
                                 <label for="simpanan_lainnya" class="form-label">
                                     <i class="bi bi-wallet2 me-2"></i>Jumlah Simpanan Lainnya yang Dikembalikan
-                                    <small class="text-muted">(Sukarela + Hari Raya + Umroh/Haji + Qurban, maksimal Rp {{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }})</small>
+                                    <small class="text-muted">(Sukarela + Hari Raya + Umroh/Haji + Qurban, maksimal Rp {{ formatRupiah (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }})</small>
                                 </label>
                                 <input type="number" class="form-control bg-light" id="simpanan_lainnya" name="simpanan_lainnya" 
                                        value="{{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }}" 

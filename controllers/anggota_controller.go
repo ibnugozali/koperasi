@@ -3193,7 +3193,7 @@ func AnggotaRiwayatPage(c *gin.Context) {
 		Time        string
 		Type        string
 		Description string
-		Amount      string
+		Amount      float64
 		Status      string
 	}
 
@@ -3228,7 +3228,6 @@ func AnggotaRiwayatPage(c *gin.Context) {
 		if strings.TrimSpace(s.Simpanan.JenisSimpanan) != "" {
 			jenis = "Simpanan " + s.Simpanan.JenisSimpanan
 		}
-		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", s.JumlahSimpanan)), " ", "")
 		timeStr := s.TglTransaksi.Format("15:04:05")
 		if timeStr == "00:00:00" {
 			timeStr = "-"
@@ -3250,13 +3249,12 @@ func AnggotaRiwayatPage(c *gin.Context) {
 			Time:        timeStr,
 			Type:        jenis,
 			Description: jenis,
-			Amount:      amount,
+			Amount:      s.JumlahSimpanan,
 			Status:      status,
 		})
 	}
 
 	for _, p := range riwayatPinjaman {
-		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", p.JumlahPinjaman)), " ", "")
 		timeStr := p.TglPinjaman.Format("15:04:05")
 		if timeStr == "00:00:00" {
 			timeStr = "-"
@@ -3278,13 +3276,12 @@ func AnggotaRiwayatPage(c *gin.Context) {
 			Time:        timeStr,
 			Type:        "Pinjaman",
 			Description: "Pinjaman",
-			Amount:      amount,
+			Amount:      p.JumlahPinjaman,
 			Status:      status,
 		})
 	}
 
 	for _, a := range riwayatAngsuran {
-		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", a.JumlahAngsuran)), " ", "")
 		timeStr := a.TglBayar.Format("15:04:05")
 		if timeStr == "00:00:00" {
 			timeStr = "-"
@@ -3306,7 +3303,7 @@ func AnggotaRiwayatPage(c *gin.Context) {
 			Time:        timeStr,
 			Type:        "Angsuran",
 			Description: "Angsuran",
-			Amount:      amount,
+			Amount:      a.JumlahAngsuran,
 			Status:      status,
 		})
 	}
@@ -3316,7 +3313,6 @@ func AnggotaRiwayatPage(c *gin.Context) {
 		if strings.TrimSpace(ps.JenisSimpanan) != "" {
 			jenis = "Penarikan " + ps.JenisSimpanan
 		}
-		amount := "Rp " + strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%.0f", ps.Jumlah)), " ", "")
 		timeStr := ps.TglPengajuan.Format("15:04:05")
 		if timeStr == "00:00:00" {
 			timeStr = "-"
@@ -3334,7 +3330,7 @@ func AnggotaRiwayatPage(c *gin.Context) {
 			Time:        timeStr,
 			Type:        jenis,
 			Description: jenis,
-			Amount:      amount,
+			Amount:      ps.Jumlah,
 			Status:      status,
 		})
 	}
