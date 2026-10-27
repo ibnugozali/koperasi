@@ -1,21 +1,17 @@
-# Fix Total Saldo Simpanan: ajukan-pengambilan-simpanan vs profil
+# Total Saldo Simpanan dan Pengembalian Saat Keluar
 
-## Status: ✅ APPROVED - In Progress
+## Status: ✅ COMPLETED
 
-**Goal**: Make "Total Saldo Simpanan Anda" identical to Profil's Total Simpanan by excluding pokok.
+**Goal**: Keep total simpanan consistent across member and staff views, include Simpanan Pokok, and return Simpanan Pokok/Wajib only through the approved membership-exit process.
 
-### ⬜ Step 1: Create TODO [COMPLETED]
-### ⬜ Step 2: Edit controllers/anggota_controller.go → AjukanPengambilanSimpanan()
-   - Replace `GetSaldoAnggota()` with:
-     ```
-     simpananByJenis, _ := repository.GetDetailSimpananByJenis(userID)
-     totalSimpanan := simpananByJenis["wajib"] + simpananByJenis["sukarela"] + 
-                     simpananByJenis["hari_raya"] + simpananByJenis["umroh_haji"] + 
-                     simpananByJenis["qurban"]
-     ```
-### ⬜ Step 3: Test pages
-   - http://localhost:8081/anggota/profil → note Total Simpanan
-   - http://localhost:8081/anggota/ajukan-pengambilan-simpanan → verify match
-### ⬜ Step 4: Update TODO → attempt_completion
+### ✅ Total simpanan
+- Member profile, withdrawal, loan, and staff detail views now sum all savings types, including Simpanan Pokok.
+- Approved Simpanan Pokok withdrawals remain deducted from the displayed balance.
 
-**Current Progress**: Ready for code edit
+### ✅ Withdrawal restrictions
+- Simpanan Pokok and Simpanan Wajib are excluded from regular withdrawal options and rejected by the backend endpoint.
+- Both balances are included in the member-exit refund request, which is processed after the exit request is approved.
+
+### ✅ Validation
+- `go test ./...`
+- `git diff --check`

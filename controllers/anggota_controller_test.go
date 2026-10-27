@@ -139,7 +139,7 @@ func TestCalculatePinjamanLimit(t *testing.T) {
 	}
 }
 
-func TestTotalSimpananTanpaPokokIncludesWajib(t *testing.T) {
+func TestTotalSimpananDariRincianIncludesPokokDanWajib(t *testing.T) {
 	simpananByJenis := map[string]float64{
 		"pokok":      100000,
 		"wajib":      50000,
@@ -149,9 +149,21 @@ func TestTotalSimpananTanpaPokokIncludesWajib(t *testing.T) {
 		"qurban":     50000,
 	}
 
-	got := totalSimpananTanpaPokok(simpananByJenis)
-	if got != 190000 {
-		t.Fatalf("expected total to include wajib and exclude pokok, got %.0f", got)
+	got := totalSimpananDariRincian(simpananByJenis)
+	if got != 290000 {
+		t.Fatalf("expected total to include pokok and wajib, got %.0f", got)
+	}
+}
+
+func TestSimpananDikembalikanSaatKeluar(t *testing.T) {
+	for _, jenis := range []string{"pokok", "Simpanan Pokok", "wajib", "simpanan-wajib"} {
+		if !simpananDikembalikanSaatKeluar(jenis) {
+			t.Errorf("expected %q to be returned only when the member exits", jenis)
+		}
+	}
+
+	if simpananDikembalikanSaatKeluar("sukarela") {
+		t.Fatal("expected voluntary savings to remain eligible for regular withdrawal")
 	}
 }
 

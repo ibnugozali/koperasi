@@ -1212,7 +1212,7 @@ func AdminViewAnggota(c *gin.Context) {
 		}
 	}
 
-	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
+	totalSimpanan := totalSimpananDariRincian(simpananByJenis)
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	_, totalPinjaman, _, err := repository.GetSaldoAnggota(idStr)

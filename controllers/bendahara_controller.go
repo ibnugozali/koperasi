@@ -81,7 +81,7 @@ func BendaharaViewAnggotaKeluar(c *gin.Context) {
 	}
 
 	// Total simpanan detail anggota tidak memasukkan simpanan pokok dan simpanan wajib.
-	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
+	totalSimpanan := totalSimpananDariRincian(simpananByJenis)
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Ambil total pinjaman
@@ -1168,7 +1168,7 @@ func BendaharaViewAnggota(c *gin.Context) {
 	}
 
 	// Total simpanan detail anggota tidak memasukkan simpanan pokok dan simpanan wajib.
-	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
+	totalSimpanan := totalSimpananDariRincian(simpananByJenis)
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Ambil total pinjaman

@@ -234,6 +234,10 @@
                                 <div class="info-value">{{ if .TanggalPengajuan }}{{ .TanggalPengajuan }}{{ else }}<span class="text-muted">Tidak ada data</span>{{ end }}</div>
                             </div>
                             <div class="info-row">
+                                <div class="info-label"><i class="fas fa-piggy-bank me-2"></i>Simpanan Pokok</div>
+                                <div class="info-value">Rp {{ formatRupiah .PengajuanKeluar.SimpananPokok }}</div>
+                            </div>
+                            <div class="info-row">
                                 <div class="info-label"><i class="fas fa-wallet me-2"></i>Simpanan Wajib</div>
                                 <div class="info-value">Rp {{ formatRupiah .PengajuanKeluar.SimpananWajib }}</div>
                             </div>

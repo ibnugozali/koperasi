@@ -415,6 +415,7 @@ func GetPendingAnggotaKeluarByID(id string) (models.Anggota, models.PengajuanKel
 			COALESCE(status_anggota, ''),
 			COALESCE(fakultas, ''),
 			COALESCE(gaji_bulanan, 0),
+			COALESCE(NULLIF(data_keluar->>'simpanan_pokok', '')::numeric, 0),
 			COALESCE(NULLIF(data_keluar->>'simpanan_wajib', '')::numeric, 0),
 			COALESCE(NULLIF(data_keluar->>'simpanan_lainnya', '')::numeric, 0),
 			COALESCE(NULLIF(data_keluar->>'biaya_admin', '')::numeric, 0),
@@ -442,6 +443,7 @@ func GetPendingAnggotaKeluarByID(id string) (models.Anggota, models.PengajuanKel
 		&a.StatusAnggota,
 		&a.Fakultas,
 		&a.GajiBulanan,
+		&p.SimpananPokok,
 		&p.SimpananWajib,
 		&p.SimpananLainnya,
 		&p.BiayaAdmin,
@@ -683,7 +685,7 @@ func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float
 	var status string
 	var buktiTransfer string
 	err = db.QueryRow("SELECT status, COALESCE(bukti_transfer, '') FROM anggota WHERE id_anggota = $1", id).Scan(&status, &buktiTransfer)
-	if err == nil && status == "aktif" && buktiTransfer != "" {
+	if err == nil && (status == "aktif" || status == "keluar") && buktiTransfer != "" {
 		err = db.QueryRow("SELECT COALESCE(CAST(nilai AS NUMERIC), 100000) FROM pengaturan WHERE nama_pengaturan = 'nominal_simpanan'").Scan(&simpananPokok)
 		if err != nil {
 			simpananPokok = 100000 // Default

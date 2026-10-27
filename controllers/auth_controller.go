@@ -588,6 +588,9 @@ func ShowLoginPage(c *gin.Context) {
 
 // ShowRegisterPage menampilkan halaman registrasi.
 func ShowRegisterPage(c *gin.Context) {
+	c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
 	db := config.GetDB()
 
 	// Ambil nomor rekening dari database
@@ -852,6 +855,9 @@ func Register(c *gin.Context) {
 	}
 
 	renderRegisterError := func(status int, message string) {
+		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
 		c.HTML(status, "register.html", gin.H{
 			"error":           message,
 			"NomorRekening":   nomorRekening,

@@ -44,6 +44,7 @@
                                     <small class="text-muted" id="identitas_hint_text">Gunakan NIDN/NIP untuk validasi sistem.</small>
                                 </div>
 
+                                <div id="registration_details" class="d-none">
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label for="register_nama_anggota" class="form-label fw-bold">Nama Lengkap</label>
@@ -148,6 +149,7 @@
                                     <span class="text-muted">Sudah punya akun?</span>
                                     <a href="/login" class="ms-1 text-decoration-none fw-bold">Login di sini</a>
                                 </div>
+                                </div>
                             </div>
                         </form>
 
@@ -170,6 +172,7 @@
         const statusSelect = document.getElementById('register_status_anggota');
         const identitasInput = document.getElementById('register_identitas_pegawai');
         const formContainer = document.getElementById('form_fields_container');
+        const registrationDetails = document.getElementById('registration_details');
         const warningBox = document.getElementById('referensi_status_warning');
         const submitBtn = document.getElementById('submitBtn');
         const form = document.getElementById('formPendaftaran');
@@ -273,7 +276,17 @@
 
         function shouldLockRegistrationFields() {
             return alreadyMember ||
-                Boolean(statusSelect.value && statusSelect.value !== 'mahasiswa' && !latestRefFound);
+                Boolean(statusSelect.value && statusSelect.value !== 'mahasiswa' &&
+                    (!latestRefFound || latestRefStatus !== statusSelect.value));
+        }
+
+        function updateRegistrationDetailsVisibility() {
+            const isMahasiswa = statusSelect.value === 'mahasiswa';
+            const statusMatchesReference = latestRefFound && latestRefStatus === statusSelect.value;
+            registrationDetails.classList.toggle(
+                'd-none',
+                alreadyMember || (!isMahasiswa && !statusMatchesReference)
+            );
         }
 
         function updateRegistrationFieldsLock() {
@@ -309,9 +322,10 @@
                 errorMsg = 'Data referensi ditemukan, tetapi jabatan pada Nomer Identitas ini belum tersedia atau belum dikenali sistem. Hubungi admin untuk memperbarui import referensi.';
             } else if (selected && latestRefStatus && selected !== latestRefStatus) {
                 const label = latestRefStatus === 'dosen' ? 'DOSEN' : 'TENAGA KEPENDIDIKAN';
-                errorMsg = `Data Nomer Identitas terdaftar sebagai <b>${label}</b>. Anda memilih status yang salah.`;
+                errorMsg = `Data Nomer Identitas terdaftar sebagai ${label}. Anda memilih status yang salah.`;
             }
 
+            updateRegistrationDetailsVisibility();
             if (errorMsg) {
                 warningBox.textContent = errorMsg;
                 warningBox.classList.remove('d-none');
@@ -362,6 +376,7 @@
                 fakultasSelect.value = '';
                 fakultasHidden.value = '';
             }
+            updateRegistrationDetailsVisibility();
 
             updateRegistrationFieldsLock();
         }

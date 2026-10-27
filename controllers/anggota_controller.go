@@ -499,36 +499,20 @@ func buildProfilSimpananRows(simpananByJenis map[string]float64) []profilSimpana
 	return rows
 }
 
-func totalSimpananTanpaPokokWajib(simpananByJenis map[string]float64) float64 {
+func totalSimpananDariRincian(simpananByJenis map[string]float64) float64 {
 	total := 0.0
-	for jenis, jumlah := range simpananByJenis {
-		normalized := strings.ToLower(strings.TrimSpace(jenis))
-		normalized = strings.ReplaceAll(normalized, " ", "_")
-		normalized = strings.ReplaceAll(normalized, "-", "_")
-		switch normalized {
-		case "pokok", "simpanan_pokok", "wajib", "simpanan_wajib":
-			continue
-		default:
-			total += jumlah
-		}
+	for _, jumlah := range simpananByJenis {
+		total += jumlah
 	}
 	return total
 }
 
-func totalSimpananTanpaPokok(simpananByJenis map[string]float64) float64 {
-	total := 0.0
-	for jenis, jumlah := range simpananByJenis {
-		normalized := strings.ToLower(strings.TrimSpace(jenis))
-		normalized = strings.ReplaceAll(normalized, " ", "_")
-		normalized = strings.ReplaceAll(normalized, "-", "_")
-		switch normalized {
-		case "pokok", "simpanan_pokok":
-			continue
-		default:
-			total += jumlah
-		}
-	}
-	return total
+func simpananDikembalikanSaatKeluar(jenis string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(jenis))
+	normalized = strings.ReplaceAll(normalized, " ", "_")
+	normalized = strings.ReplaceAll(normalized, "-", "_")
+	return normalized == "pokok" || normalized == "simpanan_pokok" ||
+		normalized == "wajib" || normalized == "simpanan_wajib"
 }
 
 // Fungsi untuk menggabungkan seluruh pinjaman aktif/proses menjadi satu resume gabungan
@@ -1326,7 +1310,7 @@ func AnggotaProfil(c *gin.Context) {
 	}
 
 	// Total simpanan profil tidak memasukkan simpanan pokok, tetapi tetap memasukkan simpanan wajib.
-	totalSimpanan := totalSimpananTanpaPokok(simpananByJenis)
+	totalSimpanan := totalSimpananDariRincian(simpananByJenis)
 
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
@@ -1678,25 +1662,8 @@ func KeluarKoperasi(c *gin.Context) {
 	}
 
 	// Ambil data dari form
-	simpananWajibStr := c.PostForm("simpanan_wajib")
-	simpananLainnyaStr := c.PostForm("simpanan_lainnya")
 	biayaAdminStr := c.PostForm("biaya_admin")
 	alasanKeluar := c.PostForm("alasan_keluar")
-
-	// Convert string to float64
-	simpananWajib, err := strconv.ParseFloat(simpananWajibStr, 64)
-	if err != nil {
-		log.Printf("[ERROR] AnggotaAjukanKeluarKoperasi parse simpanan_wajib gagal: %v", err)
-		c.Redirect(http.StatusFound, "/anggota/profil?error=Format simpanan wajib tidak valid")
-		return
-	}
-
-	simpananLainnya, err := strconv.ParseFloat(simpananLainnyaStr, 64)
-	if err != nil {
-		log.Printf("[ERROR] AnggotaAjukanKeluarKoperasi parse simpanan_lainnya gagal: %v", err)
-		c.Redirect(http.StatusFound, "/anggota/profil?error=Format simpanan lainnya tidak valid")
-		return
-	}
 
 	biayaAdmin, err := strconv.ParseFloat(biayaAdminStr, 64)
 	if err != nil {
@@ -1714,15 +1681,26 @@ func KeluarKoperasi(c *gin.Context) {
 
 	// Update status anggota menjadi 'pending_keluar' dan simpan data pengajuan
 	db := config.GetDB()
+	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
+	if err != nil {
+		log.Printf("[ERROR] AnggotaAjukanKeluarKoperasi gagal menghitung saldo simpanan anggota %s: %v", userID, err)
+		c.Redirect(http.StatusFound, "/anggota/profil?error=Gagal menghitung saldo simpanan")
+		return
+	}
+	simpananPokok := simpananByJenis["pokok"]
+	simpananWajib := simpananByJenis["wajib"]
+	simpananLainnya := simpananByJenis["sukarela"] + simpananByJenis["hari_raya"] +
+		simpananByJenis["umroh_haji"] + simpananByJenis["qurban"]
 
 	// Buat JSON string untuk data_keluar
 	dataKeluarJSON := fmt.Sprintf(`{
+		"simpanan_pokok": %.2f,
 		"simpanan_wajib": %.2f,
 		"simpanan_lainnya": %.2f,
 		"biaya_admin": %.2f,
 		"alasan": "%s",
 		"tanggal_pengajuan": "%s"
-	}`, simpananWajib, simpananLainnya, biayaAdmin,
+	}`, simpananPokok, simpananWajib, simpananLainnya, biayaAdmin,
 		strings.ReplaceAll(alasanKeluar, `"`, `\"`),
 		time.Now().Format(time.RFC3339))
 
@@ -1799,7 +1777,7 @@ func AjukanPinjaman(c *gin.Context) {
 
 // getAjukanPinjamanTemplateData adalah helper function untuk mendapatkan data template yang konsisten
 func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H {
-	// Hitung total simpanan (excluding pokok, same as Profil)
+	// Hitung total simpanan, termasuk simpanan pokok
 	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
 	if err != nil {
 		simpananByJenis = map[string]float64{
@@ -1811,7 +1789,7 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 			"qurban":     0,
 		}
 	}
-	totalSimpanan := totalSimpananTanpaPokok(simpananByJenis)
+	totalSimpanan := totalSimpananDariRincian(simpananByJenis)
 
 	// Hitung limit pinjaman berdasarkan jenis anggota
 	var limitPinjaman float64
@@ -3060,12 +3038,12 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 		return
 	}
 
-	// Hitung Total Simpanan (excluding pokok, SAME as Profil)
+	// Hitung total simpanan, termasuk simpanan pokok
 	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)
 	if err != nil {
 		simpananByJenis = make(map[string]float64)
 	}
-	totalSimpanan := totalSimpananTanpaPokok(simpananByJenis)
+	totalSimpanan := totalSimpananDariRincian(simpananByJenis)
 
 	// Ambil detail simpanan per jenis (already loaded above)
 
@@ -3107,6 +3085,9 @@ func AjukanPengambilanSimpanan(c *gin.Context) {
 		var js JenisSimpanan
 		if err := rows.Scan(&js.ID, &js.Jenis); err == nil {
 			js.Jenis = strings.TrimSpace(js.Jenis)
+			if simpananDikembalikanSaatKeluar(js.Jenis) {
+				continue
+			}
 			js.Label = formatJenisLabel(js.Jenis)
 			jenisSimpananList = append(jenisSimpananList, js)
 		}
@@ -3203,6 +3184,10 @@ func AjukanPengambilanSimpananPost(c *gin.Context) {
 		return
 	}
 	jenisNama = strings.TrimSpace(jenisNama)
+	if simpananDikembalikanSaatKeluar(jenisNama) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Simpanan Pokok dan Simpanan Wajib hanya dapat dikembalikan melalui proses pengajuan keluar koperasi."})
+		return
+	}
 
 	// Cek saldo per jenis simpanan
 	simpananByJenis, err := repository.GetDetailSimpananByJenis(userID)

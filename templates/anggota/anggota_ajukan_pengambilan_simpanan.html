@@ -31,6 +31,14 @@
             <div class="col-md-6">
               <ul class="list-unstyled mb-0">
                 <li class="mb-2">
+                  <strong>Simpanan Pokok (dikembalikan saat keluar):</strong>
+                  <span class="float-end">Rp {{ formatRupiah (index .SimpananByJenis "pokok") }}</span>
+                </li>
+                <li class="mb-2">
+                  <strong>Simpanan Wajib (dikembalikan saat keluar):</strong>
+                  <span class="float-end">Rp {{ formatRupiah (index .SimpananByJenis "wajib") }}</span>
+                </li>
+                <li class="mb-2">
                   <strong>Simpanan Sukarela:</strong> 
                   <span class="float-end">Rp {{ formatRupiah (index .SimpananByJenis "sukarela") }}</span>
                 </li>
@@ -56,7 +64,7 @@
         </div>
         
         <hr class="my-3">
-        <small><i class="bi bi-info-circle me-1"></i>Saldo yang dapat Anda ambil</small>
+        <small><i class="bi bi-info-circle me-1"></i>Total simpanan mencakup Simpanan Pokok. Simpanan Pokok dan Simpanan Wajib hanya dikembalikan melalui pengajuan keluar koperasi, bukan melalui form penarikan ini.</small>
       </div>
 
       <!-- Ketentuan -->

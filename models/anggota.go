@@ -30,6 +30,7 @@ type Anggota struct {
 
 // PengajuanKeluarData berisi detail JSON data_keluar dari pengajuan keluar anggota.
 type PengajuanKeluarData struct {
+	SimpananPokok    float64 `json:"simpanan_pokok"`
 	SimpananWajib    float64 `json:"simpanan_wajib"`
 	SimpananLainnya  float64 `json:"simpanan_lainnya"`
 	BiayaAdmin       float64 `json:"biaya_admin"`

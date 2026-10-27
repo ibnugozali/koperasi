@@ -3307,7 +3307,8 @@ func KetuaViewPengajuanAnggotaKeluar(c *gin.Context) {
 		tanggalPengajuan = parsed.Format("02 January 2006 15:04:05")
 	}
 
-	totalPengembalian := pengajuanKeluar.SimpananWajib + pengajuanKeluar.SimpananLainnya - pengajuanKeluar.BiayaAdmin
+	totalPengembalian := pengajuanKeluar.SimpananPokok + pengajuanKeluar.SimpananWajib +
+		pengajuanKeluar.SimpananLainnya - pengajuanKeluar.BiayaAdmin
 
 	c.HTML(http.StatusOK, "ketua_pengajuan_anggota_keluar_detail.html", gin.H{
 		"Anggota":           anggota,
@@ -3344,7 +3345,7 @@ func KetuaViewAnggota(c *gin.Context) {
 	}
 
 	// Total simpanan detail anggota tidak memasukkan simpanan pokok dan simpanan wajib.
-	totalSimpanan := totalSimpananTanpaPokokWajib(simpananByJenis)
+	totalSimpanan := totalSimpananDariRincian(simpananByJenis)
 	profilSimpananRows := buildProfilSimpananRows(simpananByJenis)
 
 	// Ambil total pinjaman

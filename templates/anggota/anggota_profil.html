@@ -354,6 +354,16 @@ document.addEventListener("DOMContentLoaded", function(){
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
+                                <label for="simpanan_pokok" class="form-label">
+                                    <i class="bi bi-piggy-bank me-2"></i>Jumlah Simpanan Pokok yang Dikembalikan
+                                    <small class="text-muted">(maksimal Rp {{ formatRupiah .SimpananPokok }})</small>
+                                </label>
+                                <input type="number" class="form-control bg-light" id="simpanan_pokok" name="simpanan_pokok"
+                                       value="{{ printf "%.0f" .SimpananPokok }}" min="0" max="{{ printf "%.0f" .SimpananPokok }}" readonly required>
+                                <small class="form-text text-muted">Simpanan pokok dikembalikan setelah pengajuan keluar disetujui.</small>
+                            </div>
+
+                            <div class="mb-3">
                                 <label for="simpanan_wajib" class="form-label">
                                     <i class="bi bi-cash-stack me-2"></i>Jumlah Simpanan Wajib yang Dikembalikan
                                     <small class="text-muted">(maksimal Rp {{ formatRupiah .SimpananWajib }})</small>
@@ -371,7 +381,7 @@ document.addEventListener("DOMContentLoaded", function(){
                                 <input type="number" class="form-control bg-light" id="simpanan_lainnya" name="simpanan_lainnya" 
                                        value="{{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }}" 
                                        min="0" max="{{ printf "%.0f" (add .SimpananSukarela .SimpananHariRaya .SimpananUmrohHaji .SimpananQurban) }}" readonly required>
-                                <small class="form-text text-muted">Total simpanan lainnya yang akan dikembalikan (otomatis dari saldo, simpanan pokok tidak dikembalikan)</small>
+                                <small class="form-text text-muted">Total simpanan lainnya yang akan dikembalikan (otomatis dari saldo)</small>
                             </div>
 
                             <div class="mb-3">
@@ -393,7 +403,7 @@ document.addEventListener("DOMContentLoaded", function(){
                                     <span class="input-group-text bg-success text-white">Rp</span>
                                     <input type="text" class="form-control bg-light fw-bold text-success" id="total_pengembalian" readonly>
                                 </div>
-                                <small class="form-text text-muted">Total = (Simpanan Wajib + Simpanan Lainnya) - Biaya Administrasi</small>
+                                <small class="form-text text-muted">Total = (Simpanan Pokok + Simpanan Wajib + Simpanan Lainnya) - Biaya Administrasi</small>
                             </div>
 
                             <div class="mb-3">
@@ -409,7 +419,7 @@ document.addEventListener("DOMContentLoaded", function(){
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>Catatan Penting:</strong>
                         <ul class="mb-0 mt-2">
-                            <li>Simpanan pokok <strong>tidak dapat dikembalikan</strong> sesuai ketentuan koperasi</li>
+                            <li>Simpanan Pokok dan Simpanan Wajib hanya dikembalikan setelah anggota keluar dari koperasi dan pengajuan disetujui Ketua</li>
                             <li>Pengembalian simpanan dilakukan setelah semua kewajiban diselesaikan</li>
                             <li>Pengajuan akan diproses setelah mendapat persetujuan Ketua</li>
                             <li>Anda dapat membatalkan pengajuan sebelum disetujui</li>
@@ -432,11 +442,12 @@ document.addEventListener("DOMContentLoaded", function(){
 <script>
 // Fungsi untuk menghitung total pengembalian
 function hitungTotalPengembalian() {
+    const simpananPokok = parseFloat(document.getElementById('simpanan_pokok').value) || 0;
     const simpananWajib = parseFloat(document.getElementById('simpanan_wajib').value) || 0;
     const simpananLainnya = parseFloat(document.getElementById('simpanan_lainnya').value) || 0;
     const biayaAdmin = parseFloat(document.getElementById('biaya_admin').value) || 0;
     
-    const total = simpananWajib + simpananLainnya - biayaAdmin;
+    const total = simpananPokok + simpananWajib + simpananLainnya - biayaAdmin;
     
     // Format dengan pemisah ribuan
     document.getElementById('total_pengembalian').value = total.toLocaleString('id-ID');
@@ -449,8 +460,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Validasi form sebelum submit
 document.getElementById('formKeluar').addEventListener('submit', function(e) {
-    const simpananWajib = parseFloat(document.getElementById('simpanan_wajib').value) || 0;
-    const simpananLainnya = parseFloat(document.getElementById('simpanan_lainnya').value) || 0;
     const biayaAdmin = parseFloat(document.getElementById('biaya_admin').value) || 0;
     const alasan = document.getElementById('alasan_keluar').value.trim();
     
