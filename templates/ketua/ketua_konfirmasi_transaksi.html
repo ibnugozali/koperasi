@@ -168,7 +168,12 @@
                                             <tr>
                                                 <td class="text-center">{{$i | add 1}}</td>
                                                 <td>{{$a.NamaAnggota}}</td>
-                                                <td class="text-end">Rp {{formatRupiah $a.JumlahAngsuran}}</td>
+                                                <td class="text-end">
+                                                    Rp {{formatRupiah (add $a.JumlahAngsuran $a.DendaPelunasan)}}
+                                                    {{if gt $a.DendaPelunasan 0.0}}
+                                                    <small class="d-block text-muted">Termasuk penalti Rp {{formatRupiah $a.DendaPelunasan}}</small>
+                                                    {{end}}
+                                                </td>
                                                 <td class="text-center">
                                                     {{if eq $a.MetodeAngsuran "transfer_bank"}}
                                                         <span class="badge bg-info">Transfer Bank</span>

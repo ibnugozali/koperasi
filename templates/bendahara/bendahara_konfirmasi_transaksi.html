@@ -314,7 +314,10 @@
                                         <td>{{.Angsuran.IDAnggota}}</td>
                                         <td>{{.Angsuran.NamaAnggota}}</td>
                                         <td class="text-end">
-                                            <div>Rp {{printf "%.0f" .Angsuran.JumlahAngsuran}}</div>
+                                            <div>Rp {{printf "%.0f" (add .Angsuran.JumlahAngsuran .Angsuran.DendaPelunasan)}}</div>
+                                            {{if gt .Angsuran.DendaPelunasan 0.0}}
+                                            <small class="text-muted">Termasuk penalti Rp {{printf "%.0f" .Angsuran.DendaPelunasan}}</small>
+                                            {{end}}
                                             {{if gt .AngsuranKe 0}}
                                             <div><span class="badge bg-light text-dark border">Cicilan ke-{{.AngsuranKe}}</span></div>
                                             {{end}}
@@ -742,13 +745,17 @@
                                     
                                     var jumlahCicilan = rupiahCeil(Number(selectedLoan.perkiraan_angsuran || 0));
                                     var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
+                                    var totalPelunasan = rupiahCeil(Number(selectedLoan.total_pelunasan_dipercepat || sisaPinjaman));
                                     var minimumYangBisaDiterima = Math.min(jumlahCicilan, sisaPinjaman);
                                     
                                     minCicilanText.textContent = `Jumlah Cicilan: Rp ${new Intl.NumberFormat('id-ID').format(jumlahCicilan)}`;
                                     sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
+                                    if (selectedLoan.pelunasan_dipercepat) {
+                                        sisaPinjamanText.textContent += ` • Pelunasan dipercepat (termasuk penalti 1× jasa): Rp ${new Intl.NumberFormat('id-ID').format(totalPelunasan)}`;
+                                    }
                                     jumlahCicilanInput.value = String(minimumYangBisaDiterima);
                                     jumlahCicilanInput.setAttribute('min', String(minimumYangBisaDiterima));
-                                    jumlahCicilanInput.setAttribute('max', String(sisaPinjaman));
+                                    jumlahCicilanInput.setAttribute('max', String(totalPelunasan));
                                     infoPinjamanDisplay.style.display = 'block';
                                     pinjamanWarning.style.display = 'none';
                                     
@@ -805,12 +812,16 @@
                 idPinjamanHidden.value = selectedLoan.key;
                 var jumlahCicilan = rupiahCeil(Number(selectedLoan.perkiraan_angsuran || 0));
                 var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
+                var totalPelunasan = rupiahCeil(Number(selectedLoan.total_pelunasan_dipercepat || sisaPinjaman));
                 var minimumYangBisaDiterima = Math.min(jumlahCicilan, sisaPinjaman);
                 minCicilanText.textContent = `Jumlah Cicilan: Rp ${new Intl.NumberFormat('id-ID').format(jumlahCicilan)}`;
                 sisaPinjamanText.textContent = `Sisa Pinjaman: Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
+                if (selectedLoan.pelunasan_dipercepat) {
+                    sisaPinjamanText.textContent += ` • Pelunasan dipercepat (termasuk penalti 1× jasa): Rp ${new Intl.NumberFormat('id-ID').format(totalPelunasan)}`;
+                }
                 jumlahCicilanInput.value = String(minimumYangBisaDiterima);
                 jumlahCicilanInput.setAttribute('min', String(minimumYangBisaDiterima));
-                jumlahCicilanInput.setAttribute('max', String(sisaPinjaman));
+                jumlahCicilanInput.setAttribute('max', String(totalPelunasan));
                 infoPinjamanDisplay.style.display = 'block';
                 submitCicilanBtn.disabled = false;
             });
@@ -842,6 +853,7 @@
                 
                 var jumlahCicilan = rupiahCeil(Number(selectedLoan.perkiraan_angsuran || 0));
                 var sisaPinjaman = getSisaPinjamanRupiah(selectedLoan);
+                var totalPelunasan = rupiahCeil(Number(selectedLoan.total_pelunasan_dipercepat || sisaPinjaman));
                 var minimumYangBisaDiterima = Math.min(jumlahCicilan, sisaPinjaman);
                 var sisaSetelahBayar = sisaPinjaman - jumlah;
                 
@@ -849,8 +861,14 @@
                     validasiJumlahText.textContent = `❌ Jumlah cicilan minimal Rp ${new Intl.NumberFormat('id-ID').format(minimumYangBisaDiterima)}`;
                     validasiJumlahText.style.display = 'block';
                     submitCicilanBtn.disabled = true;
-                } else if (jumlah > sisaPinjaman) {
-                    validasiJumlahText.textContent = `❌ Jumlah cicilan maksimal Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
+                } else if (selectedLoan.pelunasan_dipercepat && Math.abs(jumlah - sisaPinjaman) < 0.01) {
+                    validasiJumlahText.textContent = `❌ Pembayaran sebesar sisa kewajiban adalah pelunasan dipercepat. Jumlah yang harus dibayar termasuk penalti: Rp ${new Intl.NumberFormat('id-ID').format(totalPelunasan)}`;
+                    validasiJumlahText.style.display = 'block';
+                    submitCicilanBtn.disabled = true;
+                } else if (jumlah > sisaPinjaman && (!selectedLoan.pelunasan_dipercepat || Math.abs(jumlah - totalPelunasan) >= 0.01)) {
+                    validasiJumlahText.textContent = selectedLoan.pelunasan_dipercepat
+                        ? `❌ Untuk pelunasan dipercepat, jumlahnya harus Rp ${new Intl.NumberFormat('id-ID').format(totalPelunasan)}`
+                        : `❌ Jumlah cicilan maksimal Rp ${new Intl.NumberFormat('id-ID').format(sisaPinjaman)}`;
                     validasiJumlahText.style.display = 'block';
                     submitCicilanBtn.disabled = true;
                 } else {
@@ -865,4 +883,3 @@
 </body>
 </html>
 {{end}}
-

@@ -51,10 +51,28 @@
               </div>
               <form action="/anggota/angsuran" method="POST" enctype="multipart/form-data" style="max-width: 600px; margin: auto;">
                 <input type="hidden" name="id_pinjaman" value="{{.IDPinjaman}}">
+                {{if .BisaPelunasanDipercepat}}
+                  <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="pelunasan_dipercepat" name="pelunasan_dipercepat" value="true"
+                      data-total="{{printf "%.0f" .TotalPelunasanDipercepat}}">
+                    <label class="form-check-label" for="pelunasan_dipercepat">
+                      Saya ingin melunasi seluruh pinjaman lebih awal
+                    </label>
+                  </div>
+                  <div class="alert alert-warning" id="info_pelunasan_dipercepat" style="display:none">
+                    Sisa kewajiban: <strong>Rp {{formatRupiah .SisaPinjaman}}</strong><br>
+                    Penalti (1× jasa total): <strong>Rp {{formatRupiah .PenaltiPelunasanDipercepat}}</strong><br>
+                    Total pelunasan: <strong>Rp {{formatRupiah .TotalPelunasanDipercepat}}</strong>
+                  </div>
+                {{end}}
                 <div style="margin-bottom: 10px;">
-                  <label>Jumlah Angsuran (Rp) <small class="text-muted">(Maksimal: Rp {{if gt .SisaPinjaman 0.0}}{{formatRupiah .SisaPinjaman}}{{else}}0{{end}})</small></label><br>
-                  <input type="text" id="jumlah_angsuran_display" inputmode="numeric" autocomplete="off" data-max="{{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}}" required aria-label="Jumlah angsuran" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                  <label>Jumlah Pembayaran (Rp) <small class="text-muted">(Maksimal angsuran biasa: Rp {{if gt .SisaPinjaman 0.0}}{{formatRupiah .SisaPinjaman}}{{else}}0{{end}})</small></label><br>
+                  <input type="text" id="jumlah_angsuran_display" inputmode="numeric" autocomplete="off"
+                    data-regular-max="{{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}}"
+                    data-max="{{if gt .SisaPinjaman 0.0}}{{printf "%.0f" .SisaPinjaman}}{{else}}0{{end}}"
+                    required aria-label="Jumlah angsuran" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                   <input type="hidden" id="jumlah_angsuran" name="jumlah_angsuran">
+                  <small class="text-danger d-block" id="validasi_pelunasan_dipercepat" style="display:none"></small>
                   {{if gt .PerkiraanAngsuranBulan 0.0}}
                     <small class="text-muted">Perkiraan angsuran per bulan: Rp {{formatRupiah .PerkiraanAngsuranBulan}}</small>
                   {{end}}
@@ -117,7 +135,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const amountInput = document.getElementById('jumlah_angsuran_display');
     const rawAmountInput = document.getElementById('jumlah_angsuran');
+    const earlySettlementInput = document.getElementById('pelunasan_dipercepat');
+    const earlySettlementInfo = document.getElementById('info_pelunasan_dipercepat');
+    const earlySettlementValidation = document.getElementById('validasi_pelunasan_dipercepat');
     if (amountInput && rawAmountInput) {
+      function validateEarlySettlement() {
+        if (!earlySettlementInput || !earlySettlementValidation) return true;
+        const amount = Number(rawAmountInput.value || 0);
+        const regularMax = Number(amountInput.dataset.regularMax || 0);
+        const earlyTotal = Number(earlySettlementInput.dataset.total || 0);
+        let message = '';
+        if (earlySettlementInput.checked && amount !== earlyTotal) {
+          message = 'Jumlah pelunasan harus tepat Rp ' + earlyTotal.toLocaleString('id-ID') + '.';
+        } else if (!earlySettlementInput.checked && earlyTotal > regularMax && amount === regularMax) {
+          message = 'Pembayaran sebesar sisa kewajiban adalah pelunasan dipercepat. Centang pilihan di atas untuk menambahkan penalti.';
+        }
+        earlySettlementValidation.textContent = message;
+        earlySettlementValidation.style.display = message ? 'block' : 'none';
+        return message === '';
+      }
+
+      if (earlySettlementInput) {
+        earlySettlementInput.addEventListener('change', function() {
+          if (earlySettlementInput.checked) {
+            amountInput.dataset.max = earlySettlementInput.dataset.total;
+            const total = earlySettlementInput.dataset.total;
+            amountInput.value = Number(total).toLocaleString('id-ID');
+            rawAmountInput.value = total;
+            if (earlySettlementInfo) earlySettlementInfo.style.display = 'block';
+          } else {
+            amountInput.dataset.max = amountInput.dataset.regularMax;
+            amountInput.value = '';
+            rawAmountInput.value = '';
+            if (earlySettlementInfo) earlySettlementInfo.style.display = 'none';
+          }
+          validateEarlySettlement();
+        });
+      }
       amountInput.addEventListener('input', function() {
         const cursor = amountInput.selectionStart ?? amountInput.value.length;
         const digitsBeforeCursor = amountInput.value.slice(0, cursor).replace(/\D/g, '').length;
@@ -126,6 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
         amountInput.value = formatted;
         rawAmountInput.value = digits;
         amountInput.setCustomValidity('');
+        validateEarlySettlement();
 
         let nextCursor = 0;
         let digitsSeen = 0;
@@ -138,13 +193,14 @@ document.addEventListener('DOMContentLoaded', function() {
       form.addEventListener('submit', function(event) {
         const digits = amountInput.value.replace(/\D/g, '');
         const maximum = Number(amountInput.dataset.max || 0);
-        if (!digits || Number(digits) <= 0 || Number(digits) > maximum) {
+        const earlySettlementIsValid = validateEarlySettlement();
+        if (!digits || Number(digits) <= 0 || Number(digits) > maximum || !earlySettlementIsValid) {
           event.preventDefault();
-          amountInput.setCustomValidity(
-            Number(digits) > maximum
-              ? 'Jumlah angsuran melebihi sisa pinjaman.'
-              : 'Jumlah angsuran harus lebih dari 0.'
-          );
+          amountInput.setCustomValidity(Number(digits) > maximum
+            ? 'Jumlah pembayaran melebihi batas.'
+            : Number(digits) <= 0
+              ? 'Jumlah angsuran harus lebih dari 0.'
+              : earlySettlementValidation?.textContent || 'Periksa kembali jumlah pelunasan.');
           amountInput.reportValidity();
           return;
         }

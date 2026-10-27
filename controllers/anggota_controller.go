@@ -142,9 +142,10 @@ func isAngsuranTerbayar(status string) bool {
 }
 
 type pinjamanAngsuranInfo struct {
-	Pinjaman     models.Pinjaman
-	SisaPinjaman float64
-	AngsuranKe   int
+	Pinjaman         models.Pinjaman
+	SisaPinjaman     float64
+	AngsuranKe       int
+	AngsuranTerbayar int
 }
 
 type profilSimpananRow struct {
@@ -271,6 +272,7 @@ func buildAnggotaAngsuranTemplateData(userID string, anggota models.Anggota, err
 	var idPinjaman int
 	var persentasePelunasan float64
 	var metodeAngsuran string
+	var penaltiPelunasanDipercepat float64
 
 	if resumeGabungan != nil {
 		idPinjaman = resumeGabungan.IDPinjaman
@@ -283,6 +285,9 @@ func buildAnggotaAngsuranTemplateData(userID string, anggota models.Anggota, err
 		jangkaWaktu = resumeGabungan.JangkaWaktu
 		persentasePelunasan = resumeGabungan.PersentaseTerbayar
 		metodeAngsuran = normalizeMetodeAngsuran(resumeGabungan.MetodeAngsuran)
+		if resumeGabungan.SisaAngsuran > 1 {
+			penaltiPelunasanDipercepat = models.HitungPenaltiPelunasanDipercepat(bunga)
+		}
 		if persentasePelunasan < 0 {
 			persentasePelunasan = 0
 		}
@@ -290,21 +295,24 @@ func buildAnggotaAngsuranTemplateData(userID string, anggota models.Anggota, err
 
 	perkiraanAngsuranBulan := hitungAngsuranPerBulan(jumlahPinjaman, bunga, jangkaWaktu)
 	data := gin.H{
-		"Judul":                  "Angsuran",
-		"Anggota":                anggota,
-		"IDPinjaman":             idPinjaman,
-		"JumlahPinjaman":         jumlahPinjaman,
-		"SisaPinjaman":           sisaPinjaman,
-		"AngsuranKe":             angsuranKe,
-		"SisaAngsuran":           sisaAngsuran,
-		"TotalTerbayar":          totalTerbayar,
-		"Bunga":                  bunga,
-		"JangkaWaktu":            jangkaWaktu,
-		"NomorRekening":          getNomorRekeningKoperasi(),
-		"CurrentLogo":            getLatestLogoPath(),
-		"PersentasePelunasan":    persentasePelunasan,
-		"PerkiraanAngsuranBulan": perkiraanAngsuranBulan,
-		"MetodeAngsuran":         metodeAngsuran,
+		"Judul":                      "Angsuran",
+		"Anggota":                    anggota,
+		"IDPinjaman":                 idPinjaman,
+		"JumlahPinjaman":             jumlahPinjaman,
+		"SisaPinjaman":               sisaPinjaman,
+		"AngsuranKe":                 angsuranKe,
+		"SisaAngsuran":               sisaAngsuran,
+		"TotalTerbayar":              totalTerbayar,
+		"Bunga":                      bunga,
+		"JangkaWaktu":                jangkaWaktu,
+		"NomorRekening":              getNomorRekeningKoperasi(),
+		"CurrentLogo":                getLatestLogoPath(),
+		"PersentasePelunasan":        persentasePelunasan,
+		"PerkiraanAngsuranBulan":     perkiraanAngsuranBulan,
+		"MetodeAngsuran":             metodeAngsuran,
+		"BisaPelunasanDipercepat":    penaltiPelunasanDipercepat > 0 && sisaPinjaman > 0,
+		"PenaltiPelunasanDipercepat": penaltiPelunasanDipercepat,
+		"TotalPelunasanDipercepat":   sisaPinjaman + penaltiPelunasanDipercepat,
 	}
 	if errorMsg != "" {
 		data["Error"] = errorMsg
@@ -935,9 +943,10 @@ func getPinjamanAngsuranInfos(pinjamans []models.Pinjaman) ([]pinjamanAngsuranIn
 		}
 
 		infos = append(infos, pinjamanAngsuranInfo{
-			Pinjaman:     p,
-			SisaPinjaman: sisaPinjaman,
-			AngsuranKe:   angsuranKe,
+			Pinjaman:         p,
+			SisaPinjaman:     sisaPinjaman,
+			AngsuranKe:       angsuranKe,
+			AngsuranTerbayar: jumlahAngsuranTerbayar,
 		})
 	}
 	return infos, nil
@@ -2741,10 +2750,14 @@ func AnggotaAngsuranPost(c *gin.Context) {
 
 	sisaPinjamanSebelum := 0.0
 	metodeAngsuranPinjaman := ""
+	sisaAngsuranPinjaman := 0
+	var pinjaman models.Pinjaman
 	for _, info := range infosAngsuran {
 		if info.Pinjaman.IDPinjaman == idPinjaman {
 			sisaPinjamanSebelum = info.SisaPinjaman
 			metodeAngsuranPinjaman = normalizeMetodeAngsuran(info.Pinjaman.MetodeAngsuran)
+			sisaAngsuranPinjaman = info.Pinjaman.JangkaWaktu - info.AngsuranTerbayar
+			pinjaman = info.Pinjaman
 			break
 		}
 	}
@@ -2756,12 +2769,41 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		renderWithTotals(http.StatusBadRequest, "Tidak ada sisa pinjaman aktif yang dapat dibayar.")
 		return
 	}
-	if jumlahAngsuran > sisaPinjamanSebelum {
-		renderWithTotals(http.StatusBadRequest, fmt.Sprintf("Jumlah angsuran tidak boleh melebihi sisa pinjaman Rp %.0f.", sisaPinjamanSebelum))
-		return
+	pelunasanDipercepat := c.PostForm("pelunasan_dipercepat") == "true"
+	dendaPelunasan := 0.0
+	jumlahUntukKewajiban := jumlahAngsuran
+	if pelunasanDipercepat {
+		if sisaAngsuranPinjaman <= 1 {
+			renderWithTotals(http.StatusBadRequest, "Penalti hanya berlaku jika pelunasan dilakukan sebelum angsuran terakhir.")
+			return
+		}
+		dendaPelunasan = models.HitungPenaltiPelunasanDipercepat(
+			models.HitungJasaPinjaman(pinjaman.PokokGabungan(), pinjaman.Bunga, pinjaman.JangkaWaktu),
+		)
+		totalPelunasan := sisaPinjamanSebelum + dendaPelunasan
+		if math.Abs(jumlahAngsuran-totalPelunasan) > 0.01 {
+			renderWithTotals(http.StatusBadRequest, fmt.Sprintf("Jumlah pelunasan dipercepat harus Rp %.0f, terdiri dari sisa kewajiban Rp %.0f dan penalti Rp %.0f.", totalPelunasan, sisaPinjamanSebelum, dendaPelunasan))
+			return
+		}
+		jumlahUntukKewajiban = sisaPinjamanSebelum
+	} else {
+		if sisaAngsuranPinjaman > 1 && math.Abs(jumlahAngsuran-sisaPinjamanSebelum) <= 0.01 {
+			penaltiWajib := models.HitungPenaltiPelunasanDipercepat(
+				models.HitungJasaPinjaman(pinjaman.PokokGabungan(), pinjaman.Bunga, pinjaman.JangkaWaktu),
+			)
+			renderWithTotals(http.StatusBadRequest, fmt.Sprintf(
+				"Pembayaran sebesar sisa kewajiban merupakan pelunasan dipercepat. Centang pilihan pelunasan dan bayar Rp %.0f (sisa kewajiban Rp %.0f + penalti Rp %.0f).",
+				sisaPinjamanSebelum+penaltiWajib, sisaPinjamanSebelum, penaltiWajib,
+			))
+			return
+		}
+		if jumlahAngsuran > sisaPinjamanSebelum {
+			renderWithTotals(http.StatusBadRequest, fmt.Sprintf("Jumlah angsuran tidak boleh melebihi sisa pinjaman Rp %.0f.", sisaPinjamanSebelum))
+			return
+		}
 	}
 
-	sisaSetelah := sisaPinjamanSebelum - jumlahAngsuran
+	sisaSetelah := sisaPinjamanSebelum - jumlahUntukKewajiban
 	if sisaSetelah < 0 {
 		sisaSetelah = 0
 	}
@@ -2788,10 +2830,11 @@ func AnggotaAngsuranPost(c *gin.Context) {
 		IDPinjaman:     idPinjaman,
 		IDPengelola:    sql.NullInt64{Int64: 1, Valid: true}, // Default pengelola
 		TglBayar:       tanggalPembayaran,
-		JumlahAngsuran: jumlahAngsuran, // Nominal pembayaran angsuran
-		SisaPinjaman:   sisaSetelah,    // Sisa hutang setelah pembayaran
-		BuktiAngsuran:  filename,       // Simpan nama file sebagai string
-		Status:         "",             // Status akan diset ke pending oleh repository
+		JumlahAngsuran: jumlahUntukKewajiban,
+		DendaPelunasan: dendaPelunasan,
+		SisaPinjaman:   sisaSetelah, // Sisa hutang setelah pembayaran
+		BuktiAngsuran:  filename,    // Simpan nama file sebagai string
+		Status:         "",          // Status akan diset ke pending oleh repository
 		NamaAnggota:    anggota.NamaAnggota,
 		MetodeAngsuran: metodePembayaran, // Pastikan metode angsuran terisi
 	}
@@ -2805,7 +2848,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 	}
 
 	// Setelah angsuran berhasil disimpan, cek apakah pinjaman sudah lunas
-	pinjaman, err := repository.GetPinjamanByID(idPinjaman)
+	pinjaman, err = repository.GetPinjamanByID(idPinjaman)
 	if err == nil {
 		// Hitung total angsuran terbayar
 		angsurans, _ := repository.GetAngsuranByPinjamanID(idPinjaman)

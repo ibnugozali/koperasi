@@ -63,6 +63,22 @@ func TestHitungSisaKewajibanPinjamanMencakupJasaBelumTerbayar(t *testing.T) {
 	}
 }
 
+func TestHitungPenaltiPelunasanDipercepat(t *testing.T) {
+	const (
+		jasaTotal     = 200_000.0
+		sisaKewajiban = 1_200_000.0
+		expectedDenda = 200_000.0
+		expectedTotal = 1_400_000.0
+	)
+	denda := HitungPenaltiPelunasanDipercepat(jasaTotal)
+	if denda != expectedDenda {
+		t.Fatalf("expected early settlement penalty of %.0f, got %.0f", expectedDenda, denda)
+	}
+	if total := sisaKewajiban + denda; total != expectedTotal {
+		t.Fatalf("expected early settlement total of %.0f, got %.0f", expectedTotal, total)
+	}
+}
+
 func TestHitungJasaPinjamanRejectsInvalidTerm(t *testing.T) {
 	if totalJasa := HitungJasaPinjaman(2_000_000, 2, 0); totalJasa != 0 {
 		t.Fatalf("expected no service for invalid term, got %.0f", totalJasa)

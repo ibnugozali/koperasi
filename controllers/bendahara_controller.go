@@ -5561,7 +5561,7 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 
 	query := `
 		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota,
-		       a.tgl_bayar, a.jumlah_angsuran, a.sisa_pinjaman,
+		       a.tgl_bayar, a.jumlah_angsuran, COALESCE(a.denda_pelunasan, 0), a.sisa_pinjaman,
 		       COALESCE(a.bukti_angsuran, '') as bukti_angsuran,
 		       COALESCE(a.status, '') as status,
 		       ang.nama_anggota, ang.no_telepon,
@@ -5582,7 +5582,7 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 
 	err := db.QueryRow(query, idAngsuran).Scan(
 		&angsuran.IDAngsuran, &angsuran.IDPinjaman, &angsuran.IDAnggota,
-		&tglBayar, &angsuran.JumlahAngsuran, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran,
+		&tglBayar, &angsuran.JumlahAngsuran, &angsuran.DendaPelunasan, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran,
 		&angsuran.Status, &namaAnggota, &noTelepon,
 		&jumlahPinjaman, &saldoLamaDigabung, &jangkaWaktu, &bunga, &metodePencairan, &metodeAngsuran,
 	)
@@ -5622,12 +5622,12 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 
 	// Ambil semua angsuran untuk riwayat
 	angsurans := []models.Angsuran{}
-	rows2, err := db.Query(`SELECT id_angsuran, tgl_bayar, jumlah_angsuran, sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
+	rows2, err := db.Query(`SELECT id_angsuran, tgl_bayar, jumlah_angsuran, COALESCE(denda_pelunasan, 0), sisa_pinjaman, status, COALESCE(bukti_angsuran, '') FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar ASC, id_angsuran ASC`, angsuran.IDPinjaman)
 	if err == nil {
 		defer rows2.Close()
 		for rows2.Next() {
 			var a models.Angsuran
-			if scanErr := rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran); scanErr != nil {
+			if scanErr := rows2.Scan(&a.IDAngsuran, &a.TglBayar, &a.JumlahAngsuran, &a.DendaPelunasan, &a.SisaPinjaman, &a.Status, &a.BuktiAngsuran); scanErr != nil {
 				continue
 			}
 			angsurans = append(angsurans, a)
@@ -5720,7 +5720,12 @@ func ApiJenisAngsuran(c *gin.Context) {
 	idAnggota := c.Query("id_anggota")
 	pinjamans, err := repository.GetPinjamanAktifByAnggota(idAnggota)
 	var result []map[string]interface{}
-	if err != nil || len(pinjamans) == 0 {
+	if err != nil {
+		log.Printf("[ERROR] gagal mengambil pinjaman aktif anggota %s untuk estimasi pelunasan: %v", idAnggota, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil daftar pinjaman aktif"})
+		return
+	}
+	if len(pinjamans) == 0 {
 		c.JSON(200, gin.H{"jenis_angsuran": result})
 		return
 	}
@@ -5734,11 +5739,18 @@ func ApiJenisAngsuran(c *gin.Context) {
 
 		// Hitung sisa dari kewajiban terbaru dikurangi pembayaran terkonfirmasi,
 		// bukan dari nilai sisa yang mungkin tersimpan sebelum rumus jasa berubah.
-		angsurans, _ := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+		angsurans, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
+		if err != nil {
+			log.Printf("[ERROR] gagal mengambil riwayat angsuran pinjaman %d untuk estimasi pelunasan: %v", p.IDPinjaman, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghitung sisa pinjaman"})
+			return
+		}
 		totalAngsuranTerbayar := 0.0
+		jumlahAngsuranTerbayar := 0
 		for _, a := range angsurans {
 			if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
 				totalAngsuranTerbayar += a.JumlahAngsuran
+				jumlahAngsuranTerbayar++
 			}
 		}
 		sisaPinjaman := totalKewajiban - totalAngsuranTerbayar
@@ -5746,20 +5758,27 @@ func ApiJenisAngsuran(c *gin.Context) {
 			sisaPinjaman = 0
 		}
 		sisaPinjaman = rupiahCeil(sisaPinjaman)
+		penaltiPelunasan := 0.0
+		if p.JangkaWaktu-jumlahAngsuranTerbayar > 1 {
+			penaltiPelunasan = models.HitungPenaltiPelunasanDipercepat(bungaNominal)
+		}
 
 		label := fmt.Sprintf("Pinjaman #%d - %d bulan - Rp %.0f", p.IDPinjaman, p.JangkaWaktu, p.JumlahPinjaman)
 		result = append(result, map[string]interface{}{
-			"key":                p.IDPinjaman,
-			"nama":               label,
-			"jumlah_pinjaman":    p.JumlahPinjaman,
-			"jangka_waktu":       p.JangkaWaktu,
-			"bunga":              p.Bunga,
-			"bunga_nominal":      bungaNominal,
-			"total_kewajiban":    totalKewajiban,
-			"perkiraan_angsuran": perkiraanAngsuran,
-			"sisa_pinjaman":      sisaPinjaman,
-			"metode_angsuran":    p.MetodeAngsuran,
-			"status":             p.Status,
+			"key":                        p.IDPinjaman,
+			"nama":                       label,
+			"jumlah_pinjaman":            p.JumlahPinjaman,
+			"jangka_waktu":               p.JangkaWaktu,
+			"bunga":                      p.Bunga,
+			"bunga_nominal":              bungaNominal,
+			"total_kewajiban":            totalKewajiban,
+			"perkiraan_angsuran":         perkiraanAngsuran,
+			"sisa_pinjaman":              sisaPinjaman,
+			"penalti_pelunasan":          penaltiPelunasan,
+			"total_pelunasan_dipercepat": sisaPinjaman + penaltiPelunasan,
+			"pelunasan_dipercepat":       penaltiPelunasan > 0,
+			"metode_angsuran":            p.MetodeAngsuran,
+			"status":                     p.Status,
 		})
 	}
 	c.JSON(200, gin.H{"jenis_angsuran": result})
@@ -5880,11 +5899,18 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	}
 	// Hitung ulang sisa dari kewajiban dikurangi seluruh pembayaran terkonfirmasi.
 	// Nilai sisa pada record lama dapat memakai rumus jasa sebelum perubahan ini.
-	angsuransSebelum, _ := repository.GetAngsuranByPinjamanID(idPinjaman)
+	angsuransSebelum, err := repository.GetAngsuranByPinjamanID(idPinjaman)
+	if err != nil {
+		log.Printf("[ERROR] gagal mengambil riwayat angsuran pinjaman %d: %v", idPinjaman, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghitung sisa pinjaman"})
+		return
+	}
 	totalAngsuranTerbayar := 0.0
+	angsuranTerbayarCount := 0
 	for _, a := range angsuransSebelum {
 		if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
 			totalAngsuranTerbayar += a.JumlahAngsuran
+			angsuranTerbayarCount++
 		}
 	}
 	totalKewajiban := pinjaman.PokokGabungan() + models.HitungJasaPinjaman(pinjaman.PokokGabungan(), pinjaman.Bunga, pinjaman.JangkaWaktu)
@@ -5897,7 +5923,31 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	if pinjaman.JangkaWaktu > 0 {
 		jumlahCicilanYangDiharapkan = rupiahCeil(totalKewajiban / float64(pinjaman.JangkaWaktu))
 	}
-	sisaSetelah := sisaSebelum - jumlahAngsuran
+	dendaPelunasan := 0.0
+	pelunasanDipercepat := false
+	if pinjaman.JangkaWaktu-angsuranTerbayarCount > 1 {
+		dendaPelunasan = models.HitungPenaltiPelunasanDipercepat(
+			models.HitungJasaPinjaman(pinjaman.PokokGabungan(), pinjaman.Bunga, pinjaman.JangkaWaktu),
+		)
+		pelunasanDipercepat = math.Abs(jumlahAngsuran-(sisaSebelum+dendaPelunasan)) <= 0.01
+		if !pelunasanDipercepat && math.Abs(jumlahAngsuran-sisaSebelum) <= 0.01 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Pelunasan dipercepat dikenai penalti. Jumlah yang harus dibayar Rp %.0f (sisa kewajiban Rp %.0f + penalti Rp %.0f).", sisaSebelum+dendaPelunasan, sisaSebelum, dendaPelunasan),
+			})
+			return
+		}
+	}
+	if !pelunasanDipercepat && jumlahAngsuran > sisaSebelum {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Jumlah cicilan tidak boleh melebihi sisa pinjaman Rp %.0f atau total pelunasan dipercepat.", sisaSebelum)})
+		return
+	}
+	jumlahUntukKewajiban := jumlahAngsuran
+	if pelunasanDipercepat {
+		jumlahUntukKewajiban = sisaSebelum
+		angsuran.JumlahAngsuran = jumlahUntukKewajiban
+		angsuran.DendaPelunasan = dendaPelunasan
+	}
+	sisaSetelah := sisaSebelum - jumlahUntukKewajiban
 	if sisaSetelah < 0 {
 		sisaSetelah = 0
 	}
@@ -5905,7 +5955,7 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	// Entri oleh bendahara dianggap validasi tahap bendahara selesai.
 	angsuran.Status = "confirmed"
 	minimumYangBisaDiterima := math.Min(jumlahCicilanYangDiharapkan, sisaSebelum)
-	if !isValidManualTunaiCicilanAmount(jumlahAngsuran, minimumYangBisaDiterima, sisaSebelum) {
+	if !pelunasanDipercepat && !isValidManualTunaiCicilanAmount(jumlahAngsuran, minimumYangBisaDiterima, sisaSebelum) {
 		log.Printf("[DEBUG] entri cicilan tunai ditolak: jumlah=%.2f minimum=%.2f maksimum=%.2f sisaSebelum=%.2f jumlahCicilan=%.2f", jumlahAngsuran, minimumYangBisaDiterima, sisaSebelum, sisaSebelum, jumlahCicilanYangDiharapkan)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Jumlah cicilan untuk entri tunai harus berada di rentang antara jumlah cicilan dan sisa pinjaman."})
 		return
@@ -5913,15 +5963,18 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 
 	// Entri manual Tunai langsung confirmed (tidak perlu konfirmasi lagi)
 	// Cari pending angsuran yang cocok, lalu konfirmasi tanpa membuat record baru
-	pendingAngsuranList, err := repository.GetPendingAngsuranByCriteria(angsuran.IDAnggota, angsuran.IDPinjaman, angsuran.JumlahAngsuran)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memeriksa angsuran pending"})
-		return
+	var pendingAngsuranList []models.Angsuran
+	if !pelunasanDipercepat {
+		pendingAngsuranList, err = repository.GetPendingAngsuranByCriteria(angsuran.IDAnggota, angsuran.IDPinjaman, angsuran.JumlahAngsuran)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memeriksa angsuran pending"})
+			return
+		}
 	}
 
 	var matchedPending *models.Angsuran
 	var fallbackPendings []models.Angsuran
-	if len(pendingAngsuranList) == 0 {
+	if !pelunasanDipercepat && len(pendingAngsuranList) == 0 {
 		// Fallback 1: cari pending angsuran berdasar pinjaman + anggota, lalu pilih record pending yang paling relevan untuk diselesaikan.
 		fallbackPendings, err = repository.GetPendingAngsuranByPinjamanAndAnggota(angsuran.IDAnggota, angsuran.IDPinjaman)
 		if err != nil {
@@ -5934,8 +5987,23 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 		}
 	}
 
-	createdDirect := false
-	if len(pendingAngsuranList) == 0 {
+	createdDirect := pelunasanDipercepat
+	if pelunasanDipercepat {
+		if err := repository.CreateAngsuran(models.Angsuran{
+			IDPinjaman:     angsuran.IDPinjaman,
+			IDPengelola:    angsuran.IDPengelola,
+			TglBayar:       time.Now(),
+			JumlahAngsuran: jumlahUntukKewajiban,
+			DendaPelunasan: dendaPelunasan,
+			SisaPinjaman:   0,
+			Status:         "confirmed",
+			MetodeAngsuran: angsuran.MetodeAngsuran,
+		}); err != nil {
+			log.Printf("[ERROR] gagal mencatat pelunasan dipercepat pinjaman %d: %v", idPinjaman, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses pelunasan dipercepat"})
+			return
+		}
+	} else if len(pendingAngsuranList) == 0 {
 		// Jika tidak ada pending angsuran yang cocok, bolehkan entri tunai langsung jika nominal valid
 		minimumYangBisaDiterima := math.Min(jumlahCicilanYangDiharapkan, sisaSebelum)
 		if isValidManualTunaiCicilanAmount(angsuran.JumlahAngsuran, minimumYangBisaDiterima, sisaSebelum) {
@@ -5951,6 +6019,7 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 					IDPengelola:    angsuran.IDPengelola,
 					TglBayar:       time.Now(),
 					JumlahAngsuran: angsuran.JumlahAngsuran,
+					DendaPelunasan: angsuran.DendaPelunasan,
 					SisaPinjaman:   angsuran.SisaPinjaman,
 					Status:         "confirmed",
 					MetodeAngsuran: angsuran.MetodeAngsuran,
@@ -6001,7 +6070,7 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	anggota, errAnggota := repository.GetAnggotaByID(angsuran.IDAnggota)
 	if errAnggota == nil {
 		appBaseURL := resolveAppBaseURL(c, config.GetDB())
-		nominal := fmt.Sprintf("%.2f", angsuran.JumlahAngsuran)
+		nominal := fmt.Sprintf("%.2f", jumlahAngsuran)
 		if errWA := sendKetuaWhatsAppTransactionNotification("", anggota.NamaAnggota, "Angsuran", nominal, appBaseURL); errWA != nil {
 			log.Printf("[WA NOTIF KETUA] gagal kirim dari entri angsuran bendahara: %v", errWA)
 		}

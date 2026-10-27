@@ -48,7 +48,7 @@ func GetConfirmedAngsuran() ([]models.Angsuran, error) {
 	db := config.GetDB()
 	var angsurans []models.Angsuran
 	query := `
-		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, a.sisa_pinjaman, 
+		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, COALESCE(a.denda_pelunasan, 0), a.sisa_pinjaman,
 			   COALESCE(a.status_angsuran, ''), COALESCE(a.status, 'confirmed'), ang.nama_anggota, COALESCE(p.metode_angsuran, '')
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
@@ -63,7 +63,7 @@ func GetConfirmedAngsuran() ([]models.Angsuran, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var a models.Angsuran
-		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDAnggota, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.StatusAngsuran, &a.Status, &a.NamaAnggota, &a.MetodeAngsuran); err != nil {
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDAnggota, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.DendaPelunasan, &a.SisaPinjaman, &a.StatusAngsuran, &a.Status, &a.NamaAnggota, &a.MetodeAngsuran); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)
@@ -282,14 +282,15 @@ func CreateAngsuran(angsuran models.Angsuran) error {
 		angsuran.Status = "pending"
 	}
 	query := `
-		INSERT INTO angsuran (id_pinjaman, id_pengelola, tgl_bayar, jumlah_angsuran, sisa_pinjaman, bukti_angsuran, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO angsuran (id_pinjaman, id_pengelola, tgl_bayar, jumlah_angsuran, denda_pelunasan, sisa_pinjaman, bukti_angsuran, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 	_, err := db.Exec(query,
 		angsuran.IDPinjaman,
 		angsuran.IDPengelola,
 		angsuran.TglBayar,
 		angsuran.JumlahAngsuran,
+		angsuran.DendaPelunasan,
 		angsuran.SisaPinjaman,
 		angsuran.BuktiAngsuran,
 		angsuran.Status,
@@ -516,7 +517,7 @@ func GetAngsuranByID(id int) (models.Angsuran, error) {
 	db := config.GetDB()
 	var a models.Angsuran
 	query := `
-		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, a.sisa_pinjaman,
+		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, COALESCE(a.denda_pelunasan, 0), a.sisa_pinjaman,
 		       COALESCE(a.status_angsuran, ''), COALESCE(a.status, ''), ag.nama_anggota, COALESCE(p.metode_angsuran, '')
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
@@ -530,6 +531,7 @@ func GetAngsuranByID(id int) (models.Angsuran, error) {
 		&a.IDPengelola,
 		&a.TglBayar,
 		&a.JumlahAngsuran,
+		&a.DendaPelunasan,
 		&a.SisaPinjaman,
 		&a.StatusAngsuran,
 		&a.Status,
@@ -745,7 +747,7 @@ func GetPendingAngsuran() ([]models.Angsuran, error) {
 	db := config.GetDB()
 	var angsurans []models.Angsuran
 	query := `
-		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, a.sisa_pinjaman, 
+		SELECT a.id_angsuran, a.id_pinjaman, p.id_anggota, a.id_pengelola, a.tgl_bayar, a.jumlah_angsuran, COALESCE(a.denda_pelunasan, 0), a.sisa_pinjaman,
 		       COALESCE(a.status_angsuran, ''), COALESCE(a.status, 'pending'), ang.nama_anggota, COALESCE(p.metode_angsuran, '')
 		FROM angsuran a
 		JOIN pinjaman p ON a.id_pinjaman = p.id_pinjaman
@@ -766,7 +768,7 @@ func GetPendingAngsuran() ([]models.Angsuran, error) {
 
 	for rows.Next() {
 		var a models.Angsuran
-		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDAnggota, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.StatusAngsuran, &a.Status, &a.NamaAnggota, &a.MetodeAngsuran); err != nil {
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDAnggota, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.DendaPelunasan, &a.SisaPinjaman, &a.StatusAngsuran, &a.Status, &a.NamaAnggota, &a.MetodeAngsuran); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)
@@ -814,7 +816,7 @@ func GetLaporanKeuangan(bulan, tahun int) (map[string]interface{}, error) {
 
 	// Total angsuran bulan ini (atau tahun ini jika bulan = 0)
 	queryAngsuran := `
-		SELECT COALESCE(SUM(a.sisa_pinjaman), 0)
+		SELECT COALESCE(SUM(a.jumlah_angsuran + COALESCE(a.denda_pelunasan, 0)), 0)
 		FROM angsuran a
 		WHERE ($1 = 0 OR EXTRACT(MONTH FROM a.tgl_bayar) = $1) 
 		  AND EXTRACT(YEAR FROM a.tgl_bayar) = $2
@@ -1249,7 +1251,7 @@ func GetTotalPinjaman(db *sql.DB) (float64, error) {
 func GetTotalAngsuran(db *sql.DB) (float64, error) {
 	var total float64
 	query := `
-		SELECT COALESCE(SUM(jumlah_angsuran), 0)
+		SELECT COALESCE(SUM(jumlah_angsuran + COALESCE(denda_pelunasan, 0)), 0)
 		FROM angsuran
 		WHERE COALESCE(LOWER(status), 'pending') IN ('diterima', 'lunas')
 	`
@@ -1456,7 +1458,7 @@ func GetLatestPinjamanByStatusAndAnggotaID(idAnggota, status string) (models.Pin
 func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
 	db := config.GetDB()
 	var angsurans []models.Angsuran
-	query := "SELECT id_angsuran, id_pinjaman, id_pengelola, tgl_bayar, jumlah_angsuran, sisa_pinjaman, COALESCE(bukti_angsuran, ''), status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar DESC"
+	query := "SELECT id_angsuran, id_pinjaman, id_pengelola, tgl_bayar, jumlah_angsuran, COALESCE(denda_pelunasan, 0), sisa_pinjaman, COALESCE(bukti_angsuran, ''), status FROM angsuran WHERE id_pinjaman = $1 ORDER BY tgl_bayar DESC"
 	rows, err := db.Query(query, idPinjaman)
 	if err != nil {
 		return nil, err
@@ -1464,7 +1466,7 @@ func GetAngsuranByPinjamanID(idPinjaman int) ([]models.Angsuran, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var a models.Angsuran
-		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.SisaPinjaman, &a.BuktiAngsuran, &a.Status); err != nil {
+		if err := rows.Scan(&a.IDAngsuran, &a.IDPinjaman, &a.IDPengelola, &a.TglBayar, &a.JumlahAngsuran, &a.DendaPelunasan, &a.SisaPinjaman, &a.BuktiAngsuran, &a.Status); err != nil {
 			return nil, err
 		}
 		angsurans = append(angsurans, a)

@@ -31,6 +31,7 @@ Catatan:
 | Pokok Pinjaman Gabungan | `pokokGabungan = jumlahPinjamanBaru + sisaPinjamanLama` | Menggabungkan pinjaman baru dengan saldo lama saat persetujuan final | `models/transaksi.go`, `repository/transaksi_repository.go` |
 | Saldo Lama untuk Roll-over | `saldoLama = max(pokokAwal + jasaLama - totalTerbayar, 0)` | Memindahkan seluruh sisa kewajiban (pokok dan jasa yang belum dibayar) sebagai bagian pokok gabungan; jasa pinjaman baru dihitung dari pokok gabungan | `models/transaksi.go`, `repository/transaksi_repository.go` |
 | Jasa Total | `jasaTotal = pokokGabungan * bungaBulanan / 100 * jangkaWaktu` | Menghitung total jasa flat bulanan selama tenor | `models/transaksi.go` |
+| Penalti Pelunasan Dipercepat | `penalti = jasaTotalAwal` | Ditambahkan ke sisa kewajiban jika pelunasan dilakukan dengan sisa tenor lebih dari satu angsuran | `models/transaksi.go`, `controllers/anggota_controller.go`, `controllers/bendahara_controller.go` |
 | Total Kewajiban | `totalKewajiban = pokokGabungan + jasaTotal` | Menghitung total kewajiban pinjaman | `controllers/anggota_controller.go` |
 | Sisa Angsuran | `sisaAngsuran = jangkaWaktu - angsuranTerbayar` | Menghitung sisa jumlah angsuran | `controllers/anggota_controller.go:432` |
 | Sisa Pinjaman | `sisaPinjaman = jumlahPinjaman - totalAngsuranTerbayar` | Menghitung sisa pinjaman | `controllers/anggota_controller.go:682,806,2598` |

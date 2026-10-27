@@ -97,7 +97,12 @@
                                     </td>
 
                                     <!-- Jumlah Bayar -->
-                                    <td>Rp {{printf "%.0f" $a.JumlahAngsuran}}</td>
+                                    <td>
+                                        Rp {{printf "%.0f" (add $a.JumlahAngsuran $a.DendaPelunasan)}}
+                                        {{if gt $a.DendaPelunasan 0.0}}
+                                        <small class="d-block text-muted">Termasuk penalti: Rp {{printf "%.0f" $a.DendaPelunasan}}</small>
+                                        {{end}}
+                                    </td>
 
                                     <!-- Status -->
                                     <td>

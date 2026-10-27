@@ -80,6 +80,13 @@ func HitungSisaKewajibanPinjaman(pokok, totalTerbayar, jasaTotal float64) float6
 	return totalKewajiban - totalTerbayar
 }
 
+func HitungPenaltiPelunasanDipercepat(jasaTotal float64) float64 {
+	if jasaTotal <= 0 {
+		return 0
+	}
+	return jasaTotal
+}
+
 // Angsuran mewakili pembayaran angsuran
 type Angsuran struct {
 	IDAngsuran     int           `json:"id_angsuran" db:"id_angsuran"`
@@ -88,12 +95,17 @@ type Angsuran struct {
 	IDPengelola    sql.NullInt64 `json:"id_pengelola" db:"id_pengelola"`
 	TglBayar       time.Time     `json:"tgl_bayar" db:"tgl_bayar"`
 	JumlahAngsuran float64       `form:"jumlah_angsuran" json:"jumlah_angsuran" db:"jumlah_angsuran"`
+	DendaPelunasan float64       `json:"denda_pelunasan" db:"denda_pelunasan"`
 	SisaPinjaman   float64       `json:"sisa_pinjaman" db:"sisa_pinjaman"`
 	BuktiAngsuran  string        `json:"bukti_angsuran" db:"bukti_angsuran"`
 	StatusAngsuran string        `json:"status_angsuran" db:"status_angsuran"`
 	Status         string        `json:"status" db:"status"`
 	NamaAnggota    string        `json:"nama_anggota" db:"nama_anggota"`
 	MetodeAngsuran string        `form:"metode_angsuran" json:"metode_angsuran" db:"metode_angsuran"`
+}
+
+func (a Angsuran) TotalPembayaran() float64 {
+	return a.JumlahAngsuran + a.DendaPelunasan
 }
 
 // Riwayat mewakili riwayat transaksi gabungan
