@@ -2633,7 +2633,7 @@ func ensureScheduledAngsuranForPinjaman(idPinjaman int) error {
 		return nil
 	}
 
-	bungaNominal := pinjaman.JumlahPinjaman * pinjaman.Bunga / 100
+	bungaNominal := models.HitungJasaPinjaman(pinjaman.JumlahPinjaman, pinjaman.Bunga, pinjaman.JangkaWaktu)
 	totalKewajiban := pinjaman.JumlahPinjaman + bungaNominal
 	jumlahAngsuran := math.Round(totalKewajiban / float64(pinjaman.JangkaWaktu))
 	if jumlahAngsuran <= 0 {
@@ -5396,10 +5396,10 @@ func BendaharaDetailAngsuran(c *gin.Context) {
 		pinjaman := pinjamans[0]
 		jumlahPinjaman = pinjaman.JumlahPinjaman
 		angsurans, _ = repository.GetAngsuranByPinjamanID(pinjaman.IDPinjaman)
-		sisaPinjaman = pinjaman.JumlahPinjaman
+		sisaPinjaman = pinjaman.JumlahPinjaman + models.HitungJasaPinjaman(pinjaman.JumlahPinjaman, pinjaman.Bunga, pinjaman.JangkaWaktu)
 		for _, a := range angsurans {
-			if a.Status == "confirmed" {
-				sisaPinjaman -= a.SisaPinjaman
+			if a.Status == "confirmed" || a.Status == "diterima" || a.Status == "lunas" {
+				sisaPinjaman -= a.JumlahAngsuran
 			}
 		}
 		if sisaPinjaman < 0 {
@@ -5561,7 +5561,7 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 		       COALESCE(a.bukti_angsuran, '') as bukti_angsuran,
 		       COALESCE(a.status, '') as status,
 		       ang.nama_anggota, ang.no_telepon,
-		       p.jumlah_pinjaman, p.jangka_waktu,
+		       p.jumlah_pinjaman, p.jangka_waktu, p.bunga,
 		       COALESCE(p.metode_pencairan, '') as metode_pencairan,
 		       COALESCE(p.metode_angsuran, '') as metode_angsuran
 		FROM angsuran a
@@ -5573,13 +5573,14 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 	var namaAnggota, noTelepon string
 	var jumlahPinjaman float64
 	var jangkaWaktu int
+	var bunga float64
 	var metodePencairan, metodeAngsuran string
 
 	err := db.QueryRow(query, idAngsuran).Scan(
 		&angsuran.IDAngsuran, &angsuran.IDPinjaman, &angsuran.IDAnggota,
 		&tglBayar, &angsuran.JumlahAngsuran, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran,
 		&angsuran.Status, &namaAnggota, &noTelepon,
-		&jumlahPinjaman, &jangkaWaktu, &metodePencairan, &metodeAngsuran,
+		&jumlahPinjaman, &jangkaWaktu, &bunga, &metodePencairan, &metodeAngsuran,
 	)
 
 	if err != nil {
@@ -5631,13 +5632,15 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 			log.Printf("[WARN] gagal membaca riwayat angsuran pinjaman %d: %v", angsuran.IDPinjaman, rowsErr)
 		}
 
-		// Pastikan riwayat pending tidak menampilkan sisa pinjaman yang sudah kadaluarsa dari jadwal lama.
-		// Untuk baris pending, tampilkan sisa pinjaman aktual sebelum pembayaran berikutnya,
-		// sehingga pending row menggunakan saldo terkini dari angsuran terakhir yang sudah diterima.
-		currentRemaining := jumlahPinjaman
+		// Recalculate balances because stored balances may predate the monthly-service formula.
+		currentRemaining := jumlahPinjaman + models.HitungJasaPinjaman(jumlahPinjaman, bunga, jangkaWaktu)
 		for i, a := range angsurans {
 			if a.Status == "confirmed" || a.Status == "diterima" || a.Status == "lunas" {
-				currentRemaining = a.SisaPinjaman
+				currentRemaining -= a.JumlahAngsuran
+				if currentRemaining < 0 {
+					currentRemaining = 0
+				}
+				angsurans[i].SisaPinjaman = currentRemaining
 				continue
 			}
 			if a.Status == "pending" {
@@ -5648,7 +5651,7 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 
 	displaySisaPinjaman := angsuran.SisaPinjaman
 	if angsuran.Status == "pending" {
-		currentBefore := jumlahPinjaman
+		currentBefore := jumlahPinjaman + models.HitungJasaPinjaman(jumlahPinjaman, bunga, jangkaWaktu)
 		for _, a := range angsurans {
 			if a.IDAngsuran == angsuran.IDAngsuran {
 				break
@@ -5716,48 +5719,25 @@ func ApiJenisAngsuran(c *gin.Context) {
 		return
 	}
 	for _, p := range pinjamans {
-		bungaNominal := p.JumlahPinjaman * p.Bunga / 100
+		bungaNominal := models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
 		totalKewajiban := p.JumlahPinjaman + bungaNominal
 		perkiraanAngsuran := 0.0
 		if p.JangkaWaktu > 0 {
 			perkiraanAngsuran = math.Round(totalKewajiban / float64(p.JangkaWaktu))
 		}
 
-		// Hitung sisa pinjaman dari angsuran terakhir yang sudah dikonfirmasi/lunas/diterima
+		// Hitung sisa dari kewajiban terbaru dikurangi pembayaran terkonfirmasi,
+		// bukan dari nilai sisa yang mungkin tersimpan sebelum rumus jasa berubah.
 		angsurans, _ := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
-		sisaPinjaman := p.JumlahPinjaman
-		confirmedFound := false
-		if len(angsurans) > 0 {
-			// angsuran sudah diurutkan DESC (terbaru duluan), ambil yang pertama dengan status confirmed/lunas/diterima
-			var latestConfirmedSisa float64
-			for _, a := range angsurans {
-				if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
-					latestConfirmedSisa = a.SisaPinjaman
-					confirmedFound = true
-					break
-				}
-			}
-			if confirmedFound {
-				sisaPinjaman = latestConfirmedSisa
+		totalAngsuranTerbayar := 0.0
+		for _, a := range angsurans {
+			if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
+				totalAngsuranTerbayar += a.JumlahAngsuran
 			}
 		}
-
-		// Jika belum ada angsuran terkonfirmasi, gunakan total due dari Jumlah Angsuran + Sisa Pinjaman untuk angsuran pending pertama
-		if !confirmedFound {
-			var pendingJumlah, pendingSisa float64
-			db := config.GetDB()
-			pendingErr := db.QueryRow(`
-			SELECT COALESCE(jumlah_angsuran, 0), COALESCE(sisa_pinjaman, 0)
-			FROM angsuran
-			WHERE id_pinjaman = $1 AND status = 'pending'
-			ORDER BY tgl_bayar ASC, id_angsuran ASC
-			LIMIT 1
-		`, p.IDPinjaman).Scan(&pendingJumlah, &pendingSisa)
-			if pendingErr == nil {
-				if pendingJumlah > 0 || pendingSisa > 0 {
-					sisaPinjaman = pendingJumlah + pendingSisa
-				}
-			}
+		sisaPinjaman := totalKewajiban - totalAngsuranTerbayar
+		if sisaPinjaman < 0 {
+			sisaPinjaman = 0
 		}
 		sisaPinjaman = rupiahCeil(sisaPinjaman)
 
@@ -5886,40 +5866,29 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 	}
 	angsuran.JumlahAngsuran = jumlahAngsuran
 
-	// Ambil sisa pinjaman terakhir dari DB
+	// Ambil data pinjaman untuk menghitung sisa berdasarkan rumus jasa terkini.
 	pinjaman, err = repository.GetPinjamanByID(idPinjaman)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data pinjaman"})
 		return
 	}
-	// Ambil angsuran terakhir yang statusnya confirmed/lunas/diterima (urut ASC)
+	// Hitung ulang sisa dari kewajiban dikurangi seluruh pembayaran terkonfirmasi.
+	// Nilai sisa pada record lama dapat memakai rumus jasa sebelum perubahan ini.
 	angsuransSebelum, _ := repository.GetAngsuranByPinjamanID(idPinjaman)
-	sisaSebelum := pinjaman.JumlahPinjaman
-	confirmedFound := false
-	if len(angsuransSebelum) > 0 {
-		for _, a := range angsuransSebelum {
-			if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
-				sisaSebelum = a.SisaPinjaman
-				confirmedFound = true
-				break
-			}
+	totalAngsuranTerbayar := 0.0
+	for _, a := range angsuransSebelum {
+		if a.Status == "confirmed" || a.Status == "lunas" || a.Status == "diterima" {
+			totalAngsuranTerbayar += a.JumlahAngsuran
 		}
 	}
-
-	// Jika belum ada angsuran terkonfirmasi, gunakan total due dari angsuran pending pertama.
-	if !confirmedFound {
-		if pendingList, err := repository.GetPendingAngsuranByPinjamanAndAnggota(angsuran.IDAnggota, angsuran.IDPinjaman); err == nil && len(pendingList) > 0 {
-			pendingTotal := pendingList[0].JumlahAngsuran + pendingList[0].SisaPinjaman
-			if pendingTotal > 0 {
-				sisaSebelum = pendingTotal
-			}
-		}
+	totalKewajiban := pinjaman.JumlahPinjaman + models.HitungJasaPinjaman(pinjaman.JumlahPinjaman, pinjaman.Bunga, pinjaman.JangkaWaktu)
+	sisaSebelum := totalKewajiban - totalAngsuranTerbayar
+	if sisaSebelum < 0 {
+		sisaSebelum = 0
 	}
 
 	jumlahCicilanYangDiharapkan := rupiahCeil(sisaSebelum)
 	if pinjaman.JangkaWaktu > 0 {
-		bungaNominal := pinjaman.JumlahPinjaman * pinjaman.Bunga / 100
-		totalKewajiban := pinjaman.JumlahPinjaman + bungaNominal
 		jumlahCicilanYangDiharapkan = rupiahCeil(totalKewajiban / float64(pinjaman.JangkaWaktu))
 	}
 	sisaSetelah := sisaSebelum - jumlahAngsuran

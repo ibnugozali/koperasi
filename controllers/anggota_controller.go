@@ -187,10 +187,7 @@ type resumePinjamanInfo struct {
 }
 
 func hitungAngsuranPerBulan(jumlahPinjaman, bungaNominal float64, jangkaWaktu int) float64 {
-	if jangkaWaktu <= 0 {
-		return 0
-	}
-	return (jumlahPinjaman + bungaNominal) / float64(jangkaWaktu)
+	return models.HitungAngsuranBulanan(jumlahPinjaman, bungaNominal, jangkaWaktu)
 }
 
 func normalizeMetodeAngsuran(value string) string {
@@ -626,7 +623,7 @@ func buildResumePinjamanInfo(p *models.Pinjaman) *resumePinjamanInfo {
 	metodeAngsuranGabungan := normalizeMetodeAngsuran(p.MetodeAngsuran)
 	totalPinjaman := p.JumlahPinjaman
 	totalJangkaWaktu := p.JangkaWaktu
-	bungaNominal := p.JumlahPinjaman * p.Bunga / 100
+	bungaNominal := models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
 	totalKewajiban := totalPinjaman + bungaNominal
 	angsuranPerBulan := hitungAngsuranPerBulan(totalPinjaman, bungaNominal, totalJangkaWaktu)
 
@@ -894,7 +891,7 @@ func getPinjamanAngsuranInfos(pinjamans []models.Pinjaman) ([]pinjamanAngsuranIn
 			}
 		}
 
-		bungaNominal := p.JumlahPinjaman * p.Bunga / 100
+		bungaNominal := models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
 		totalKewajiban := p.JumlahPinjaman + bungaNominal
 		sisaPinjaman := totalKewajiban - totalAngsuranTerbayar
 		if sisaPinjaman < 0 {
@@ -1001,20 +998,22 @@ func hitungSisaPinjamanProfil(p models.Pinjaman) float64 {
 	}
 
 	angsuranList, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
-	if err != nil || len(angsuranList) == 0 {
-		return p.JumlahPinjaman
+	if err != nil {
+		return p.JumlahPinjaman + models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
 	}
 
+	totalAngsuranTerbayar := 0.0
 	for _, a := range angsuranList {
 		if isAngsuranProfilTerbayar(a.Status) {
-			if a.SisaPinjaman < 0 {
-				return 0
-			}
-			return a.SisaPinjaman
+			totalAngsuranTerbayar += a.JumlahAngsuran
 		}
 	}
 
-	return p.JumlahPinjaman
+	sisaPinjaman := p.JumlahPinjaman + models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu) - totalAngsuranTerbayar
+	if sisaPinjaman < 0 {
+		return 0
+	}
+	return sisaPinjaman
 }
 
 func getRingkasanPinjamanAktifByAnggotaID(idAnggota string) (float64, float64, error) {
@@ -1066,7 +1065,8 @@ func getResumePinjamanInfo(userID string, modeGabungan bool) []resumePinjamanInf
 				jumlahAngsuranTerbayar++
 			}
 		}
-		sisaPinjaman := p.JumlahPinjaman - totalAngsuranTerbayar
+		totalKewajiban := p.JumlahPinjaman + models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
+		sisaPinjaman := totalKewajiban - totalAngsuranTerbayar
 		if sisaPinjaman < 0 {
 			sisaPinjaman = 0
 		}
@@ -1087,15 +1087,15 @@ func getResumePinjamanInfo(userID string, modeGabungan bool) []resumePinjamanInf
 			SisaPokok:          sisaPinjaman,
 			PersentaseTerbayar: 0,
 			BisaAjukanLagi:     false,
-			Bunga:              p.Bunga,
+			Bunga:              models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu),
 		}
 		if info.SisaAngsuran < 0 {
 			info.SisaAngsuran = 0
 		}
 		// perkiraanAngsuranBulan tidak diperlukan lagi
 		info.TotalTerbayar = totalAngsuranTerbayar
-		if p.JumlahPinjaman > 0 {
-			info.PersentaseTerbayar = float64(p.JumlahPinjaman-sisaPinjaman) / float64(p.JumlahPinjaman) * 100
+		if totalKewajiban > 0 {
+			info.PersentaseTerbayar = (totalKewajiban - sisaPinjaman) / totalKewajiban * 100
 			if info.PersentaseTerbayar < 0 {
 				info.PersentaseTerbayar = 0
 			}
@@ -2779,7 +2779,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 				totalAngsuranTerbayar += a.JumlahAngsuran
 			}
 		}
-		totalKewajiban := pinjaman.JumlahPinjaman + (pinjaman.JumlahPinjaman * pinjaman.Bunga / 100)
+		totalKewajiban := pinjaman.JumlahPinjaman + models.HitungJasaPinjaman(pinjaman.JumlahPinjaman, pinjaman.Bunga, pinjaman.JangkaWaktu)
 		sisaPinjaman := totalKewajiban - totalAngsuranTerbayar
 		if sisaPinjaman < 0 {
 			sisaPinjaman = 0

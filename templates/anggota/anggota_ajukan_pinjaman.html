@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 <strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan
             {{end}}
         </p>
-    <p id="bunga_info" class="mb-0"><strong>Jasa:</strong> {{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}% (flat)</p>
+    <p id="bunga_info" class="mb-0"><strong>Jasa:</strong> {{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}% per bulan (flat)</p>
 </div>
 
 
@@ -745,7 +745,7 @@ function calculateAngsuran() {
 
     if (jenisAnggota === 'Mahasiswa') {
         if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
-        if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Jasa:</strong> ' + bungaPersenTampil + '% (flat)';
+        if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Jasa:</strong> ' + bungaPersenTampil + '% per bulan (flat)';
     } else if (jenisAnggota === 'Dosen' || jenisAnggota === 'Tenaga Kependidikan') {
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
             const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
@@ -753,7 +753,7 @@ function calculateAngsuran() {
         } else {
             if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
         }
-        if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Jasa:</strong> ' + bungaPersenTampil + '% (flat)';
+        if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Jasa:</strong> ' + bungaPersenTampil + '% per bulan (flat)';
     } else {
         if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan';
         if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Jasa:</strong> -';
@@ -807,7 +807,7 @@ function calculateAngsuran() {
 
     if (jumlahPinjaman > 0) {
         const bungaDecimal = bungaTerkini / 100;
-        const bungaTotal   = bungaDecimal * jumlahPinjaman;
+        const bungaTotal   = bungaDecimal * jumlahPinjaman * jangkaWaktu;
         const totalPinjaman = jumlahPinjaman + bungaTotal;
 
         if (totalPinjamanRp) {
@@ -816,7 +816,7 @@ function calculateAngsuran() {
 
         if (jangkaWaktu > 0 && perkiraanAngsuran) {
             const pokok         = jumlahPinjaman / jangkaWaktu;
-            const bungaPerBulan = bungaTotal / jangkaWaktu;
+            const bungaPerBulan = bungaDecimal * jumlahPinjaman;
             perkiraanAngsuran.value = Math.round(pokok + bungaPerBulan).toLocaleString('id-ID');
         }
     } else {

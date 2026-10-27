@@ -48,6 +48,20 @@ type Pinjaman struct {
 	TujuanPinjaman      string        `form:"tujuan_pinjaman" json:"tujuan_pinjaman" db:"tujuan_pinjaman"`
 }
 
+func HitungJasaPinjaman(jumlahPinjaman, persentaseBulanan float64, jangkaWaktu int) float64 {
+	if jangkaWaktu <= 0 {
+		return 0
+	}
+	return jumlahPinjaman * persentaseBulanan / 100 * float64(jangkaWaktu)
+}
+
+func HitungAngsuranBulanan(jumlahPinjaman, jasaTotal float64, jangkaWaktu int) float64 {
+	if jangkaWaktu <= 0 {
+		return 0
+	}
+	return (jumlahPinjaman + jasaTotal) / float64(jangkaWaktu)
+}
+
 // Angsuran mewakili pembayaran angsuran
 type Angsuran struct {
 	IDAngsuran     int           `json:"id_angsuran" db:"id_angsuran"`

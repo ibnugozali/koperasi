@@ -1194,7 +1194,7 @@ func GetPinjamanAktifByAnggotaID(idAnggota string) ([]models.Pinjaman, error) {
 		) a ON p.id_pinjaman = a.id_pinjaman
 		WHERE p.id_anggota = $1
 		  AND LOWER(TRIM(COALESCE(p.status, ''))) IN ('aktif', 'proses')
-		  AND ((p.jumlah_pinjaman + (p.jumlah_pinjaman * COALESCE(p.bunga, 0) / 100)) - COALESCE(a.total_angsuran, 0)) > 0
+		  AND ((p.jumlah_pinjaman + (p.jumlah_pinjaman * COALESCE(p.bunga, 0) / 100 * p.jangka_waktu)) - COALESCE(a.total_angsuran, 0)) > 0
 		ORDER BY p.tgl_pinjaman DESC, p.id_pinjaman DESC
 	`
 	rows, err := db.Query(query, idAnggota)
@@ -1560,7 +1560,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 			), 0) as sisa_pinjaman,
 			-- Angsuran bulan ini (total pembayaran angsuran pada bulan ini)
 			COALESCE((SELECT COUNT(*) * (
-				SELECT (p.jumlah_pinjaman / p.jangka_waktu) + ((p.jumlah_pinjaman * p.bunga / 100) / p.jangka_waktu)
+				SELECT (p.jumlah_pinjaman / p.jangka_waktu) + (p.jumlah_pinjaman * p.bunga / 100)
 				FROM pinjaman p
 				WHERE p.id_anggota = a.id_anggota 
 				AND p.status = 'aktif'
@@ -1612,7 +1612,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 			-- Jasa/Bunga per bulan
 			CASE 
 				WHEN (SELECT p.jangka_waktu FROM pinjaman p WHERE p.id_anggota = a.id_anggota AND p.status = 'aktif' ORDER BY p.tgl_pinjaman DESC LIMIT 1) > 0
-				THEN COALESCE((SELECT (p.jumlah_pinjaman * p.bunga / 100) / p.jangka_waktu FROM pinjaman p WHERE p.id_anggota = a.id_anggota AND p.status = 'aktif' ORDER BY p.tgl_pinjaman DESC LIMIT 1), 0)
+				THEN COALESCE((SELECT p.jumlah_pinjaman * p.bunga / 100 FROM pinjaman p WHERE p.id_anggota = a.id_anggota AND p.status = 'aktif' ORDER BY p.tgl_pinjaman DESC LIMIT 1), 0)
 				ELSE 0
 			END as jasa_per_bulan
 			,
@@ -1620,7 +1620,7 @@ func GetLaporanBulananPerAnggota(bulan, tahun int) ([]map[string]interface{}, er
 			COALESCE((
 				SELECT SUM(
 					CASE
-						WHEN p2.jangka_waktu > 0 THEN (p2.jumlah_pinjaman * p2.bunga / 100) / p2.jangka_waktu
+						WHEN p2.jangka_waktu > 0 THEN p2.jumlah_pinjaman * p2.bunga / 100
 						ELSE 0
 					END
 				)

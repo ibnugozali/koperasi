@@ -1215,7 +1215,7 @@ func GetPotonganAngsuranPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 
 	fallbackQuery := `
 		SELECT p.id_anggota,
-		       COALESCE(SUM(ROUND((p.jumlah_pinjaman + (p.jumlah_pinjaman * COALESCE(p.bunga, 0) / 100)) / NULLIF(p.jangka_waktu, 0))), 0)
+		       COALESCE(SUM(ROUND((p.jumlah_pinjaman + (p.jumlah_pinjaman * COALESCE(p.bunga, 0) / 100 * p.jangka_waktu)) / NULLIF(p.jangka_waktu, 0))), 0)
 		FROM pinjaman p
 		WHERE REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(p.metode_angsuran, ''))), ' ', ''), '_', ''), '-', '') = 'potonggaji'
 		  AND COALESCE(LOWER(p.status), '') IN ('aktif', 'proses')

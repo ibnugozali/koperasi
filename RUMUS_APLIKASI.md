@@ -28,8 +28,8 @@ Catatan:
 
 | Nama Rumus | Rumus | Fungsi | Lokasi |
 | --- | --- | --- | --- |
-| Bunga Nominal | `bungaNominal = jumlahPinjaman * bunga / 100` | Menghitung bunga pinjaman | `controllers/anggota_controller.go:386,417` |
-| Total Kewajiban | `totalKewajiban = totalPinjaman + bungaNominal` | Menghitung total kewajiban pinjaman | `controllers/anggota_controller.go:387,418` |
+| Jasa Total | `jasaTotal = jumlahPinjaman * bungaBulanan / 100 * jangkaWaktu` | Menghitung total jasa flat bulanan selama tenor | `models/transaksi.go` |
+| Total Kewajiban | `totalKewajiban = jumlahPinjaman + jasaTotal` | Menghitung total kewajiban pinjaman | `controllers/anggota_controller.go` |
 | Sisa Angsuran | `sisaAngsuran = jangkaWaktu - angsuranTerbayar` | Menghitung sisa jumlah angsuran | `controllers/anggota_controller.go:432` |
 | Sisa Pinjaman | `sisaPinjaman = jumlahPinjaman - totalAngsuranTerbayar` | Menghitung sisa pinjaman | `controllers/anggota_controller.go:682,806,2598` |
 | Persentase Pinjaman Terbayar | `persentaseTerbayar = totalAngsuranTerbayar / totalKewajiban * 100` | Menghitung persentase pelunasan pinjaman | `controllers/anggota_controller.go:440` |
@@ -47,9 +47,8 @@ Catatan:
 | Nama Rumus | Rumus | Fungsi | Lokasi |
 | --- | --- | --- | --- |
 | Pokok Per Bulan | `pokokPerBulan = jumlahPinjaman / jangkaWaktu` | Menghitung pokok angsuran per bulan | `controllers/anggota_controller.go:2266,2368`, `repository/transaksi_repository.go:1380` |
-| Jasa Per Bulan | `jasaPerBulan = bunga / jangkaWaktu` | Menghitung jasa per bulan jika bunga sudah nominal | `controllers/anggota_controller.go:2267` |
-| Jasa Per Bulan dari Persen | `jasaPerBulan = (bunga / 100 * jumlahPinjaman) / jangkaWaktu` | Menghitung jasa per bulan jika bunga masih persen | `controllers/anggota_controller.go:2369` |
-| Perkiraan Angsuran Bulanan | `perkiraanAngsuranBulan = pokokPerBulan + jasaPerBulan` | Menghitung total angsuran bulanan | `controllers/anggota_controller.go:2268,2370`, `repository/transaksi_repository.go:1380`, `templates/anggota/anggota_ajukan_pinjaman.html:544`, `templates/ketua/ketua_persyaratan_pinjaman.html:354` |
+| Jasa Per Bulan | `jasaPerBulan = jumlahPinjaman * bungaBulanan / 100` | Menghitung jasa flat per bulan dari persentase jasa bulanan | `models/transaksi.go` |
+| Perkiraan Angsuran Bulanan | `perkiraanAngsuranBulan = pokokPerBulan + jasaPerBulan` | Menghitung total angsuran bulanan | `models/transaksi.go`, `templates/anggota/anggota_ajukan_pinjaman.html`, `templates/ketua/ketua_persyaratan_pinjaman.html` |
 | Sisa Pinjaman Setelah Bayar | `sisaSetelah = sisaSebelum - jumlahAngsuran` | Menghitung sisa pinjaman setelah pembayaran angsuran | `controllers/anggota_controller.go:2562`, `controllers/bendahara_controller.go:5460` |
 
 ## 6. Laporan
