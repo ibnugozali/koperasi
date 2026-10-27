@@ -30,22 +30,25 @@ type Detail struct {
 
 // Pinjaman mewakili pinjaman
 type Pinjaman struct {
-	IDPinjaman          int           `json:"id_pinjaman" db:"id_pinjaman"`
-	IDAnggota           string        `json:"id_anggota" db:"id_anggota"`
-	NamaAnggota         string        `json:"nama_anggota" db:"nama_anggota"`
-	IDPengelola         sql.NullInt64 `json:"id_pengelola" db:"id_pengelola"`
-	TglPinjaman         time.Time     `json:"tgl_pinjaman" db:"tgl_pinjaman"`
-	JumlahPinjaman      float64       `form:"jumlah_pinjaman" json:"jumlah_pinjaman" db:"jumlah_pinjaman"`
-	JangkaWaktu         int           `form:"jangka_waktu" json:"jangka_waktu" db:"jangka_waktu"`
-	Bunga               float64       `form:"bunga" json:"bunga" db:"bunga"`
-	Status              string        `json:"status" db:"status"`
-	MetodePencairan     string        `form:"metode_pencairan" json:"metode_pencairan" db:"metode_pencairan"`
-	MetodeAngsuran      string        `form:"metode_angsuran" json:"metode_angsuran" db:"metode_angsuran"`
-	NomorRekening       string        `form:"nomor_rekening" json:"nomor_rekening" db:"nomor_rekening"`
-	NamaBank            string        `form:"nama_bank" json:"nama_bank" db:"nama_bank"`
-	NamaPemilikRekening string        `form:"nama_pemilik" json:"nama_pemilik_rekening" db:"nama_pemilik_rekening"`
-	GajiBulanan         float64       `form:"gaji_bulanan" json:"gaji_bulanan" db:"gaji_bulanan"`
-	TujuanPinjaman      string        `form:"tujuan_pinjaman" json:"tujuan_pinjaman" db:"tujuan_pinjaman"`
+	IDPinjaman               int           `json:"id_pinjaman" db:"id_pinjaman"`
+	IDAnggota                string        `json:"id_anggota" db:"id_anggota"`
+	NamaAnggota              string        `json:"nama_anggota" db:"nama_anggota"`
+	IDPengelola              sql.NullInt64 `json:"id_pengelola" db:"id_pengelola"`
+	TglPinjaman              time.Time     `json:"tgl_pinjaman" db:"tgl_pinjaman"`
+	JumlahPinjaman           float64       `form:"jumlah_pinjaman" json:"jumlah_pinjaman" db:"jumlah_pinjaman"`
+	SaldoLamaDigabung        float64       `json:"saldo_lama_digabung" db:"saldo_lama_digabung"`
+	PenggabunganDiproses     bool          `json:"penggabungan_diproses" db:"penggabungan_diproses"`
+	MenungguPersetujuanKetua bool          `json:"menunggu_persetujuan_ketua" db:"menunggu_persetujuan_ketua"`
+	JangkaWaktu              int           `form:"jangka_waktu" json:"jangka_waktu" db:"jangka_waktu"`
+	Bunga                    float64       `form:"bunga" json:"bunga" db:"bunga"`
+	Status                   string        `json:"status" db:"status"`
+	MetodePencairan          string        `form:"metode_pencairan" json:"metode_pencairan" db:"metode_pencairan"`
+	MetodeAngsuran           string        `form:"metode_angsuran" json:"metode_angsuran" db:"metode_angsuran"`
+	NomorRekening            string        `form:"nomor_rekening" json:"nomor_rekening" db:"nomor_rekening"`
+	NamaBank                 string        `form:"nama_bank" json:"nama_bank" db:"nama_bank"`
+	NamaPemilikRekening      string        `form:"nama_pemilik" json:"nama_pemilik_rekening" db:"nama_pemilik_rekening"`
+	GajiBulanan              float64       `form:"gaji_bulanan" json:"gaji_bulanan" db:"gaji_bulanan"`
+	TujuanPinjaman           string        `form:"tujuan_pinjaman" json:"tujuan_pinjaman" db:"tujuan_pinjaman"`
 }
 
 func HitungJasaPinjaman(jumlahPinjaman, persentaseBulanan float64, jangkaWaktu int) float64 {
@@ -55,11 +58,26 @@ func HitungJasaPinjaman(jumlahPinjaman, persentaseBulanan float64, jangkaWaktu i
 	return jumlahPinjaman * persentaseBulanan / 100 * float64(jangkaWaktu)
 }
 
+func (p Pinjaman) PokokGabungan() float64 {
+	return p.JumlahPinjaman + p.SaldoLamaDigabung
+}
+
 func HitungAngsuranBulanan(jumlahPinjaman, jasaTotal float64, jangkaWaktu int) float64 {
 	if jangkaWaktu <= 0 {
 		return 0
 	}
 	return (jumlahPinjaman + jasaTotal) / float64(jangkaWaktu)
+}
+
+func HitungSisaKewajibanPinjaman(pokok, totalTerbayar, jasaTotal float64) float64 {
+	totalKewajiban := pokok + jasaTotal
+	if totalKewajiban <= 0 || totalTerbayar >= totalKewajiban {
+		return 0
+	}
+	if totalTerbayar <= 0 {
+		return totalKewajiban
+	}
+	return totalKewajiban - totalTerbayar
 }
 
 // Angsuran mewakili pembayaran angsuran

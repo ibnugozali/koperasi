@@ -140,15 +140,27 @@ CREATE TABLE IF NOT EXISTS pinjaman (
   id_pengelola INT REFERENCES pengelola(id_pengelola) ON DELETE SET NULL,
   tgl_pinjaman TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   jumlah_pinjaman NUMERIC(15,2),
+  saldo_lama_digabung NUMERIC(15,2) NOT NULL DEFAULT 0,
+  penggabungan_diproses BOOLEAN NOT NULL DEFAULT FALSE,
+  menunggu_persetujuan_ketua BOOLEAN NOT NULL DEFAULT FALSE,
   jangka_waktu INT,
   bunga NUMERIC(5,2) DEFAULT 2.0,
-  status VARCHAR(25) CHECK (status IN ('proses', 'aktif', 'lunas', 'gagal')),
+  status VARCHAR(25) CHECK (status IN ('proses', 'aktif', 'lunas', 'gagal', 'digabung')),
   metode_pencairan VARCHAR(25) DEFAULT 'tunai' CHECK (metode_pencairan IN ('transfer_bank', 'tunai')),
   nomor_rekening VARCHAR(50),
   nama_bank VARCHAR(100),
   nama_pemilik_rekening VARCHAR(100),
   gaji_bulanan NUMERIC(15,2) DEFAULT 0,
   tujuan_pinjaman TEXT
+);
+
+CREATE TABLE IF NOT EXISTS pinjaman_penggabungan (
+  id_pinjaman_baru INT NOT NULL REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
+  id_pinjaman_lama INT NOT NULL REFERENCES pinjaman(id_pinjaman) ON DELETE RESTRICT,
+  saldo_digabung NUMERIC(15,2) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id_pinjaman_baru, id_pinjaman_lama),
+  UNIQUE (id_pinjaman_lama)
 );
 
 CREATE TABLE IF NOT EXISTS angsuran (

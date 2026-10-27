@@ -51,7 +51,7 @@ func GetRiwayatPinjamanByAnggotaID(id string, search string) ([]models.Pinjaman,
 	db := config.GetDB()
 	var pinjamans []models.Pinjaman
 	query := `
-		SELECT id_pinjaman, id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status, metode_angsuran
+		SELECT id_pinjaman, id_anggota, id_pengelola, tgl_pinjaman, jumlah_pinjaman, COALESCE(saldo_lama_digabung, 0), COALESCE(penggabungan_diproses, FALSE), COALESCE(menunggu_persetujuan_ketua, FALSE), jangka_waktu, bunga, status, metode_angsuran
 		FROM pinjaman
 		WHERE id_anggota = $1
 	`
@@ -69,7 +69,7 @@ func GetRiwayatPinjamanByAnggotaID(id string, search string) ([]models.Pinjaman,
 
 	for rows.Next() {
 		var p models.Pinjaman
-		if err := rows.Scan(&p.IDPinjaman, &p.IDAnggota, &p.IDPengelola, &p.TglPinjaman, &p.JumlahPinjaman, &p.JangkaWaktu, &p.Bunga, &p.Status, &p.MetodeAngsuran); err != nil {
+		if err := rows.Scan(&p.IDPinjaman, &p.IDAnggota, &p.IDPengelola, &p.TglPinjaman, &p.JumlahPinjaman, &p.SaldoLamaDigabung, &p.PenggabunganDiproses, &p.MenungguPersetujuanKetua, &p.JangkaWaktu, &p.Bunga, &p.Status, &p.MetodeAngsuran); err != nil {
 			return nil, err
 		}
 		pinjamans = append(pinjamans, p)

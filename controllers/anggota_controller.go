@@ -165,25 +165,30 @@ type pinjamanProfilRow struct {
 }
 
 type resumePinjamanInfo struct {
-	IDPinjaman                  int
-	Status                      string
-	TglPinjaman                 time.Time
-	JumlahPinjaman              float64
-	JangkaWaktu                 int
-	AngsuranTerbayar            int
-	SisaAngsuran                int
-	TotalTerbayar               float64
-	SisaPokok                   float64
-	AngsuranPerBulan            float64
-	PersentaseTerbayar          float64
-	BisaAjukanLagi              bool
-	MetodePencairan             string
-	MetodeAngsuran              string
-	Bunga                       float64
-	SisaPinjamanSebelumnya      float64
-	TotalPinjamanDenganSisaLama float64
-	NomorResume                 int
-	IDPinjamanSebelumnya        int
+	IDPinjaman                     int
+	Status                         string
+	TglPinjaman                    time.Time
+	JumlahPinjaman                 float64
+	JangkaWaktu                    int
+	AngsuranTerbayar               int
+	SisaAngsuran                   int
+	TotalTerbayar                  float64
+	SisaPokok                      float64
+	SisaKewajibanUntukPenggabungan float64
+	AngsuranPerBulan               float64
+	PersentaseTerbayar             float64
+	BisaAjukanLagi                 bool
+	MetodePencairan                string
+	MetodeAngsuran                 string
+	Bunga                          float64
+	BungaPersen                    float64
+	PenggabunganDiproses           bool
+	MenungguPersetujuanKetua       bool
+	SisaPinjamanSebelumnya         float64
+	JumlahPinjamanBaru             float64
+	TotalPinjamanDenganSisaLama    float64
+	NomorResume                    int
+	IDPinjamanSebelumnya           int
 }
 
 func hitungAngsuranPerBulan(jumlahPinjaman, bungaNominal float64, jangkaWaktu int) float64 {
@@ -587,8 +592,8 @@ func tambahkanSisaPinjamanSebelumnya(userID string, resume *resumePinjamanInfo, 
 		}
 
 		resumeSebelumnya := buildResumePinjamanInfo(pinjamanSebelumnya)
-		if resumeSebelumnya != nil && resumeSebelumnya.SisaPokok > 0 {
-			totalSisaSebelumnya += resumeSebelumnya.SisaPokok
+		if resumeSebelumnya != nil && resumeSebelumnya.SisaKewajibanUntukPenggabungan > 0 {
+			totalSisaSebelumnya += resumeSebelumnya.SisaKewajibanUntukPenggabungan
 			jumlahPinjamanSebelumnya++
 			if idPinjamanSebelumnya == 0 || pinjamanSebelumnya.TglPinjaman.After(tglPinjamanSebelumnya) {
 				idPinjamanSebelumnya = pinjamanSebelumnya.IDPinjaman
@@ -604,6 +609,17 @@ func tambahkanSisaPinjamanSebelumnya(userID string, resume *resumePinjamanInfo, 
 
 	resume.SisaPinjamanSebelumnya = totalSisaSebelumnya
 	resume.IDPinjamanSebelumnya = idPinjamanSebelumnya
+	status := strings.ToLower(strings.TrimSpace(resume.Status))
+	if status == "proses" || (status == "aktif" && resume.MenungguPersetujuanKetua) {
+		resume.JumlahPinjamanBaru = resume.JumlahPinjaman
+		resume.JumlahPinjaman += totalSisaSebelumnya
+		resume.Bunga = models.HitungJasaPinjaman(resume.JumlahPinjaman, resume.BungaPersen, resume.JangkaWaktu)
+		resume.TotalPinjamanDenganSisaLama = resume.JumlahPinjaman + resume.Bunga
+		resume.SisaPokok = resume.TotalPinjamanDenganSisaLama
+		resume.SisaKewajibanUntukPenggabungan = resume.TotalPinjamanDenganSisaLama
+		resume.AngsuranPerBulan = hitungAngsuranPerBulan(resume.JumlahPinjaman, resume.Bunga, resume.JangkaWaktu)
+		return
+	}
 	resume.TotalPinjamanDenganSisaLama = totalKewajibanSekarang + totalSisaSebelumnya
 	resume.SisaPokok += totalSisaSebelumnya
 	resume.AngsuranPerBulan = hitungAngsuranPerBulan(resume.JumlahPinjaman, resume.Bunga+totalSisaSebelumnya, resume.JangkaWaktu)
@@ -621,9 +637,9 @@ func buildResumePinjamanInfo(p *models.Pinjaman) *resumePinjamanInfo {
 	tglPinjamanGabungan := p.TglPinjaman
 	metodePencairanGabungan := normalizeMetodePencairan(p.MetodePencairan)
 	metodeAngsuranGabungan := normalizeMetodeAngsuran(p.MetodeAngsuran)
-	totalPinjaman := p.JumlahPinjaman
+	totalPinjaman := p.PokokGabungan()
 	totalJangkaWaktu := p.JangkaWaktu
-	bungaNominal := models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
+	bungaNominal := models.HitungJasaPinjaman(totalPinjaman, p.Bunga, p.JangkaWaktu)
 	totalKewajiban := totalPinjaman + bungaNominal
 	angsuranPerBulan := hitungAngsuranPerBulan(totalPinjaman, bungaNominal, totalJangkaWaktu)
 
@@ -660,6 +676,7 @@ func buildResumePinjamanInfo(p *models.Pinjaman) *resumePinjamanInfo {
 	if sisaPokok > totalKewajiban {
 		sisaPokok = totalKewajiban
 	}
+	sisaKewajibanUntukPenggabungan := models.HitungSisaKewajibanPinjaman(totalPinjaman, totalTerbayar, bungaNominal)
 
 	if statusGabungan == "proses" {
 		angsuranTerbayar = 0
@@ -667,50 +684,59 @@ func buildResumePinjamanInfo(p *models.Pinjaman) *resumePinjamanInfo {
 		persentaseGabungan = 0
 		totalTerbayar = 0
 		sisaPokok = totalKewajiban
+		sisaKewajibanUntukPenggabungan = totalKewajiban
 	}
 
 	bisaAjukanLagi := (persentaseGabungan >= 50) && (statusGabungan != "proses")
 
 	if persentaseGabungan >= 100 {
 		return &resumePinjamanInfo{
-			IDPinjaman:                  p.IDPinjaman,
-			Status:                      "lunas",
-			TglPinjaman:                 tglPinjamanGabungan,
-			JumlahPinjaman:              totalPinjaman,
-			JangkaWaktu:                 totalJangkaWaktu,
-			AngsuranTerbayar:            angsuranTerbayar,
-			SisaAngsuran:                0,
-			TotalTerbayar:               totalTerbayar,
-			SisaPokok:                   0,
-			AngsuranPerBulan:            angsuranPerBulan,
-			PersentaseTerbayar:          100,
-			BisaAjukanLagi:              true,
-			Bunga:                       bungaNominal,
-			MetodePencairan:             metodePencairanGabungan,
-			MetodeAngsuran:              metodeAngsuranGabungan,
-			TotalPinjamanDenganSisaLama: totalKewajiban,
-			NomorResume:                 1,
+			IDPinjaman:                     p.IDPinjaman,
+			Status:                         "lunas",
+			TglPinjaman:                    tglPinjamanGabungan,
+			JumlahPinjaman:                 totalPinjaman,
+			JangkaWaktu:                    totalJangkaWaktu,
+			AngsuranTerbayar:               angsuranTerbayar,
+			SisaAngsuran:                   0,
+			TotalTerbayar:                  totalTerbayar,
+			SisaPokok:                      0,
+			SisaKewajibanUntukPenggabungan: 0,
+			AngsuranPerBulan:               angsuranPerBulan,
+			PersentaseTerbayar:             100,
+			BisaAjukanLagi:                 true,
+			Bunga:                          bungaNominal,
+			BungaPersen:                    p.Bunga,
+			PenggabunganDiproses:           p.PenggabunganDiproses,
+			MenungguPersetujuanKetua:       p.MenungguPersetujuanKetua,
+			MetodePencairan:                metodePencairanGabungan,
+			MetodeAngsuran:                 metodeAngsuranGabungan,
+			TotalPinjamanDenganSisaLama:    totalKewajiban,
+			NomorResume:                    1,
 		}
 	}
 
 	return &resumePinjamanInfo{
-		IDPinjaman:                  p.IDPinjaman,
-		Status:                      statusGabungan,
-		TglPinjaman:                 tglPinjamanGabungan,
-		JumlahPinjaman:              totalPinjaman,
-		JangkaWaktu:                 totalJangkaWaktu,
-		AngsuranTerbayar:            angsuranTerbayar,
-		SisaAngsuran:                sisaAngsuran,
-		TotalTerbayar:               totalTerbayar,
-		SisaPokok:                   sisaPokok,
-		AngsuranPerBulan:            angsuranPerBulan,
-		PersentaseTerbayar:          persentaseGabungan,
-		BisaAjukanLagi:              bisaAjukanLagi,
-		Bunga:                       bungaNominal,
-		MetodePencairan:             metodePencairanGabungan,
-		MetodeAngsuran:              metodeAngsuranGabungan,
-		TotalPinjamanDenganSisaLama: totalKewajiban,
-		NomorResume:                 1,
+		IDPinjaman:                     p.IDPinjaman,
+		Status:                         statusGabungan,
+		TglPinjaman:                    tglPinjamanGabungan,
+		JumlahPinjaman:                 totalPinjaman,
+		JangkaWaktu:                    totalJangkaWaktu,
+		AngsuranTerbayar:               angsuranTerbayar,
+		SisaAngsuran:                   sisaAngsuran,
+		TotalTerbayar:                  totalTerbayar,
+		SisaPokok:                      sisaPokok,
+		SisaKewajibanUntukPenggabungan: sisaKewajibanUntukPenggabungan,
+		AngsuranPerBulan:               angsuranPerBulan,
+		PersentaseTerbayar:             persentaseGabungan,
+		BisaAjukanLagi:                 bisaAjukanLagi,
+		Bunga:                          bungaNominal,
+		BungaPersen:                    p.Bunga,
+		PenggabunganDiproses:           p.PenggabunganDiproses,
+		MenungguPersetujuanKetua:       p.MenungguPersetujuanKetua,
+		MetodePencairan:                metodePencairanGabungan,
+		MetodeAngsuran:                 metodeAngsuranGabungan,
+		TotalPinjamanDenganSisaLama:    totalKewajiban,
+		NomorResume:                    1,
 	}
 }
 
@@ -891,8 +917,8 @@ func getPinjamanAngsuranInfos(pinjamans []models.Pinjaman) ([]pinjamanAngsuranIn
 			}
 		}
 
-		bungaNominal := models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
-		totalKewajiban := p.JumlahPinjaman + bungaNominal
+		bungaNominal := models.HitungJasaPinjaman(p.PokokGabungan(), p.Bunga, p.JangkaWaktu)
+		totalKewajiban := p.PokokGabungan() + bungaNominal
 		sisaPinjaman := totalKewajiban - totalAngsuranTerbayar
 		if sisaPinjaman < 0 {
 			sisaPinjaman = 0
@@ -999,7 +1025,7 @@ func hitungSisaPinjamanProfil(p models.Pinjaman) float64 {
 
 	angsuranList, err := repository.GetAngsuranByPinjamanID(p.IDPinjaman)
 	if err != nil {
-		return p.JumlahPinjaman + models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
+		return p.PokokGabungan() + models.HitungJasaPinjaman(p.PokokGabungan(), p.Bunga, p.JangkaWaktu)
 	}
 
 	totalAngsuranTerbayar := 0.0
@@ -1009,7 +1035,7 @@ func hitungSisaPinjamanProfil(p models.Pinjaman) float64 {
 		}
 	}
 
-	sisaPinjaman := p.JumlahPinjaman + models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu) - totalAngsuranTerbayar
+	sisaPinjaman := p.PokokGabungan() + models.HitungJasaPinjaman(p.PokokGabungan(), p.Bunga, p.JangkaWaktu) - totalAngsuranTerbayar
 	if sisaPinjaman < 0 {
 		return 0
 	}
@@ -1065,7 +1091,7 @@ func getResumePinjamanInfo(userID string, modeGabungan bool) []resumePinjamanInf
 				jumlahAngsuranTerbayar++
 			}
 		}
-		totalKewajiban := p.JumlahPinjaman + models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
+		totalKewajiban := p.PokokGabungan() + models.HitungJasaPinjaman(p.PokokGabungan(), p.Bunga, p.JangkaWaktu)
 		sisaPinjaman := totalKewajiban - totalAngsuranTerbayar
 		if sisaPinjaman < 0 {
 			sisaPinjaman = 0
@@ -1076,18 +1102,23 @@ func getResumePinjamanInfo(userID string, modeGabungan bool) []resumePinjamanInf
 			continue
 		}
 		info := resumePinjamanInfo{
-			IDPinjaman:         p.IDPinjaman,
-			Status:             p.Status,
-			TglPinjaman:        p.TglPinjaman,
-			JumlahPinjaman:     p.JumlahPinjaman,
-			JangkaWaktu:        p.JangkaWaktu,
-			AngsuranTerbayar:   jumlahAngsuranTerbayar,
-			SisaAngsuran:       p.JangkaWaktu - jumlahAngsuranTerbayar,
-			TotalTerbayar:      0,
-			SisaPokok:          sisaPinjaman,
+			IDPinjaman:       p.IDPinjaman,
+			Status:           p.Status,
+			TglPinjaman:      p.TglPinjaman,
+			JumlahPinjaman:   p.PokokGabungan(),
+			JangkaWaktu:      p.JangkaWaktu,
+			AngsuranTerbayar: jumlahAngsuranTerbayar,
+			SisaAngsuran:     p.JangkaWaktu - jumlahAngsuranTerbayar,
+			TotalTerbayar:    0,
+			SisaPokok:        sisaPinjaman,
+			SisaKewajibanUntukPenggabungan: models.HitungSisaKewajibanPinjaman(
+				p.PokokGabungan(),
+				totalAngsuranTerbayar,
+				models.HitungJasaPinjaman(p.PokokGabungan(), p.Bunga, p.JangkaWaktu),
+			),
 			PersentaseTerbayar: 0,
 			BisaAjukanLagi:     false,
-			Bunga:              models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu),
+			Bunga:              models.HitungJasaPinjaman(p.PokokGabungan(), p.Bunga, p.JangkaWaktu),
 		}
 		if info.SisaAngsuran < 0 {
 			info.SisaAngsuran = 0
@@ -1802,20 +1833,25 @@ func getAjukanPinjamanTemplateData(userID string, anggota models.Anggota) gin.H 
 
 	resumeGabungan := getResumePinjamanGabungan(userID, true)
 	var resumeGabunganSlice []resumePinjamanInfo
+	sisaPinjamanLama := 0.0
 	if resumeGabungan != nil {
 		resumeGabunganSlice = append(resumeGabunganSlice, *resumeGabungan)
+		if !strings.EqualFold(strings.TrimSpace(resumeGabungan.Status), "proses") {
+			sisaPinjamanLama = resumeGabungan.SisaKewajibanUntukPenggabungan
+		}
 	} else {
 		resumeGabunganSlice = []resumePinjamanInfo{}
 	}
 	return gin.H{
-		"Judul":          "Ajukan Pinjaman",
-		"Anggota":        anggota,
-		"TotalSimpanan":  totalSimpanan,
-		"LimitPinjaman":  limitPinjaman,
-		"JenisAnggota":   jenisAnggota,
-		"Bunga":          bungaTerkini,
-		"GajiBulanan":    anggota.GajiBulanan,
-		"ResumeGabungan": resumeGabunganSlice,
+		"Judul":            "Ajukan Pinjaman",
+		"Anggota":          anggota,
+		"TotalSimpanan":    totalSimpanan,
+		"LimitPinjaman":    limitPinjaman,
+		"JenisAnggota":     jenisAnggota,
+		"Bunga":            bungaTerkini,
+		"GajiBulanan":      anggota.GajiBulanan,
+		"ResumeGabungan":   resumeGabunganSlice,
+		"SisaPinjamanLama": sisaPinjamanLama,
 	}
 }
 
@@ -2779,7 +2815,7 @@ func AnggotaAngsuranPost(c *gin.Context) {
 				totalAngsuranTerbayar += a.JumlahAngsuran
 			}
 		}
-		totalKewajiban := pinjaman.JumlahPinjaman + models.HitungJasaPinjaman(pinjaman.JumlahPinjaman, pinjaman.Bunga, pinjaman.JangkaWaktu)
+		totalKewajiban := pinjaman.PokokGabungan() + models.HitungJasaPinjaman(pinjaman.PokokGabungan(), pinjaman.Bunga, pinjaman.JangkaWaktu)
 		sisaPinjaman := totalKewajiban - totalAngsuranTerbayar
 		if sisaPinjaman < 0 {
 			sisaPinjaman = 0

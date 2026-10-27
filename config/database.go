@@ -82,6 +82,36 @@ func InitDB() {
 	if err := updateTransactionStatusConstraints(); err != nil {
 		log.Printf("Peringatan: gagal memperbarui constraint status transaksi: %v", err)
 	}
+
+	if err := ensureLoanMergeSupport(); err != nil {
+		log.Printf("Peringatan: gagal memastikan dukungan penggabungan pinjaman: %v", err)
+	}
+}
+
+func ensureLoanMergeSupport() error {
+	if db == nil {
+		return fmt.Errorf("koneksi database belum diinisialisasi")
+	}
+	_, err := db.Exec(`
+		ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS saldo_lama_digabung NUMERIC(15,2) NOT NULL DEFAULT 0;
+		ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS penggabungan_diproses BOOLEAN NOT NULL DEFAULT FALSE;
+		ALTER TABLE pinjaman ADD COLUMN IF NOT EXISTS menunggu_persetujuan_ketua BOOLEAN NOT NULL DEFAULT FALSE;
+		ALTER TABLE pinjaman DROP CONSTRAINT IF EXISTS pinjaman_status_check;
+		ALTER TABLE pinjaman ADD CONSTRAINT pinjaman_status_check
+			CHECK (status IN ('proses', 'aktif', 'lunas', 'gagal', 'digabung'));
+		CREATE TABLE IF NOT EXISTS pinjaman_penggabungan (
+			id_pinjaman_baru INT NOT NULL REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
+			id_pinjaman_lama INT NOT NULL REFERENCES pinjaman(id_pinjaman) ON DELETE RESTRICT,
+			saldo_digabung NUMERIC(15,2) NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id_pinjaman_baru, id_pinjaman_lama),
+			UNIQUE (id_pinjaman_lama)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("gagal menyiapkan struktur penggabungan pinjaman: %w", err)
+	}
+	return nil
 }
 
 // ensureAngsuranTable membuat tabel angsuran jika belum ada.

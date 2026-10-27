@@ -2248,7 +2248,8 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 	var pinjaman models.Pinjaman
 	var hasPinjaman bool
 	queryPinjaman := `
-		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status,
+		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman,
+		       COALESCE(saldo_lama_digabung, 0), jangka_waktu, bunga, status,
 		       COALESCE(metode_pencairan, '') AS metode_pencairan,
 		       COALESCE(metode_angsuran, '') AS metode_angsuran,
 		       COALESCE(nomor_rekening, '') AS nomor_rekening,
@@ -2266,6 +2267,7 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 		&pinjaman.IDAnggota,
 		&pinjaman.TglPinjaman,
 		&pinjaman.JumlahPinjaman,
+		&pinjaman.SaldoLamaDigabung,
 		&pinjaman.JangkaWaktu,
 		&pinjaman.Bunga,
 		&pinjaman.Status,
@@ -2279,6 +2281,12 @@ func BendaharaLihatPersyaratanPinjaman(c *gin.Context) {
 	)
 	if err == nil {
 		hasPinjaman = true
+		pinjaman.SaldoLamaDigabung, err = repository.GetEstimasiSaldoLamaDigabung(pinjaman.IDAnggota, pinjaman.IDPinjaman)
+		if err != nil {
+			log.Printf("[ERROR] gagal menghitung estimasi saldo pinjaman lama untuk anggota %s: %v", pinjaman.IDAnggota, err)
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal menghitung estimasi pinjaman gabungan"})
+			return
+		}
 	}
 
 	// Ambil bunga terkini dari database
@@ -2361,14 +2369,7 @@ func BendaharaKonfirmasiTransaksiPost(c *gin.Context) {
 		}
 	case "pinjaman":
 		if action == "confirm" {
-			err = repository.UpdatePinjamanStatus(id, "aktif")
-			if err == nil {
-				if createErr := createPendingAngsuranAwal(id); createErr != nil {
-					log.Printf("[ERROR] Gagal membuat cicilan pending otomatis untuk pinjaman %d: %v", id, createErr)
-					c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Pinjaman dikonfirmasi, tetapi gagal membuat cicilan pending otomatis"})
-					return
-				}
-			}
+			err = repository.MarkPinjamanMenungguPersetujuanKetua(id)
 		} else {
 			err = repository.UpdatePinjamanStatus(id, "gagal")
 		}
@@ -2602,7 +2603,8 @@ func ensureScheduledAngsuranForPinjaman(idPinjaman int) error {
 
 	var pinjaman models.Pinjaman
 	err := db.QueryRow(`
-		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status,
+		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman,
+		       COALESCE(saldo_lama_digabung, 0), jangka_waktu, bunga, status,
 		       COALESCE(metode_angsuran, '')
 		FROM pinjaman
 		WHERE id_pinjaman = $1
@@ -2611,6 +2613,7 @@ func ensureScheduledAngsuranForPinjaman(idPinjaman int) error {
 		&pinjaman.IDAnggota,
 		&pinjaman.TglPinjaman,
 		&pinjaman.JumlahPinjaman,
+		&pinjaman.SaldoLamaDigabung,
 		&pinjaman.JangkaWaktu,
 		&pinjaman.Bunga,
 		&pinjaman.Status,
@@ -2633,8 +2636,8 @@ func ensureScheduledAngsuranForPinjaman(idPinjaman int) error {
 		return nil
 	}
 
-	bungaNominal := models.HitungJasaPinjaman(pinjaman.JumlahPinjaman, pinjaman.Bunga, pinjaman.JangkaWaktu)
-	totalKewajiban := pinjaman.JumlahPinjaman + bungaNominal
+	bungaNominal := models.HitungJasaPinjaman(pinjaman.PokokGabungan(), pinjaman.Bunga, pinjaman.JangkaWaktu)
+	totalKewajiban := pinjaman.PokokGabungan() + bungaNominal
 	jumlahAngsuran := math.Round(totalKewajiban / float64(pinjaman.JangkaWaktu))
 	if jumlahAngsuran <= 0 {
 		return nil
@@ -4182,7 +4185,7 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 	var pinjamans []models.Pinjaman
 	queryPinjaman := `
 		SELECT p.id_pinjaman, p.id_anggota, a.nama_anggota, p.tgl_pinjaman,
-			   p.jumlah_pinjaman, p.jangka_waktu, p.bunga, p.metode_pencairan,
+			   p.jumlah_pinjaman, COALESCE(p.saldo_lama_digabung, 0), p.jangka_waktu, p.bunga, p.metode_pencairan,
 			   p.nomor_rekening, p.nama_bank, p.status
 		FROM pinjaman p
 		JOIN anggota a ON p.id_anggota = a.id_anggota` + whereClause
@@ -4214,7 +4217,7 @@ func BendaharaTransaksiDataAnggota(c *gin.Context) {
 			var pinjaman models.Pinjaman
 			err := rowsPinjaman.Scan(
 				&pinjaman.IDPinjaman, &pinjaman.IDAnggota, &pinjaman.NamaAnggota,
-				&pinjaman.TglPinjaman, &pinjaman.JumlahPinjaman, &pinjaman.JangkaWaktu,
+				&pinjaman.TglPinjaman, &pinjaman.JumlahPinjaman, &pinjaman.SaldoLamaDigabung, &pinjaman.JangkaWaktu,
 				&pinjaman.Bunga, &pinjaman.MetodePencairan, &pinjaman.NomorRekening,
 				&pinjaman.NamaBank, &pinjaman.Status,
 			)
@@ -5396,7 +5399,7 @@ func BendaharaDetailAngsuran(c *gin.Context) {
 		pinjaman := pinjamans[0]
 		jumlahPinjaman = pinjaman.JumlahPinjaman
 		angsurans, _ = repository.GetAngsuranByPinjamanID(pinjaman.IDPinjaman)
-		sisaPinjaman = pinjaman.JumlahPinjaman + models.HitungJasaPinjaman(pinjaman.JumlahPinjaman, pinjaman.Bunga, pinjaman.JangkaWaktu)
+		sisaPinjaman = pinjaman.PokokGabungan() + models.HitungJasaPinjaman(pinjaman.PokokGabungan(), pinjaman.Bunga, pinjaman.JangkaWaktu)
 		for _, a := range angsurans {
 			if a.Status == "confirmed" || a.Status == "diterima" || a.Status == "lunas" {
 				sisaPinjaman -= a.JumlahAngsuran
@@ -5464,7 +5467,8 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 	var a models.Anggota
 
 	query := `
-		SELECT p.id_pinjaman, p.id_anggota, p.tgl_pinjaman, p.jumlah_pinjaman, 
+		SELECT p.id_pinjaman, p.id_anggota, p.tgl_pinjaman, p.jumlah_pinjaman,
+		       COALESCE(p.saldo_lama_digabung, 0),
 		       p.jangka_waktu, p.bunga, p.status,
 		       COALESCE(p.metode_pencairan, '') as metode_pencairan,
 		       COALESCE(p.metode_angsuran, '') as metode_angsuran,
@@ -5480,7 +5484,7 @@ func BendaharaViewDetailPinjaman(c *gin.Context) {
 	`
 
 	err := db.QueryRow(query, idPinjaman).Scan(
-		&p.IDPinjaman, &p.IDAnggota, &p.TglPinjaman, &p.JumlahPinjaman,
+		&p.IDPinjaman, &p.IDAnggota, &p.TglPinjaman, &p.JumlahPinjaman, &p.SaldoLamaDigabung,
 		&p.JangkaWaktu, &p.Bunga, &p.Status,
 		&p.MetodePencairan, &p.MetodeAngsuran, &p.NomorRekening, &p.NamaBank, &p.NamaPemilikRekening,
 		&p.GajiBulanan, &p.TujuanPinjaman,
@@ -5561,7 +5565,7 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 		       COALESCE(a.bukti_angsuran, '') as bukti_angsuran,
 		       COALESCE(a.status, '') as status,
 		       ang.nama_anggota, ang.no_telepon,
-		       p.jumlah_pinjaman, p.jangka_waktu, p.bunga,
+		       p.jumlah_pinjaman, COALESCE(p.saldo_lama_digabung, 0), p.jangka_waktu, p.bunga,
 		       COALESCE(p.metode_pencairan, '') as metode_pencairan,
 		       COALESCE(p.metode_angsuran, '') as metode_angsuran
 		FROM angsuran a
@@ -5571,7 +5575,7 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 	`
 
 	var namaAnggota, noTelepon string
-	var jumlahPinjaman float64
+	var jumlahPinjaman, saldoLamaDigabung float64
 	var jangkaWaktu int
 	var bunga float64
 	var metodePencairan, metodeAngsuran string
@@ -5580,7 +5584,7 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 		&angsuran.IDAngsuran, &angsuran.IDPinjaman, &angsuran.IDAnggota,
 		&tglBayar, &angsuran.JumlahAngsuran, &angsuran.SisaPinjaman, &angsuran.BuktiAngsuran,
 		&angsuran.Status, &namaAnggota, &noTelepon,
-		&jumlahPinjaman, &jangkaWaktu, &bunga, &metodePencairan, &metodeAngsuran,
+		&jumlahPinjaman, &saldoLamaDigabung, &jangkaWaktu, &bunga, &metodePencairan, &metodeAngsuran,
 	)
 
 	if err != nil {
@@ -5633,7 +5637,8 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 		}
 
 		// Recalculate balances because stored balances may predate the monthly-service formula.
-		currentRemaining := jumlahPinjaman + models.HitungJasaPinjaman(jumlahPinjaman, bunga, jangkaWaktu)
+		pokokGabungan := jumlahPinjaman + saldoLamaDigabung
+		currentRemaining := pokokGabungan + models.HitungJasaPinjaman(pokokGabungan, bunga, jangkaWaktu)
 		for i, a := range angsurans {
 			if a.Status == "confirmed" || a.Status == "diterima" || a.Status == "lunas" {
 				currentRemaining -= a.JumlahAngsuran
@@ -5651,7 +5656,8 @@ func BendaharaViewDetailAngsuran(c *gin.Context) {
 
 	displaySisaPinjaman := angsuran.SisaPinjaman
 	if angsuran.Status == "pending" {
-		currentBefore := jumlahPinjaman + models.HitungJasaPinjaman(jumlahPinjaman, bunga, jangkaWaktu)
+		pokokGabungan := jumlahPinjaman + saldoLamaDigabung
+		currentBefore := pokokGabungan + models.HitungJasaPinjaman(pokokGabungan, bunga, jangkaWaktu)
 		for _, a := range angsurans {
 			if a.IDAngsuran == angsuran.IDAngsuran {
 				break
@@ -5719,8 +5725,8 @@ func ApiJenisAngsuran(c *gin.Context) {
 		return
 	}
 	for _, p := range pinjamans {
-		bungaNominal := models.HitungJasaPinjaman(p.JumlahPinjaman, p.Bunga, p.JangkaWaktu)
-		totalKewajiban := p.JumlahPinjaman + bungaNominal
+		bungaNominal := models.HitungJasaPinjaman(p.PokokGabungan(), p.Bunga, p.JangkaWaktu)
+		totalKewajiban := p.PokokGabungan() + bungaNominal
 		perkiraanAngsuran := 0.0
 		if p.JangkaWaktu > 0 {
 			perkiraanAngsuran = math.Round(totalKewajiban / float64(p.JangkaWaktu))
@@ -5881,7 +5887,7 @@ func BendaharaCatatAngsuran(c *gin.Context) {
 			totalAngsuranTerbayar += a.JumlahAngsuran
 		}
 	}
-	totalKewajiban := pinjaman.JumlahPinjaman + models.HitungJasaPinjaman(pinjaman.JumlahPinjaman, pinjaman.Bunga, pinjaman.JangkaWaktu)
+	totalKewajiban := pinjaman.PokokGabungan() + models.HitungJasaPinjaman(pinjaman.PokokGabungan(), pinjaman.Bunga, pinjaman.JangkaWaktu)
 	sisaSebelum := totalKewajiban - totalAngsuranTerbayar
 	if sisaSebelum < 0 {
 		sisaSebelum = 0

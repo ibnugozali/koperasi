@@ -226,11 +226,14 @@ document.addEventListener('DOMContentLoaded', function(){
                     <div class="col-md-6"><strong>Status:</strong> {{$resume.Status}}</div>
                     <div class="col-md-6"><strong>Tanggal Pinjaman:</strong> {{$resume.TglPinjaman.Format "02 Jan 2006"}}</div>
                     <div class="col-md-6"><strong>Tenor Total:</strong> {{$resume.JangkaWaktu}} bulan</div>
-                    <div class="col-md-6"><strong>Pokok Pinjaman:</strong> Rp {{$resume.JumlahPinjaman | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Pokok Pinjaman Gabungan:</strong> Rp {{$resume.JumlahPinjaman | formatRupiah}}</div>
+                    {{if gt $resume.JumlahPinjamanBaru 0.0}}
+                    <div class="col-md-6"><strong>Pengajuan Pinjaman Baru:</strong> Rp {{$resume.JumlahPinjamanBaru | formatRupiah}}</div>
+                    {{end}}
                     <div class="col-md-6"><strong>Jasa Pinjaman Total:</strong> Rp {{$resume.Bunga | formatRupiah}}</div>
                     {{if gt $resume.SisaPinjamanSebelumnya 0.0}}
-                    <div class="col-md-6"><strong>Sisa Pinjaman Sebelumnya:</strong> Rp {{$resume.SisaPinjamanSebelumnya | formatRupiah}}</div>
-                    <div class="col-md-6"><strong>Total Pinjaman (Pokok + Jasa + Sisa Pinjaman Sebelumnya):</strong> Rp {{$resume.TotalPinjamanDenganSisaLama | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Sisa Kewajiban Pinjaman Sebelumnya (Pokok + Jasa):</strong> Rp {{$resume.SisaPinjamanSebelumnya | formatRupiah}}</div>
+                    <div class="col-md-6"><strong>Total Kewajiban Gabungan (Pokok Gabungan + Jasa):</strong> Rp {{$resume.TotalPinjamanDenganSisaLama | formatRupiah}}</div>
                     {{else}}
                     <div class="col-md-6"><strong>Total Pinjaman (Pokok + Jasa):</strong> Rp {{$resume.TotalPinjamanDenganSisaLama | formatRupiah}}</div>
                     {{end}}
@@ -325,8 +328,9 @@ document.addEventListener('DOMContentLoaded', function(){
                         {{end}}
                     </div>
                     <div class="mt-2">
-                        <strong>Total Pinjaman (Pokok + Jasa):</strong>
+                        <strong>Total Kewajiban Gabungan (Pokok + Jasa):</strong>
                         <span id="total_pinjaman_rp" class="text-primary">Rp 0</span>
+                        <div class="form-text text-muted" id="saldo_lama_info" data-saldo-lama="{{.SisaPinjamanLama}}"></div>
                     </div>
                 </div>
             </div>
@@ -807,21 +811,33 @@ function calculateAngsuran() {
 
     if (jumlahPinjaman > 0) {
         const bungaDecimal = bungaTerkini / 100;
-        const bungaTotal   = bungaDecimal * jumlahPinjaman * jangkaWaktu;
-        const totalPinjaman = jumlahPinjaman + bungaTotal;
+        const saldoLama = parseFloat(document.getElementById('saldo_lama_info')?.dataset.saldoLama) || 0;
+        const pokokGabungan = jumlahPinjaman + saldoLama;
+        const bungaTotal = bungaDecimal * pokokGabungan * jangkaWaktu;
+        const totalPinjaman = pokokGabungan + bungaTotal;
 
         if (totalPinjamanRp) {
             totalPinjamanRp.textContent = 'Rp ' + totalPinjaman.toLocaleString('id-ID');
         }
+        const saldoLamaInfo = document.getElementById('saldo_lama_info');
+        if (saldoLamaInfo) {
+            saldoLamaInfo.textContent = saldoLama > 0
+                ? 'Pokok gabungan: Rp ' + pokokGabungan.toLocaleString('id-ID') +
+                  ' (pengajuan baru Rp ' + jumlahPinjaman.toLocaleString('id-ID') +
+                  ' + sisa lama Rp ' + saldoLama.toLocaleString('id-ID') + ')'
+                : '';
+        }
 
         if (jangkaWaktu > 0 && perkiraanAngsuran) {
-            const pokok         = jumlahPinjaman / jangkaWaktu;
-            const bungaPerBulan = bungaDecimal * jumlahPinjaman;
+            const pokok = pokokGabungan / jangkaWaktu;
+            const bungaPerBulan = bungaDecimal * pokokGabungan;
             perkiraanAngsuran.value = Math.round(pokok + bungaPerBulan).toLocaleString('id-ID');
         }
     } else {
         if (totalPinjamanRp) totalPinjamanRp.textContent = 'Rp 0';
         if (perkiraanAngsuran) perkiraanAngsuran.value = '';
+        const saldoLamaInfo = document.getElementById('saldo_lama_info');
+        if (saldoLamaInfo) saldoLamaInfo.textContent = '';
     }
 }
 </script>

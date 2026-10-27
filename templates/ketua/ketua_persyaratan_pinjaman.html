@@ -97,7 +97,10 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="jumlah_pinjaman" class="form-label"><i class="fa-solid fa-sack-dollar me-1"></i>Jumlah Pinjaman yang Diajukan (Rp)</label>
-                                    <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" value="{{ printf "%.0f" .Pinjaman.JumlahPinjaman }}" disabled>
+                                    <input type="number" class="form-control" id="jumlah_pinjaman" name="jumlah_pinjaman" value="{{ printf "%.0f" .Pinjaman.JumlahPinjaman }}" data-saldo-lama="{{ printf "%.2f" .Pinjaman.SaldoLamaDigabung }}" disabled>
+                                    {{if gt .Pinjaman.SaldoLamaDigabung 0.0}}
+                                    <small class="form-text text-muted">Sisa pinjaman lama yang akan digabung: Rp {{formatRupiah .Pinjaman.SaldoLamaDigabung}}. Pokok gabungan: Rp {{formatRupiah .Pinjaman.PokokGabungan}}.</small>
+                                    {{end}}
                                     <small class="form-text" id="limit_warning"></small>
                                 </div>
                             </div>
@@ -371,12 +374,13 @@
 
             // Calculate and display perkiraan angsuran
             const jangkaWaktu = parseInt(document.getElementById('jangka_waktu').value) || 0;
-            if (jumlahPinjaman > 0 && jangkaWaktu > 0) {
+            const saldoLama = parseFloat(document.getElementById('jumlah_pinjaman').dataset.saldoLama) || 0;
+            const pokokGabungan = jumlahPinjaman + saldoLama;
+            if (pokokGabungan > 0 && jangkaWaktu > 0) {
                 const bungaTerkini = parseFloat('{{ printf "%.2f" .Pinjaman.Bunga }}') || 2.0;
                 const bungaDecimal = bungaTerkini / 100;
-                const pokok = jumlahPinjaman / jangkaWaktu;
-                const bungaTotal = bungaDecimal * jumlahPinjaman * jangkaWaktu;
-                const bungaPerBulan = bungaDecimal * jumlahPinjaman;
+                const pokok = pokokGabungan / jangkaWaktu;
+                const bungaPerBulan = bungaDecimal * pokokGabungan;
                 const totalAngsuran = pokok + bungaPerBulan;
                 const angsuranFormatted = Math.round(totalAngsuran).toLocaleString('id-ID');
                 document.getElementById('perkiraan_angsuran').value = angsuranFormatted;

@@ -712,22 +712,27 @@ func GetSaldoAnggota(id string) (totalSimpanan, totalPinjaman, saldoBersih float
 
 	// Hitung total sisa pinjaman aktif (berdasarkan sisa_pinjaman terakhir dari angsuran yang sudah dikonfirmasi)
 	var totalSisaPinjaman float64
-	rows, err := db.Query(`SELECT id_pinjaman, jumlah_pinjaman FROM pinjaman WHERE id_anggota = $1 AND status = 'aktif'`, id)
+	rows, err := db.Query(`
+		SELECT id_pinjaman, jumlah_pinjaman, COALESCE(saldo_lama_digabung, 0), jangka_waktu, COALESCE(bunga, 0)
+		FROM pinjaman WHERE id_anggota = $1 AND status = 'aktif'
+	`, id)
 	if err != nil {
 		return totalSimpanan, 0, totalSimpanan, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var idPinjaman int
-		var jumlahPinjaman float64
-		err := rows.Scan(&idPinjaman, &jumlahPinjaman)
+		var jumlahPinjaman, saldoLamaDigabung, bunga float64
+		var jangkaWaktu int
+		err := rows.Scan(&idPinjaman, &jumlahPinjaman, &saldoLamaDigabung, &jangkaWaktu, &bunga)
 		if err != nil {
 			continue
 		}
 		var sisaPinjaman float64
 		err = db.QueryRow(`SELECT sisa_pinjaman FROM angsuran WHERE id_pinjaman = $1 AND status IN ('lunas','diterima') ORDER BY tgl_bayar DESC, id_angsuran DESC LIMIT 1`, idPinjaman).Scan(&sisaPinjaman)
 		if err != nil {
-			sisaPinjaman = jumlahPinjaman // Jika belum ada angsuran, gunakan jumlah pinjaman
+			pokokGabungan := jumlahPinjaman + saldoLamaDigabung
+			sisaPinjaman = pokokGabungan + pokokGabungan*bunga/100*float64(jangkaWaktu)
 		}
 		totalSisaPinjaman += sisaPinjaman
 	}
@@ -1215,7 +1220,7 @@ func GetPotonganAngsuranPotongGajiBulanIniAllAnggota() (map[string]float64, erro
 
 	fallbackQuery := `
 		SELECT p.id_anggota,
-		       COALESCE(SUM(ROUND((p.jumlah_pinjaman + (p.jumlah_pinjaman * COALESCE(p.bunga, 0) / 100 * p.jangka_waktu)) / NULLIF(p.jangka_waktu, 0))), 0)
+		       COALESCE(SUM(ROUND(((p.jumlah_pinjaman + COALESCE(p.saldo_lama_digabung, 0)) + ((p.jumlah_pinjaman + COALESCE(p.saldo_lama_digabung, 0)) * COALESCE(p.bunga, 0) / 100 * p.jangka_waktu)) / NULLIF(p.jangka_waktu, 0))), 0)
 		FROM pinjaman p
 		WHERE REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(p.metode_angsuran, ''))), ' ', ''), '_', ''), '-', '') = 'potonggaji'
 		  AND COALESCE(LOWER(p.status), '') IN ('aktif', 'proses')

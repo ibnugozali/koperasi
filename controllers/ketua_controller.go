@@ -58,7 +58,7 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 		}
 	case "pinjaman":
 		if action == "confirm" {
-			err = repository.UpdatePinjamanStatus(id, "aktif")
+			err = repository.FinalizePinjamanApproval(id)
 			if err == nil {
 				if createErr := createPendingAngsuranAwal(id); createErr != nil {
 					log.Printf("[ERROR] KetuaKonfirmasiTransaksiPost: gagal membuat cicilan pending otomatis untuk pinjaman %d: %v", id, createErr)
@@ -100,6 +100,7 @@ func KetuaKonfirmasiTransaksiPost(c *gin.Context) {
 	}
 
 	if err != nil {
+		log.Printf("[ERROR] KetuaKonfirmasiTransaksiPost gagal memproses type=%s id=%d: %v", transactionType, id, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses transaksi"})
 		return
 	}
@@ -807,7 +808,8 @@ func KetuaLihatPersyaratanPinjaman(c *gin.Context) {
 	var pinjaman models.Pinjaman
 	var hasPinjaman bool
 	queryPinjaman := `
-		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman, jangka_waktu, bunga, status,
+		SELECT id_pinjaman, id_anggota, tgl_pinjaman, jumlah_pinjaman,
+		       COALESCE(saldo_lama_digabung, 0), jangka_waktu, bunga, status,
 			   COALESCE(metode_pencairan, '') AS metode_pencairan,
 			   COALESCE(metode_angsuran, '') AS metode_angsuran,
 			   COALESCE(nomor_rekening, '') AS nomor_rekening,
@@ -816,7 +818,8 @@ func KetuaLihatPersyaratanPinjaman(c *gin.Context) {
 			   COALESCE(gaji_bulanan, 0) AS gaji_bulanan,
 			   COALESCE(tujuan_pinjaman, '') AS tujuan_pinjaman
 		FROM pinjaman 
-		WHERE id_anggota = $1 AND status = 'proses'
+		WHERE id_anggota = $1
+		  AND (status = 'proses' OR (status = 'aktif' AND COALESCE(menunggu_persetujuan_ketua, FALSE) = TRUE))
 		ORDER BY tgl_pinjaman DESC, id_pinjaman DESC
 		LIMIT 1
 	`
@@ -825,6 +828,7 @@ func KetuaLihatPersyaratanPinjaman(c *gin.Context) {
 		&pinjaman.IDAnggota,
 		&pinjaman.TglPinjaman,
 		&pinjaman.JumlahPinjaman,
+		&pinjaman.SaldoLamaDigabung,
 		&pinjaman.JangkaWaktu,
 		&pinjaman.Bunga,
 		&pinjaman.Status,
@@ -838,6 +842,12 @@ func KetuaLihatPersyaratanPinjaman(c *gin.Context) {
 	)
 	if err == nil {
 		hasPinjaman = true
+		pinjaman.SaldoLamaDigabung, err = repository.GetEstimasiSaldoLamaDigabung(pinjaman.IDAnggota, pinjaman.IDPinjaman)
+		if err != nil {
+			log.Printf("[ERROR] gagal menghitung estimasi saldo pinjaman lama untuk anggota %s: %v", pinjaman.IDAnggota, err)
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"message": "Gagal menghitung estimasi pinjaman gabungan"})
+			return
+		}
 	}
 
 	// Ambil bunga terkini dari database
