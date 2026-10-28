@@ -1,8 +1,6 @@
 -- Catatan:
--- File ini dipakai untuk bootstrap database dari nol.
--- Karena itu, query bantuan/manual yang membutuhkan tabel yang sudah ada
--- disimpan sebagai komentar referensi agar script tidak gagal saat dijalankan
--- pada database baru.
+-- File ini menyiapkan atau memperbarui struktur database tanpa menghapus data.
+-- Tabel dibuat secara idempoten; jangan tambahkan DROP TABLE untuk tabel transaksi.
 --
 -- Contoh query bantuan setelah semua tabel selesai dibuat:
 -- ALTER TABLE angsuran ADD COLUMN IF NOT EXISTS jumlah_angsuran DOUBLE PRECISION DEFAULT 0;
@@ -34,22 +32,6 @@
 -- SQLBook: Code
 -- Active: 1716903284734@@127.0.0.1@5432@postgres
 
--- DROP TABLES (urutan dari yang paling dependent ke yang paling independen)
-DROP TABLE IF EXISTS log_pemotongan_simpanan CASCADE;
-DROP TABLE IF EXISTS pengambilan_simpanan CASCADE;
-DROP TABLE IF EXISTS pesan CASCADE;
-DROP TABLE IF EXISTS import_history CASCADE;
-DROP TABLE IF EXISTS angsuran CASCADE;
-DROP TABLE IF EXISTS pinjaman CASCADE;
-DROP TABLE IF EXISTS detail CASCADE;
-DROP TABLE IF EXISTS simpanan CASCADE;
-DROP TABLE IF EXISTS pengelola CASCADE;
-DROP TABLE IF EXISTS anggota CASCADE;
-DROP TABLE IF EXISTS halaman CASCADE;
-DROP TABLE IF EXISTS konfigurasi_simpanan_wajib CASCADE;
-DROP TABLE IF EXISTS login_history CASCADE;
-DROP TABLE IF EXISTS neraca CASCADE;
-
 -- =================================================================
 -- BAGIAN 1: PEMBUATAN STRUKTUR TABEL
 -- =================================================================
@@ -75,7 +57,7 @@ DROP TABLE IF EXISTS neraca CASCADE;
 --
 -- Tahun: diambil dari tahun konfirmasi oleh admin/bendahara (misal: 2025)
 -- Nomor urut: 4 digit, auto-increment global seluruh anggota
-CREATE TABLE anggota (
+CREATE TABLE IF NOT EXISTS anggota (
   id_anggota VARCHAR(50) PRIMARY KEY,
   nama_anggota VARCHAR(255) NOT NULL,
   username VARCHAR(25) UNIQUE NOT NULL,
@@ -99,7 +81,7 @@ CREATE TABLE anggota (
   tgl_keluar TIMESTAMP NULL  -- Tanggal keluar anggota
 );
 
-CREATE TABLE pengelola (
+CREATE TABLE IF NOT EXISTS pengelola (
     id_pengelola SERIAL PRIMARY KEY,
     nama_pengelola VARCHAR(50) NOT NULL,
     username VARCHAR(25) UNIQUE NOT NULL,
@@ -113,7 +95,7 @@ CREATE TABLE pengelola (
     status VARCHAR(25) DEFAULT 'aktif' CHECK (status IN ('aktif', 'nonaktif'))
 );
 
-CREATE TABLE simpanan (
+CREATE TABLE IF NOT EXISTS simpanan (
     id_simpanan SERIAL PRIMARY KEY,
     jenis_simpanan VARCHAR(50) UNIQUE NOT NULL
 );
@@ -178,7 +160,7 @@ CREATE TABLE IF NOT EXISTS angsuran (
 
 -- PERBAIKAN: Menambahkan kolom 'kategori' agar mudah memfilter halaman
 -- antara 'tentang' dan 'pelayanan' di dalam kode Go.
-CREATE TABLE halaman (
+CREATE TABLE IF NOT EXISTS halaman (
     id SERIAL PRIMARY KEY,
     slug VARCHAR(50) UNIQUE NOT NULL,
     judul VARCHAR(100) NOT NULL,
@@ -188,8 +170,7 @@ CREATE TABLE halaman (
 );
 
 -- Tabel pesan untuk komunikasi dengan anggota
-DROP TABLE IF EXISTS pesan CASCADE;
-CREATE TABLE pesan (
+CREATE TABLE IF NOT EXISTS pesan (
     id_pesan SERIAL PRIMARY KEY,
     id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
     judul VARCHAR(100) NOT NULL,
@@ -215,9 +196,23 @@ CREATE TABLE IF NOT EXISTS notifikasi_angsuran_terlambat (
     PRIMARY KEY (id_pinjaman, angsuran_ke)
 );
 
+UPDATE notifikasi_pinjaman_terlambat n
+SET id_anggota = p.id_anggota
+FROM pinjaman p
+WHERE p.id_pinjaman = n.id_pinjaman
+  AND p.id_anggota IS NOT NULL
+  AND n.id_anggota IS DISTINCT FROM p.id_anggota;
+
+UPDATE notifikasi_angsuran_terlambat n
+SET id_anggota = p.id_anggota,
+    wa_sent_at = NULL
+FROM pinjaman p
+WHERE p.id_pinjaman = n.id_pinjaman
+  AND p.id_anggota IS NOT NULL
+  AND n.id_anggota IS DISTINCT FROM p.id_anggota;
+
 -- Tabel pengambilan simpanan untuk pengajuan penarikan simpanan oleh anggota
-DROP TABLE IF EXISTS pengambilan_simpanan CASCADE;
-CREATE TABLE pengambilan_simpanan (
+CREATE TABLE IF NOT EXISTS pengambilan_simpanan (
     id_pengambilan SERIAL PRIMARY KEY,
     id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
     id_simpanan INT REFERENCES simpanan(id_simpanan) ON DELETE CASCADE,
@@ -235,8 +230,7 @@ CREATE TABLE pengambilan_simpanan (
 );
 
 -- Tabel riwayat import anggota untuk menyimpan history import data anggota
-DROP TABLE IF EXISTS import_history CASCADE;
-CREATE TABLE import_history (
+CREATE TABLE IF NOT EXISTS import_history (
     id_import VARCHAR(36) PRIMARY KEY,
     id_pengelola INT NOT NULL REFERENCES pengelola(id_pengelola) ON DELETE CASCADE,
     username VARCHAR(100) NOT NULL,
@@ -250,8 +244,7 @@ CREATE TABLE import_history (
 );
 
 -- Tabel konfigurasi pemotongan simpanan wajib otomatis
-DROP TABLE IF EXISTS konfigurasi_simpanan_wajib CASCADE;
-CREATE TABLE konfigurasi_simpanan_wajib (
+CREATE TABLE IF NOT EXISTS konfigurasi_simpanan_wajib (
     id SERIAL PRIMARY KEY,
     tanggal_potong INT NOT NULL CHECK (tanggal_potong >= 1 AND tanggal_potong <= 31),
     persentase_potong DECIMAL(15,2) NOT NULL DEFAULT 100000.00 CHECK (persentase_potong >= 0),
@@ -263,8 +256,7 @@ CREATE TABLE konfigurasi_simpanan_wajib (
 );
 
 -- Tabel log pemotongan simpanan wajib otomatis
-DROP TABLE IF EXISTS log_pemotongan_simpanan CASCADE;
-CREATE TABLE log_pemotongan_simpanan (
+CREATE TABLE IF NOT EXISTS log_pemotongan_simpanan (
     id_log SERIAL PRIMARY KEY,
     id_anggota VARCHAR(50) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
     bulan INT NOT NULL,
@@ -294,7 +286,8 @@ VALUES (
     'Admin',
     'admin',
     'aktif'
-);
+)
+ON CONFLICT (username) DO NOTHING;
 
 -- Menambahkan data bendahara awal (password: bendahara12)
 INSERT INTO pengelola (nama_pengelola, username, password, jabatan_koperasi, level, status)
@@ -305,7 +298,8 @@ VALUES (
     'Bendahara',
     'bendahara',
     'aktif'
-);
+)
+ON CONFLICT (username) DO NOTHING;
 
 -- Menambahkan data ketua awal (password: ketua12)
 INSERT INTO pengelola (nama_pengelola, username, password, jabatan_koperasi, level, status)
@@ -316,7 +310,8 @@ VALUES (
     'Ketua',
     'ketua',
     'aktif'
-);
+)
+ON CONFLICT (username) DO NOTHING;
 
 -- Mengisi data awal untuk jenis simpanan
 INSERT INTO simpanan (jenis_simpanan) VALUES
@@ -325,7 +320,8 @@ INSERT INTO simpanan (jenis_simpanan) VALUES
 ('sukarela'),
 ('hari_raya'),
 ('umroh_haji'),
-('qurban');
+('qurban')
+ON CONFLICT (jenis_simpanan) DO NOTHING;
 
 
 -- Pastikan data dashboard_anggota ada (otomatis insert jika belum ada, update jika sudah ada)
@@ -450,26 +446,6 @@ ALTER TABLE anggota ADD CONSTRAINT anggota_status_check CHECK (status IN ('aktif
 ALTER TABLE angsuran DROP CONSTRAINT IF EXISTS angsuran_status_check;
 ALTER TABLE angsuran ADD CONSTRAINT angsuran_status_check CHECK (status IN ('pending', 'confirmed', 'rejected'));
 ALTER TABLE angsuran ALTER COLUMN status SET DEFAULT 'pending';
--- Update nomor_urut dan id_anggota agar urut per kombinasi unit_kerja, fakultas_code, tahun
-WITH ranked AS (
-  SELECT
-    id_anggota,
-    unit_kerja,
-    fakultas_code,
-    tahun,
-    ROW_NUMBER() OVER (
-      PARTITION BY unit_kerja, fakultas_code, tahun
-      ORDER BY tgl_gabung, id_anggota
-    ) AS rn
-  FROM anggota
-)
-UPDATE anggota a
-SET
-nomor_urut = r.rn,
-  id_anggota = r.unit_kerja || r.fakultas_code || r.tahun || LPAD(r.rn::text, 4, '0')
-FROM ranked r
-WHERE a.id_anggota = r.id_anggota;
-
 CREATE TABLE IF NOT EXISTS login_history (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL,
@@ -486,25 +462,8 @@ ALTER TABLE anggota ALTER COLUMN nomor_urut TYPE VARCHAR(4);
 
 -- (JANGAN ISI nomor_urut MANUAL, biarkan trigger yang mengisi untuk anggota baru)
 --
--- 1. Penomoran ulang anggota aktif:
-
--- Penomoran ulang anggota aktif, nomor_urut selalu 4 digit (0001, 0002, ...)
-WITH ranked AS (
-  SELECT
-    id_anggota,
-    ROW_NUMBER() OVER (ORDER BY tgl_gabung, id_anggota) AS rn
-  FROM anggota
-  WHERE status = 'aktif'
-)
-UPDATE anggota a
-SET
-  nomor_urut = r.rn,
-  id_anggota = a.unit_kerja || a.fakultas_code || a.tahun || LPAD(r.rn::text, 4, '0')
-FROM ranked r
-WHERE a.id_anggota = r.id_anggota;
-
--- 2. Set nomor_urut anggota non-aktif ke NULL
-UPDATE anggota SET nomor_urut = NULL WHERE status != 'aktif';
+-- ID anggota yang sudah tersimpan dapat direferensikan oleh pinjaman dan transaksi.
+-- Jangan menomori ulang atau mengubah ID anggota yang sudah ada saat skrip dijalankan.
 
 -- =============================================
 -- TRIGGER: Auto-generate nomor_urut & id_anggota saat konfirmasi

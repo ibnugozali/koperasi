@@ -1402,18 +1402,28 @@ func AnggotaPesan(c *gin.Context) {
 		return
 	}
 
+	if err := repository.EnsureOverdueInstallmentPesanByAnggotaID(userID); err != nil {
+		log.Printf("Gagal memulihkan pesan pengingat untuk anggota %s: %v", userID, err)
+		c.String(http.StatusInternalServerError, "Gagal memuat notifikasi cicilan. Silakan periksa log aplikasi.")
+		return
+	}
+
 	// Saat halaman pesan dibuka, anggap pesan sudah dilihat oleh anggota.
-	_ = repository.MarkAllPesanAsReadByAnggotaID(userID)
+	if err := repository.MarkAllPesanAsReadByAnggotaID(userID); err != nil {
+		log.Printf("Gagal menandai pesan anggota %s sebagai dibaca: %v", userID, err)
+	}
 
 	// Ambil daftar pesan untuk anggota
 	pesans, err := repository.GetPesanByAnggotaID(userID)
 	if err != nil {
-		// Jika gagal ambil pesan, tetap tampilkan halaman dengan pesan kosong
-		pesans = []models.Pesan{}
+		log.Printf("Gagal mengambil pesan untuk anggota %s: %v", userID, err)
+		c.String(http.StatusInternalServerError, "Gagal memuat pesan. Silakan periksa log aplikasi.")
+		return
 	}
 
 	latestPesanID, _, errSummary := repository.GetPesanNotifSummaryByAnggotaID(userID)
 	if errSummary != nil {
+		log.Printf("Gagal mengambil ringkasan notifikasi untuk anggota %s: %v", userID, errSummary)
 		latestPesanID = 0
 	}
 
@@ -1465,6 +1475,12 @@ func AnggotaPesanNotifikasi(c *gin.Context) {
 	userID, ok := session.Get("user_id").(string)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	if err := repository.EnsureOverdueInstallmentPesanByAnggotaID(userID); err != nil {
+		log.Printf("Gagal memulihkan notifikasi cicilan anggota %s: %v", userID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal memulihkan notifikasi"})
 		return
 	}
 

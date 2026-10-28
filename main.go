@@ -1,13 +1,12 @@
 package main
 
 import (
-	"log"
-	"time"
-
 	"koperasi-simpan-pinjam/config"
 	"koperasi-simpan-pinjam/controllers"
 	"koperasi-simpan-pinjam/repository"
 	"koperasi-simpan-pinjam/routes"
+	"log"
+	"time"
 )
 
 func main() {

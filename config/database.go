@@ -153,7 +153,13 @@ func ensureOverdueLoanNotificationTable() error {
 			id_pinjaman INT PRIMARY KEY REFERENCES pinjaman(id_pinjaman) ON DELETE CASCADE,
 			id_anggota VARCHAR(50) NOT NULL REFERENCES anggota(id_anggota) ON DELETE CASCADE,
 			dibuat_pada TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)
+		);
+		UPDATE notifikasi_pinjaman_terlambat n
+		SET id_anggota = p.id_anggota
+		FROM pinjaman p
+		WHERE p.id_pinjaman = n.id_pinjaman
+		  AND p.id_anggota IS NOT NULL
+		  AND n.id_anggota IS DISTINCT FROM p.id_anggota
 	`)
 	if err != nil {
 		return fmt.Errorf("gagal membuat tabel notifikasi_pinjaman_terlambat: %v", err)
@@ -176,7 +182,14 @@ func ensureOverdueInstallmentNotificationTable() error {
 			PRIMARY KEY (id_pinjaman, angsuran_ke)
 		);
 		ALTER TABLE notifikasi_angsuran_terlambat
-			ADD COLUMN IF NOT EXISTS wa_sent_at TIMESTAMPTZ
+			ADD COLUMN IF NOT EXISTS wa_sent_at TIMESTAMPTZ;
+		UPDATE notifikasi_angsuran_terlambat n
+		SET id_anggota = p.id_anggota,
+		    wa_sent_at = NULL
+		FROM pinjaman p
+		WHERE p.id_pinjaman = n.id_pinjaman
+		  AND p.id_anggota IS NOT NULL
+		  AND n.id_anggota IS DISTINCT FROM p.id_anggota
 	`)
 	if err != nil {
 		return fmt.Errorf("gagal membuat tabel notifikasi_angsuran_terlambat: %v", err)

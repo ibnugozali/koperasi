@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"koperasi-simpan-pinjam/config"
@@ -64,6 +63,42 @@ func GetPesanByAnggotaID(idAnggota string) ([]models.Pesan, error) {
 	return pesans, nil
 }
 
+// EnsureOverdueInstallmentPesanByAnggotaID memulihkan pesan aplikasi dari
+// catatan pengingat cicilan yang sudah ada, termasuk yang sebelumnya hanya
+// terkirim melalui WhatsApp.
+func EnsureOverdueInstallmentPesanByAnggotaID(idAnggota string) error {
+	db := config.GetDB()
+	_, err := db.Exec(`
+		INSERT INTO pesan (id_anggota, judul, isi, status, tgl_kirim)
+		SELECT p.id_anggota,
+		       'Pengingat Keterlambatan Cicilan',
+		       'Cicilan ke-' || n.angsuran_ke || ' pinjaman #' || n.id_pinjaman ||
+		       ' telah melewati tanggal jatuh tempo ' ||
+		       TO_CHAR((p.tgl_pinjaman + (n.angsuran_ke * INTERVAL '1 month'))::date, 'DD-MM-YYYY') ||
+		       ' dan belum tercatat dibayar. Silakan segera lakukan pembayaran atau hubungi bendahara jika Anda sudah membayar.',
+		       'unread',
+		       NOW()
+		FROM notifikasi_angsuran_terlambat n
+		JOIN pinjaman p ON p.id_pinjaman = n.id_pinjaman
+		WHERE p.id_anggota = $1
+		  AND (p.tgl_pinjaman + (n.angsuran_ke * INTERVAL '1 month'))::date < CURRENT_DATE
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM pesan m
+		      WHERE m.id_anggota = p.id_anggota
+		        AND m.judul = 'Pengingat Keterlambatan Cicilan'
+		        AND m.isi = 'Cicilan ke-' || n.angsuran_ke || ' pinjaman #' || n.id_pinjaman ||
+		            ' telah melewati tanggal jatuh tempo ' ||
+		            TO_CHAR((p.tgl_pinjaman + (n.angsuran_ke * INTERVAL '1 month'))::date, 'DD-MM-YYYY') ||
+		            ' dan belum tercatat dibayar. Silakan segera lakukan pembayaran atau hubungi bendahara jika Anda sudah membayar.'
+		  )
+	`, idAnggota)
+	if err != nil {
+		return fmt.Errorf("gagal memulihkan pesan pengingat cicilan anggota %s: %w", idAnggota, err)
+	}
+	return nil
+}
+
 // CreatePesan membuat pesan baru
 func CreatePesan(pesan models.Pesan) error {
 	db := config.GetDB()
@@ -121,35 +156,38 @@ func CreateOverdueLoanNotifications() (int, error) {
 
 	created := 0
 	for _, loan := range loans {
-		var insertedID int
-		err := tx.QueryRow(`
+		_, err := tx.Exec(`
 			INSERT INTO notifikasi_pinjaman_terlambat (id_pinjaman, id_anggota)
 			VALUES ($1, $2)
-			ON CONFLICT (id_pinjaman) DO NOTHING
-			RETURNING id_pinjaman
-		`, loan.idPinjaman, loan.idAnggota).Scan(&insertedID)
-		if errors.Is(err, sql.ErrNoRows) {
-			continue
-		}
+			ON CONFLICT (id_pinjaman) DO UPDATE
+			SET id_anggota = EXCLUDED.id_anggota
+		`, loan.idPinjaman, loan.idAnggota)
 		if err != nil {
 			return 0, fmt.Errorf("gagal mencatat pengingat pinjaman %d: %w", loan.idPinjaman, err)
 		}
 
-		_, err = tx.Exec(`
-			INSERT INTO pesan (id_anggota, judul, isi, status, tgl_kirim)
-			VALUES ($1, $2, $3, 'unread', NOW())
-		`,
-			loan.idAnggota,
-			"Pengingat Keterlambatan Pembayaran",
-			fmt.Sprintf(
-				"Pinjaman #%d Anda telah melewati tanggal jatuh tempo %s (jangka waktu %d bulan). Silakan hubungi bendahara untuk informasi pembayaran.",
-				loan.idPinjaman, loan.jatuhTempo, loan.jangkaWaktu,
-			),
+		isi := fmt.Sprintf(
+			"Pinjaman #%d Anda telah melewati tanggal jatuh tempo %s (jangka waktu %d bulan). Silakan hubungi bendahara untuk informasi pembayaran.",
+			loan.idPinjaman, loan.jatuhTempo, loan.jangkaWaktu,
 		)
+		result, err := tx.Exec(`
+			INSERT INTO pesan (id_anggota, judul, isi, status, tgl_kirim)
+			SELECT $1::VARCHAR(50), $2::VARCHAR(100), $3::TEXT, 'unread', NOW()
+			WHERE NOT EXISTS (
+				SELECT 1 FROM pesan
+				WHERE id_anggota = $1::VARCHAR(50)
+				  AND judul = $2::VARCHAR(100)
+				  AND isi = $3::TEXT
+			)
+		`, loan.idAnggota, "Pengingat Keterlambatan Pembayaran", isi)
 		if err != nil {
 			return 0, fmt.Errorf("gagal membuat pesan pengingat pinjaman %d: %w", loan.idPinjaman, err)
 		}
-		created++
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return 0, fmt.Errorf("gagal memeriksa pesan pengingat pinjaman %d: %w", loan.idPinjaman, err)
+		}
+		created += int(rowsAffected)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -261,16 +299,16 @@ func CreateOverdueInstallmentNotifications() (int, error) {
 
 	created := 0
 	for _, installment := range installments {
-		var insertedID int
-		err := tx.QueryRow(`
-			INSERT INTO notifikasi_angsuran_terlambat (id_pinjaman, angsuran_ke, id_anggota)
+		_, err := tx.Exec(`
+			INSERT INTO notifikasi_angsuran_terlambat AS existing (id_pinjaman, angsuran_ke, id_anggota)
 			VALUES ($1, $2, $3)
-			ON CONFLICT (id_pinjaman, angsuran_ke) DO NOTHING
-			RETURNING angsuran_ke
-		`, installment.idPinjaman, installment.angsuranKe, installment.idAnggota).Scan(&insertedID)
-		if errors.Is(err, sql.ErrNoRows) {
-			continue
-		}
+			ON CONFLICT (id_pinjaman, angsuran_ke) DO UPDATE
+			SET id_anggota = EXCLUDED.id_anggota,
+			    wa_sent_at = CASE
+			        WHEN existing.id_anggota IS DISTINCT FROM EXCLUDED.id_anggota THEN NULL
+			        ELSE existing.wa_sent_at
+			    END
+		`, installment.idPinjaman, installment.angsuranKe, installment.idAnggota)
 		if err != nil {
 			return 0, fmt.Errorf(
 				"gagal mencatat pengingat cicilan ke-%d pinjaman %d: %w",
@@ -278,24 +316,34 @@ func CreateOverdueInstallmentNotifications() (int, error) {
 			)
 		}
 
-		_, err = tx.Exec(`
-			INSERT INTO pesan (id_anggota, judul, isi, status, tgl_kirim)
-			VALUES ($1, $2, $3, 'unread', NOW())
-		`,
-			installment.idAnggota,
-			"Pengingat Keterlambatan Cicilan",
-			fmt.Sprintf(
-				"Cicilan ke-%d pinjaman #%d telah melewati tanggal jatuh tempo %s dan belum tercatat dibayar. Silakan segera lakukan pembayaran atau hubungi bendahara jika Anda sudah membayar.",
-				installment.angsuranKe, installment.idPinjaman, installment.jatuhTempo,
-			),
+		isi := fmt.Sprintf(
+			"Cicilan ke-%d pinjaman #%d telah melewati tanggal jatuh tempo %s dan belum tercatat dibayar. Silakan segera lakukan pembayaran atau hubungi bendahara jika Anda sudah membayar.",
+			installment.angsuranKe, installment.idPinjaman, installment.jatuhTempo,
 		)
+		result, err := tx.Exec(`
+			INSERT INTO pesan (id_anggota, judul, isi, status, tgl_kirim)
+			SELECT $1::VARCHAR(50), $2::VARCHAR(100), $3::TEXT, 'unread', NOW()
+			WHERE NOT EXISTS (
+				SELECT 1 FROM pesan
+				WHERE id_anggota = $1::VARCHAR(50)
+				  AND judul = $2::VARCHAR(100)
+				  AND isi = $3::TEXT
+			)
+		`, installment.idAnggota, "Pengingat Keterlambatan Cicilan", isi)
 		if err != nil {
 			return 0, fmt.Errorf(
 				"gagal membuat pengingat cicilan ke-%d pinjaman %d: %w",
 				installment.angsuranKe, installment.idPinjaman, err,
 			)
 		}
-		created++
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return 0, fmt.Errorf(
+				"gagal memeriksa pesan pengingat cicilan ke-%d pinjaman %d: %w",
+				installment.angsuranKe, installment.idPinjaman, err,
+			)
+		}
+		created += int(rowsAffected)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -309,12 +357,12 @@ func CreateOverdueInstallmentNotifications() (int, error) {
 func GetUnsentOverdueInstallmentWhatsAppNotifications() ([]OverdueInstallmentWhatsAppNotification, error) {
 	db := config.GetDB()
 	rows, err := db.Query(`
-		SELECT n.id_pinjaman, n.angsuran_ke, n.id_anggota,
+		SELECT n.id_pinjaman, n.angsuran_ke, p.id_anggota,
 		       COALESCE(a.nama_anggota, ''), COALESCE(a.no_telepon, ''),
 		       (p.tgl_pinjaman + (n.angsuran_ke * INTERVAL '1 month'))::date
 		FROM notifikasi_angsuran_terlambat n
 		JOIN pinjaman p ON p.id_pinjaman = n.id_pinjaman
-		JOIN anggota a ON a.id_anggota = n.id_anggota
+		JOIN anggota a ON a.id_anggota = p.id_anggota
 		WHERE n.wa_sent_at IS NULL
 		  AND (p.tgl_pinjaman + (n.angsuran_ke * INTERVAL '1 month'))::date < CURRENT_DATE
 		ORDER BY n.dibuat_pada, n.id_pinjaman, n.angsuran_ke
