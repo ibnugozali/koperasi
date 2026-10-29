@@ -274,6 +274,45 @@
             }
         }
 
+        function setUnitKerjaFromReference(unitKerja) {
+            if (statusSelect.value !== 'dosen') {
+                return;
+            }
+
+            if (!unitKerja.trim()) {
+                namaHintText.textContent = 'Nama otomatis terisi dari data referensi. Unit Kerja masih kosong pada data import.';
+                return;
+            }
+
+            const normalizeUnitKerja = (value) => value
+                .toLocaleLowerCase('id-ID')
+                .replace(/paskasarjana/g, 'pascasarjana')
+                .replace(/[^a-z0-9]/g, '');
+            const normalizedUnitKerja = normalizeUnitKerja(unitKerja.replace(/\s*\([^)]*\)\s*$/, '').trim());
+            const matchingOption = Array.from(fakultasSelect.options).find((option) => {
+                const codeMatch = option.value.match(/\(([^)]+)\)$/);
+                const optionName = normalizeUnitKerja(option.value.replace(/\s*\([^)]*\)\s*$/, '').trim());
+                return optionName === normalizedUnitKerja ||
+                    (normalizedUnitKerja.length >= 5 && optionName.endsWith(normalizedUnitKerja)) ||
+                    (optionName.length >= 5 && normalizedUnitKerja.endsWith(optionName)) ||
+                    (codeMatch && normalizeUnitKerja(codeMatch[1]) === normalizeUnitKerja(unitKerja.trim()));
+            });
+            if (matchingOption) {
+                fakultasSelect.value = matchingOption.value;
+                fakultasHidden.value = matchingOption.value;
+                namaHintText.textContent = 'Nama dan Unit Kerja otomatis terisi dari data referensi.';
+            } else {
+                namaHintText.textContent = 'Nama otomatis terisi dari data referensi. Unit Kerja tidak ditemukan di pilihan form.';
+            }
+        }
+
+        function clearUnitKerjaForDosen() {
+            if (statusSelect.value === 'dosen') {
+                fakultasSelect.value = '';
+                fakultasHidden.value = '';
+            }
+        }
+
         function shouldLockRegistrationFields() {
             return alreadyMember ||
                 Boolean(statusSelect.value && statusSelect.value !== 'mahasiswa' &&
@@ -364,6 +403,7 @@
                 namaHidden.value = '';
                 namaHidden.placeholder = 'Nama akan terisi otomatis dari data referensi';
                 namaHintText.textContent = 'Masukkan Nomer Identitas untuk mengambil nama otomatis dari data referensi.';
+                clearUnitKerjaForDosen();
                 if (!identitasInput.value.trim()) {
                     latestRefFound = false;
                     latestRefStatus = '';
@@ -509,6 +549,7 @@
                 latestRefFound = false;
                 latestRefStatus = '';
                 lookupState = 'idle';
+                clearUnitKerjaForDosen();
                 resetDisplays('Menunggu Nomer Identitas...', false);
                 identitasHintText.textContent = 'Masukkan Nomer Identitas untuk mengambil nama dan gaji otomatis dari data referensi.';
                 updateReferensiWarning();
@@ -544,6 +585,7 @@
                     namaHidden.value = data.nama_lengkap || '';
                     namaHintText.textContent = data.nama_lengkap ? 'Nama otomatis terisi dari data referensi.' : 'Data referensi ditemukan.';
                     identitasHintText.textContent = 'Data referensi ditemukan.';
+                    setUnitKerjaFromReference(data.unit_kerja || '');
 
                     gajiHidden.value = data.gaji_bulanan || 0;
                     gajiDisplay.innerText = formatRupiah(data.gaji_bulanan || 0);
@@ -554,6 +596,7 @@
                     registeredMemberName = data.member_name || '';
                     latestRefStatus = '';
                     lookupState = 'already_member';
+                    clearUnitKerjaForDosen();
                     resetDisplays('Sudah terdaftar menjadi anggota', false, 'alert-danger');
                     namaHidden.value = registeredMemberName;
                     namaHintText.textContent = 'Nama ini sudah terdaftar menjadi anggota.';
@@ -562,6 +605,7 @@
                     latestRefFound = false;
                     latestRefStatus = '';
                     lookupState = 'not_found';
+                    clearUnitKerjaForDosen();
                     resetDisplays('Data tidak ditemukan di database referensi', false, 'alert-warning');
                     identitasHintText.textContent = 'Nomer Identitas tidak ada di data referensi. Periksa kembali atau hubungi admin.';
                 }
@@ -577,6 +621,7 @@
                 latestRefFound = false;
                 latestRefStatus = '';
                 lookupState = 'error';
+                clearUnitKerjaForDosen();
                 resetDisplays('Gagal menghubungi server', false, 'alert-danger');
                 identitasHintText.textContent = 'Gagal mengecek Nomer Identitas. Coba lagi atau hubungi admin.';
             }
@@ -608,6 +653,7 @@
             latestRefFound = false;
             latestRefStatus = '';
             lookupState = 'idle';
+            clearUnitKerjaForDosen();
             resetDisplays(identitasInput.value.trim() ? 'Menunggu pengecekan Nomer Identitas...' : 'Menunggu Nomer Identitas...', false);
             identitasHintText.textContent = identitasInput.value.trim()
                 ? 'Pengecekan akan berjalan setelah Anda selesai mengetik.'

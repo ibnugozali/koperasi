@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -568,9 +569,13 @@ func AdminTambahAnggotaPost(c *gin.Context) {
 }
 
 func normalizeHeader(s string) string {
-	s = strings.TrimSpace(strings.ToLower(s))
-	replacer := strings.NewReplacer(" ", "", "_", "", ".", "", "-", "", "/", "")
-	return replacer.Replace(s)
+	s = strings.TrimPrefix(strings.TrimSpace(s), "\uFEFF")
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) || r == '_' || r == '.' || r == '-' || r == '/' {
+			return -1
+		}
+		return unicode.ToLower(r)
+	}, s)
 }
 
 func findHeaderIndex(headerMap map[string]int, keys ...string) int {
@@ -1029,6 +1034,7 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 	idxNama := findHeaderIndex(headerMap, "nama lengkap", "nama anggota", "nama")
 	idxIdentitas := findReferensiIdentitasColumn(rows, headerRowIdx, headerMap)
 	idxJabatan := findHeaderIndex(headerMap, "jabatan", "status anggota", "status_anggota", "status calon anggota", "kategori pegawai")
+	idxUnitKerja := findHeaderIndex(headerMap, "unit kerja", "fakultas")
 	if idxJabatan < 0 {
 		idxJabatan = findHeaderIndex(headerMap, "identitas", "jenis pegawai", "status pegawai", "status")
 		if idxJabatan == idxIdentitas {
@@ -1163,6 +1169,7 @@ func AdminImportReferensiPendaftaran(c *gin.Context) {
 			NamaLengkap:       nama,
 			NomorIdentitas:    identitas,
 			Jabatan:           strings.TrimSpace(getCell(row, idxJabatan)),
+			UnitKerja:         getCell(row, idxUnitKerja),
 			GajiBulanan:       gajiBulanan,
 			StatusKeanggotaan: statusKeanggotaan,
 			SumberFile:        file.Filename,

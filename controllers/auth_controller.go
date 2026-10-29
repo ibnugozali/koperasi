@@ -814,6 +814,7 @@ func RegisterReferensiLookup(c *gin.Context) {
 		"jabatan":            referensi.Jabatan,
 		"status_referensi":   normalizeReferensiJabatan(referensi.Jabatan),
 		"nama_lengkap":       referensi.NamaLengkap,
+		"unit_kerja":         referensi.UnitKerja,
 		"gaji_bulanan":       referensi.GajiBulanan,
 		"status_keanggotaan": referensi.StatusKeanggotaan,
 	})

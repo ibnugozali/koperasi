@@ -9,6 +9,7 @@ type ReferensiPendaftaran struct {
 	NamaLengkap       string
 	NomorIdentitas    string
 	Jabatan           string
+	UnitKerja         string
 	GajiBulanan       int
 	StatusKeanggotaan string
 	SumberFile        string

@@ -243,6 +243,7 @@ func ensureReferensiPendaftaranTable() error {
 		nama_lengkap VARCHAR(255) NOT NULL,
 		nomor_identitas VARCHAR(32) DEFAULT '',
 		jabatan VARCHAR(64) DEFAULT '',
+		unit_kerja VARCHAR(255) DEFAULT '',
 		gaji_bulanan INT NOT NULL DEFAULT 0,
 		status_keanggotaan VARCHAR(32) NOT NULL DEFAULT 'belum_anggota',
 		sumber_file VARCHAR(255) DEFAULT '',
@@ -251,6 +252,7 @@ func ensureReferensiPendaftaranTable() error {
 	);
 
 	ALTER TABLE referensi_pendaftaran ADD COLUMN IF NOT EXISTS status_keanggotaan VARCHAR(32) NOT NULL DEFAULT 'belum_anggota';
+	ALTER TABLE referensi_pendaftaran ADD COLUMN IF NOT EXISTS unit_kerja VARCHAR(255) DEFAULT '';
 	UPDATE referensi_pendaftaran
 	SET status_keanggotaan = 'belum_anggota'
 	WHERE TRIM(COALESCE(status_keanggotaan, '')) = '';

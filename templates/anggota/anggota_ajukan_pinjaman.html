@@ -31,17 +31,17 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- Info Limit Pinjaman -->
 <div id="informasiKemampuanBayar" class="alert alert-info mb-3" role="alert" {{if and .ResumeGabungan (not .ShowAjukanPinjamanForm)}}style="display:none;"{{end}}>
     <div class="d-flex justify-content-between align-items-start mb-2">
-        <h5 class="mb-0">Batas Maksimum Bayar</h5>
+        <h5 class="mb-0">Detail Pinjaman</h5>
     </div>
     <p><strong>Jenis Anggota:</strong> {{ .JenisAnggota }}</p>
     <p><strong>Total Simpanan:</strong> Rp {{ .TotalSimpanan | formatRupiah }}</p>
         <p id="limit_info">
             {{if eq .JenisAnggota "Mahasiswa"}}
-                <strong>Kemampuan Bayar:</strong> Rp {{ .LimitPinjaman | formatRupiah }} (5x total simpanan)
+                <strong>Maksimum Pinjaman:</strong> Rp {{ .LimitPinjaman | formatRupiah }} (5x total simpanan)
             {{else if or (eq .JenisAnggota "Dosen") (eq .JenisAnggota "Tenaga Kependidikan")}}
-                <strong>Kemampuan Bayar:</strong> Dihitung berdasarkan gaji bulanan dan tenor
+                <strong>Maksimum Pinjaman:</strong> Dihitung berdasarkan gaji bulanan dan tenor
             {{else}}
-                <strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan
+                <strong>Maksimum Pinjaman:</strong> Tidak dapat ditentukan
             {{end}}
         </p>
     <p id="bunga_info" class="mb-0"><strong>Jasa:</strong> {{ if .Bunga }}{{ printf "%.2f" .Bunga }}{{ else }}2.00{{ end }}% per bulan (flat)</p>
@@ -570,7 +570,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 resumeCard.classList.add('resume-pinjaman-static');
             }
 
-            // Tampilkan Informasi Kemampuan Bayar
+            // Tampilkan Informasi Maksimum Pinjaman
             if (infoKemampuanBayar) {
                 infoKemampuanBayar.style.display = 'block';
             }
@@ -748,18 +748,18 @@ function calculateAngsuran() {
     const limitInfo = document.getElementById('limit_info');
 
     if (jenisAnggota === 'Mahasiswa') {
-        if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
+        if (limitInfo) limitInfo.innerHTML = '<strong>Maksimum Pinjaman:</strong> Rp ' + limitPinjaman.toLocaleString('id-ID') + ' (5x total simpanan)';
         if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Jasa:</strong> ' + bungaPersenTampil + '% per bulan (flat)';
     } else if (jenisAnggota === 'Dosen' || jenisAnggota === 'Tenaga Kependidikan') {
         if (gajiBulanan > 0 && jangkaWaktu > 0) {
             const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
-            if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor)';
+            if (limitInfo) limitInfo.innerHTML = '<strong>Maksimum Pinjaman:</strong> Rp ' + kemampuanBayar.toLocaleString('id-ID') + ' (0.4 x gaji x tenor)';
         } else {
-            if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
+            if (limitInfo) limitInfo.innerHTML = '<strong>Maksimum Pinjaman:</strong> Masukkan gaji bulanan dan tenor untuk menghitung';
         }
         if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Jasa:</strong> ' + bungaPersenTampil + '% per bulan (flat)';
     } else {
-        if (limitInfo) limitInfo.innerHTML = '<strong>Kemampuan Bayar:</strong> Tidak dapat ditentukan';
+        if (limitInfo) limitInfo.innerHTML = '<strong>Maksimum Pinjaman:</strong> Tidak dapat ditentukan';
         if (bungaInfoEl) bungaInfoEl.innerHTML = '<strong>Jasa:</strong> -';
     }
 
@@ -773,16 +773,16 @@ function calculateAngsuran() {
         const kemampuanBayar = 0.4 * gajiBulanan * jangkaWaktu;
         isWithinLimit = jumlahPinjaman <= kemampuanBayar;
         if (jumlahPinjaman > kemampuanBayar) {
-            maxLimitMessage = '⚠️ Jumlah pinjaman melebihi batas kemampuan bayar. Maksimum: Rp ' + kemampuanBayar.toLocaleString('id-ID');
+            maxLimitMessage = '⚠️ Jumlah pinjaman melebihi batas maksimum pinjaman. Maksimum: Rp ' + kemampuanBayar.toLocaleString('id-ID');
         } else if (jumlahPinjaman > 0) {
-            maxLimitMessage = '✓ Jumlah pinjaman masih dalam batas kemampuan bayar.';
+            maxLimitMessage = '✓ Jumlah pinjaman masih dalam batas maksimum pinjaman.';
         }
     } else if (jenisAnggota === 'Mahasiswa' && limitPinjaman > 0) {
         isWithinLimit = jumlahPinjaman <= limitPinjaman;
         if (jumlahPinjaman > limitPinjaman) {
-            maxLimitMessage = '⚠️ Jumlah pinjaman melebihi batas kemampuan bayar. Maksimum: Rp ' + limitPinjaman.toLocaleString('id-ID');
+            maxLimitMessage = '⚠️ Jumlah pinjaman melebihi batas maksimum pinjaman. Maksimum: Rp ' + limitPinjaman.toLocaleString('id-ID');
         } else if (jumlahPinjaman > 0) {
-            maxLimitMessage = '✓ Jumlah pinjaman masih dalam batas kemampuan bayar.';
+            maxLimitMessage = '✓ Jumlah pinjaman masih dalam batas maksimum pinjaman.';
         }
     }
 

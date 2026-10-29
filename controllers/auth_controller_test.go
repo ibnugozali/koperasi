@@ -19,6 +19,19 @@ func TestNormalizeRegisterPhoneKeepsSubscriberDigits(t *testing.T) {
 	}
 }
 
+func TestNormalizeHeaderHandlesFormattingAndUnicodeSpaces(t *testing.T) {
+	tests := map[string]string{
+		"\uFEFF Unit\u00a0Kerja \r\n": "unitkerja",
+		"status_anggota":              "statusanggota",
+	}
+
+	for input, want := range tests {
+		if got := normalizeHeader(input); got != want {
+			t.Errorf("normalizeHeader(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func TestIsRegisterPhoneValidRequiresTenToThirteenDigits(t *testing.T) {
 	valid := []string{"8123456789", "8123456789012"}
 	for _, phone := range valid {
